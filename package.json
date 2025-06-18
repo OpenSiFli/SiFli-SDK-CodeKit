@@ -1,0 +1,31 @@
+{
+  "name": "one-step",
+  "publisher": "Baker221",
+  "description": "A minimal extension for STM32.",
+  "version": "1.0.1",
+  "engines": {
+    "vscode": "^1.100.2"
+  },
+  "main": "extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "icon": "images/download.png", 
+  "contributes": {
+    "commands": [
+      { "command": "extension.compile", "title": "⚙️ Build" },
+      { "command": "extension.rebuild", "title": "🔄 Rebuild" },
+      { "command": "extension.clean", "title": "🧹 Clean" },
+      { "command": "extension.download", "title":"🚀 Download" }
+    ]
+  },
+  "categories": [ "Other" ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CaiSong123/One-Step"
+  },
+  "scripts": {
+    "format": "prettier . --write"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.2"
+  }
+}
