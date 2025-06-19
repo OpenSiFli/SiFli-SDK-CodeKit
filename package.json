@@ -1,20 +1,20 @@
 {
   "name": "one-step-for-sifi",
   "publisher": "Baker221",
-  "description": "A minimal extension for SIFI.",
+  "description": "A minimal extension for SiFli SDK development.",
   "version": "1.0.0",
   "engines": {
     "vscode": "^1.100.2"
   },
   "main": "extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": ["onWorkspaceContains:**/src/SConscript"],
   "icon": "images/download.png", 
   "contributes": {
     "commands": [
       { "command": "extension.compile", "title": "🛠️ Build" },
       { "command": "extension.rebuild", "title": "♻️ Rebuild" },
       { "command": "extension.download", "title":"💾 Download" },
-      { "command": "extension.Build & Download", "title":" 🚀 Build & Download" },
+      { "command": "extension.buildAndDownload", "title":" 🚀 Build & Download" },
       { "command": "extension.clean", "title": "🗑️ Clean" },
       { "command": "extension.menuconfig", "title": "⚙️ Menuconfig" }
     ]
