@@ -40,7 +40,6 @@ const BUILD_DOWNLOAD_TASK_NAME = "SiFli: Build & Download";
 
 // 状态栏按钮变量
 let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn;
-let buildTaskEndListener = null; 
 
 /**
  * 辅助函数：获取或创建名为 'SF32' 的终端，并确保其工作目录为 'project' 子文件夹。
@@ -70,7 +69,7 @@ async function getOrCreateSiFliTerminalAndCdProject() {
                 // IMPORTANT: Give the terminal a moment to fully initialize and run its startup script (export.ps1)
                 // before sending the 'cd' command. A small delay is often necessary.
                 // The exact delay might need tuning.
-                await new Promise(resolve => setTimeout(resolve, 3000)); // Wait for 3 seconds
+                await new Promise(resolve => setTimeout(resolve, 3000)); // Wait for 3 seconds for export.ps1 to run
 
                 terminal.sendText(`cd "${projectPath}"`); // 发送cd命令切换到project目录
                 console.log(`[SiFli Extension] Sent 'cd "${projectPath}"' to terminal.`);
@@ -91,7 +90,7 @@ async function getOrCreateSiFliTerminalAndCdProject() {
             const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
             const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
             if (fs.existsSync(projectPath) && fs.lstatSync(projectPath).isDirectory()) {
-                terminal.sendText(`cd "${projectPath}"`);
+                terminal.sendText(`cd "${projectPath}"`); // 确保每次执行命令前都在正确目录
                 console.log(`[SiFli Extension] Resent 'cd "${projectPath}"' to existing terminal.`);
             }
         }
@@ -102,15 +101,15 @@ async function getOrCreateSiFliTerminalAndCdProject() {
 }
 
 /**
- * 辅助函数：在已存在的终端中执行 shell 命令。
+ * 辅助函数：在已存在的SF32终端中执行 shell 命令。
  * @param {string} commandLine 要执行的命令字符串
  * @param {string} taskName 任务的显示名称 (用于消息提示)
  * @returns {Promise<void>}
  */
-async function executeShellCommandInTerminal(commandLine, taskName) {
+async function executeShellCommandInSiFliTerminal(commandLine, taskName) {
     const terminal = await getOrCreateSiFliTerminalAndCdProject();
 
-    console.log(`[SiFli Extension] Sending command "${commandLine}" for task "${taskName}" to terminal.`);
+    console.log(`[SiFli Extension] Sending command "${commandLine}" for task "${taskName}" to SF32 terminal.`);
     terminal.sendText(commandLine); // 直接向终端发送命令
     vscode.window.showInformationMessage(`SiFli: Executing "${taskName}"...`);
 }
@@ -130,17 +129,17 @@ async function executeCompileTask() {
         return;
     }
 
-    await executeShellCommandInTerminal(COMPILE_COMMAND, BUILD_TASK_NAME);
+    await executeShellCommandInSiFliTerminal(COMPILE_COMMAND, BUILD_TASK_NAME);
 }
 
 // 执行下载任务
 async function executeDownloadTask() {
-    await executeShellCommandInTerminal(DOWNLOAD_COMMAND, DOWNLOAD_TASK_NAME);
+    await executeShellCommandInSiFliTerminal(DOWNLOAD_COMMAND, DOWNLOAD_TASK_NAME);
 }
 
 // 执行 Menuconfig 任务
 async function executeMenuconfigTask() {
-    await executeShellCommandInTerminal(MENUCONFIG_COMMAND, MENUCONFIG_TASK_NAME);
+    await executeShellCommandInSiFliTerminal(MENUCONFIG_COMMAND, MENUCONFIG_TASK_NAME);
 }
 
 // 执行清理命令 (删除特定 'build' 文件夹)
@@ -248,11 +247,12 @@ async function activate(context) {
     // 插件激活时，根据 src/SConscript.py 文件是否存在来判断是否需要自动打开终端并cd
     if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
         const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-        const sconstructInSrcPath = path.join(workspaceRoot, SRC_SUBFOLDER, SCONSCRIPT_FILE); 
+        const sconstructInSrcPath = path.join(workspaceRoot, SRC_SUBFOLDER, SCONSCRIPT_FILE);
         console.log(`[SiFli Extension] Checking for SiFli project file: ${sconstructInSrcPath}`);
         
         if (fs.existsSync(sconstructInSrcPath)) {
             console.log(`[SiFli Extension] Found SConscript.py, attempting to initialize SF32 terminal.`);
+            // 插件激活时就尝试获取或创建SF32终端并cd到project目录
             getOrCreateSiFliTerminalAndCdProject();
         } else {
             vscode.window.showInformationMessage('当前工作区可能不是 SiFli 项目。请确保 ' +
@@ -268,30 +268,26 @@ async function activate(context) {
     context.subscriptions.push(
         vscode.commands.registerCommand(CMD_PREFIX + 'compile', () => executeCompileTask()),
         vscode.commands.registerCommand(CMD_PREFIX + 'rebuild', async () => {
-            executeCleanCommand(); // 先执行清理
-            // 由于 executeCompileTask 直接 sendText，它不会等待清理完成。
-            // 更好的做法是清理后再等待一段时间或监听清理结果，但这里保持简化。
-            // 考虑到清理是文件操作，通常比编译快很多，这样串联多数情况是可行的。
-            await executeCompileTask(); // 再执行编译
+            // Rebuild: 先清理，然后编译。由于所有命令都在同一终端执行，并且清理是文件操作，串行执行即可。
+            executeCleanCommand();
+            // 等待一小段时间，确保清理操作有足够时间完成（非严格等待，但通常够用）
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await executeCompileTask();
         }),
         vscode.commands.registerCommand(CMD_PREFIX + 'clean', () => executeCleanCommand()),
         vscode.commands.registerCommand(CMD_PREFIX + 'download', () => executeDownloadTask()),
         vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => executeMenuconfigTask()),
         vscode.commands.registerCommand(CMD_PREFIX + 'buildAndDownload', async () => {
             vscode.window.showInformationMessage('SiFli: Building and Downloading project...');
-            // 简单化处理：直接在终端发送 'command1 && command2'
-            // 这依赖于 shell 的 && 行为，前一个命令失败，后续命令不执行
-            await executeShellCommandInTerminal(`${COMPILE_COMMAND} && ${DOWNLOAD_COMMAND}`, BUILD_DOWNLOAD_TASK_NAME);
+            // *** 修正这里以兼容 PowerShell ***
+            // 使用分号顺序执行，并使用 if ($LASTEXITCODE -eq 0) 模拟 && 的条件执行
+            await executeShellCommandInSiFliTerminal(`${COMPILE_COMMAND}; if ($LASTEXITCODE -eq 0) { .\\${DOWNLOAD_COMMAND} }`, BUILD_DOWNLOAD_TASK_NAME);
         })
     );
 }
 
 function deactivate() {
-    // 确保在插件停用时清理所有资源
-    if (buildTaskEndListener) {
-        buildTaskEndListener.dispose();
-        buildTaskEndListener = null;
-    }
+    // 确保在插件停用时清理所有资源，这里没有特定需要清理的监听器了
     console.log('[SiFli Extension] Extension deactivated.');
 }
 

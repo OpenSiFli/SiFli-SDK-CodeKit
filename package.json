@@ -8,7 +8,7 @@
   },
   "main": "extension.js",
   "activationEvents": ["onStartupFinished"],
-  "icon": "images/download.png", 
+  "icon": "images/download.png",
   "contributes": {
     "commands": [
       { "command": "extension.compile", "title": "🛠️ Build" },
