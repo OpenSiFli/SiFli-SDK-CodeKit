@@ -1,5 +1,5 @@
 {
-  "name": "one-step-for-sifi",
+  "name": "one-step-for-sifli",
   "publisher": "Baker221",
   "description": "A minimal extension for SiFli SDK development.",
   "version": "1.0.0",
@@ -17,7 +17,21 @@
       { "command": "extension.buildAndDownload", "title":" 🚀 Build & Download" },
       { "command": "extension.clean", "title": "🗑️ Clean" },
       { "command": "extension.menuconfig", "title": "⚙️ Menuconfig" }
-    ]
+    ],
+    "configuration": {
+      "title": "SiFli Extension Configuration",
+      "properties": {
+        "one-step-for-sifi.powershellPath": {
+          "type": "string",
+          "default": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+          "description": "Path to PowerShell executable. (e.g., C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe)"
+        },
+        "one-step-for-sifi.sifliSdkExportScriptPath": {
+          "type": "string",
+          "description": "Full path to the SiFli SDK export.ps1 script. (e.g., D:\\OpenSiFli\\SiFli-SDK\\export.ps1)"
+        }
+      }
+    }
   },
   "categories": [ "Other" ],
   "repository": {
