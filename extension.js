@@ -260,21 +260,20 @@ function initializeStatusBarItems(context) {
     downloadBtn.show();
     context.subscriptions.push(downloadBtn);
 
-    menuconfigBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 96);
+    buildDownloadBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 96);
+    buildDownloadBtn.text = '🚀 Build & Download';
+    buildDownloadBtn.command = CMD_PREFIX + 'buildAndDownload';
+    buildDownloadBtn.show();
+    context.subscriptions.push(buildDownloadBtn);
+    
+    menuconfigBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 95);
     menuconfigBtn.text = '⚙️ Menuconfig';
     menuconfigBtn.command = CMD_PREFIX + 'menuconfig';
     menuconfigBtn.show();
     context.subscriptions.push(menuconfigBtn);
 
-    buildDownloadBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 95);
-    buildDownloadBtn.text = '🚀 Build & Download';
-    buildDownloadBtn.command = CMD_PREFIX + 'buildAndDownload';
-    buildDownloadBtn.show();
-    context.subscriptions.push(buildDownloadBtn);
-
     updateStatusBarItems(); // 初始化tooltip
 }
-
 
 async function activate(context) {
     console.log('Congratulations, your SiFli extension is now active!');
