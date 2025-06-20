@@ -326,9 +326,9 @@ async function activate(context) {
     } else {
         console.log('[SiFli Extension] Not a SiFli project. Extension features will not be activated.');
         // 保留此条，因为这是插件未激活的原因提示
-        vscode.window.showInformationMessage('当前工作区不是 SiFli 项目，插件功能未激活。请确保 ' +
-                                            `"${path.join(SRC_SUBFOLDER, SCONSCRIPT_FILE)}"` +
-                                            ' 文件存在于您的项目中以正常使用本扩展。');
+        // vscode.window.showInformationMessage('当前工作区不是 SiFli 项目，插件功能未激活。请确保 ' +
+                                            // `"${path.join(SRC_SUBFOLDER, SCONSCRIPT_FILE)}"` +
+                                            // ' 文件存在于您的项目中以正常使用本扩展。');
     }
 }
 
