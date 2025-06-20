@@ -21,12 +21,12 @@
     "configuration": {
       "title": "SiFli Extension Configuration",
       "properties": {
-        "one-step-for-sifi.powershellPath": {
+        "one-step-for-sifli.powershellPath": {
           "type": "string",
           "default": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
           "description": "Path to PowerShell executable. (e.g., C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe)"
         },
-        "one-step-for-sifi.sifliSdkExportScriptPath": {
+        "one-step-for-sifli.sifliSdkExportScriptPath": {
           "type": "string",
           "description": "Full path to the SiFli SDK export.ps1 script. (e.g., D:\\OpenSiFli\\SiFli-SDK\\export.ps1)"
         }
@@ -36,7 +36,7 @@
   "categories": [ "Other" ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/CaiSong123/one_step_for_sifi"
+    "url": "https://github.com/CaiSong123/one_step_for_sifli"
   },
   "scripts": {
     "format": "prettier . --write"

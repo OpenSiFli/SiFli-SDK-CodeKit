@@ -116,13 +116,13 @@ async function getOrCreateSiFliTerminalAndCdProject() {
             if (fs.existsSync(projectPath) && fs.lstatSync(projectPath).isDirectory()) {
                 terminal.sendText(`cd "${projectPath}"`); // 发送cd命令切换到project目录
                 console.log(`[SiFli Extension] Sent 'cd "${projectPath}"' to terminal.`);
-                vscode.window.showInformationMessage(`SiFli: Opened terminal "${TERMINAL_NAME}" and navigated to "${projectPath}"`);
+                // 移除：vscode.window.showInformationMessage(`SiFli: Opened terminal "${TERMINAL_NAME}" and navigated to "${projectPath}"`);
             } else {
-                vscode.window.showWarningMessage(`SiFli: Could not find '${PROJECT_SUBFOLDER}' folder at ${projectPath}. Commands might not work correctly.`);
+                vscode.window.showWarningMessage(`SiFli: 无法找到 '${PROJECT_SUBFOLDER}' 文件夹。部分命令可能无法正常工作。`);
                 console.warn(`[SiFli Extension] Could not find '${PROJECT_SUBFOLDER}' folder at ${projectPath}.`);
             }
         } else {
-            vscode.window.showWarningMessage('SiFli: No workspace folder open. Commands might not execute in the intended directory.');
+            vscode.window.showWarningMessage('SiFli: 未打开工作区。命令可能无法在预期目录执行。');
             console.warn('[SiFli Extension] No workspace folder open.');
         }
     } else {
@@ -154,7 +154,7 @@ async function executeShellCommandInSiFliTerminal(commandLine, taskName) {
 
     console.log(`[SiFli Extension] Sending command "${commandLine}" for task "${taskName}" to SF32 terminal.`);
     terminal.sendText(commandLine); // 直接向终端发送命令
-    vscode.window.showInformationMessage(`SiFli: Executing "${taskName}"...`);
+    vscode.window.showInformationMessage(`SiFli: 正在执行 "${taskName}"...`);
 }
 
 
@@ -196,7 +196,7 @@ function executeCleanCommand() {
     const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
     const buildFolderPath = path.join(workspaceRoot, PROJECT_SUBFOLDER, BUILD_TARGET_FOLDER);
 
-    vscode.window.showInformationMessage(`SiFli: Attempting to clean ${buildFolderPath}...`);
+    vscode.window.showInformationMessage(`SiFli: 尝试清理 ${BUILD_TARGET_FOLDER} 文件夹...`);
     console.log(`[SiFli Extension] Clean command: Checking for folder: ${buildFolderPath}`);
 
     if (fs.existsSync(buildFolderPath)) {
@@ -283,14 +283,15 @@ function initializeStatusBarItems(context) {
 async function activate(context) {
     console.log('Congratulations, your SiFli extension is now active!');
 
-    // 在插件激活时立即读取配置
-    updateConfiguration();
+    // *** 关键修正：确保在任何依赖配置值的函数调用之前，先调用 updateConfiguration() ***
+    updateConfiguration(); // 在插件激活时立即读取配置
+
     // 监听配置变化，当用户在 VS Code 设置中修改插件的相关配置时，重新读取并更新这些路径变量。
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
         // 检查是否是 'one-step-for-sifli' 相关的配置发生了变化
         if (e.affectsConfiguration('one-step-for-sifli')) {
             updateConfiguration(); // 更新内部的路径变量
-            vscode.window.showInformationMessage('SiFli 插件配置已更新。若要确保所有更改生效，可能需要重启 VS Code。');
+            // 移除：vscode.window.showInformationMessage('SiFli 插件配置已更新。若要确保所有更改生效，可能需要重启 VS Code。');
         }
     }));
 
@@ -322,7 +323,7 @@ async function activate(context) {
             vscode.commands.registerCommand(CMD_PREFIX + 'download', () => executeDownloadTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => executeMenuconfigTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'buildAndDownload', async () => {
-                vscode.window.showInformationMessage('SiFli: Building and Downloading project...');
+                vscode.window.showInformationMessage('SiFli: 正在构建并下载项目...');
                 // 针对 PowerShell 兼容性已修正：使用分号顺序执行，并使用 if ($LASTEXITCODE -eq 0) 模拟 && 的条件执行
                 await executeShellCommandInSiFliTerminal(`${COMPILE_COMMAND}; if ($LASTEXITCODE -eq 0) { .\\${DOWNLOAD_COMMAND} }`, BUILD_DOWNLOAD_TASK_NAME);
             })
