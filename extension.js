@@ -62,7 +62,6 @@ let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadB
 /**
  * 辅助函数：判断当前工作区是否是 SiFli SDK 工程。 (保持不变)
  * 判断依据是工作区根目录下是否存在 'src/SConscript' 文件。
- * 【重要】如果你的 SConscript 文件位于 'project/src/SConscript'，请将 isSiFliProject() 函数中的 `sconstructPathToCheck` 变量修改为 `path.join(workspaceRoot, PROJECT_SUBFOLDER, SRC_SUBFOLDER, SCONSCRIPT_FILE);`。
  * @returns {boolean} 如果是 SiFli 工程则返回 true，否则返回 false。
  */
 function isSiFliProject() {
@@ -74,9 +73,6 @@ function isSiFliProject() {
     // === 修正点 1：检查路径是否正确 ===
     // 假设 SConscript 在工作区根目录下的 src 文件夹内
     const sconstructPathToCheck = path.join(workspaceRoot, SRC_SUBFOLDER, SCONSCRIPT_FILE);
-
-    // 如果 SConscript 实际在工作区根目录下的 project/src 文件夹内，请取消注释下一行并注释上一行：
-    // const sconstructPathToCheck = path.join(workspaceRoot, PROJECT_SUBFOLDER, SRC_SUBFOLDER, SCONSCRIPT_FILE);
 
     const isProject = fs.existsSync(sconstructPathToCheck);
     console.log(`[SiFli Extension] Checking for SiFli project file: ${sconstructPathToCheck} - Found: ${isProject}`);
@@ -154,7 +150,7 @@ async function executeShellCommandInSiFliTerminal(commandLine, taskName) {
 
     console.log(`[SiFli Extension] Sending command "${commandLine}" for task "${taskName}" to SF32 terminal.`);
     terminal.sendText(commandLine); // 直接向终端发送命令
-    vscode.window.showInformationMessage(`SiFli: 正在执行 "${taskName}"...`);
+    // vscode.window.showInformationMessage(`SiFli: 正在执行 "${taskName}"...`);
 }
 
 
@@ -163,6 +159,7 @@ async function executeCompileTask() {
     try {
         const allSaved = await vscode.workspace.saveAll();
         if (!allSaved) {
+            // 保留此条，因为这是构建可能出现问题的警告
             vscode.window.showWarningMessage('部分文件未能保存，构建可能基于旧版文件。');
             console.warn('[SiFli Extension] Not all files saved before compile.');
         }
@@ -189,16 +186,15 @@ async function executeMenuconfigTask() {
 function executeCleanCommand() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('请先打开一个工作区。');
+        // vscode.window.showErrorMessage('请先打开一个工作区。');
         console.warn('[SiFli Extension] No workspace folder open for clean.');
         return;
     }
     const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
     const buildFolderPath = path.join(workspaceRoot, PROJECT_SUBFOLDER, BUILD_TARGET_FOLDER);
 
-    vscode.window.showInformationMessage(`SiFli: 尝试清理 ${BUILD_TARGET_FOLDER} 文件夹...`);
+    // vscode.window.showInformationMessage(`SiFli: 尝试清理 ${BUILD_TARGET_FOLDER} 文件夹...`);
     console.log(`[SiFli Extension] Clean command: Checking for folder: ${buildFolderPath}`);
-
     if (fs.existsSync(buildFolderPath)) {
         try {
             fs.rmSync(buildFolderPath, { recursive: true, force: true });
@@ -283,7 +279,6 @@ function initializeStatusBarItems(context) {
 async function activate(context) {
     console.log('Congratulations, your SiFli extension is now active!');
 
-    // *** 关键修正：确保在任何依赖配置值的函数调用之前，先调用 updateConfiguration() ***
     updateConfiguration(); // 在插件激活时立即读取配置
 
     // 监听配置变化，当用户在 VS Code 设置中修改插件的相关配置时，重新读取并更新这些路径变量。
@@ -291,7 +286,7 @@ async function activate(context) {
         // 检查是否是 'one-step-for-sifli' 相关的配置发生了变化
         if (e.affectsConfiguration('one-step-for-sifli')) {
             updateConfiguration(); // 更新内部的路径变量
-            // 移除：vscode.window.showInformationMessage('SiFli 插件配置已更新。若要确保所有更改生效，可能需要重启 VS Code。');
+            vscode.window.showInformationMessage('SiFli 插件配置已更新。若要确保所有更改生效，可能需要重启 VS Code。');
         }
     }));
 
@@ -301,7 +296,7 @@ async function activate(context) {
     // 只有是 SiFli 项目才激活插件功能
     if (isSiFliProject()) {
         console.log('[SiFli Extension] SiFli project detected. Activating full extension features.');
-        vscode.window.showInformationMessage('SiFli 项目已检测到，插件功能已激活。');
+        // vscode.window.showInformationMessage('SiFli 项目已检测到，插件功能已激活。');
 
         // 只有是 SiFli 项目才初始化状态栏按钮
         initializeStatusBarItems(context);
@@ -323,13 +318,15 @@ async function activate(context) {
             vscode.commands.registerCommand(CMD_PREFIX + 'download', () => executeDownloadTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => executeMenuconfigTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'buildAndDownload', async () => {
-                vscode.window.showInformationMessage('SiFli: 正在构建并下载项目...');
+                // 保留此条，因为这是命令组合的开始提示
+                // vscode.window.showInformationMessage('SiFli: 正在构建并下载项目...');
                 // 针对 PowerShell 兼容性已修正：使用分号顺序执行，并使用 if ($LASTEXITCODE -eq 0) 模拟 && 的条件执行
                 await executeShellCommandInSiFliTerminal(`${COMPILE_COMMAND}; if ($LASTEXITCODE -eq 0) { .\\${DOWNLOAD_COMMAND} }`, BUILD_DOWNLOAD_TASK_NAME);
             })
         );
     } else {
         console.log('[SiFli Extension] Not a SiFli project. Extension features will not be activated.');
+        // 保留此条，因为这是插件未激活的原因提示
         vscode.window.showInformationMessage('当前工作区不是 SiFli 项目，插件功能未激活。请确保 ' +
                                             `"${path.join(SRC_SUBFOLDER, SCONSCRIPT_FILE)}"` +
                                             ' 文件存在于您的项目中以正常使用本扩展。');
