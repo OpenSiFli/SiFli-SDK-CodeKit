@@ -2,18 +2,19 @@
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
+const os = require('os'); // 引入 os 模块用于获取临时目录
 
-// 定义SiFli SDK相关的常量 (保持不变)
+// 定义SiFli SDK相关的常量
 const TERMINAL_NAME = 'SF32'; // SDK配置的终端名称
 const PROJECT_SUBFOLDER = 'project'; // 工程文件夹名称（命令执行的实际工作目录）
 const SRC_SUBFOLDER = 'src'; // 源代码文件夹名称
 const SCONSCRIPT_FILE = 'SConscript'; // 判断SiFli工程的依据文件
 
-// SiFli SDK特定的指令 (保持不变)
+// SiFli SDK特定的指令
 const COMPILE_COMMAND = 'scons --board=sf32lb52-lchspi-ulp -j8';
 const MENUCONFIG_COMMAND = 'scons --board=sf32lb52-lchspi-ulp --menuconfig';
-const DOWNLOAD_COMMAND = 'build_sf32lb52-lchspi-ulp_hcpu\\uart_download.bat';
-// Clean 目标文件夹的相对路径，相对于 project 文件夹 (保持不变)
+const DOWNLOAD_SCRIPT_RELATIVE_PATH = 'build_sf32lb52-lchspi-ulp_hcpu\\uart_download.bat';
 const BUILD_TARGET_FOLDER = 'build_sf32lb52-lchspi-ulp_hcpu';
 
 // 从 VS Code 用户配置中读取路径，初始化为 let 变量
@@ -47,7 +48,7 @@ function updateConfiguration() {
     console.log(`  SiFli SDK Export Script Path: ${SIFLI_SDK_EXPORT_SCRIPT_PATH}`);
 }
 
-// 任务名称常量 (保持不变)
+// 任务名称常量
 const BUILD_TASK_NAME = "SiFli: Build";
 const DOWNLOAD_TASK_NAME = "SiFli: Download";
 const MENUCONFIG_TASK_NAME = "SiFli: Menuconfig";
@@ -56,11 +57,11 @@ const REBUILD_TASK_NAME = "SiFli: Rebuild";
 const BUILD_DOWNLOAD_TASK_NAME = "SiFli: Build & Download";
 
 
-// 状态栏按钮变量 (保持不变)
+// 状态栏按钮变量
 let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn;
 
 /**
- * 辅助函数：判断当前工作区是否是 SiFli SDK 工程。 (保持不变)
+ * 辅助函数：判断当前工作区是否是 SiFli SDK 工程。
  * 判断依据是工作区根目录下是否存在 'src/SConscript' 文件。
  * @returns {boolean} 如果是 SiFli 工程则返回 true，否则返回 false。
  */
@@ -70,8 +71,6 @@ function isSiFliProject() {
         return false;
     }
     const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-    // === 修正点 1：检查路径是否正确 ===
-    // 假设 SConscript 在工作区根目录下的 src 文件夹内
     const sconstructPathToCheck = path.join(workspaceRoot, SRC_SUBFOLDER, SCONSCRIPT_FILE);
 
     const isProject = fs.existsSync(sconstructPathToCheck);
@@ -80,7 +79,7 @@ function isSiFliProject() {
 }
 
 /**
- * 辅助函数：获取或创建名为 'SF32' 的终端，并确保其工作目录为 'project' 子文件夹。 (保持不变)
+ * 辅助函数：获取或创建名为 'SF32' 的终端，并确保其工作目录为 'project' 子文件夹。
  * 创建时会使用 SF32 终端的特定配置来确保环境正确。
  * @returns {vscode.Terminal}
  */
@@ -90,29 +89,22 @@ async function getOrCreateSiFliTerminalAndCdProject() {
 
     if (!terminal) {
         console.log(`[SiFli Extension] Terminal "${TERMINAL_NAME}" not found, creating a new one with specific profile.`);
-        // 使用 SF32 终端的精确配置来创建终端
         terminal = vscode.window.createTerminal({
             name: TERMINAL_NAME,
             shellPath: SF32_TERMINAL_PATH, // PowerShell 可执行文件
             shellArgs: SF32_TERMINAL_ARGS, // PowerShell 启动参数，包括执行 export.ps1
-            // === 修正点：设置 PowerShell 的初始工作目录为 export.ps1 所在的目录 ===
             cwd: SIFLI_SDK_ROOT_PATH // 这确保了 export.ps1 在正确的上下文环境中运行
         });
 
-        // IMPORTANT: 等待足够的时间，确保终端启动和 export.ps1 执行完成
-        // 5秒的延迟是给 powershell 启动和 export.ps1 运行留足时间
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒的延迟是给 powershell 启动和 export.ps1 运行留足时间
 
-        // 确保工作区已打开
         if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
             const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
             const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
 
-            // 检查 project 文件夹是否存在
             if (fs.existsSync(projectPath) && fs.lstatSync(projectPath).isDirectory()) {
                 terminal.sendText(`cd "${projectPath}"`); // 发送cd命令切换到project目录
                 console.log(`[SiFli Extension] Sent 'cd "${projectPath}"' to terminal.`);
-                // 移除：vscode.window.showInformationMessage(`SiFli: Opened terminal "${TERMINAL_NAME}" and navigated to "${projectPath}"`);
             } else {
                 vscode.window.showWarningMessage(`SiFli: 无法找到 '${PROJECT_SUBFOLDER}' 文件夹。部分命令可能无法正常工作。`);
                 console.warn(`[SiFli Extension] Could not find '${PROJECT_SUBFOLDER}' folder at ${projectPath}.`);
@@ -123,8 +115,6 @@ async function getOrCreateSiFliTerminalAndCdProject() {
         }
     } else {
         console.log(`[SiFli Extension] Terminal "${TERMINAL_NAME}" already exists.`);
-        // 如果终端已经存在，我们也需要确保它在正确的目录下。
-        // 每次都发送 cd 命令是安全的做法，因为用户的操作可能改变了终端的当前目录。
         if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
             const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
             const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
@@ -140,26 +130,151 @@ async function getOrCreateSiFliTerminalAndCdProject() {
 }
 
 /**
- * 辅助函数：在已存在的SF32终端中执行 shell 命令。 (保持不变)
+ * 辅助函数：在已存在的SF32终端中执行 shell 命令。
  * @param {string} commandLine 要执行的命令字符串
  * @param {string} taskName 任务的显示名称 (用于消息提示)
+ * @param {string} [serialPortNumInput] 可选的串口号输入，如果提供则在命令后发送
  * @returns {Promise<void>}
  */
-async function executeShellCommandInSiFliTerminal(commandLine, taskName) {
+async function executeShellCommandInSiFliTerminal(commandLine, taskName, serialPortNumInput = '') {
     const terminal = await getOrCreateSiFliTerminalAndCdProject();
 
     console.log(`[SiFli Extension] Sending command "${commandLine}" for task "${taskName}" to SF32 terminal.`);
     terminal.sendText(commandLine); // 直接向终端发送命令
-    // vscode.window.showInformationMessage(`SiFli: 正在执行 "${taskName}"...`);
+
+    // 如果提供了串口号输入，则在发送命令后立即发送
+    if (serialPortNumInput) {
+        // 等待一小段时间，确保 bat 脚本输出 "please input the serial port num:"
+        await new Promise(resolve => setTimeout(resolve, 500)); // 0.5 秒延迟，可能需要根据实际情况微调
+        terminal.sendText(serialPortNumInput); // 发送串口号
+    }
+}
+
+/**
+ * 辅助函数：通过 PowerShell Get-WmiObject 获取当前系统中所有可用的 CH340 串口设备。
+ * @returns {Promise<Array<{name: string, com: string, manufacturer?: string, description?: string}>>} 返回一个 Promise，解析为串口设备数组。
+ */
+async function getSerialPorts() {
+    let detectedPorts = new Set(); // 使用 Set 避免重复的 COM 端口
+
+    try {
+        // 定义 PowerShell 脚本内容，直接在其中使用 PowerShell 的引号和转义规则
+        const powershellScriptContent = `
+            Get-WmiObject Win32_PnPEntity | Where-Object { ($_.Name -match "COM\\d+" -and ($_.Manufacturer -like "*wch.cn*" -or $_.Name -like "*CH340*")) } | Select-Object Name, Description, Manufacturer, DeviceID | ForEach-Object { $_.Name -match "\\((COM\\d+)\\)" | Out-Null; [PSCustomObject]@{ Name = $_.Name; COM = $Matches[1]; Manufacturer = $_.Manufacturer; Description = $_.Description } } | ConvertTo-Json
+        `;
+
+        // 创建一个临时 PowerShell 脚本文件
+        const tempScriptPath = path.join(os.tmpdir(), `get_serial_ports_${Date.now()}.ps1`);
+        fs.writeFileSync(tempScriptPath, powershellScriptContent, { encoding: 'utf8' });
+
+        const { stdout: psStdout, stderr: psStderr } = await new Promise((resolve, reject) => {
+            // 执行临时 PowerShell 脚本文件
+            // 使用 -File 参数而不是 -Command，并设置 ExecutionPolicy 以允许脚本执行
+            exec(`powershell.exe -ExecutionPolicy Bypass -NoProfile -File "${tempScriptPath}"`, { timeout: 15000 }, (error, stdout, stderr) => { // 增加超时到15秒
+                // 清理临时文件
+                try {
+                    fs.unlinkSync(tempScriptPath); // 同步删除，确保删除完成
+                } catch (cleanupError) {
+                    console.warn(`[SiFli Extension] 无法删除临时 PowerShell 脚本文件 ${tempScriptPath}: ${cleanupError.message}`);
+                }
+
+                if (error) {
+                    console.error(`[SiFli Extension] 执行 PowerShell 脚本失败: ${error.message}`);
+                    return reject(error);
+                }
+                resolve({ stdout, stderr });
+            });
+        });
+
+        if (psStderr) {
+            console.warn(`[SiFli Extension] PowerShell 获取串口警告: ${psStderr}`);
+        }
+
+        try {
+            const psSerialPorts = JSON.parse(psStdout.trim());
+            // 如果只有单个对象而非数组，或者 stdout 为空，确保能正确处理
+            const portsArray = Array.isArray(psSerialPorts) ? psSerialPorts : (psSerialPorts ? [psSerialPorts] : []);
+            
+            portsArray.forEach(p => {
+                // 进一步确保获取到的 COM 端口是有效的，且 Manufacturer 或 Name 明确指示是 CH340
+                // p.Manufacturer?.includes('wch.cn') 使用可选链，确保即使 Manufacturer 为 null/undefined 也不会报错
+                if (p.COM && (p.Manufacturer?.includes('wch.cn') || p.Name?.includes('CH340'))) {
+                    detectedPorts.add(JSON.stringify({
+                        name: p.Name,
+                        com: p.COM.toUpperCase(),
+                        manufacturer: p.Manufacturer,
+                        description: p.Description
+                    }));
+                }
+            });
+        } catch (parseError) {
+            console.warn(`[SiFli Extension] 解析 PowerShell 串口信息失败 (可能没有CH340串口或输出格式不符): ${parseError.message}`);
+            // 当没有 CH340 串口时，stdout 可能为空或不是有效的 JSON，这里是预期行为
+        }
+    } catch (error) {
+        // 捕获 exec 错误，例如 powershell.exe 未找到或权限问题
+        vscode.window.showErrorMessage(`无法执行 PowerShell 命令获取串口列表。请确保 PowerShell 已正确安装并可访问。错误信息: ${error.message}`);
+        console.error(`[SiFli Extension] 获取串口失败 (PowerShell exec error): ${error.message}`);
+    }
+
+    const finalPorts = Array.from(detectedPorts).map(item => JSON.parse(item));
+    console.log('[SiFli Extension] Final detected serial ports:', finalPorts);
+    return finalPorts;
+}
+
+/**
+ * 辅助函数：处理下载前的串口选择逻辑。
+ * 根据检测到的 "USB-SERIAL CH340" 串口数量，进行自动化或用户交互。
+ * @returns {Promise<string|null>} 返回选择的串口号的纯数字，如果用户取消则返回 null。
+ */
+async function selectSerialPort() {
+    try {
+        const serialPorts = await getSerialPorts();
+
+        if (serialPorts.length === 0) {
+            // 无串口：提示用户检查设备连接
+            vscode.window.showWarningMessage('未检测到 USB-SERIAL CH340 串口设备。请检查设备连接、驱动安装或 SDK 配置中的 PowerShell 路径。');
+            return null;
+        } else if (serialPorts.length === 1) {
+            // 单个串口：自动提取并返回串口号的纯数字
+            const comPortFull = serialPorts[0].com; // 例如 "COM5"
+            const comPortNum = comPortFull.replace('COM', ''); // 提取数字，例如 "5"
+            vscode.window.showInformationMessage(`检测到单个 USB-SERIAL CH340 串口：${serialPorts[0].name}，自动选择 COM 端口：${comPortNum}。`);
+            return comPortNum;
+        } else {
+            // 多个串口：弹出一个选择界面供用户选择
+            const pickOptions = serialPorts.map(p => ({
+                label: p.name,
+                description: `COM 端口: ${p.com}`,
+                com: p.com // 存储完整的 COM 字符串
+            }));
+
+            const selectedPort = await vscode.window.showQuickPick(pickOptions, {
+                placeHolder: '检测到多个 USB-SERIAL CH340 串口，请选择一个进行烧录：'
+            });
+
+            if (selectedPort) {
+                const comPortNum = selectedPort.com.replace('COM', ''); // 提取纯数字
+                vscode.window.showInformationMessage(`已选择串口：${comPortNum}`);
+                return comPortNum;
+            } else {
+                vscode.window.showInformationMessage('已取消串口选择。');
+                return null;
+            }
+        }
+    } catch (error) {
+        vscode.window.showErrorMessage(`获取或选择串口时发生错误: ${error.message}`);
+        console.error('[SiFli Extension] Error selecting serial port:', error);
+        return null;
+    }
 }
 
 
-// 执行编译任务 (保持不变)
+// 执行编译任务
 async function executeCompileTask() {
     try {
         const allSaved = await vscode.workspace.saveAll();
         if (!allSaved) {
-            // 保留此条，因为这是构建可能出现问题的警告
             vscode.window.showWarningMessage('部分文件未能保存，构建可能基于旧版文件。');
             console.warn('[SiFli Extension] Not all files saved before compile.');
         }
@@ -172,28 +287,29 @@ async function executeCompileTask() {
     await executeShellCommandInSiFliTerminal(COMPILE_COMMAND, BUILD_TASK_NAME);
 }
 
-// 执行下载任务 (保持不变)
+// 执行下载任务
 async function executeDownloadTask() {
-    await executeShellCommandInSiFliTerminal(DOWNLOAD_COMMAND, DOWNLOAD_TASK_NAME);
+    const serialPort = await selectSerialPort();
+    if (serialPort) {
+        await executeShellCommandInSiFliTerminal(`.\\${DOWNLOAD_SCRIPT_RELATIVE_PATH}`, DOWNLOAD_TASK_NAME, serialPort);
+    }
 }
 
-// 执行 Menuconfig 任务 (保持不变)
+// 执行 Menuconfig 任务
 async function executeMenuconfigTask() {
     await executeShellCommandInSiFliTerminal(MENUCONFIG_COMMAND, MENUCONFIG_TASK_NAME);
 }
 
-// 执行清理命令 (删除特定 'build' 文件夹) (保持不变)
+// 执行清理命令 (删除特定 'build' 文件夹)
 function executeCleanCommand() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
-        // vscode.window.showErrorMessage('请先打开一个工作区。');
         console.warn('[SiFli Extension] No workspace folder open for clean.');
         return;
     }
     const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
     const buildFolderPath = path.join(workspaceRoot, PROJECT_SUBFOLDER, BUILD_TARGET_FOLDER);
 
-    // vscode.window.showInformationMessage(`SiFli: 尝试清理 ${BUILD_TARGET_FOLDER} 文件夹...`);
     console.log(`[SiFli Extension] Clean command: Checking for folder: ${buildFolderPath}`);
     if (fs.existsSync(buildFolderPath)) {
         try {
@@ -210,7 +326,7 @@ function executeCleanCommand() {
     }
 }
 
-// 更新状态栏按钮的提示信息 (保持不变)
+// 更新状态栏按钮的提示信息
 function updateStatusBarItems() {
     if (compileBtn) {
         compileBtn.tooltip = `执行 SiFli 构建 (${COMPILE_COMMAND})`;
@@ -219,7 +335,7 @@ function updateStatusBarItems() {
         rebuildBtn.tooltip = `清理并执行 SiFli 构建`;
     }
     if (downloadBtn) {
-        downloadBtn.tooltip = `执行 SiFli 下载 (${DOWNLOAD_COMMAND})`;
+        downloadBtn.tooltip = `执行 SiFli 下载`;
     }
     if (menuconfigBtn) {
         menuconfigBtn.tooltip = `打开 SiFli Menuconfig (${MENUCONFIG_COMMAND})`;
@@ -232,7 +348,7 @@ function updateStatusBarItems() {
     }
 }
 
-// 初始化状态栏按钮 (保持不变)
+// 初始化状态栏按钮
 function initializeStatusBarItems(context) {
     const CMD_PREFIX = "extension.";
 
@@ -275,6 +391,28 @@ function initializeStatusBarItems(context) {
     updateStatusBarItems(); // 初始化tooltip
 }
 
+// 执行编译并下载任务
+async function executeBuildAndDownloadTask() {
+    try {
+        const allSaved = await vscode.workspace.saveAll();
+        if (!allSaved) {
+            vscode.window.showWarningMessage('部分文件未能保存，构建可能基于旧版文件。');
+            console.warn('[SiFli Extension] Not all files saved before build and download.');
+        }
+    } catch (error) {
+        vscode.window.showErrorMessage(`保存文件时出错: ${error.message}`);
+        console.error('[SiFli Extension] Error saving files:', error);
+        return;
+    }
+
+    const serialPort = await selectSerialPort();
+    if (serialPort) {
+        const command = `${COMPILE_COMMAND}; if ($LASTEXITCODE -eq 0) { .\\${DOWNLOAD_SCRIPT_RELATIVE_PATH} }`;
+        await executeShellCommandInSiFliTerminal(command, BUILD_DOWNLOAD_TASK_NAME, serialPort);
+    }
+}
+
+
 async function activate(context) {
     console.log('Congratulations, your SiFli extension is now active!');
 
@@ -295,45 +433,31 @@ async function activate(context) {
     // 只有是 SiFli 项目才激活插件功能
     if (isSiFliProject()) {
         console.log('[SiFli Extension] SiFli project detected. Activating full extension features.');
-        // vscode.window.showInformationMessage('SiFli 项目已检测到，插件功能已激活。');
+        
+        initializeStatusBarItems(context); // 只有是 SiFli 项目才初始化状态栏按钮
 
-        // 只有是 SiFli 项目才初始化状态栏按钮
-        initializeStatusBarItems(context);
-
-        // 只有是 SiFli 项目才自动打开并配置终端
-        // await 确保终端初始化完成后再继续执行后续代码
-        await getOrCreateSiFliTerminalAndCdProject();
+        await getOrCreateSiFliTerminalAndCdProject(); // 只有是 SiFli 项目才自动打开并配置终端
 
         // 只有是 SiFli 项目才注册命令
         context.subscriptions.push(
             vscode.commands.registerCommand(CMD_PREFIX + 'compile', () => executeCompileTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'rebuild', async () => {
                 executeCleanCommand();
-                // 添加一个小的延迟，确保清理完成再开始编译（非严格等待，但通常够用）
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise(resolve => setTimeout(resolve, 500)); // 添加一个小的延迟，确保清理完成再开始编译（非严格等待，但通常够用）
                 await executeCompileTask();
             }),
             vscode.commands.registerCommand(CMD_PREFIX + 'clean', () => executeCleanCommand()),
             vscode.commands.registerCommand(CMD_PREFIX + 'download', () => executeDownloadTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => executeMenuconfigTask()),
-            vscode.commands.registerCommand(CMD_PREFIX + 'buildAndDownload', async () => {
-                // 保留此条，因为这是命令组合的开始提示
-                // vscode.window.showInformationMessage('SiFli: 正在构建并下载项目...');
-                // 针对 PowerShell 兼容性已修正：使用分号顺序执行，并使用 if ($LASTEXITCODE -eq 0) 模拟 && 的条件执行
-                await executeShellCommandInSiFliTerminal(`${COMPILE_COMMAND}; if ($LASTEXITCODE -eq 0) { .\\${DOWNLOAD_COMMAND} }`, BUILD_DOWNLOAD_TASK_NAME);
-            })
+            vscode.commands.registerCommand(CMD_PREFIX + 'buildAndDownload', () => executeBuildAndDownloadTask())
         );
     } else {
         console.log('[SiFli Extension] Not a SiFli project. Extension features will not be activated.');
-        // 保留此条，因为这是插件未激活的原因提示
-        // vscode.window.showInformationMessage('当前工作区不是 SiFli 项目，插件功能未激活。请确保 ' +
-                                            // `"${path.join(SRC_SUBFOLDER, SCONSCRIPT_FILE)}"` +
-                                            // ' 文件存在于您的项目中以正常使用本扩展。');
     }
 }
 
 function deactivate() {
-    // 确保在插件停用时清理所有状态栏按钮，防止资源泄露 (保持不变)
+    // 确保在插件停用时清理所有状态栏按钮，防止资源泄露
     if (compileBtn) compileBtn.dispose();
     if (rebuildBtn) rebuildBtn.dispose();
     if (cleanBtn) cleanBtn.dispose();
