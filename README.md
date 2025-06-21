@@ -83,14 +83,14 @@
 2.  进入插件视图（快捷键 `Ctrl+Shift+X` 或 `Cmd+Shift+X`）。
 3.  点击界面右方的三个点`...`，在弹出的选项卡中选择从VSIX安装。
 4.  在弹出的界面中填入`.vsix`文件的下载地址，选中`.vsix`文件安装即可。
-5.  ![如何安装插件截图](images\vsix_install.png)
+5.  ![如何安装插件](images\vsix_install.png)
 ### 配置
 
 在使用插件之前，您需要配置关于下载`SiFli-SDK`所配置的 PowerShell 可执行文件地址和`SiFli-SDK`的 `export.ps1` 脚本的路径。
 
 1.  打开 VS Code 设置：
     * Windows/Linux: `文件` > `首选项` > `设置`
-    * ![如何打开设置截图](images\open_setting.png)
+    * ![如何打开设置](images\open_setting.png)
 2.  在设置搜索框中输入“One Step for SiFli”，或者导航到“插件”并找到“One Step for SiFli Configuration”。
 3.  **PowerShell 路径 (`one-step-for-sifli.powershellPath`)：**
     * 输入您的 PowerShell 可执行文件的完整路径。
@@ -98,7 +98,7 @@
 4.  **SiFli SDK 导出脚本路径 (`one-step-for-sifli.sifliSdkExportScriptPath`)：**
     * 输入位于您的`SiFli-SDK`安装目录中的 `export.ps1` 脚本的完整路径（例如，`D:\OpenSiFli\SiFli-SDK\export.ps1`）。
     * 此脚本对于设置`SiFli-SDK`命令的正确环境至关重要。
-    * ![如何填写SF32终端和export.ps1脚本路径截图](images\config_path.png)
+    * ![如何填写SF32终端和export.ps1脚本路径](images\config_path.png)
 ### 使用
 
 一旦配置完成并打开一个 SiFli 工程（即工作区根目录下存在 `src/SConscript` 文件），状态栏上将显示插件的功能按钮：
@@ -109,6 +109,10 @@
 * **💾 Download：** 下载已编译的项目到设备。
 * **🚀 Build & Download：** 编译项目并自动下载。
 * **⚙️ Menuconfig：** 进入`SiFli-SDK`的配置界面。
+## 单个CH340串口的自动输入下载
+* ![单个CH340串口的自动输入下载](images\one_serial_device.png)
+## 多个CH340串口的自动输入下载 
+* ![多个CH340串口的选择输入自动下载](images\multiple_serial_devices.png)
 
 点击这些按钮即可执行相应的操作。所有命令的执行情况会在 VS Code 的终端中显示。
 
