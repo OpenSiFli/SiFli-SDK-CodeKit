@@ -3,7 +3,7 @@ const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
-const os = require('os'); // 引入 os 模块用于获取临时目录
+const os = require('os');
 
 // 定义SiFli SDK相关的常量
 const TERMINAL_NAME = 'SF32'; // SDK配置的终端名称
@@ -11,26 +11,96 @@ const PROJECT_SUBFOLDER = 'project'; // 工程文件夹名称（命令执行的�
 const SRC_SUBFOLDER = 'src'; // 源代码文件夹名称
 const SCONSCRIPT_FILE = 'SConscript'; // 判断SiFli工程的依据文件
 
-// SiFli SDK特定的指令
-const COMPILE_COMMAND = 'scons --board=sf32lb52-lchspi-ulp -j8';
-const MENUCONFIG_COMMAND = 'scons --board=sf32lb52-lchspi-ulp --menuconfig';
-const DOWNLOAD_SCRIPT_RELATIVE_PATH = 'build_sf32lb52-lchspi-ulp_hcpu\\uart_download.bat';
-const BUILD_TARGET_FOLDER = 'build_sf32lb52-lchspi-ulp_hcpu';
+// 支持的所有芯片模组列表
+const SUPPORTED_BOARD_NAMES = [
+    "sf32lb52-lcd_52d",
+    "sf32lb52-lcd_base",
+    "sf32lb52-lcd_n16r8",
+    "sf32lb52-lchspi-ulp",
+    "sf32lb52-lchspi-ulp_base",
+    "sf32lb52-nano_52b",
+    "sf32lb52-nano_52j",
+    "sf32lb52-nano_base",
+    "sf32lb56-lcd_a128r12n1",
+    "sf32lb56-lcd_base",
+    "sf32lb56-lcd_n16r12n1",
+    "sf32lb58-lcd_a128r32n1_dsi",
+    "sf32lb58-lcd_base",
+    "sf32lb58-lcd_n16r32n1_dpi",
+    "sf32lb58-lcd_n16r32n1_dsi",
+    "sf32lb58-lcd_n16r64n4"
+];
 
 // 从 VS Code 用户配置中读取路径，初始化为 let 变量
 let SF32_TERMINAL_PATH;
 let SIFLI_SDK_EXPORT_SCRIPT_PATH;
 let SIFLI_SDK_ROOT_PATH;
 let SF32_TERMINAL_ARGS;
+let selectedBoardName; // 当前选中的芯片模组名称
+
+// 任务名称常量
+const BUILD_TASK_NAME = "SiFli: Build";
+const DOWNLOAD_TASK_NAME = "SiFli: Download";
+const MENUCONFIG_TASK_NAME = "SiFli: Menuconfig";
+const CLEAN_TASK_NAME = "SiFli: Clean";
+const REBUILD_TASK_NAME = "SiFli: Rebuild";
+const BUILD_DOWNLOAD_TASK_NAME = "SiFli: Build & Download";
+
+// 状态栏按钮变量
+let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn, currentBoardStatusItem;
+
+
+/**
+ * 辅助函数：根据选定的芯片模组动态生成 SCons 编译命令。
+ * @param {string} boardName 选定的芯片模组名称
+ * @returns {string} 完整的编译命令
+ */
+function getCompileCommand(boardName) {
+    return `scons --board=${boardName} -j8`;
+}
+
+/**
+ * 辅助函数：根据选定的芯片模组动态生成 Menuconfig 命令。
+ * @param {string} boardName 选定的芯片模组名称
+ * @returns {string} 完整的 Menuconfig 命令
+ */
+function getMenuconfigCommand(boardName) {
+    return `scons --board=${boardName} --menuconfig`;
+}
+
+/**
+ * 辅助函数：根据选定的芯片模组动态生成下载脚本的相对路径。
+ * @param {string} boardName 选定的芯片模组名称
+ * @returns {string} 下载脚本的相对路径
+ */
+function getDownloadScriptRelativePath(boardName) {
+    return `build_${boardName}_hcpu\\uart_download.bat`;
+}
+
+/**
+ * 辅助函数：根据选定的芯片模组动态生成构建目标文件夹名称。
+ * @param {string} boardName 选定的芯片模组名称
+ * @returns {string} 构建目标文件夹名称
+ */
+function getBuildTargetFolder(boardName) {
+    return `build_${boardName}_hcpu`;
+}
 
 /**
  * 辅助函数：读取并更新插件配置中的路径信息。
  * 在插件激活时调用，并在用户修改配置时监听并更新。
  */
 function updateConfiguration() {
-    const config = vscode.workspace.getConfiguration('one-step-for-sifli'); // 获取插件的配置
-    SF32_TERMINAL_PATH = config.get('powershellPath'); // 读取 powershellPath 配置项
-    SIFLI_SDK_EXPORT_SCRIPT_PATH = config.get('sifliSdkExportScriptPath'); // 读取 sifliSdkExportScriptPath 配置项
+    const config = vscode.workspace.getConfiguration('one-step-for-sifli');
+    SF32_TERMINAL_PATH = config.get('powershellPath');
+    SIFLI_SDK_EXPORT_SCRIPT_PATH = config.get('sifliSdkExportScriptPath');
+    selectedBoardName = config.get('defaultChipModule'); // 读取默认芯片模组
+
+    // 确保 selectedBoardName 是 SUPPORTED_BOARD_NAMES 之一，如果不是则使用默认值
+    if (!SUPPORTED_BOARD_NAMES.includes(selectedBoardName)) {
+        selectedBoardName = SUPPORTED_BOARD_NAMES[3]; // 默认值 sf32lb52-lchspi-ulp
+        vscode.window.showWarningMessage(`SiFli: 配置中的芯片模组 "${selectedBoardName}" 无效，已重置为默认值。`);
+    }
 
     // 根据 export 脚本路径计算 SDK 根目录
     SIFLI_SDK_ROOT_PATH = path.dirname(SIFLI_SDK_EXPORT_SCRIPT_PATH);
@@ -43,22 +113,14 @@ function updateConfiguration() {
         "-File",
         SIFLI_SDK_EXPORT_SCRIPT_PATH
     ];
+
     console.log(`[SiFli Extension] Configuration updated:`);
     console.log(`  PowerShell Path: ${SF32_TERMINAL_PATH}`);
     console.log(`  SiFli SDK Export Script Path: ${SIFLI_SDK_EXPORT_SCRIPT_PATH}`);
+    console.log(`  Selected SiFli Board: ${selectedBoardName}`);
+
+    updateStatusBarItems(); // 配置更新后，更新状态栏显示
 }
-
-// 任务名称常量
-const BUILD_TASK_NAME = "SiFli: Build";
-const DOWNLOAD_TASK_NAME = "SiFli: Download";
-const MENUCONFIG_TASK_NAME = "SiFli: Menuconfig";
-const CLEAN_TASK_NAME = "SiFli: Clean";
-const REBUILD_TASK_NAME = "SiFli: Rebuild";
-const BUILD_DOWNLOAD_TASK_NAME = "SiFli: Build & Download";
-
-
-// 状态栏按钮变量
-let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn;
 
 /**
  * 辅助函数：判断当前工作区是否是 SiFli SDK 工程。
@@ -194,7 +256,7 @@ async function getSerialPorts() {
             const psSerialPorts = JSON.parse(psStdout.trim());
             // 如果只有单个对象而非数组，或者 stdout 为空，确保能正确处理
             const portsArray = Array.isArray(psSerialPorts) ? psSerialPorts : (psSerialPorts ? [psSerialPorts] : []);
-            
+
             portsArray.forEach(p => {
                 // 进一步确保获取到的 COM 端口是有效的，且 Manufacturer 或 Name 明确指示是 CH340
                 // p.Manufacturer?.includes('wch.cn') 使用可选链，确保即使 Manufacturer 为 null/undefined 也不会报错
@@ -284,20 +346,23 @@ async function executeCompileTask() {
         return;
     }
 
-    await executeShellCommandInSiFliTerminal(COMPILE_COMMAND, BUILD_TASK_NAME);
+    const compileCommand = getCompileCommand(selectedBoardName);
+    await executeShellCommandInSiFliTerminal(compileCommand, BUILD_TASK_NAME);
 }
 
 // 执行下载任务
 async function executeDownloadTask() {
     const serialPort = await selectSerialPort();
     if (serialPort) {
-        await executeShellCommandInSiFliTerminal(`.\\${DOWNLOAD_SCRIPT_RELATIVE_PATH}`, DOWNLOAD_TASK_NAME, serialPort);
+        const downloadScriptPath = getDownloadScriptRelativePath(selectedBoardName);
+        await executeShellCommandInSiFliTerminal(`.\\${downloadScriptPath}`, DOWNLOAD_TASK_NAME, serialPort);
     }
 }
 
 // 执行 Menuconfig 任务
 async function executeMenuconfigTask() {
-    await executeShellCommandInSiFliTerminal(MENUCONFIG_COMMAND, MENUCONFIG_TASK_NAME);
+    const menuconfigCommand = getMenuconfigCommand(selectedBoardName);
+    await executeShellCommandInSiFliTerminal(menuconfigCommand, MENUCONFIG_TASK_NAME);
 }
 
 // 执行清理命令 (删除特定 'build' 文件夹)
@@ -308,20 +373,20 @@ function executeCleanCommand() {
         return;
     }
     const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-    const buildFolderPath = path.join(workspaceRoot, PROJECT_SUBFOLDER, BUILD_TARGET_FOLDER);
+    const buildFolderPath = path.join(workspaceRoot, PROJECT_SUBFOLDER, getBuildTargetFolder(selectedBoardName));
 
     console.log(`[SiFli Extension] Clean command: Checking for folder: ${buildFolderPath}`);
     if (fs.existsSync(buildFolderPath)) {
         try {
             fs.rmSync(buildFolderPath, { recursive: true, force: true });
-            vscode.window.showInformationMessage(`'${BUILD_TARGET_FOLDER}' 文件夹已成功删除。`);
+            vscode.window.showInformationMessage(`'${getBuildTargetFolder(selectedBoardName)}' 文件夹已成功删除。`);
             console.log(`[SiFli Extension] Folder '${buildFolderPath}' deleted successfully.`);
         } catch (error) {
-            vscode.window.showErrorMessage(`删除 '${BUILD_TARGET_FOLDER}' 文件夹失败: ${error.message}`);
+            vscode.window.showErrorMessage(`删除 '${getBuildTargetFolder(selectedBoardName)}' 文件夹失败: ${error.message}`);
             console.error(`[SiFli Extension] Clean failed for ${buildFolderPath}:`, error);
         }
     } else {
-        vscode.window.showInformationMessage(`'${BUILD_TARGET_FOLDER}' 文件夹不存在，无需删除。`);
+        vscode.window.showInformationMessage(`'${getBuildTargetFolder(selectedBoardName)}' 文件夹不存在，无需删除。`);
         console.log(`[SiFli Extension] Folder '${buildFolderPath}' not found, nothing to clean.`);
     }
 }
@@ -329,22 +394,26 @@ function executeCleanCommand() {
 // 更新状态栏按钮的提示信息
 function updateStatusBarItems() {
     if (compileBtn) {
-        compileBtn.tooltip = `执行 SiFli 构建 (${COMPILE_COMMAND})`;
+        compileBtn.tooltip = `执行 SiFli 构建 (${getCompileCommand(selectedBoardName)})`;
     }
     if (rebuildBtn) {
         rebuildBtn.tooltip = `清理并执行 SiFli 构建`;
     }
+    if (cleanBtn) {
+        cleanBtn.tooltip = `删除 SiFli 构建缓存 (${getBuildTargetFolder(selectedBoardName)})`;
+    }
     if (downloadBtn) {
-        downloadBtn.tooltip = `执行 SiFli 下载`;
+        downloadBtn.tooltip = `执行 SiFli 下载 (当前板卡: ${selectedBoardName})`;
     }
     if (menuconfigBtn) {
-        menuconfigBtn.tooltip = `打开 SiFli Menuconfig (${MENUCONFIG_COMMAND})`;
-    }
-    if (cleanBtn) {
-        cleanBtn.tooltip = `删除 SiFli 构建缓存 (${BUILD_TARGET_FOLDER})`;
+        menuconfigBtn.tooltip = `打开 SiFli Menuconfig (${getMenuconfigCommand(selectedBoardName)})`;
     }
     if (buildDownloadBtn) {
-        buildDownloadBtn.tooltip = `构建并下载 SiFli 项目`;
+        buildDownloadBtn.tooltip = `构建并下载 SiFli 项目 (当前板卡: ${selectedBoardName})`;
+    }
+    if (currentBoardStatusItem) {
+        currentBoardStatusItem.text = `SiFli Board: ${selectedBoardName}`;
+        currentBoardStatusItem.tooltip = `当前 SiFli 开发板: ${selectedBoardName}\n（可在 VS Code 设置中修改）`;
     }
 }
 
@@ -381,14 +450,20 @@ function initializeStatusBarItems(context) {
     buildDownloadBtn.command = CMD_PREFIX + 'buildAndDownload';
     buildDownloadBtn.show();
     context.subscriptions.push(buildDownloadBtn);
-    
+
     menuconfigBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 95);
     menuconfigBtn.text = '⚙️ Menuconfig';
     menuconfigBtn.command = CMD_PREFIX + 'menuconfig';
     menuconfigBtn.show();
     context.subscriptions.push(menuconfigBtn);
 
-    updateStatusBarItems(); // 初始化tooltip
+    // 显示当前板卡的状态栏项 (不可点击，仅显示)
+    currentBoardStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 90);
+    // 移除了 command 绑定，使其不可点击
+    currentBoardStatusItem.show();
+    context.subscriptions.push(currentBoardStatusItem);
+
+    updateStatusBarItems(); // 初始化tooltip和板卡显示
 }
 
 // 执行编译并下载任务
@@ -407,8 +482,47 @@ async function executeBuildAndDownloadTask() {
 
     const serialPort = await selectSerialPort();
     if (serialPort) {
-        const command = `${COMPILE_COMMAND}; if ($LASTEXITCODE -eq 0) { .\\${DOWNLOAD_SCRIPT_RELATIVE_PATH} }`;
+        const compileCommand = getCompileCommand(selectedBoardName);
+        const downloadScriptPath = getDownloadScriptRelativePath(selectedBoardName);
+        // PowerShell 命令组合，确保编译成功后才执行下载
+        const command = `${compileCommand}; if ($LASTEXITCODE -eq 0) { .\\${downloadScriptPath} }`;
         await executeShellCommandInSiFliTerminal(command, BUILD_DOWNLOAD_TASK_NAME, serialPort);
+    }
+}
+
+/**
+ * 提示用户选择初始芯片模组，并保存到配置中。
+ * 仅在首次激活且未设置有效默认模组时调用。
+ */
+async function promptForInitialBoardSelection() {
+    const config = vscode.workspace.getConfiguration('one-step-for-sifli');
+    let currentDefaultModule = config.get('defaultChipModule');
+
+    // 只有当配置中没有有效模组时才弹出 Quick Pick
+    if (!currentDefaultModule || !SUPPORTED_BOARD_NAMES.includes(currentDefaultModule)) {
+        vscode.window.showInformationMessage('欢迎使用 SiFli 扩展！请选择您当前要开发的芯片模组。');
+
+        const pickOptions = SUPPORTED_BOARD_NAMES.map(board => ({
+            label: board,
+            description: `选择 ${board} 作为默认开发板`
+        }));
+
+        const selected = await vscode.window.showQuickPick(pickOptions, {
+            placeHolder: '请选择一个 SiFli 芯片模组作为默认开发板',
+            canPickMany: false,
+            ignoreFocusOut: true // 用户点击外部区域不会关闭，强制选择
+        });
+
+        if (selected) {
+            // 将用户的选择保存到全局配置中
+            await config.update('defaultChipModule', selected.label, vscode.ConfigurationTarget.Global);
+            vscode.window.showInformationMessage(`SiFli 默认开发板已设置为: ${selected.label}`);
+            // selectedBoardName 会在 onDidChangeConfiguration 触发时更新
+        } else {
+            // 如果用户取消了选择，提示并使用默认值
+            vscode.window.showWarningMessage('未选择芯片模组，将使用默认模组。您可以稍后在 VS Code 设置中修改。');
+            // updateConfiguration() 会在激活时确保 selectedBoardName 有一个有效值
+        }
     }
 }
 
@@ -416,34 +530,40 @@ async function executeBuildAndDownloadTask() {
 async function activate(context) {
     console.log('Congratulations, your SiFli extension is now active!');
 
-    updateConfiguration(); // 在插件激活时立即读取配置
-
-    // 监听配置变化，当用户在 VS Code 设置中修改插件的相关配置时，重新读取并更新这些路径变量。
-    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
-        // 检查是否是 'one-step-for-sifli' 相关的配置发生了变化
-        if (e.affectsConfiguration('one-step-for-sifli')) {
-            updateConfiguration(); // 更新内部的路径变量
-            vscode.window.showInformationMessage('SiFli 插件配置已更新。若要确保所有更改生效，可能需要重启 VS Code。');
-        }
-    }));
-
-
-    const CMD_PREFIX = "extension.";
+    // 在插件激活时立即读取配置
+    updateConfiguration();
 
     // 只有是 SiFli 项目才激活插件功能
     if (isSiFliProject()) {
         console.log('[SiFli Extension] SiFli project detected. Activating full extension features.');
-        
+
         initializeStatusBarItems(context); // 只有是 SiFli 项目才初始化状态栏按钮
 
-        await getOrCreateSiFliTerminalAndCdProject(); // 只有是 SiFli 项目才自动打开并配置终端
+        // 在初始化配置和状态栏后，检查是否需要提示用户选择初始芯片模组
+        // 使用 setTimeout 稍微延迟，确保初始化完成
+        setTimeout(async () => {
+            await promptForInitialBoardSelection();
+            // 在确保板卡选择后，再尝试创建终端并 cd
+            await getOrCreateSiFliTerminalAndCdProject();
+        }, 500); // 短暂延迟确保 VS Code UI 准备就绪
 
+
+        // 监听配置变化，当用户在 VS Code 设置中修改插件的相关配置时，重新读取并更新这些路径变量。
+        context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
+            // 检查是否是 'one-step-for-sifli' 相关的配置发生了变化
+            if (e.affectsConfiguration('one-step-for-sifli')) {
+                updateConfiguration(); // 更新内部的路径变量
+                vscode.window.showInformationMessage('SiFli 插件配置已更新。');
+            }
+        }));
+
+        const CMD_PREFIX = "extension.";
         // 只有是 SiFli 项目才注册命令
         context.subscriptions.push(
             vscode.commands.registerCommand(CMD_PREFIX + 'compile', () => executeCompileTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'rebuild', async () => {
                 executeCleanCommand();
-                await new Promise(resolve => setTimeout(resolve, 500)); // 添加一个小的延迟，确保清理完成再开始编译（非严格等待，但通常够用）
+                await new Promise(resolve => setTimeout(resolve, 500)); // 添加一个小的延迟，确保清理完成再开始编译
                 await executeCompileTask();
             }),
             vscode.commands.registerCommand(CMD_PREFIX + 'clean', () => executeCleanCommand()),
@@ -464,6 +584,7 @@ function deactivate() {
     if (downloadBtn) downloadBtn.dispose();
     if (menuconfigBtn) menuconfigBtn.dispose();
     if (buildDownloadBtn) buildDownloadBtn.dispose();
+    if (currentBoardStatusItem) currentBoardStatusItem.dispose();
 
     console.log('[SiFli Extension] Extension deactivated.');
 }
