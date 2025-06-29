@@ -510,15 +510,15 @@ async function promptForInitialBoardSelection(context) {
     const hasRunInitialSetup = context.globalState.get(HAS_RUN_INITIAL_SETUP_KEY, false);
 
     if (!hasRunInitialSetup) {
-        vscode.window.showInformationMessage('欢迎使用 SiFli 扩展！请选择您当前要开发的芯片模组。');
+        vscode.window.showInformationMessage('请选择您当前要开发的芯片模组。');
 
         const pickOptions = SUPPORTED_BOARD_NAMES.map(board => ({
             label: board,
-            description: `选择 ${board} 作为默认开发板`
+            description: `选择 ${board} 作为默认开发`
         }));
 
         const selected = await vscode.window.showQuickPick(pickOptions, {
-            placeHolder: '请选择一个 SiFli 芯片模组作为默认开发板',
+            placeHolder: '请选择一个 SiFli 芯片模组',
             canPickMany: false,
             ignoreFocusOut: true // 用户点击外部区域不会关闭，强制选择
         });
@@ -529,7 +529,7 @@ async function promptForInitialBoardSelection(context) {
         if (selected) {
             // 用户进行了选择，将用户的选择保存到全局配置中
             await config.update('defaultChipModule', selected.label, vscode.ConfigurationTarget.Global);
-            vscode.window.showInformationMessage(`SiFli 默认开发板已设置为: ${selected.label}`);
+            vscode.window.showInformationMessage(`SiFli 默认模组已设置为: ${selected.label}`);
             // 设置全局状态标志为 true，表示已完成首次设置
             await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true);
             // selectedBoardName 会在配置改变时通过 onDidChangeConfiguration 监听器更新
