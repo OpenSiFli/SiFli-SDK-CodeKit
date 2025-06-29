@@ -549,7 +549,7 @@ async function activate(context) {
     console.log('Congratulations, your SiFli extension is now active!');
 
     // *** 仅在开发调试时使用：强制重置首次运行标志 ***
-    // 这将确保每次“重新运行调试”时，Quick Pick 都会弹出。
+    // 这将使得每次“重新运行调试”时，Quick Pick 都会弹出。
     // 在发布生产版本时，请务必删除或注释掉此行！
     
     // ******************************************************
