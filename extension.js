@@ -413,17 +413,17 @@ function updateStatusBarItems() {
         cleanBtn.tooltip = `删除 SiFli 构建缓存 (${getBuildTargetFolder(selectedBoardName)})`;
     }
     if (downloadBtn) {
-        downloadBtn.tooltip = `执行 SiFli 下载 (当前板卡: ${selectedBoardName})`;
+        downloadBtn.tooltip = `执行 SiFli 下载 (当前模组: ${selectedBoardName})`;
     }
     if (menuconfigBtn) {
         menuconfigBtn.tooltip = `打开 SiFli Menuconfig (${getMenuconfigCommand(selectedBoardName)})`;
     }
     if (buildDownloadBtn) {
-        buildDownloadBtn.tooltip = `构建并下载 SiFli 项目 (当前板卡: ${selectedBoardName})`;
+        buildDownloadBtn.tooltip = `构建并下载 SiFli 项目 (当前模组: ${selectedBoardName})`;
     }
     if (currentBoardStatusItem) {
         currentBoardStatusItem.text = `SiFli Board: ${selectedBoardName}`;
-        currentBoardStatusItem.tooltip = `当前 SiFli 开发板: ${selectedBoardName}\n（可在 VS Code 设置中修改）`;
+        currentBoardStatusItem.tooltip = `当前 SiFli 芯片模组: ${selectedBoardName}\n(可在 VS Code 设置中修改)`;
     }
 }
 
