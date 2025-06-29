@@ -49,6 +49,9 @@ const BUILD_DOWNLOAD_TASK_NAME = "SiFli: Build & Download";
 // 状态栏按钮变量
 let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn, currentBoardStatusItem;
 
+// 定义一个常量用于全局状态的键，表示是否已经执行过首次设置
+const HAS_RUN_INITIAL_SETUP_KEY = 'oneStepForSifli.hasRunInitialSetup';
+
 
 /**
  * 辅助函数：根据选定的芯片模组动态生成 SCons 编译命令。
@@ -96,11 +99,18 @@ function updateConfiguration() {
     SIFLI_SDK_EXPORT_SCRIPT_PATH = config.get('sifliSdkExportScriptPath');
     selectedBoardName = config.get('defaultChipModule'); // 读取默认芯片模组
 
-    // 确保 selectedBoardName 是 SUPPORTED_BOARD_NAMES 之一，如果不是则使用默认值
+    // 确保 selectedBoardName 是 SUPPORTED_BOARD_NAMES 之一，如果不是则使用 package.json 中的默认值
     if (!SUPPORTED_BOARD_NAMES.includes(selectedBoardName)) {
-        selectedBoardName = SUPPORTED_BOARD_NAMES[3]; // 默认值 sf32lb52-lchspi-ulp
-        vscode.window.showWarningMessage(`SiFli: 配置中的芯片模组 "${selectedBoardName}" 无效，已重置为默认值。`);
+        // 这里的逻辑是如果当前配置的值无效，则回退到 package.json 中定义的默认值。
+        // package.json 默认值是 "sf32lb52-lchspi-ulp" (SUPPORTED_BOARD_NAMES[3])
+        selectedBoardName = config.inspect('defaultChipModule').defaultValue; // 获取 package.json 中的默认值
+        // 如果 package.json 中也没有定义默认值，则强制使用我们列表的第一个
+        if (!selectedBoardName || !SUPPORTED_BOARD_NAMES.includes(selectedBoardName)) {
+             selectedBoardName = SUPPORTED_BOARD_NAMES[3]; // Fallback to a safe default
+        }
+        vscode.window.showWarningMessage(`SiFli: 配置中的芯片模组 "${selectedBoardName}" 无效或未设置，已使用默认值。`);
     }
+
 
     // 根据 export 脚本路径计算 SDK 根目录
     SIFLI_SDK_ROOT_PATH = path.dirname(SIFLI_SDK_EXPORT_SCRIPT_PATH);
@@ -459,7 +469,6 @@ function initializeStatusBarItems(context) {
 
     // 显示当前板卡的状态栏项 (不可点击，仅显示)
     currentBoardStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 90);
-    // 移除了 command 绑定，使其不可点击
     currentBoardStatusItem.show();
     context.subscriptions.push(currentBoardStatusItem);
 
@@ -493,13 +502,14 @@ async function executeBuildAndDownloadTask() {
 /**
  * 提示用户选择初始芯片模组，并保存到配置中。
  * 仅在首次激活且未设置有效默认模组时调用。
+ * @param {vscode.ExtensionContext} context 扩展上下文，用于访问全局状态。
  */
-async function promptForInitialBoardSelection() {
-    const config = vscode.workspace.getConfiguration('one-step-for-sifli');
-    let currentDefaultModule = config.get('defaultChipModule');
+async function promptForInitialBoardSelection(context) {
+    // 检查全局状态中是否已经有用户选择过的标志
+    // 如果没有这个标志，或者标志为 false，则认为是首次运行
+    const hasRunInitialSetup = context.globalState.get(HAS_RUN_INITIAL_SETUP_KEY, false);
 
-    // 只有当配置中没有有效模组时才弹出 Quick Pick
-    if (!currentDefaultModule || !SUPPORTED_BOARD_NAMES.includes(currentDefaultModule)) {
+    if (!hasRunInitialSetup) {
         vscode.window.showInformationMessage('欢迎使用 SiFli 扩展！请选择您当前要开发的芯片模组。');
 
         const pickOptions = SUPPORTED_BOARD_NAMES.map(board => ({
@@ -513,15 +523,23 @@ async function promptForInitialBoardSelection() {
             ignoreFocusOut: true // 用户点击外部区域不会关闭，强制选择
         });
 
+        const config = vscode.workspace.getConfiguration('one-step-for-sifli');
+        const defaultBoardFromPackageJson = config.inspect('defaultChipModule').defaultValue; // 获取 package.json 的默认值
+
         if (selected) {
-            // 将用户的选择保存到全局配置中
+            // 用户进行了选择，将用户的选择保存到全局配置中
             await config.update('defaultChipModule', selected.label, vscode.ConfigurationTarget.Global);
             vscode.window.showInformationMessage(`SiFli 默认开发板已设置为: ${selected.label}`);
-            // selectedBoardName 会在 onDidChangeConfiguration 触发时更新
+            // 设置全局状态标志为 true，表示已完成首次设置
+            await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true);
+            // selectedBoardName 会在配置改变时通过 onDidChangeConfiguration 监听器更新
         } else {
-            // 如果用户取消了选择，提示并使用默认值
-            vscode.window.showWarningMessage('未选择芯片模组，将使用默认模组。您可以稍后在 VS Code 设置中修改。');
-            // updateConfiguration() 会在激活时确保 selectedBoardName 有一个有效值
+            // 用户取消了选择，将配置明确重置回 package.json 的默认值
+            // 这确保了即使之前用户有其他配置，在取消后也会回到初始默认值
+            await config.update('defaultChipModule', defaultBoardFromPackageJson, vscode.ConfigurationTarget.Global);
+            vscode.window.showWarningMessage(`未选择芯片模组，已将默认模组重置为: ${defaultBoardFromPackageJson}。您可以在 VS Code 设置中修改。`);
+            // 即使取消，也要设置标志为 true，避免下次启动时再次提示
+            await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true);
         }
     }
 }
@@ -529,6 +547,14 @@ async function promptForInitialBoardSelection() {
 
 async function activate(context) {
     console.log('Congratulations, your SiFli extension is now active!');
+
+    // *** 仅在开发调试时使用：强制重置首次运行标志 ***
+    // 这将确保每次“重新运行调试”时，Quick Pick 都会弹出。
+    // 在发布生产版本时，请务必删除或注释掉此行！
+    
+    // ******************************************************
+    await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false); //
+    // ******************************************************
 
     // 在插件激活时立即读取配置
     updateConfiguration();
@@ -542,10 +568,11 @@ async function activate(context) {
         // 在初始化配置和状态栏后，检查是否需要提示用户选择初始芯片模组
         // 使用 setTimeout 稍微延迟，确保初始化完成
         setTimeout(async () => {
-            await promptForInitialBoardSelection();
+            // 传入 context 以便访问 globalState
+            await promptForInitialBoardSelection(context);
             // 在确保板卡选择后，再尝试创建终端并 cd
             await getOrCreateSiFliTerminalAndCdProject();
-        }, 500); // 短暂延迟确保 VS Code UI 准备就绪
+        }, 500);
 
 
         // 监听配置变化，当用户在 VS Code 设置中修改插件的相关配置时，重新读取并更新这些路径变量。
