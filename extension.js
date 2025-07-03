@@ -553,7 +553,7 @@ async function activate(context) {
     // 在发布生产版本时，请务必删除或注释掉此行！
     
     // ******************************************************
-    await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false); //
+    // await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false); //
     // ******************************************************
 
     // 在插件激活时立即读取配置
