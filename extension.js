@@ -322,7 +322,7 @@ async function selectSerialPort() {
             // 单个串口：自动提取并返回串口号的纯数字
             const comPortFull = serialPorts[0].com; // 例如 "COM5"
             const comPortNum = comPortFull.replace('COM', ''); // 提取数字，例如 "5"
-            vscode.window.showInformationMessage(`检测到单个 USB-SERIAL CH340 串口：${serialPorts[0].name}，自动选择 COM 端口：${comPortNum}。`);
+            vscode.window.showInformationMessage(`检测到单个 USB-SERIAL CH340 串口，自动选择 COM 端口：${comPortNum}。`);
             return comPortNum;
         } else {
             // 多个串口：弹出一个选择界面供用户选择
@@ -517,40 +517,43 @@ async function executeBuildAndDownloadTask() {
  * @param {vscode.ExtensionContext} context 扩展上下文，用于访问全局状态。
  */
 async function promptForInitialBoardSelection(context) {
-    // 检查全局状态中是否已经有用户选择过的标志
-    // 如果没有这个标志，或者标志为 false，则认为是首次运行
     const hasRunInitialSetup = context.globalState.get(HAS_RUN_INITIAL_SETUP_KEY, false);
 
     if (!hasRunInitialSetup) {
         vscode.window.showInformationMessage('请选择您当前要开发的芯片模组。');
 
-        const pickOptions = SUPPORTED_BOARD_NAMES.map(board => ({
-            label: board,
-            description: `选择 ${board} 作为默认开发`
-        }));
+        // 定义你想要的自定义描述映射
+        const CUSTOM_DESCRIPTIONS = {
+            'sf32lb52-lchspi-ulp': '黄山派',
+            // 根据需要添加更多模组和描述
+            // '模组': '描述',
+        };
+
+        const pickOptions = SUPPORTED_BOARD_NAMES.map(board => {
+            // 如果在 CUSTOM_DESCRIPTIONS 中找到对应描述，则使用它；否则使用通用描述
+            const description = CUSTOM_DESCRIPTIONS[board];
+            return {
+                label: board,
+                description: description
+            };
+        });
 
         const selected = await vscode.window.showQuickPick(pickOptions, {
             placeHolder: '请选择一个 SiFli 芯片模组',
             canPickMany: false,
-            ignoreFocusOut: true // 用户点击外部区域不会关闭，强制选择
+            ignoreFocusOut: true
         });
 
         const config = vscode.workspace.getConfiguration('one-step-for-sifli');
-        const defaultBoardFromPackageJson = config.inspect('defaultChipModule').defaultValue; // 获取 package.json 的默认值
+        const defaultBoardFromPackageJson = config.inspect('defaultChipModule').defaultValue;
 
         if (selected) {
-            // 用户进行了选择，将用户的选择保存到全局配置中
             await config.update('defaultChipModule', selected.label, vscode.ConfigurationTarget.Global);
             vscode.window.showInformationMessage(`SiFli 默认模组已设置为: ${selected.label}`);
-            // 设置全局状态标志为 true，表示已完成首次设置
             await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true);
-            // selectedBoardName 会在配置改变时通过 onDidChangeConfiguration 监听器更新
         } else {
-            // 用户取消了选择，将配置明确重置回 package.json 的默认值
-            // 这确保了即使之前用户有其他配置，在取消后也会回到初始默认值
             await config.update('defaultChipModule', defaultBoardFromPackageJson, vscode.ConfigurationTarget.Global);
             vscode.window.showWarningMessage(`未选择芯片模组，已将默认模组重置为: ${defaultBoardFromPackageJson}。您可以在 VS Code 设置中修改。`);
-            // 即使取消，也要设置标志为 true，避免下次启动时再次提示
             await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true);
         }
     }
