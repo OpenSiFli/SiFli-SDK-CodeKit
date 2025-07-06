@@ -55,7 +55,7 @@
 
   * 默认选择： 若用户没有进行选择，插件将默认为 黄山派:sf32lb52-lchspi-ulp。
 
-* 模组更换： 如果用户想更换芯片模组，可以通过以下路径进行操作：打开 VS Code 设置 -> 搜索 “One-step-for-sifli” -> 更改芯片模组选项。
+* 模组更换： 如果用户想更换芯片模组，**可以通过点击左下角的 `SiFLi Board `选项卡进行更换芯片模组，选择线程数**，或者通过以下路径进行操作：打开 VS Code 设置 -> 搜索 “One-step-for-sifli” -> 更改芯片模组选项。
 
 <!-- * **1.0.4版本：**
 
@@ -146,8 +146,13 @@
 在使用插件之前，用户需要配置默认开发的sifli芯片模组、关于下载`SiFli-SDK`所配置的 PowerShell 的终端路径和`SiFli-SDK`下的 `export.ps1` 脚本的路径。
 
 1.  **选择芯片模组：**
+    通过点击左下角的 `SiFLi Board `选项卡进行更换芯片模组，选择线程数
     * ![选择芯片模组](images\select_the_current_module.png)
   
+    **选择线程数量：** 
+    通过点击左下角的
+    * ![选择芯片模组](images\Select_the_number_of_threads.png)
+
 2.  **打开 VS Code 设置：**
     * Windows/Linux: `文件` > `首选项` > `设置`
     * ![如何打开设置](images\open_setting.png)
