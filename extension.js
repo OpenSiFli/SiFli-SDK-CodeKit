@@ -37,6 +37,7 @@ let SIFLI_SDK_EXPORT_SCRIPT_PATH;
 let SIFLI_SDK_ROOT_PATH;
 let SF32_TERMINAL_ARGS;
 let selectedBoardName; // 当前选中的芯片模组名称
+let numThreads; // 新增：用于存储自定义线程数的变量
 
 // 任务名称常量
 const BUILD_TASK_NAME = "SiFli: Build";
@@ -54,12 +55,13 @@ const HAS_RUN_INITIAL_SETUP_KEY = 'oneStepForSifli.hasRunInitialSetup';
 
 
 /**
- * 辅助函数：根据选定的芯片模组动态生成 SCons 编译命令。
+ * 辅助函数：根据选定的芯片模组和线程数动态生成 SCons 编译命令。
  * @param {string} boardName 选定的芯片模组名称
+ * @param {number} threads 编译线程数
  * @returns {string} 完整的编译命令
  */
-function getCompileCommand(boardName) {
-    return `scons --board=${boardName} -j8`;
+function getCompileCommand(boardName, threads) {
+    return `scons --board=${boardName} -j${threads}`;
 }
 
 /**
@@ -98,6 +100,7 @@ function updateConfiguration() {
     SF32_TERMINAL_PATH = config.get('powershellPath');
     SIFLI_SDK_EXPORT_SCRIPT_PATH = config.get('sifliSdkExportScriptPath');
     selectedBoardName = config.get('defaultChipModule'); // 读取默认芯片模组
+    numThreads = config.get('numThreads', os.cpus().length > 0 ? os.cpus().length : 8); // 读取线程数，默认为CPU核心数或8
 
     // 确保 selectedBoardName 是 SUPPORTED_BOARD_NAMES 之一，如果不是则使用 package.json 中的默认值
     if (!SUPPORTED_BOARD_NAMES.includes(selectedBoardName)) {
@@ -109,6 +112,12 @@ function updateConfiguration() {
              selectedBoardName = SUPPORTED_BOARD_NAMES[3]; // Fallback to a safe default
         }
         vscode.window.showWarningMessage(`SiFli: 配置中的芯片模组 "${selectedBoardName}" 无效或未设置，已使用默认值。`);
+    }
+
+    // 确保 numThreads 是有效的正整数
+    if (typeof numThreads !== 'number' || numThreads <= 0 || !Number.isInteger(numThreads)) {
+        numThreads = os.cpus().length > 0 ? os.cpus().length : 8; // 默认为CPU核心数或8
+        vscode.window.showWarningMessage(`SiFli: 配置中的编译线程数 "${numThreads}" 无效，已使用默认值 ${numThreads}。`);
     }
 
 
@@ -128,6 +137,8 @@ function updateConfiguration() {
     console.log(`  PowerShell Path: ${SF32_TERMINAL_PATH}`);
     console.log(`  SiFli SDK Export Script Path: ${SIFLI_SDK_EXPORT_SCRIPT_PATH}`);
     console.log(`  Selected SiFli Board: ${selectedBoardName}`);
+    console.log(`  Compilation Threads: ${numThreads}`);
+
 
     updateStatusBarItems(); // 配置更新后，更新状态栏显示
 }
@@ -356,7 +367,7 @@ async function executeCompileTask() {
         return;
     }
 
-    const compileCommand = getCompileCommand(selectedBoardName);
+    const compileCommand = getCompileCommand(selectedBoardName, numThreads);
     await executeShellCommandInSiFliTerminal(compileCommand, BUILD_TASK_NAME);
 }
 
@@ -404,7 +415,7 @@ function executeCleanCommand() {
 // 更新状态栏按钮的提示信息
 function updateStatusBarItems() {
     if (compileBtn) {
-        compileBtn.tooltip = `执行 SiFli 构建 (${getCompileCommand(selectedBoardName)})`;
+        compileBtn.tooltip = `执行 SiFli 构建 (${getCompileCommand(selectedBoardName, numThreads)})`;
     }
     if (rebuildBtn) {
         rebuildBtn.tooltip = `清理并执行 SiFli 构建`;
@@ -422,8 +433,8 @@ function updateStatusBarItems() {
         buildDownloadBtn.tooltip = `构建并下载 SiFli 项目 (当前模组: ${selectedBoardName})`;
     }
     if (currentBoardStatusItem) {
-        currentBoardStatusItem.text = `SiFli Board: ${selectedBoardName}`;
-        currentBoardStatusItem.tooltip = `当前 SiFli 芯片模组: ${selectedBoardName}\n(可在 VS Code 设置中修改)`;
+        currentBoardStatusItem.text = `SiFli Board: ${selectedBoardName} (J${numThreads})`; // 显示线程数
+        currentBoardStatusItem.tooltip = `当前 SiFli 芯片模组: ${selectedBoardName}\n编译线程数: J${numThreads}\n点击切换芯片模组或修改线程数`;
     }
 }
 
@@ -467,8 +478,9 @@ function initializeStatusBarItems(context) {
     menuconfigBtn.show();
     context.subscriptions.push(menuconfigBtn);
 
-    // 显示当前板卡的状态栏项 (不可点击，仅显示)
+    // 显示当前板卡的状态栏项 (现在可点击)
     currentBoardStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 90);
+    currentBoardStatusItem.command = CMD_PREFIX + 'selectChipModule'; // 新增：绑定命令
     currentBoardStatusItem.show();
     context.subscriptions.push(currentBoardStatusItem);
 
@@ -491,7 +503,7 @@ async function executeBuildAndDownloadTask() {
 
     const serialPort = await selectSerialPort();
     if (serialPort) {
-        const compileCommand = getCompileCommand(selectedBoardName);
+        const compileCommand = getCompileCommand(selectedBoardName, numThreads);
         const downloadScriptPath = getDownloadScriptRelativePath(selectedBoardName);
         // PowerShell 命令组合，确保编译成功后才执行下载
         const command = `${compileCommand}; if ($LASTEXITCODE -eq 0) { .\\${downloadScriptPath} }`;
@@ -544,6 +556,51 @@ async function promptForInitialBoardSelection(context) {
     }
 }
 
+/**
+ * 处理用户点击状态栏芯片模组，选择或修改模组的命令。
+ */
+async function selectChipModule() {
+    // 允许用户选择芯片模组
+    const boardPickOptions = SUPPORTED_BOARD_NAMES.map(board => ({
+        label: board,
+        description: board === selectedBoardName ? '当前选中' : ''
+    }));
+
+    const selectedBoard = await vscode.window.showQuickPick(boardPickOptions, {
+        placeHolder: '选择 SiFli 芯片模组',
+        title: '选择芯片模组'
+    });
+
+    if (selectedBoard) {
+        const config = vscode.workspace.getConfiguration('one-step-for-sifli');
+        // 更新全局配置
+        await config.update('defaultChipModule', selectedBoard.label, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(`SiFli 芯片模组已切换为: ${selectedBoard.label}`);
+        // updateConfiguration() 会在配置变化监听器中自动调用
+    }
+
+    // 允许用户修改线程数
+    const numThreadsInput = await vscode.window.showInputBox({
+        prompt: `输入编译线程数 (当前: J${numThreads})`,
+        value: String(numThreads),
+        validateInput: value => {
+            const parsed = parseInt(value);
+            if (isNaN(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
+                return '请输入一个正整数。';
+            }
+            return null;
+        }
+    });
+
+    if (numThreadsInput !== undefined && numThreadsInput !== String(numThreads)) {
+        const newThreads = parseInt(numThreadsInput);
+        const config = vscode.workspace.getConfiguration('one-step-for-sifli');
+        await config.update('numThreads', newThreads, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(`编译线程数已设置为: J${newThreads}`);
+        // updateConfiguration() 会在配置变化监听器中自动调用
+    }
+}
+
 
 async function activate(context) {
     console.log('Congratulations, your SiFli extension is now active!');
@@ -553,7 +610,7 @@ async function activate(context) {
     // 在发布生产版本时，请务必删除或注释掉此行！
     
     // ******************************************************
-    // await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false); //
+    await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false); //
     // ******************************************************
 
     // 在插件激活时立即读取配置
@@ -596,7 +653,8 @@ async function activate(context) {
             vscode.commands.registerCommand(CMD_PREFIX + 'clean', () => executeCleanCommand()),
             vscode.commands.registerCommand(CMD_PREFIX + 'download', () => executeDownloadTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => executeMenuconfigTask()),
-            vscode.commands.registerCommand(CMD_PREFIX + 'buildAndDownload', () => executeBuildAndDownloadTask())
+            vscode.commands.registerCommand(CMD_PREFIX + 'buildAndDownload', () => executeBuildAndDownloadTask()),
+            vscode.commands.registerCommand(CMD_PREFIX + 'selectChipModule', () => selectChipModule()) // 注册新的命令
         );
     } else {
         console.log('[SiFli Extension] Not a SiFli project. Extension features will not be activated.');

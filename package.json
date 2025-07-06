@@ -16,7 +16,8 @@
       { "command": "extension.download", "title":"💾 Download" },
       { "command": "extension.buildAndDownload", "title":" 🚀 Build & Download" },
       { "command": "extension.clean", "title": "🗑️ Clean" },
-      { "command": "extension.menuconfig", "title": "⚙️ Menuconfig" }
+      { "command": "extension.menuconfig", "title": "⚙️ Menuconfig" },
+      { "command": "extension.selectChipModule", "title": "切换 SiFli 模组/线程数" }
     ],
     "configuration": {
       "title": "SiFli Extension Configuration",
@@ -70,6 +71,11 @@
             "SiFli SF32LB58 LCD N16R32N1 DSI module",
             "SiFli SF32LB58 LCD N16R64N4 module"
           ]
+        },
+        "one-step-for-sifli.numThreads": {
+          "type": "integer",
+          "default": 8,
+          "description": "Number of parallel compilation threads for SCons (e.g., 4, 8, 16)."
         }
       }
     }
