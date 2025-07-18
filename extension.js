@@ -39,6 +39,7 @@ let SIFLI_SDK_ROOT_PATH;
 let SF32_TERMINAL_ARGS;
 let selectedBoardName;          // 当前选中的芯片模组名称
 let numThreads;                 // 编译线程数
+let selectedSerialPort = null;  // 新增：当前选定的串口号，初始化为 null
 
 // 任务名称常量
 const BUILD_TASK_NAME = "SiFli: Build";
@@ -49,7 +50,7 @@ const REBUILD_TASK_NAME = "SiFli: Rebuild";
 const BUILD_DOWNLOAD_TASK_NAME = "SiFli: Build & Download";
 
 // 状态栏按钮变量
-let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn, currentBoardStatusItem, sdkManageBtn;
+let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn, currentBoardStatusItem, sdkManageBtn, currentSerialPortStatusItem; // 新增 currentSerialPortStatusItem
 
 // 定义一个常量用于全局状态的键，表示是否已经执行过首次设置
 const HAS_RUN_INITIAL_SETUP_KEY = 'oneStepForSifli.hasRunInitialSetup';
@@ -58,7 +59,7 @@ const HAS_RUN_INITIAL_SETUP_KEY = 'oneStepForSifli.hasRunInitialSetup';
 const SIFLI_SDK_GITHUB_REPO_BASE = 'https://api.github.com/repos/OpenSiFli/SiFli-SDK';
 const SIFLI_SDK_GITEE_REPO_BASE = 'https://gitee.com/api/v5/repos/SiFli/sifli-sdk';
 
-// 新增 Git 仓库URL常量 [新增]
+// 新增 Git 仓库URL常量
 const SIFLI_SDK_GITHUB_REPO_GIT = 'https://github.com/OpenSiFli/SiFli-SDK.git';
 const SIFLI_SDK_GITEE_REPO_GIT = 'https://gitee.com/SiFli/sifli-sdk.git';
 
@@ -82,15 +83,6 @@ function getMenuconfigCommand(boardName) {
 }
 
 /**
- * 辅助函数：根据选定的芯片模组动态生成下载脚本的相对路径。
- * @param {string} boardName 选定的芯片模组名称
- * @returns {string} 下载脚本的相对路径
- */
-function getDownloadScriptRelativePath(boardName) {
-    return `build_${boardName}_hcpu\\uart_download.bat`;
-}
-
-/**
  * 辅助函数：根据选定的芯片模组动态生成构建目标文件夹名称。
  * @param {string} boardName 选定的芯片模组名称
  * @returns {string} 构建目标文件夹名称
@@ -98,6 +90,103 @@ function getDownloadScriptRelativePath(boardName) {
 function getBuildTargetFolder(boardName) {
     return `build_${boardName}_hcpu`;
 }
+
+/**
+ * **新增：** 辅助函数：读取并解析 ImgBurnList.ini 文件。
+ * @param {string} boardName 选定的芯片模组名称。
+ * @returns {Promise<Array<{file: string, address: string}>>} 返回一个 Promise，解析为包含文件路径和地址的对象数组。
+ */
+async function readImgBurnListIni(boardName) {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+        vscode.window.showErrorMessage('未打开工作区，无法读取 ImgBurnList.ini。');
+        return [];
+    }
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+    // ImgBurnList.ini 的路径是 project\build_sf32lb52-lchspi-ulp_hcpu\ImgBurnList.ini
+    const buildTargetFolder = getBuildTargetFolder(boardName);
+    const iniFilePath = path.join(workspaceRoot, PROJECT_SUBFOLDER, buildTargetFolder, 'ImgBurnList.ini');
+
+    console.log(`[SiFli Extension] Reading ImgBurnList.ini from: ${iniFilePath}`);
+
+    if (!fs.existsSync(iniFilePath)) {
+        vscode.window.showErrorMessage(`未找到 ImgBurnList.ini 文件，路径：${iniFilePath}。请确保已编译项目。`);
+        return [];
+    }
+
+    try {
+        const fileContent = fs.readFileSync(iniFilePath, 'utf8');
+        const lines = fileContent.split(/\r?\n/).filter(line => line.trim() !== '' && !line.startsWith('['));
+        const filesToFlash = [];
+        let numFiles = 0;
+
+        for (const line of lines) {
+            if (line.startsWith('NUM=')) {
+                numFiles = parseInt(line.split('=')[1]);
+            }
+        }
+
+        for (let i = 0; i < numFiles; i++) {
+            const fileLine = lines.find(line => line.startsWith(`FILE${i}=`));
+            const addrLine = lines.find(line => line.startsWith(`ADDR${i}=`));
+
+            if (fileLine && addrLine) {
+                const relativeFilePath = fileLine.split('=')[1].trim();
+                const address = addrLine.split('=')[1].trim();
+                filesToFlash.push({
+                    file: relativeFilePath,
+                    address: address
+                });
+            } else {
+                console.warn(`[SiFli Extension] ImgBurnList.ini 中缺少 FILE${i} 或 ADDR${i} 条目。`);
+            }
+        }
+        console.log(`[SiFli Extension] Parsed ImgBurnList.ini:`, filesToFlash);
+        return filesToFlash;
+
+    } catch (error) {
+        vscode.window.showErrorMessage(`读取或解析 ImgBurnList.ini 失败: ${error.message}`);
+        console.error(`[SiFli Extension] Failed to read or parse ImgBurnList.ini:`, error);
+        return [];
+    }
+}
+
+
+/**
+ * **更新：** 辅助函数：根据选定的芯片模组和串口号动态生成 sftool 下载命令。
+ * @param {string} boardName 选定的芯片模组名称 (e.g., "sf32lb52-lchspi-ulp").
+ * @param {string} serialPortNum 串口号 (e.g., "5" for COM5).
+ * @returns {Promise<string>} 完整的 sftool 下载命令。
+ */
+async function getSftoolDownloadCommand(boardName, serialPortNum) {
+    // 从 boardName 中提取芯片类型，例如 "sf32lb52-lcd_base" -> "SF32LB52"
+    // 假定芯片类型是第一个连字符之前的部分，并转换为大写。
+    const chipType = boardName.substring(0, boardName.indexOf('-')).toUpperCase();
+
+    const buildTargetFolder = getBuildTargetFolder(boardName); // 例如 "build_sf32lb52-lchspi-ulp_hcpu"
+
+    // 调用新的辅助函数来读取烧录文件列表和地址
+    const filesToFlash = await readImgBurnListIni(boardName);
+    if (filesToFlash.length === 0) {
+        vscode.window.showErrorMessage('无法获取烧录文件列表，请检查 ImgBurnList.ini 文件和项目编译情况。');
+        return ''; // 返回空字符串或抛出错误，阻止下载
+    }
+
+    // 构建 write_flash 部分的参数
+    // 每个文件路径都需要相对于 `project` 目录，因为终端会 `cd` 到 `project`
+    // ImgBurnList.ini 中的文件路径是相对于 `build_sf32lb52-lchspi-ulp_hcpu` 的。
+    const flashArguments = filesToFlash.map(item => {
+        // 构建完整的相对路径，例如 "build_sf32lb52-lchspi-ulp_hcpu\bootloader\bootloader.bin"
+        const fullRelativePath = path.join(buildTargetFolder, item.file).replace(/\\/g, '\\\\'); // Windows路径可能需要双反斜杠转义
+        return `"${fullRelativePath}@${item.address}"`;
+    }).join(' ');
+
+    // 构造完整的 sftool 命令
+    const downloadCommand = `sftool -p COM${serialPortNum} -c ${chipType} write_flash ${flashArguments}`;
+    console.log(`[SiFli Extension] Generated sftool command: ${downloadCommand}`);
+    return downloadCommand;
+}
+
 
 /**
  * 辅助函数：读取并更新插件配置中的路径信息。
@@ -112,10 +201,7 @@ function updateConfiguration() {
 
     // 确保 selectedBoardName 是 SUPPORTED_BOARD_NAMES 之一，如果不是则使用 package.json 中的默认值
     if (!SUPPORTED_BOARD_NAMES.includes(selectedBoardName)) {
-        // 这里的逻辑是如果当前配置的值无效，则回退到 package.json 中定义的默认值。
-        // package.json 默认值是 "sf32lb52-lchspi-ulp" (SUPPORTED_BOARD_NAMES[3])
         selectedBoardName = config.inspect('defaultChipModule').defaultValue; // 获取 package.json 中的默认值
-        // 如果 package.json 中也没有定义默认值，则强制使用我们列表的第一个
         if (!selectedBoardName || !SUPPORTED_BOARD_NAMES.includes(selectedBoardName)) {
              selectedBoardName = SUPPORTED_BOARD_NAMES[3]; // Fallback to a safe default
         }
@@ -128,15 +214,13 @@ function updateConfiguration() {
         vscode.window.showWarningMessage(`SiFli: 配置中的编译线程数 "${numThreads}" 无效，已使用默认值 ${numThreads}。`);
     }
 
-
     // 根据 export 脚本路径计算 SDK 根目录
     // 假设 export.ps1 位于 SDK 的根目录
     if (SIFLI_SDK_EXPORT_SCRIPT_PATH && fs.existsSync(SIFLI_SDK_EXPORT_SCRIPT_PATH)) {
         SIFLI_SDK_ROOT_PATH = path.dirname(SIFLI_SDK_EXPORT_SCRIPT_PATH);
     } else {
-        // 如果路径无效，给一个默认值或提示用户
         SIFLI_SDK_ROOT_PATH = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
-            ? vscode.workspace.workspaceFolders[0].uri.fsPath : os.homedir(); //
+            ? vscode.workspace.workspaceFolders[0].uri.fsPath : os.homedir();
         vscode.window.showWarningMessage('SiFli SDK export.ps1 脚本路径未配置或无效，请在扩展设置中检查。');
     }
 
@@ -232,25 +316,17 @@ async function getOrCreateSiFliTerminalAndCdProject() {
  * 辅助函数：在已存在的SF32终端中执行 shell 命令。
  * @param {string} commandLine 要执行的命令字符串
  * @param {string} taskName 任务的显示名称 (用于消息提示)
- * @param {string} [serialPortNumInput] 可选的串口号输入，如果提供则在命令后发送
  * @returns {Promise<void>}
  */
-async function executeShellCommandInSiFliTerminal(commandLine, taskName, serialPortNumInput = '') {
+async function executeShellCommandInSiFliTerminal(commandLine, taskName) { // 移除 serialPortNumInput 参数
     const terminal = await getOrCreateSiFliTerminalAndCdProject();
 
     console.log(`[SiFli Extension] Sending command "${commandLine}" for task "${taskName}" to SF32 terminal.`);
     terminal.sendText(commandLine); // 直接向终端发送命令
-
-    // 如果提供了串口号输入，则在发送命令后立即发送
-    if (serialPortNumInput) {
-        // 等待一小段时间，确保 bat 脚本输出 "please input the serial port num:"
-        await new Promise(resolve => setTimeout(resolve, 500)); // 0.5 秒延迟，可能需要根据实际情况微调
-        terminal.sendText(serialPortNumInput); // 发送串口号
-    }
 }
 
 /**
- * 辅助函数：通过 PowerShell Get-WmiObject 获取当前系统中所有可用的 CH340 串口设备。
+ * 辅助函数：通过 PowerShell Get-WmiObject 获取当前系统中所有可用的串口设备（通用）。
  * @returns {Promise<Array<{name: string, com: string, manufacturer?: string, description?: string}>>} 返回一个 Promise，解析为串口设备数组。
  */
 async function getSerialPorts() {
@@ -258,13 +334,14 @@ async function getSerialPorts() {
 
     try {
         // 定义 PowerShell 脚本内容，直接在其中使用 PowerShell 的引号和转义规则
+        // 关键修改：移除对特定制造商（如wch.cn）或名称（如CH340）的过滤
         const powershellScriptContent = `
-            Get-WmiObject Win32_PnPEntity | Where-Object { ($_.Name -match "COM\\d+" -and ($_.Manufacturer -like "*wch.cn*" -or $_.Name -like "*CH340*")) } | Select-Object Name, Description, Manufacturer, DeviceID | ForEach-Object { $_.Name -match "\\((COM\\d+)\\)" | Out-Null; [PSCustomObject]@{ Name = $_.Name; COM = $Matches[1]; Manufacturer = $_.Manufacturer; Description = $_.Description } } | ConvertTo-Json
-        `;
+            Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match "COM\\d+" } | Select-Object Name, Description, Manufacturer, DeviceID | ForEach-Object { $_.Name -match "\\((COM\\d+)\\)" | Out-Null; [PSCustomObject]@{ Name = $_.Name; COM = $Matches[1]; Manufacturer = $_.Manufacturer; Description = $_.Description } } | ConvertTo-Json
+        `; //
 
         // 创建一个临时 PowerShell 脚本文件
-        const tempScriptPath = path.join(os.tmpdir(), `get_serial_ports_${Date.now()}.ps1`);
-        fs.writeFileSync(tempScriptPath, powershellScriptContent, { encoding: 'utf8' });
+        const tempScriptPath = path.join(os.tmpdir(), `get_serial_ports_${Date.now()}.ps1`); //
+        fs.writeFileSync(tempScriptPath, powershellScriptContent, { encoding: 'utf8' }); //
 
         const { stdout: psStdout, stderr: psStderr } = await new Promise((resolve, reject) => {
             // 执行临时 PowerShell 脚本文件
@@ -274,11 +351,11 @@ async function getSerialPorts() {
                 try {
                     fs.unlinkSync(tempScriptPath); // 同步删除，确保删除完成
                 } catch (cleanupError) {
-                    console.warn(`[SiFli Extension] 无法删除临时 PowerShell 脚本文件 ${tempScriptPath}: ${cleanupError.message}`);
+                    console.warn(`[SiFli Extension] 无法删除临时 PowerShell 脚本文件 ${tempScriptPath}: ${cleanupError.message}`); //
                 }
 
                 if (error) {
-                    console.error(`[SiFli Extension] 执行 PowerShell 脚本失败: ${error.message}`);
+                    console.error(`[SiFli Extension] 执行 PowerShell 脚本失败: ${error.message}`); //
                     return reject(error);
                 }
                 resolve({ stdout, stderr });
@@ -286,18 +363,17 @@ async function getSerialPorts() {
         });
 
         if (psStderr) {
-            console.warn(`[SiFli Extension] PowerShell 获取串口警告: ${psStderr}`);
+            console.warn(`[SiFli Extension] PowerShell 获取串口警告: ${psStderr}`); //
         }
 
         try {
-            const psSerialPorts = JSON.parse(psStdout.trim());
+            const psSerialPorts = JSON.parse(psStdout.trim()); //
             // 如果只有单个对象而非数组，或者 stdout 为空，确保能正确处理
-            const portsArray = Array.isArray(psSerialPorts) ? psSerialPorts : (psSerialPorts ? [psSerialPorts] : []);
+            const portsArray = Array.isArray(psSerialPorts) ? psSerialPorts : (psSerialPorts ? [psSerialPorts] : []); //
 
             portsArray.forEach(p => {
-                // 进一步确保获取到的 COM 端口是有效的，且 Manufacturer 或 Name 明确指示是 CH340
-                // p.Manufacturer?.includes('wch.cn') 使用可选链，确保即使 Manufacturer 为 null/undefined 也不会报错
-                if (p.COM && (p.Manufacturer?.includes('wch.cn') || p.Name?.includes('CH340'))) {
+                // 现在只要求有 COM 端口号即可，不再限制制造商或名称中包含特定字符串
+                if (p.COM) { //
                     detectedPorts.add(JSON.stringify({
                         name: p.Name,
                         com: p.COM.toUpperCase(),
@@ -307,54 +383,58 @@ async function getSerialPorts() {
                 }
             });
         } catch (parseError) {
-            console.warn(`[SiFli Extension] 解析 PowerShell 串口信息失败 (可能没有CH340串口或输出格式不符): ${parseError.message}`);
-            // 当没有 CH340 串口时，stdout 可能为空或不是有效的 JSON，这里是预期行为
+            console.warn(`[SiFli Extension] 解析 PowerShell 串口信息失败 (可能没有可用串口或输出格式不符): ${parseError.message}`); //
+            // 当没有串口时，stdout 可能为空或不是有效的 JSON，这里是预期行为
         }
     } catch (error) {
-        // 捕获 exec 错误，例如 powershell.exe 未找到或权限问题
-        vscode.window.showErrorMessage(`无法执行 PowerShell 命令获取串口列表。请确保 PowerShell 已正确安装并可访问。错误信息: ${error.message}`);
-        console.error(`[SiFli Extension] 获取串口失败 (PowerShell exec error): ${error.message}`);
+        vscode.window.showErrorMessage(`无法执行 PowerShell 命令获取串口列表。请确保 PowerShell 已正确安装并可访问。错误信息: ${error.message}`); //
+        console.error(`[SiFli Extension] 获取串口失败 (PowerShell exec error): ${error.message}`); //
     }
 
-    const finalPorts = Array.from(detectedPorts).map(item => JSON.parse(item));
-    console.log('[SiFli Extension] Final detected serial ports:', finalPorts);
+    const finalPorts = Array.from(detectedPorts).map(item => JSON.parse(item)); //
+    console.log('[SiFli Extension] Final detected serial ports:', finalPorts); //
     return finalPorts;
 }
 
 /**
- * 辅助函数：处理下载前的串口选择逻辑。
- * 根据检测到的 "USB-SERIAL CH340" 串口数量，进行自动化或用户交互。
+ * 辅助函数：处理串口选择逻辑。
+ * 根据检测到的串口数量，进行自动化或用户交互。
+ * 此函数现在只负责选择并更新全局变量 `selectedSerialPort`，不直接触发下载。
  * @returns {Promise<string|null>} 返回选择的串口号的纯数字，如果用户取消则返回 null。
  */
-async function selectSerialPort() {
+async function selectSerialPort() { // 此函数不再是下载前的选择，而是通用的串口选择器
     try {
-        const serialPorts = await getSerialPorts();
+        const serialPorts = await getSerialPorts(); //
 
         if (serialPorts.length === 0) {
-            // 无串口：提示用户检查设备连接
-            vscode.window.showWarningMessage('未检测到 USB-SERIAL CH340 串口设备。请检查设备连接、驱动安装或 SDK 配置中的 PowerShell 路径。');
+            vscode.window.showWarningMessage('未检测到任何串行端口设备。请检查设备连接和驱动安装。'); // 提示信息更通用
+            selectedSerialPort = null; // 未检测到串口时清空已选串口
+            updateStatusBarItems(); // 更新状态栏显示
             return null;
         } else if (serialPorts.length === 1) {
-            // 单个串口：自动提取并返回串口号的纯数字
-            const comPortFull = serialPorts[0].com; // 例如 "COM5"
-            const comPortNum = comPortFull.replace('COM', ''); // 提取数字，例如 "5"
-            vscode.window.showInformationMessage(`检测到单个 USB-SERIAL CH340 串口，自动选择 COM 端口：${comPortNum}。`);
+            const comPortFull = serialPorts[0].com;
+            const comPortNum = comPortFull.replace('COM', '');
+            vscode.window.showInformationMessage(`检测到单个串行端口设备，自动选择 COM 端口：${comPortNum}。`); // 提示信息更通用
+            selectedSerialPort = comPortNum; // 更新全局变量
+            updateStatusBarItems(); // 更新状态栏显示
             return comPortNum;
         } else {
-            // 多个串口：弹出一个选择界面供用户选择
+            vscode.window.showInformationMessage(`检测到多个串行端口设备，请选择一个。`); // 提示信息更通用
             const pickOptions = serialPorts.map(p => ({
                 label: p.name,
-                description: `COM 端口: ${p.com}`,
-                com: p.com // 存储完整的 COM 字符串
+                description: `COM 端口: ${p.com}${p.manufacturer ? ` (${p.manufacturer})` : ''}`, // 描述中可以包含制造商信息
+                com: p.com
             }));
 
-            const selectedPort = await vscode.window.showQuickPick(pickOptions, {
-                placeHolder: '检测到多个 USB-SERIAL CH340 串口，请选择一个进行烧录：'
+            const selected = await vscode.window.showQuickPick(pickOptions, {
+                placeHolder: '检测到多个串行端口设备，请选择一个：' // 提示信息更通用
             });
 
-            if (selectedPort) {
-                const comPortNum = selectedPort.com.replace('COM', ''); // 提取纯数字
+            if (selected) {
+                const comPortNum = selected.com.replace('COM', '');
                 vscode.window.showInformationMessage(`已选择串口：${comPortNum}`);
+                selectedSerialPort = comPortNum; // 更新全局变量
+                updateStatusBarItems(); // 更新状态栏显示
                 return comPortNum;
             } else {
                 vscode.window.showInformationMessage('已取消串口选择。');
@@ -389,10 +469,19 @@ async function executeCompileTask() {
 
 // 执行下载任务
 async function executeDownloadTask() {
-    const serialPort = await selectSerialPort();
-    if (serialPort) {
-        const downloadScriptPath = getDownloadScriptRelativePath(selectedBoardName);
-        await executeShellCommandInSiFliTerminal(`.\\${downloadScriptPath}`, DOWNLOAD_TASK_NAME, serialPort);
+    // 检查是否已选择串口，如果未选择则提示用户选择
+    if (!selectedSerialPort) {
+        vscode.window.showWarningMessage('请先选择一个用于下载的串口。点击状态栏中的 "COM: N/A" 进行选择。');
+        const chosenPort = await selectSerialPort(); // 尝试让用户选择
+        if (!chosenPort) { // 如果用户仍然没有选择，则退出
+            return;
+        }
+    }
+
+    // 更新：直接使用 selectedSerialPort 生成命令
+    const sftoolCommand = await getSftoolDownloadCommand(selectedBoardName, selectedSerialPort);
+    if (sftoolCommand) { // 只有在成功生成命令后才执行
+        await executeShellCommandInSiFliTerminal(sftoolCommand, DOWNLOAD_TASK_NAME);
     }
 }
 
@@ -452,6 +541,11 @@ function updateStatusBarItems() {
         currentBoardStatusItem.text = `SiFli Board: ${selectedBoardName} (J${numThreads})`; // 显示线程数
         currentBoardStatusItem.tooltip = `当前 SiFli 芯片模组: ${selectedBoardName}\n编译线程数: J${numThreads}\n点击切换芯片模组或修改线程数`;
     }
+    // 新增：更新串口状态栏项
+    if (currentSerialPortStatusItem) {
+        currentSerialPortStatusItem.text = `COM: ${selectedSerialPort || 'N/A'}`; // 如果没有选择，显示 N/A
+        currentSerialPortStatusItem.tooltip = `当前下载串口: ${selectedSerialPort || '未选择'}\n点击选择串口`;
+    }
 }
 
 // 初始化状态栏按钮
@@ -496,11 +590,17 @@ function initializeStatusBarItems(context) {
 
     // 显示当前板卡的状态栏项 (现在可点击)
     currentBoardStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 90);
-    currentBoardStatusItem.command = CMD_PREFIX + 'selectChipModule'; // 新增：绑定命令
+    currentBoardStatusItem.command = CMD_PREFIX + 'selectChipModule'; // 绑定命令
     currentBoardStatusItem.show();
     context.subscriptions.push(currentBoardStatusItem);
 
-    updateStatusBarItems(); // 初始化tooltip和板卡显示
+    // 新增：显示当前串口的状态栏项
+    currentSerialPortStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 89); // 优先级略低于板卡
+    currentSerialPortStatusItem.command = CMD_PREFIX + 'selectDownloadPort'; // 绑定新的命令
+    currentSerialPortStatusItem.show();
+    context.subscriptions.push(currentSerialPortStatusItem);
+
+    updateStatusBarItems(); // 初始化tooltip和板卡、串口显示
 }
 
 // 执行编译并下载任务
@@ -517,13 +617,22 @@ async function executeBuildAndDownloadTask() {
         return;
     }
 
-    const serialPort = await selectSerialPort();
-    if (serialPort) {
-        const compileCommand = getCompileCommand(selectedBoardName, numThreads);
-        const downloadScriptPath = getDownloadScriptRelativePath(selectedBoardName);
+    // 检查是否已选择串口，如果未选择则提示用户选择
+    if (!selectedSerialPort) {
+        vscode.window.showWarningMessage('请先选择一个用于下载的串口。点击状态栏中的 "COM: N/A" 进行选择。');
+        const chosenPort = await selectSerialPort(); // 尝试让用户选择
+        if (!chosenPort) { // 如果用户仍然没有选择，则退出
+            return;
+        }
+    }
+
+    const compileCommand = getCompileCommand(selectedBoardName, numThreads);
+    const sftoolDownloadCommand = await getSftoolDownloadCommand(selectedBoardName, selectedSerialPort);
+
+    if (sftoolDownloadCommand) { // 只有在成功生成命令后才执行
         // PowerShell 命令组合，确保编译成功后才执行下载
-        const command = `${compileCommand}; if ($LASTEXITCODE -eq 0) { .\\${downloadScriptPath} }`;
-        await executeShellCommandInSiFliTerminal(command, BUILD_DOWNLOAD_TASK_NAME, serialPort);
+        const command = `${compileCommand}; if ($LASTEXITCODE -eq 0) { ${sftoolDownloadCommand} }`;
+        await executeShellCommandInSiFliTerminal(command, BUILD_DOWNLOAD_TASK_NAME);
     }
 }
 
@@ -620,6 +729,12 @@ async function selectChipModule() {
     }
 }
 
+/**
+ * 新增：处理用户点击状态栏串口，选择或修改串口的命令。
+ */
+async function selectDownloadPort() {
+    await selectSerialPort(); // 直接调用通用的串口选择函数
+}
 
 async function activate(context) {
     console.log('Congratulations, your SiFli extension is now active!');
@@ -627,9 +742,7 @@ async function activate(context) {
     // *** 仅在开发调试时使用：强制重置首次运行标志 ***
     // 这将使得每次“重新运行调试”时，Quick Pick 都会弹出。
     // 在发布生产版本时，请务必删除或注释掉此行！
-    
-    // ******************************************************
-    await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false); //
+    await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false);
     // ******************************************************
 
     // 在插件激活时立即读取配置
@@ -644,9 +757,9 @@ async function activate(context) {
         // 在初始化配置和状态栏后，检查是否需要提示用户选择初始芯片模组
         // 使用 setTimeout 稍微延迟，确保初始化完成
         setTimeout(async () => {
-            // 传入 context 以便访问 globalState
             await promptForInitialBoardSelection(context);
-            // 在确保板卡选择后，再尝试创建终端并 cd
+            // 首次激活时，尝试自动检测并设置串口
+            await selectSerialPort(); // 尝试自动选择串口并更新 selectedSerialPort
             await getOrCreateSiFliTerminalAndCdProject();
         }, 500);
 
@@ -656,7 +769,6 @@ async function activate(context) {
             // 检查是否是 'sifli-sdk-codekit' 相关的配置发生了变化
             if (e.affectsConfiguration('sifli-sdk-codekit')) {
                 updateConfiguration(); // 更新内部的路径变量
-                // vscode.window.showInformationMessage('SiFli 插件配置已更新。');
             }
         }));
 
@@ -673,7 +785,8 @@ async function activate(context) {
             vscode.commands.registerCommand(CMD_PREFIX + 'download', () => executeDownloadTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => executeMenuconfigTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'buildAndDownload', () => executeBuildAndDownloadTask()),
-            vscode.commands.registerCommand(CMD_PREFIX + 'selectChipModule', () => selectChipModule()) // 注册新的命令
+            vscode.commands.registerCommand(CMD_PREFIX + 'selectChipModule', () => selectChipModule()),
+            vscode.commands.registerCommand(CMD_PREFIX + 'selectDownloadPort', () => selectDownloadPort()) // 注册新的命令
         );
     } else {
         console.log('[SiFli Extension] Not a SiFli project. Extension features will not be activated.');
@@ -689,6 +802,7 @@ function deactivate() {
     if (menuconfigBtn) menuconfigBtn.dispose();
     if (buildDownloadBtn) buildDownloadBtn.dispose();
     if (currentBoardStatusItem) currentBoardStatusItem.dispose();
+    if (currentSerialPortStatusItem) currentSerialPortStatusItem.dispose(); // 销毁新增的串口状态栏项
 
     console.log('[SiFli Extension] Extension deactivated.');
 }
