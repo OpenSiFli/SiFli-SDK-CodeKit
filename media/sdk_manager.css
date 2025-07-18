@@ -1,0 +1,114 @@
+/* media/sdk_manager.css */
+/* Minimal CSS for styling */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 20px;
+    line-height: 1.6;
+    color: var(--vscode-editor-foreground);
+    background-color: var(--vscode-editor-background);
+}
+
+h1, h2 {
+    color: var(--vscode-editor-foreground);
+    border-bottom: 1px solid var(--vscode-editorGroup-border);
+    padding-bottom: 5px;
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--vscode-editor-foreground);
+}
+
+input[type="text"], select {
+    width: calc(100% - 22px); /* Adjust for padding and border */
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 3px;
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    box-sizing: border-box;
+}
+
+input[type="text"]::placeholder {
+    color: var(--vscode-input-placeholderForeground);
+}
+
+input[type="text"]:focus, select:focus, button:focus {
+    outline: none;
+    border-color: var(--vscode-focusBorder);
+}
+
+button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+button:hover {
+    background-color: var(--vscode-button-hoverBackground);
+}
+
+button:active {
+    background-color: var(--vscode-button-separatorBackground);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: var(--vscode-button-secondaryBackground);
+}
+
+.path-input-group {
+    display: flex;
+    align-items: center;
+}
+
+.path-input-group input {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+.log-container {
+    background-color: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-editorGroup-border);
+    border-radius: 3px;
+    padding: 15px;
+    height: 250px;
+    overflow-y: auto;
+    font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    white-space: pre-wrap; /* Preserve whitespace and wrap lines */
+    margin-top: 30px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.log-info { color: var(--vscode-terminal-ansiGreen); }
+.log-warn { color: var(--vscode-terminal-ansiYellow); }
+.log-error { color: var(--vscode-terminal-ansiRed); }
+
+#loadingSpinner {
+    display: none;
+    border: 4px solid var(--vscode-button-border);
+    border-top: 4px solid var(--vscode-button-background);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
