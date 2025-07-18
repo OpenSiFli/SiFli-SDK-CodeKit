@@ -1,6 +1,6 @@
-# One Step for SiFli - VS Code 插件
+# sifli-sdk-codekit - VS Code 插件
 
-`One Step for SiFli` 为简化 `SiFli-SDK` 开发的 VS Code 插件。提供一系列便捷的按钮选项，帮助用户方便进行项目管理、编译、下载及配置。
+`sifli-sdk-codekit` 为简化 `SiFli-SDK` 开发的 VS Code 插件。提供一系列便捷的按钮选项，帮助用户方便进行项目管理、编译、下载及配置。
 
 ---
 
@@ -55,12 +55,12 @@
 
   * 默认选择： 若用户没有进行选择，插件将默认为 黄山派:sf32lb52-lchspi-ulp。
 
-* 模组更换： 如果用户想更换芯片模组，可以通过以下路径进行操作：打开 VS Code 设置 -> 搜索 “One-step-for-sifli” -> 更改芯片模组选项。
+* 模组更换： 如果用户想更换芯片模组，可以通过以下路径进行操作：打开 VS Code 设置 -> 搜索 “sifli-sdk-codekit” -> 更改芯片模组选项。
 
 
 * **1.0.4版本：**
   * 优化了使用体验
-  * 模组更换： 如果用户想更换芯片模组，**可以通过点击左下角的 `SiFLi Board `选项卡进行更换芯片模组，选择线程数**，或者通过以下路径进行操作：打开 VS Code 设置 -> 搜索 “One-step-for-sifli” -> 更改芯片模组选项。
+  * 模组更换： 如果用户想更换芯片模组，**可以通过点击左下角的 `SiFLi Board `选项卡进行更换芯片模组，选择线程数**，或者通过以下路径进行操作：打开 VS Code 设置 -> 搜索 “sifli-sdk-codekit” -> 更改芯片模组选项。
 
 <!-- * **1.1版本：**
 
@@ -70,7 +70,7 @@
 ## 🗂️ 当前目录结构
 
     ```
-    one_step_for_sifli
+    sifli-sdk-codekit
 
     +---.vscode
     |   |
@@ -95,14 +95,6 @@
     +---extension.js                        // 插件的主入口文件。
     |
     +---package.json                        // 插件的清单文件。
-    |
-    +---one-step-for-sifli-1.0.0.vsix *     // 打包后的VSCode插件本体，插件功能基本实现。
-    |
-    +---one-step-for-sifli-1.0.1.vsix *     // 打包后的VSCode插件本体，去除了多余的弹窗信息。
-    |
-    +---one-step-for-sifli-1.0.2.vsix *     // 打包后的VSCode插件本体，增加了串口自动输入功能。
-    |
-    +---one-step-for-sifli-1.0.3.vsix *     // 打包后的VSCode插件本体，支持多种sifli的芯片模组的开发。
     |
     +---LICENSE.txt                         // 许可证文件。
     |
@@ -162,13 +154,13 @@
     * Windows/Linux: `文件` > `首选项` > `设置`
     * ![如何打开设置](images\open_setting.png)
   
-3.  在设置搜索框中输入“One Step for SiFli”，或者导航到“插件”并找到“One Step for SiFli Configuration”。
+3.  在设置搜索框中输入“sifli-sdk-codekit”，或者导航到“插件”并找到“sifli-sdk-codekit Configuration”。
    
-4.  **PowerShell 路径 (`one-step-for-sifli.powershellPath`)：**
+4.  **PowerShell 路径 (`sifli-sdk-codekit.powershellPath`)：**
     * 输入用户的 PowerShell 可执行文件的完整路径。
     * 在 Windows 系统上，默认路径通常是 `C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe`。
   
-5.  **SiFli SDK 导出脚本路径 (`one-step-for-sifli.sifliSdkExportScriptPath`)：**
+5.  **SiFli SDK 导出脚本路径 (`sifli-sdk-codekit.sifliSdkExportScriptPath`)：**
     * 输入位于用户的`SiFli-SDK`安装目录中的 `export.ps1` 脚本的完整路径（例如，`D:\OpenSiFli\SiFli-SDK\export.ps1`）。
     * 此脚本对于设置`SiFli-SDK`命令的正确环境至关重要。
     * **用户可在此处更换开发的芯片模组**
