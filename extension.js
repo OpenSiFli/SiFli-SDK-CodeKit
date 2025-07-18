@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const os = require('os');
+const axios = require('axios');
 
 // 定义SiFli SDK相关的常量
 const TERMINAL_NAME = 'SF32'; // SDK配置的终端名称
@@ -36,8 +37,8 @@ let SF32_TERMINAL_PATH;
 let SIFLI_SDK_EXPORT_SCRIPT_PATH;
 let SIFLI_SDK_ROOT_PATH;
 let SF32_TERMINAL_ARGS;
-let selectedBoardName; // 当前选中的芯片模组名称
-let numThreads; // 新增：用于存储自定义线程数的变量
+let selectedBoardName;          // 当前选中的芯片模组名称
+let numThreads;                 // 编译线程数
 
 // 任务名称常量
 const BUILD_TASK_NAME = "SiFli: Build";
@@ -48,11 +49,18 @@ const REBUILD_TASK_NAME = "SiFli: Rebuild";
 const BUILD_DOWNLOAD_TASK_NAME = "SiFli: Build & Download";
 
 // 状态栏按钮变量
-let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn, currentBoardStatusItem;
+let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn, currentBoardStatusItem, sdkManageBtn;
 
 // 定义一个常量用于全局状态的键，表示是否已经执行过首次设置
 const HAS_RUN_INITIAL_SETUP_KEY = 'oneStepForSifli.hasRunInitialSetup';
 
+// SiFli SDK 仓库基础 API 地址 (不包含 /releases)
+const SIFLI_SDK_GITHUB_REPO_BASE = 'https://api.github.com/repos/OpenSiFli/SiFli-SDK';
+const SIFLI_SDK_GITEE_REPO_BASE = 'https://gitee.com/api/v5/repos/SiFli/sifli-sdk';
+
+// 新增 Git 仓库URL常量 [新增]
+const SIFLI_SDK_GITHUB_REPO_GIT = 'https://github.com/OpenSiFli/SiFli-SDK.git';
+const SIFLI_SDK_GITEE_REPO_GIT = 'https://gitee.com/SiFli/sifli-sdk.git';
 
 /**
  * 辅助函数：根据选定的芯片模组和线程数动态生成 SCons 编译命令。
@@ -122,7 +130,15 @@ function updateConfiguration() {
 
 
     // 根据 export 脚本路径计算 SDK 根目录
-    SIFLI_SDK_ROOT_PATH = path.dirname(SIFLI_SDK_EXPORT_SCRIPT_PATH);
+    // 假设 export.ps1 位于 SDK 的根目录
+    if (SIFLI_SDK_EXPORT_SCRIPT_PATH && fs.existsSync(SIFLI_SDK_EXPORT_SCRIPT_PATH)) {
+        SIFLI_SDK_ROOT_PATH = path.dirname(SIFLI_SDK_EXPORT_SCRIPT_PATH);
+    } else {
+        // 如果路径无效，给一个默认值或提示用户
+        SIFLI_SDK_ROOT_PATH = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
+            ? vscode.workspace.workspaceFolders[0].uri.fsPath : os.homedir(); //
+        vscode.window.showWarningMessage('SiFli SDK export.ps1 脚本路径未配置或无效，请在扩展设置中检查。');
+    }
 
     // 重新构建终端启动参数
     SF32_TERMINAL_ARGS = [
@@ -640,7 +656,7 @@ async function activate(context) {
             // 检查是否是 'one-step-for-sifli' 相关的配置发生了变化
             if (e.affectsConfiguration('one-step-for-sifli')) {
                 updateConfiguration(); // 更新内部的路径变量
-                vscode.window.showInformationMessage('SiFli 插件配置已更新。');
+                // vscode.window.showInformationMessage('SiFli 插件配置已更新。');
             }
         }));
 

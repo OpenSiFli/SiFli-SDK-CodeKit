@@ -7,24 +7,46 @@
     "vscode": "^1.100.2"
   },
   "main": "extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "icon": "images/SiFli.png",
   "contributes": {
     "commands": [
-      { "command": "extension.compile", "title": "🛠️ Build" },
-      { "command": "extension.rebuild", "title": "♻️ Rebuild" },
-      { "command": "extension.download", "title":"💾 Download" },
-      { "command": "extension.buildAndDownload", "title":" 🚀 Build & Download" },
-      { "command": "extension.clean", "title": "🗑️ Clean" },
-      { "command": "extension.menuconfig", "title": "⚙️ Menuconfig" },
-      { "command": "extension.selectChipModule", "title": "切换 SiFli 模组/线程数" }
+      {
+        "command": "extension.compile",
+        "title": "🛠️ Build"
+      },
+      {
+        "command": "extension.rebuild",
+        "title": "♻️ Rebuild"
+      },
+      {
+        "command": "extension.download",
+        "title": "💾 Download"
+      },
+      {
+        "command": "extension.buildAndDownload",
+        "title": " 🚀 Build & Download"
+      },
+      {
+        "command": "extension.clean",
+        "title": "🗑️ Clean"
+      },
+      {
+        "command": "extension.menuconfig",
+        "title": "⚙️ Menuconfig"
+      },
+      {
+        "command": "extension.selectChipModule",
+        "title": "切换 SiFli 模组/线程数"
+      }
     ],
     "configuration": {
       "title": "SiFli Extension Configuration",
       "properties": {
         "one-step-for-sifli.powershellPath": {
           "type": "string",
-          "default": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
           "description": "Path to PowerShell executable. (e.g., C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe)"
         },
         "one-step-for-sifli.sifliSdkExportScriptPath": {
@@ -80,7 +102,9 @@
       }
     }
   },
-  "categories": [ "Other" ],
+  "categories": [
+    "Other"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/OpenSiFli/SiFli-SDK-CodeKit"
@@ -90,5 +114,8 @@
   },
   "devDependencies": {
     "prettier": "^3.3.2"
+  },
+  "dependencies": {
+    "axios": "^1.10.0"
   }
 }
