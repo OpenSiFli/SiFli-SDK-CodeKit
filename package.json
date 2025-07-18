@@ -40,6 +40,14 @@
       {
         "command": "extension.selectChipModule",
         "title": "切换 SiFli 模组/线程数"
+      },
+      {
+        "command": "extension.manageSiFliSdk",
+        "title": "管理 SiFli SDK 安装"
+      },
+      {
+        "command": "extension.selectDownloadPort",
+        "title": "选择下载串口"
       }
     ],
     "configuration": {
