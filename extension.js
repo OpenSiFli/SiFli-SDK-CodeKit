@@ -104,7 +104,7 @@ function getBuildTargetFolder(boardName) {
  * 在插件激活时调用，并在用户修改配置时监听并更新。
  */
 function updateConfiguration() {
-    const config = vscode.workspace.getConfiguration('one-step-for-sifli');
+    const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
     SF32_TERMINAL_PATH = config.get('powershellPath');
     SIFLI_SDK_EXPORT_SCRIPT_PATH = config.get('sifliSdkExportScriptPath');
     selectedBoardName = config.get('defaultChipModule'); // 读取默认芯片模组
@@ -560,7 +560,7 @@ async function promptForInitialBoardSelection(context) {
             ignoreFocusOut: true
         });
 
-        const config = vscode.workspace.getConfiguration('one-step-for-sifli');
+        const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
         const defaultBoardFromPackageJson = config.inspect('defaultChipModule').defaultValue;
 
         if (selected) {
@@ -591,7 +591,7 @@ async function selectChipModule() {
     });
 
     if (selectedBoard) {
-        const config = vscode.workspace.getConfiguration('one-step-for-sifli');
+        const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
         // 更新全局配置
         await config.update('defaultChipModule', selectedBoard.label, vscode.ConfigurationTarget.Global);
         vscode.window.showInformationMessage(`SiFli 芯片模组已切换为: ${selectedBoard.label}`);
@@ -613,7 +613,7 @@ async function selectChipModule() {
 
     if (numThreadsInput !== undefined && numThreadsInput !== String(numThreads)) {
         const newThreads = parseInt(numThreadsInput);
-        const config = vscode.workspace.getConfiguration('one-step-for-sifli');
+        const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
         await config.update('numThreads', newThreads, vscode.ConfigurationTarget.Global);
         vscode.window.showInformationMessage(`编译线程数已设置为: J${newThreads}`);
         // updateConfiguration() 会在配置变化监听器中自动调用
@@ -653,8 +653,8 @@ async function activate(context) {
 
         // 监听配置变化，当用户在 VS Code 设置中修改插件的相关配置时，重新读取并更新这些路径变量。
         context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
-            // 检查是否是 'one-step-for-sifli' 相关的配置发生了变化
-            if (e.affectsConfiguration('one-step-for-sifli')) {
+            // 检查是否是 'sifli-sdk-codekit' 相关的配置发生了变化
+            if (e.affectsConfiguration('sifli-sdk-codekit')) {
                 updateConfiguration(); // 更新内部的路径变量
                 // vscode.window.showInformationMessage('SiFli 插件配置已更新。');
             }

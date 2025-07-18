@@ -45,15 +45,15 @@
     "configuration": {
       "title": "SiFli Extension Configuration",
       "properties": {
-        "one-step-for-sifli.powershellPath": {
+        "sifli-sdk-codekit.powershellPath": {
           "type": "string",
           "description": "Path to PowerShell executable. (e.g., C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe)"
         },
-        "one-step-for-sifli.sifliSdkExportScriptPath": {
+        "sifli-sdk-codekit.sifliSdkExportScriptPath": {
           "type": "string",
           "description": "Full path to the SiFli SDK export.ps1 script. (e.g., D:\\OpenSiFli\\SiFli-SDK\\export.ps1)"
         },
-        "one-step-for-sifli.defaultChipModule": {
+        "sifli-sdk-codekit.defaultChipModule": {
           "type": "string",
           "default": "sf32lb52-lchspi-ulp",
           "description": "Select the default SiFli chip module for development.",
@@ -94,7 +94,7 @@
             "SiFli SF32LB58 LCD N16R64N4 module"
           ]
         },
-        "one-step-for-sifli.numThreads": {
+        "sifli-sdk-codekit.numThreads": {
           "type": "integer",
           "default": 8,
           "description": "Number of parallel compilation threads for SCons (e.g., 4, 8, 16)."
