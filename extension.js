@@ -337,11 +337,11 @@ async function getSerialPorts() {
         // 关键修改：移除对特定制造商（如wch.cn）或名称（如CH340）的过滤
         const powershellScriptContent = `
             Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match "COM\\d+" } | Select-Object Name, Description, Manufacturer, DeviceID | ForEach-Object { $_.Name -match "\\((COM\\d+)\\)" | Out-Null; [PSCustomObject]@{ Name = $_.Name; COM = $Matches[1]; Manufacturer = $_.Manufacturer; Description = $_.Description } } | ConvertTo-Json
-        `; //
+        `;
 
         // 创建一个临时 PowerShell 脚本文件
-        const tempScriptPath = path.join(os.tmpdir(), `get_serial_ports_${Date.now()}.ps1`); //
-        fs.writeFileSync(tempScriptPath, powershellScriptContent, { encoding: 'utf8' }); //
+        const tempScriptPath = path.join(os.tmpdir(), `get_serial_ports_${Date.now()}.ps1`);
+        fs.writeFileSync(tempScriptPath, powershellScriptContent, { encoding: 'utf8' });
 
         const { stdout: psStdout, stderr: psStderr } = await new Promise((resolve, reject) => {
             // 执行临时 PowerShell 脚本文件
@@ -351,11 +351,11 @@ async function getSerialPorts() {
                 try {
                     fs.unlinkSync(tempScriptPath); // 同步删除，确保删除完成
                 } catch (cleanupError) {
-                    console.warn(`[SiFli Extension] 无法删除临时 PowerShell 脚本文件 ${tempScriptPath}: ${cleanupError.message}`); //
+                    console.warn(`[SiFli Extension] 无法删除临时 PowerShell 脚本文件 ${tempScriptPath}: ${cleanupError.message}`);
                 }
 
                 if (error) {
-                    console.error(`[SiFli Extension] 执行 PowerShell 脚本失败: ${error.message}`); //
+                    console.error(`[SiFli Extension] 执行 PowerShell 脚本失败: ${error.message}`);
                     return reject(error);
                 }
                 resolve({ stdout, stderr });
@@ -363,17 +363,17 @@ async function getSerialPorts() {
         });
 
         if (psStderr) {
-            console.warn(`[SiFli Extension] PowerShell 获取串口警告: ${psStderr}`); //
+            console.warn(`[SiFli Extension] PowerShell 获取串口警告: ${psStderr}`);
         }
 
         try {
-            const psSerialPorts = JSON.parse(psStdout.trim()); //
+            const psSerialPorts = JSON.parse(psStdout.trim());
             // 如果只有单个对象而非数组，或者 stdout 为空，确保能正确处理
-            const portsArray = Array.isArray(psSerialPorts) ? psSerialPorts : (psSerialPorts ? [psSerialPorts] : []); //
+            const portsArray = Array.isArray(psSerialPorts) ? psSerialPorts : (psSerialPorts ? [psSerialPorts] : []);
 
             portsArray.forEach(p => {
                 // 现在只要求有 COM 端口号即可，不再限制制造商或名称中包含特定字符串
-                if (p.COM) { //
+                if (p.COM) {
                     detectedPorts.add(JSON.stringify({
                         name: p.Name,
                         com: p.COM.toUpperCase(),
@@ -383,16 +383,16 @@ async function getSerialPorts() {
                 }
             });
         } catch (parseError) {
-            console.warn(`[SiFli Extension] 解析 PowerShell 串口信息失败 (可能没有可用串口或输出格式不符): ${parseError.message}`); //
+            console.warn(`[SiFli Extension] 解析 PowerShell 串口信息失败 (可能没有可用串口或输出格式不符): ${parseError.message}`);
             // 当没有串口时，stdout 可能为空或不是有效的 JSON，这里是预期行为
         }
     } catch (error) {
-        vscode.window.showErrorMessage(`无法执行 PowerShell 命令获取串口列表。请确保 PowerShell 已正确安装并可访问。错误信息: ${error.message}`); //
-        console.error(`[SiFli Extension] 获取串口失败 (PowerShell exec error): ${error.message}`); //
+        vscode.window.showErrorMessage(`无法执行 PowerShell 命令获取串口列表。请确保 PowerShell 已正确安装并可访问。错误信息: ${error.message}`);
+        console.error(`[SiFli Extension] 获取串口失败 (PowerShell exec error): ${error.message}`);
     }
 
-    const finalPorts = Array.from(detectedPorts).map(item => JSON.parse(item)); //
-    console.log('[SiFli Extension] Final detected serial ports:', finalPorts); //
+    const finalPorts = Array.from(detectedPorts).map(item => JSON.parse(item));
+    console.log('[SiFli Extension] Final detected serial ports:', finalPorts);
     return finalPorts;
 }
 
@@ -404,22 +404,23 @@ async function getSerialPorts() {
  */
 async function selectSerialPort() { // 此函数不再是下载前的选择，而是通用的串口选择器
     try {
-        const serialPorts = await getSerialPorts(); //
+        const serialPorts = await getSerialPorts();
 
         if (serialPorts.length === 0) {
-            vscode.window.showWarningMessage('未检测到任何串行端口设备。请检查设备连接和驱动安装。'); // 提示信息更通用
+            // 将警告信息降级为信息提示，更友好
+            vscode.window.showInformationMessage('未检测到任何串行端口设备。请检查设备连接和驱动安装。');
             selectedSerialPort = null; // 未检测到串口时清空已选串口
             updateStatusBarItems(); // 更新状态栏显示
             return null;
         } else if (serialPorts.length === 1) {
             const comPortFull = serialPorts[0].com;
             const comPortNum = comPortFull.replace('COM', '');
-            vscode.window.showInformationMessage(`检测到单个串行端口设备，自动选择 COM 端口：${comPortNum}。`); // 提示信息更通用
+            vscode.window.showInformationMessage(`检测到单个串行端口设备，自动选择 COM 端口：${comPortNum}。`);
             selectedSerialPort = comPortNum; // 更新全局变量
             updateStatusBarItems(); // 更新状态栏显示
             return comPortNum;
         } else {
-            vscode.window.showInformationMessage(`检测到多个串行端口设备，请选择一个。`); // 提示信息更通用
+            vscode.window.showInformationMessage(`检测到多个串行端口设备，请选择一个。`);
             const pickOptions = serialPorts.map(p => ({
                 label: p.name,
                 description: `COM 端口: ${p.com}${p.manufacturer ? ` (${p.manufacturer})` : ''}`, // 描述中可以包含制造商信息
@@ -427,7 +428,7 @@ async function selectSerialPort() { // 此函数不再是下载前的选择，�
             }));
 
             const selected = await vscode.window.showQuickPick(pickOptions, {
-                placeHolder: '检测到多个串行端口设备，请选择一个：' // 提示信息更通用
+                placeHolder: '检测到多个串行端口设备，请选择一个：'
             });
 
             if (selected) {
@@ -471,7 +472,8 @@ async function executeCompileTask() {
 async function executeDownloadTask() {
     // 检查是否已选择串口，如果未选择则提示用户选择
     if (!selectedSerialPort) {
-        vscode.window.showWarningMessage('请先选择一个用于下载的串口。点击状态栏中的 "COM: N/A" 进行选择。');
+        // 将这里的警告改为信息提示，避免打扰用户
+        vscode.window.showInformationMessage('请先选择一个用于下载的串口。点击状态栏中的 "COM: N/A" 进行选择。');
         const chosenPort = await selectSerialPort(); // 尝试让用户选择
         if (!chosenPort) { // 如果用户仍然没有选择，则退出
             return;
@@ -619,7 +621,8 @@ async function executeBuildAndDownloadTask() {
 
     // 检查是否已选择串口，如果未选择则提示用户选择
     if (!selectedSerialPort) {
-        vscode.window.showWarningMessage('请先选择一个用于下载的串口。点击状态栏中的 "COM: N/A" 进行选择。');
+        // 将这里的警告改为信息提示，避免打扰用户
+        vscode.window.showInformationMessage('请先选择一个用于下载的串口。点击状态栏中的 "COM: N/A" 进行选择。');
         const chosenPort = await selectSerialPort(); // 尝试让用户选择
         if (!chosenPort) { // 如果用户仍然没有选择，则退出
             return;
@@ -742,7 +745,7 @@ async function activate(context) {
     // *** 仅在开发调试时使用：强制重置首次运行标志 ***
     // 这将使得每次“重新运行调试”时，Quick Pick 都会弹出。
     // 在发布生产版本时，请务必删除或注释掉此行！
-    await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false);
+    // await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false); //
     // ******************************************************
 
     // 在插件激活时立即读取配置
@@ -757,10 +760,10 @@ async function activate(context) {
         // 在初始化配置和状态栏后，检查是否需要提示用户选择初始芯片模组
         // 使用 setTimeout 稍微延迟，确保初始化完成
         setTimeout(async () => {
-            await promptForInitialBoardSelection(context);
-            // 首次激活时，尝试自动检测并设置串口
-            await selectSerialPort(); // 尝试自动选择串口并更新 selectedSerialPort
-            await getOrCreateSiFliTerminalAndCdProject();
+            await promptForInitialBoardSelection(context); //
+            // 移除这里的 selectSerialPort() 调用，避免启动时弹出警告
+            // await selectSerialPort(); // <<< 移除这一行
+            await getOrCreateSiFliTerminalAndCdProject(); //
         }, 500);
 
 
