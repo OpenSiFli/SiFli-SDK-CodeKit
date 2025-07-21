@@ -1,4 +1,4 @@
-// one_step_for_sifli/extension.js
+// sifli-sdk-codekit/extension.js
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
@@ -12,25 +12,10 @@ const PROJECT_SUBFOLDER = 'project'; // 工程文件夹名称（命令执行的�
 const SRC_SUBFOLDER = 'src'; // 源代码文件夹名称
 const SCONSCRIPT_FILE = 'SConscript'; // 判断SiFli工程的依据文件
 
-// 支持的所有芯片模组列表
-const SUPPORTED_BOARD_NAMES = [
-    "sf32lb52-lcd_52d",
-    "sf32lb52-lcd_base",
-    "sf32lb52-lcd_n16r8",
-    "sf32lb52-lchspi-ulp",
-    "sf32lb52-lchspi-ulp_base",
-    "sf32lb52-nano_52b",
-    "sf32lb52-nano_52j",
-    "sf32lb52-nano_base",
-    "sf32lb56-lcd_a128r12n1",
-    "sf32lb56-lcd_base",
-    "sf32lb56-lcd_n16r12n1",
-    "sf32lb58-lcd_a128r32n1_dsi",
-    "sf32lb58-lcd_base",
-    "sf32lb58-lcd_n16r32n1_dpi",
-    "sf32lb58-lcd_n16r32n1_dsi",
-    "sf32lb58-lcd_n16r64n4"
-];
+// 新增板子发现相关的常量
+const CUSTOMER_BOARDS_SUBFOLDER = 'customer/boards'; // SDK 下的板子目录
+const HCPU_SUBFOLDER = 'hcpu'; // 板子目录下的 hcpu 文件夹
+const PTAB_JSON_FILE = 'ptab.json'; // 板子目录下的 ptab.json 文件
 
 // 从 VS Code 用户配置中读取路径，初始化为 let 变量
 let SF32_TERMINAL_PATH;
@@ -63,6 +48,7 @@ const SIFLI_SDK_GITEE_REPO_BASE = 'https://gitee.com/api/v5/repos/SiFli/sifli-sd
 const SIFLI_SDK_GITHUB_REPO_GIT = 'https://github.com/OpenSiFli/SiFli-SDK.git';
 const SIFLI_SDK_GITEE_REPO_GIT = 'https://gitee.com/SiFli/sifli-sdk.git';
 
+
 /**
  * 辅助函数：根据选定的芯片模组和线程数动态生成 SCons 编译命令。
  * @param {string} boardName 选定的芯片模组名称
@@ -70,7 +56,29 @@ const SIFLI_SDK_GITEE_REPO_GIT = 'https://gitee.com/SiFli/sifli-sdk.git';
  * @returns {string} 完整的编译命令
  */
 function getCompileCommand(boardName, threads) {
-    return `scons --board=${boardName} -j${threads}`;
+    const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+    const customBoardSearchPath = config.get('customBoardSearchPath', '');
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const workspaceRoot = workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].uri.fsPath : '';
+
+    let boardSearchArg = '';
+    if (customBoardSearchPath) {
+        // 如果 customBoardSearchPath 存在，则使用它
+        // 需要将其解析为相对于 project 目录的路径，因为终端会 cd 到 project
+        const resolvedPath = path.isAbsolute(customBoardSearchPath) ?
+                             customBoardSearchPath :
+                             path.resolve(workspaceRoot, customBoardSearchPath);
+        // 计算 project 目录到 customBoardSearchPath 的相对路径
+        const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
+        const relativeToProject = path.relative(projectPath, resolvedPath);
+        boardSearchArg = `--board_search_path="${relativeToProject.replace(/\\/g, '/')}"`; // SCons 路径通常接受正斜杠
+    } else {
+        // 如果 customBoardSearchPath 未设置，则默认扫描工程中与 project 同级的 boards 目录
+        // 这里需要的是 project 目录到与其同级的 boards 目录的相对路径，即 "../boards"
+        boardSearchArg = `--board_search_path="../boards"`;
+    }
+
+    return `scons --board=${boardName} ${boardSearchArg} -j${threads}`;
 }
 
 /**
@@ -79,7 +87,24 @@ function getCompileCommand(boardName, threads) {
  * @returns {string} 完整的 Menuconfig 命令
  */
 function getMenuconfigCommand(boardName) {
-    return `scons --board=${boardName} --menuconfig`;
+    const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+    const customBoardSearchPath = config.get('customBoardSearchPath', '');
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const workspaceRoot = workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].uri.fsPath : '';
+
+    let boardSearchArg = '';
+    if (customBoardSearchPath) {
+        const resolvedPath = path.isAbsolute(customBoardSearchPath) ?
+                             customBoardSearchPath :
+                             path.resolve(workspaceRoot, customBoardSearchPath);
+        const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
+        const relativeToProject = path.relative(projectPath, resolvedPath);
+        boardSearchArg = `--board_search_path="${relativeToProject.replace(/\\/g, '/')}"`;
+    } else {
+        boardSearchArg = `--board_search_path="../boards"`;
+    }
+
+    return `scons --board=${boardName} ${boardSearchArg} --menuconfig`;
 }
 
 /**
@@ -199,21 +224,6 @@ function updateConfiguration() {
     selectedBoardName = config.get('defaultChipModule'); // 读取默认芯片模组
     numThreads = config.get('numThreads', os.cpus().length > 0 ? os.cpus().length : 8); // 读取线程数，默认为CPU核心数或8
 
-    // 确保 selectedBoardName 是 SUPPORTED_BOARD_NAMES 之一，如果不是则使用 package.json 中的默认值
-    if (!SUPPORTED_BOARD_NAMES.includes(selectedBoardName)) {
-        selectedBoardName = config.inspect('defaultChipModule').defaultValue; // 获取 package.json 中的默认值
-        if (!selectedBoardName || !SUPPORTED_BOARD_NAMES.includes(selectedBoardName)) {
-             selectedBoardName = SUPPORTED_BOARD_NAMES[3]; // Fallback to a safe default
-        }
-        vscode.window.showWarningMessage(`SiFli: 配置中的芯片模组 "${selectedBoardName}" 无效或未设置，已使用默认值。`);
-    }
-
-    // 确保 numThreads 是有效的正整数
-    if (typeof numThreads !== 'number' || numThreads <= 0 || !Number.isInteger(numThreads)) {
-        numThreads = os.cpus().length > 0 ? os.cpus().length : 8; // 默认为CPU核心数或8
-        vscode.window.showWarningMessage(`SiFli: 配置中的编译线程数 "${numThreads}" 无效，已使用默认值 ${numThreads}。`);
-    }
-
     // 根据 export 脚本路径计算 SDK 根目录
     // 假设 export.ps1 位于 SDK 的根目录
     if (SIFLI_SDK_EXPORT_SCRIPT_PATH && fs.existsSync(SIFLI_SDK_EXPORT_SCRIPT_PATH)) {
@@ -245,7 +255,7 @@ function updateConfiguration() {
 
 /**
  * 辅助函数：判断当前工作区是否是 SiFli SDK 工程。
- * 判断依据是工作区根目录下是否存在 'src/SConscript' 文件。
+ * 判断依据是工作区根目录下是否存在 'src/SConscript' 文件，并且 export.ps1 脚本路径有效。
  * @returns {boolean} 如果是 SiFli 工程则返回 true，否则返回 false。
  */
 function isSiFliProject() {
@@ -256,8 +266,17 @@ function isSiFliProject() {
     const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
     const sconstructPathToCheck = path.join(workspaceRoot, SRC_SUBFOLDER, SCONSCRIPT_FILE);
 
-    const isProject = fs.existsSync(sconstructPathToCheck);
-    console.log(`[SiFli Extension] Checking for SiFli project file: ${sconstructPathToCheck} - Found: ${isProject}`);
+    // 假设 export.ps1 位于 SDK 根目录，我们通过配置获取 SDK 根目录
+    const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+    const sifliSdkExportScriptPath = config.get('sifliSdkExportScriptPath');
+    let isSdkEnvironment = false;
+    if (sifliSdkExportScriptPath && fs.existsSync(sifliSdkExportScriptPath)) {
+        isSdkEnvironment = true;
+    }
+
+    const isProject = fs.existsSync(sconstructPathToCheck) && isSdkEnvironment;
+    console.log(`[SiFli Extension] Checking for SiFli project file: ${sconstructPathToCheck} - Found: ${fs.existsSync(sconstructPathToCheck)}`);
+    console.log(`[SiFli Extension] Checking for SDK environment (export.ps1): ${sifliSdkExportScriptPath} - Found: ${isSdkEnvironment}`);
     return isProject;
 }
 
@@ -447,6 +466,91 @@ async function selectSerialPort() { // 此函数不再是下载前的选择，�
         console.error('[SiFli Extension] Error selecting serial port:', error);
         return null;
     }
+}
+
+
+/**
+ * 辅助函数：扫描指定目录，查找符合条件的板子配置。
+ * @param {string} directoryPath 要扫描的目录路径
+ * @param {Set<string>} boardSet 存储发现板子名称的 Set
+ * @param {boolean} overwriteExisting 是否覆盖已存在的板子（用于优先加载自定义板子）
+ */
+async function scanDirectoryForBoards(directoryPath, boardSet, overwriteExisting = false) {
+    if (!fs.existsSync(directoryPath) || !fs.lstatSync(directoryPath).isDirectory()) {
+        console.log(`[SiFli Extension] Board scan path does not exist or is not a directory: ${directoryPath}`);
+        return;
+    }
+
+    try {
+        const entries = await fs.promises.readdir(directoryPath, { withFileTypes: true });
+        for (const entry of entries) {
+            if (entry.isDirectory()) {
+                const boardName = entry.name;
+                const boardPath = path.join(directoryPath, boardName);
+                const hcpuPath = path.join(boardPath, HCPU_SUBFOLDER); // 检查 hcpu 目录
+                const ptabJsonPath = path.join(boardPath, PTAB_JSON_FILE); // 检查 ptab.json 文件
+
+                if (fs.existsSync(hcpuPath) && fs.lstatSync(hcpuPath).isDirectory() && fs.existsSync(ptabJsonPath) && fs.lstatSync(ptabJsonPath).isFile()) {
+                    if (overwriteExisting) {
+                        boardSet.delete(boardName); // 如果是优先级高的路径，先删除旧的同名板子
+                    }
+                    boardSet.add(boardName);
+                    console.log(`[SiFli Extension] Found valid board: ${boardName} at ${boardPath}`);
+                } else {
+                    console.log(`[SiFli Extension] Not a valid board (missing hcpu or ptab.json): ${boardName} at ${boardPath}`);
+                }
+            }
+        }
+    } catch (error) {
+        console.error(`[SiFli Extension] Failed to scan directory ${directoryPath} for boards: ${error.message}`);
+    }
+}
+
+/**
+ * 辅助函数：动态发现所有可用的板子配置。
+ * 遵循以下扫描规则：
+ * 1. 扫描SDK目录下的 customer/boards。
+ * 2. 如果设置了 customBoardSearchPath，则扫描该目录。
+ * 3. 如果未设置 customBoardSearchPath，则默认扫描工程中与 project 同级的 boards 目录下。
+ * 有效的板子选项需同时存在 `hcpu` 目录和 `ptab.json` 文件。
+ *
+ * @returns {Promise<Array<string>>} 返回一个 Promise，解析为有效板子名称的数组。
+ */
+async function discoverBoards() {
+    const discoveredBoards = new Set(); // 使用 Set 避免重复
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+        console.warn('[SiFli Extension] No workspace folder open, cannot discover boards.');
+        return [];
+    }
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+    const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+    const customBoardSearchPath = config.get('customBoardSearchPath', ''); // 读取用户配置的自定义板子搜索路径
+
+    // 1. 扫描SDK目录下的 customer/boards
+    if (SIFLI_SDK_ROOT_PATH) { // SIFLI_SDK_ROOT_PATH 已在 updateConfiguration 中计算
+        const sdkBoardsPath = path.join(SIFLI_SDK_ROOT_PATH, CUSTOMER_BOARDS_SUBFOLDER);
+        await scanDirectoryForBoards(sdkBoardsPath, discoveredBoards);
+    }
+
+    // 2. 根据 customBoardSearchPath 的设置进行扫描
+    let targetCustomBoardPath = null;
+    if (customBoardSearchPath) {
+        // 解析 customBoardSearchPath，可能是绝对路径或相对路径
+        targetCustomBoardPath = path.isAbsolute(customBoardSearchPath) ?
+                                customBoardSearchPath :
+                                path.resolve(workspaceRoot, customBoardSearchPath);
+    } else {
+        // 默认扫描工程中与 project 同级的 boards 目录
+        targetCustomBoardPath = path.join(workspaceRoot, 'boards'); // 与 project 同级
+    }
+
+    if (targetCustomBoardPath) {
+        await scanDirectoryForBoards(targetCustomBoardPath, discoveredBoards, true); // true 表示覆盖，实现优先级
+    }
+
+    console.log('[SiFli Extension] Discovered boards:', Array.from(discoveredBoards));
+    return Array.from(discoveredBoards);
 }
 
 
@@ -646,25 +750,27 @@ async function executeBuildAndDownloadTask() {
  */
 async function promptForInitialBoardSelection(context) {
     const hasRunInitialSetup = context.globalState.get(HAS_RUN_INITIAL_SETUP_KEY, false);
+    const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+    let currentDefaultBoard = config.get('defaultChipModule'); // 获取当前配置的默认模组
 
-    if (!hasRunInitialSetup) {
+    // 动态获取可用板子列表
+    const availableBoards = await discoverBoards();
+
+    // 检查是否需要提示用户选择初始芯片模组
+    // 条件：从未进行过初始设置 OR 当前配置的默认模组无效 OR 当前配置的默认模组不在已发现的板子列表中
+    if (!hasRunInitialSetup || !currentDefaultBoard || !availableBoards.includes(currentDefaultBoard)) {
         vscode.window.showInformationMessage('请选择您当前要开发的芯片模组。');
 
-        // 定义你想要的自定义描述映射
-        const CUSTOM_DESCRIPTIONS = {
-            'sf32lb52-lchspi-ulp': '黄山派',
-            // 根据需要添加更多模组和描述
-            // '模组': '描述',
-        };
+        if (availableBoards.length === 0) {
+            vscode.window.showWarningMessage('未发现任何 SiFli 芯片模组。请检查您的 SDK 安装或自定义板子路径设置。');
+            await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true); // 即使没有板子，也标记为已运行，避免每次启动都弹出
+            return;
+        }
 
-        const pickOptions = SUPPORTED_BOARD_NAMES.map(board => {
-            // 如果在 CUSTOM_DESCRIPTIONS 中找到对应描述，则使用它；否则使用通用描述
-            const description = CUSTOM_DESCRIPTIONS[board];
-            return {
-                label: board,
-                description: description
-            };
-        });
+        const pickOptions = availableBoards.map(board => ({
+            label: board,
+            description: '' // 暂时没有额外描述
+        }));
 
         const selected = await vscode.window.showQuickPick(pickOptions, {
             placeHolder: '请选择一个 SiFli 芯片模组',
@@ -672,18 +778,22 @@ async function promptForInitialBoardSelection(context) {
             ignoreFocusOut: true
         });
 
-        const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
-        const defaultBoardFromPackageJson = config.inspect('defaultChipModule').defaultValue;
-
         if (selected) {
             await config.update('defaultChipModule', selected.label, vscode.ConfigurationTarget.Global);
             vscode.window.showInformationMessage(`SiFli 默认模组已设置为: ${selected.label}`);
-            await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true);
         } else {
-            await config.update('defaultChipModule', defaultBoardFromPackageJson, vscode.ConfigurationTarget.Global);
-            vscode.window.showWarningMessage(`未选择芯片模组，已将默认模组重置为: ${defaultBoardFromPackageJson}。您可以在 VS Code 设置中修改。`);
-            await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true);
+            // 如果用户取消选择，但有可用的板子，则默认选择第一个
+            if (availableBoards.length > 0) {
+                await config.update('defaultChipModule', availableBoards[0], vscode.ConfigurationTarget.Global);
+                vscode.window.showWarningMessage(`未选择芯片模组，已将默认模组设置为第一个可用模组: ${availableBoards[0]}。您可以在 VS Code 设置中修改。`);
+            } else {
+                vscode.window.showWarningMessage(`未选择芯片模组且未发现可用模组。请确保 SDK 安装正确且存在板子配置。`);
+            }
         }
+        await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true);
+        // 更新 selectedBoardName 确保后续操作使用最新的默认模组
+        selectedBoardName = config.get('defaultChipModule');
+        updateStatusBarItems(); // 确保状态栏立即更新
     }
 }
 
@@ -691,8 +801,16 @@ async function promptForInitialBoardSelection(context) {
  * 处理用户点击状态栏芯片模组，选择或修改模组的命令。
  */
 async function selectChipModule() {
+    // 动态获取可用的板子列表
+    const availableBoards = await discoverBoards();
+
+    if (availableBoards.length === 0) {
+        vscode.window.showWarningMessage('未发现任何 SiFli 芯片模组。请检查您的 SDK 安装或自定义板子路径设置。');
+        return;
+    }
+
     // 允许用户选择芯片模组
-    const boardPickOptions = SUPPORTED_BOARD_NAMES.map(board => ({
+    const boardPickOptions = availableBoards.map(board => ({
         label: board,
         description: board === selectedBoardName ? '当前选中' : ''
     }));
@@ -702,12 +820,12 @@ async function selectChipModule() {
         title: '选择芯片模组'
     });
 
-    if (selectedBoard) {
+    if (selectedBoard && selectedBoard.label !== selectedBoardName) {
         const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
         // 更新全局配置
         await config.update('defaultChipModule', selectedBoard.label, vscode.ConfigurationTarget.Global);
         vscode.window.showInformationMessage(`SiFli 芯片模组已切换为: ${selectedBoard.label}`);
-        // updateConfiguration() 会在配置变化监听器中自动调用
+        // updateConfiguration() 会在配置变化监听器中自动调用，更新 selectedBoardName
     }
 
     // 允许用户修改线程数
@@ -745,7 +863,7 @@ async function activate(context) {
     // *** 仅在开发调试时使用：强制重置首次运行标志 ***
     // 这将使得每次“重新运行调试”时，Quick Pick 都会弹出。
     // 在发布生产版本时，请务必删除或注释掉此行！
-    // await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false); //
+    // await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false);
     // ******************************************************
 
     // 在插件激活时立即读取配置
@@ -760,10 +878,9 @@ async function activate(context) {
         // 在初始化配置和状态栏后，检查是否需要提示用户选择初始芯片模组
         // 使用 setTimeout 稍微延迟，确保初始化完成
         setTimeout(async () => {
-            await promptForInitialBoardSelection(context); //
-            // 移除这里的 selectSerialPort() 调用，避免启动时弹出警告
-            // await selectSerialPort(); // <<< 移除这一行
-            await getOrCreateSiFliTerminalAndCdProject(); //
+            await promptForInitialBoardSelection(context);
+            // 确保终端在所有配置更新和板子选择后创建
+            await getOrCreateSiFliTerminalAndCdProject();
         }, 500);
 
 
