@@ -868,7 +868,7 @@ async function promptForInitialBoardSelection(context) {
         const pickOptions = availableBoardsDetails.map(board => {
             let description = '';
             if (board.type === 'sdk') {
-                description = '来源: SDK 默认';
+                description = '来源: SDK';
             } else if (board.type === 'project_local') {
                 description = '来源: 项目本地 boards 目录';
             } else if (board.type === 'custom') {
