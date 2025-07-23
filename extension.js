@@ -12,12 +12,12 @@ const PROJECT_SUBFOLDER = 'project'; // 工程文件夹名称（命令执行的�
 const SRC_SUBFOLDER = 'src'; // 源代码文件夹名称
 const SCONSCRIPT_FILE = 'SConscript'; // 判断SiFli工程的依据文件
 
-// 新增板子发现相关的常量
+// 判断板子发现相关的常量
 const CUSTOMER_BOARDS_SUBFOLDER = 'customer/boards'; // SDK 下的板子目录
 const HCPU_SUBFOLDER = 'hcpu'; // 板子目录下的 hcpu 文件夹 
 const PTAB_JSON_FILE = 'ptab.json'; // 板子目录下的 ptab.json 文件
 
-// **新增：sftool 参数文件常量**
+// sftool 参数文件常量
 const SFTOOL_PARAM_JSON_FILE = 'sftool_param.json';
 
 // 从 VS Code 用户配置中读取路径,初始化为 let 变量
@@ -27,7 +27,7 @@ let SIFLI_SDK_ROOT_PATH;
 let SF32_TERMINAL_ARGS;
 let selectedBoardName;          // 当前选中的芯片模组名称
 let numThreads;                 // 编译线程数
-let selectedSerialPort = null;  // 新增：当前选定的串口号,初始化为 null
+let selectedSerialPort = null;  // 当前选定的串口号,初始化为 null
 
 // 任务名称常量
 const BUILD_TASK_NAME = "SiFli: Build";
@@ -47,7 +47,7 @@ const HAS_RUN_INITIAL_SETUP_KEY = 'oneStepForSifli.hasRunInitialSetup';
 const SIFLI_SDK_GITHUB_REPO_BASE = 'https://api.github.com/repos/OpenSiFli/SiFli-SDK';
 const SIFLI_SDK_GITEE_REPO_BASE = 'https://gitee.com/api/v5/repos/SiFli/sifli-sdk';
 
-// 新增 Git 仓库URL常量
+// Git 仓库URL常量
 const SIFLI_SDK_GITHUB_REPO_GIT = 'https://github.com/OpenSiFli/SiFli-SDK.git';
 const SIFLI_SDK_GITEE_REPO_GIT = 'https://gitee.com/SiFli/sifli-sdk.git';
 
@@ -239,7 +239,7 @@ async function getSftoolDownloadCommand(boardName, serialPortNum) {
     const buildTargetFolder = getBuildTargetFolder(boardName);
     const buildPath = path.join(workspaceRoot, PROJECT_SUBFOLDER, buildTargetFolder);
 
-    // **新增：读取 sftool_param.json 获取芯片类型和文件列表**
+    // 读取 sftool_param.json 获取芯片类型和文件列表
     const sftoolParams = await readSftoolParamJson(boardName);
     if (!sftoolParams) {
         // readSftoolParamJson 内部已经处理了文件不存在或解析失败的提示
@@ -297,8 +297,11 @@ function updateConfiguration() {
     const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
     SF32_TERMINAL_PATH = config.get('powershellPath');
     SIFLI_SDK_EXPORT_SCRIPT_PATH = config.get('sifliSdkExportScriptPath');
-    selectedBoardName = config.get('defaultChipModule'); // 读取默认芯片模组
-    numThreads = config.get('numThreads', os.cpus().length > 0 ? os.cpus().length : 8); // 读取线程数,默认为CPU核心数或8
+    
+    // **确保这里始终从配置中读取 selectedBoardName**
+    selectedBoardName = config.get('defaultChipModule'); 
+    
+    numThreads = config.get('numThreads', os.cpus().length > 0 ? os.cpus().length : 8); 
 
     // 根据 export 脚本路径计算 SDK 根目录
     // 假设 export.ps1 位于 SDK 的根目录
@@ -322,7 +325,7 @@ function updateConfiguration() {
     console.log(`[SiFli Extension] Configuration updated:`);
     console.log(`  PowerShell Path: ${SF32_TERMINAL_PATH}`);
     console.log(`  SiFli SDK Export Script Path: ${SIFLI_SDK_EXPORT_SCRIPT_PATH}`);
-    console.log(`  Selected SiFli Board: ${selectedBoardName}`);
+    console.log(`  Selected SiFli Board: ${selectedBoardName}`); // 确认这里会显示新值
     console.log(`  Compilation Threads: ${numThreads}`);
 
 
@@ -738,7 +741,7 @@ function updateStatusBarItems() {
         currentBoardStatusItem.text = `SiFli Board: ${selectedBoardName} (J${numThreads})`; // 显示线程数
         currentBoardStatusItem.tooltip = `当前 SiFli 芯片模组: ${selectedBoardName}\n编译线程数: J${numThreads}\n点击切换芯片模组或修改线程数`;
     }
-    // 新增：更新串口状态栏项
+    // 更新串口状态栏项
     if (currentSerialPortStatusItem) {
         currentSerialPortStatusItem.text = `COM: ${selectedSerialPort || 'N/A'}`; // 如果没有选择,显示 N/A
         currentSerialPortStatusItem.tooltip = `当前下载串口: ${selectedSerialPort || '未选择'}\n点击选择串口`;
@@ -791,7 +794,7 @@ function initializeStatusBarItems(context) {
     currentBoardStatusItem.show();
     context.subscriptions.push(currentBoardStatusItem);
 
-    // 新增：显示当前串口的状态栏项
+    // 显示当前串口的状态栏项
     currentSerialPortStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 89); // 优先级略低于板卡
     // currentSerialPortStatusItem.text = '🔌 COM: N/A';
     currentSerialPortStatusItem.command = CMD_PREFIX + 'selectDownloadPort'; // 绑定新的命令
@@ -862,7 +865,7 @@ async function promptForInitialBoardSelection(context) {
         const pickOptions = availableBoardsDetails.map(board => {
             let description = '';
             if (board.type === 'sdk') {
-                description = '来源: SDK';
+                description = '来源: SDK 默认';
             } else if (board.type === 'project_local') {
                 description = '来源: 项目本地 boards 目录';
             } else if (board.type === 'custom') {
@@ -894,9 +897,8 @@ async function promptForInitialBoardSelection(context) {
             }
         }
         await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true);
-        // 更新 selectedBoardName 确保后续操作使用最新的默认模组
-        selectedBoardName = config.get('defaultChipModule');
-        updateStatusBarItems(); // 确保状态栏立即更新
+        // 这里不需要再手动更新 selectedBoardName 和 updateStatusBarItems(),
+        // 因为 config.update() 会触发 onDidChangeConfiguration,进而调用 updateConfiguration() 来处理。
     }
 }
 
@@ -968,7 +970,7 @@ async function selectChipModule() {
 }
 
 /**
- * 新增：处理用户点击状态栏串口,选择或修改串口的命令。
+ * 处理用户点击状态栏串口,选择或修改串口的命令。
  */
 async function selectDownloadPort() {
     await selectSerialPort(); // 直接调用通用的串口选择函数
@@ -980,11 +982,11 @@ async function activate(context) {
     // *** 仅在开发调试时使用：强制重置首次运行标志 ***
     // 这将使得每次“重新运行调试”时,Quick Pick 都会弹出。
     // 在发布生产版本时,请务必删除或注释掉此行！
-    await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false);
+    await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false); // <--- 生产环境请注释或删除此行
     // ******************************************************
 
     // 在插件激活时立即读取配置
-    updateConfiguration();
+    updateConfiguration(); // 首次加载时调用，初始化 selectedBoardName 等
 
     // 只有是 SiFli 项目才激活插件功能
     if (isSiFliProject()) {
@@ -995,7 +997,20 @@ async function activate(context) {
         // 在初始化配置和状态栏后,检查是否需要提示用户选择初始芯片模组
         // 使用 setTimeout 稍微延迟,确保初始化完成
         setTimeout(async () => {
-            await promptForInitialBoardSelection(context);
+            await promptForInitialBoardSelection(context); // 调用此函数可能会更新 defaultChipModule 配置
+
+            // 在 promptForInitialBoardSelection 完成并可能更新配置后，再次调用 updateConfiguration
+            // 确保 selectedBoardName 和状态栏显示与最新配置同步
+            updateConfiguration(); 
+            
+            // 在插件初始化后，如果串口未连接，主动提醒用户选择串口
+            if (!selectedSerialPort) {
+                vscode.window.showInformationMessage('首次启动或串口未连接。请点击状态栏中的 "COM: N/A" 选择串口，以便进行下载操作。');
+                // 可以选择在这里直接调用 selectSerialPort() 让用户选择，但信息提示更柔和
+                // await selectSerialPort(); 
+            }
+
+
             // 确保终端在所有配置更新和板子选择后创建
             await getOrCreateSiFliTerminalAndCdProject();
         }, 500);
@@ -1005,7 +1020,7 @@ async function activate(context) {
         context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
             // 检查是否是 'sifli-sdk-codekit' 相关的配置发生了变化
             if (e.affectsConfiguration('sifli-sdk-codekit')) {
-                updateConfiguration(); // 更新内部的路径变量
+                updateConfiguration(); // 更新内部的路径变量，并自动更新状态栏
             }
         }));
 
@@ -1039,7 +1054,7 @@ function deactivate() {
     if (menuconfigBtn) menuconfigBtn.dispose();
     if (buildDownloadBtn) buildDownloadBtn.dispose();
     if (currentBoardStatusItem) currentBoardStatusItem.dispose();
-    if (currentSerialPortStatusItem) currentSerialPortStatusItem.dispose(); // 销毁新增的串口状态栏项
+    if (currentSerialPortStatusItem) currentSerialPortStatusItem.dispose();
 
     console.log('[SiFli Extension] Extension deactivated.');
 }
