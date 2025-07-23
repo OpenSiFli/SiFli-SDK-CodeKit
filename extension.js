@@ -17,6 +17,9 @@ const CUSTOMER_BOARDS_SUBFOLDER = 'customer/boards'; // SDK 下的板子目录
 const HCPU_SUBFOLDER = 'hcpu'; // 板子目录下的 hcpu 文件夹 
 const PTAB_JSON_FILE = 'ptab.json'; // 板子目录下的 ptab.json 文件
 
+// **新增：sftool 参数文件常量**
+const SFTOOL_PARAM_JSON_FILE = 'sftool_param.json';
+
 // 从 VS Code 用户配置中读取路径,初始化为 let 变量
 let SF32_TERMINAL_PATH;
 let SIFLI_SDK_EXPORT_SCRIPT_PATH;
@@ -132,11 +135,19 @@ async function getMenuconfigCommand(boardName) { // 变为 async 函数
         if (currentBoardDetails.type === 'sdk') {
             boardSearchArg = ''; 
         } else if (currentBoardDetails.type === 'project_local') {
-            boardSearchArg = `--board_search_path="../boards"`;
+            const projectLocalBoardsDir = path.dirname(currentBoardDetails.path);
+            const relativeToProject = path.relative(projectPath, projectLocalBoardsDir);
+            boardSearchArg = `--board_search_path="${relativeToProject.replace(/\\/g, '/')}"`;
         } else if (currentBoardDetails.type === 'custom') {
-            const customBoardPath = currentBoardDetails.path; 
-            const relativeToProject = path.relative(projectPath, customBoardPath);
-            boardSearchArg = `--board_search_path="${relativeToProject.replace(/\\/g, '/')}"`; 
+            const customBoardSearchDir = path.dirname(currentBoardDetails.path);
+            const isSameDrive = path.parse(customBoardSearchDir).root.toLowerCase() === path.parse(projectPath).root.toLowerCase();
+
+            if (isSameDrive) {
+                const relativeToProject = path.relative(projectPath, customBoardSearchDir);
+                boardSearchArg = `--board_search_path="${relativeToProject.replace(/\\/g, '/')}"`;
+            } else {
+                boardSearchArg = `--board_search_path="${customBoardSearchDir.replace(/\\/g, '/')}"`;
+            }
         }
     } else {
         vscode.window.showWarningMessage(`当前选择的芯片模组 "${boardName}" 未找到有效配置。请在设置中重新选择。`);
@@ -158,134 +169,116 @@ function getBuildTargetFolder(boardName) {
 }
 
 /**
- * 辅助函数：读取并解析 ImgBurnList.ini 文件。
- * @param {string} boardName 选定的芯片模组名称。
- * @returns {Promise<Array<{file: string, address: string}>>} 返回一个 Promise,解析为包含文件路径和地址的对象数组。
+ * **替换 readImgBurnListIni：** 辅助函数：读取并解析 sftool_param.json 文件。
+ * @param {string} boardName 选定的芯片模组名称 (用于确定 build 路径)。
+ * @returns {Promise<{chip: string, files: Array<{path: string, address: string}>}|null>} 返回一个 Promise，解析为包含芯片类型和文件列表的对象，如果文件不存在或解析失败则返回 null。
  */
-async function readImgBurnListIni(boardName) {
+async function readSftoolParamJson(boardName) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('未打开工作区,无法读取 ImgBurnList.ini。');
-        return [];
+        vscode.window.showErrorMessage('未打开工作区，无法读取 sftool_param.json。');
+        return null;
     }
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
     const buildTargetFolder = getBuildTargetFolder(boardName);
-    const iniFilePath = path.join(workspaceRoot, PROJECT_SUBFOLDER, buildTargetFolder, 'ImgBurnList.ini');
+    const jsonFilePath = path.join(workspaceRoot, PROJECT_SUBFOLDER, buildTargetFolder, SFTOOL_PARAM_JSON_FILE);
 
-    console.log(`[SiFli Extension] Reading ImgBurnList.ini from: ${iniFilePath}`);
+    console.log(`[SiFli Extension] Reading sftool_param.json from: ${jsonFilePath}`);
 
-    if (!fs.existsSync(iniFilePath)) {
-        console.warn(`[SiFli Extension] 未找到当前模组 (${boardName}) 的烧录列表文件 (${path.basename(iniFilePath)})。这可能影响下载命令的完整性。`);
-        return [];
+    if (!fs.existsSync(jsonFilePath)) {
+        vscode.window.showWarningMessage(
+            `未找到当前模组 (${boardName}) 的下载参数文件 (${path.basename(jsonFilePath)})。` + 
+            `这通常意味着项目尚未编译或编译失败。请尝试先执行“构建”操作。`
+        );
+        return null;
     }
 
     try {
-        const fileContent = fs.readFileSync(iniFilePath, 'utf8');
-        const lines = fileContent.split(/\r?\n/).filter(line => line.trim() !== '' && !line.startsWith('['));
-        const filesToFlash = [];
-        let numFiles = 0;
+        const fileContent = fs.readFileSync(jsonFilePath, 'utf8');
+        const sftoolParam = JSON.parse(fileContent);
 
-        for (const line of lines) {
-            if (line.startsWith('NUM=')) {
-                numFiles = parseInt(line.split('=')[1]);
-                break; // 找到 NUM 后即可退出循环
-            }
+        // 验证 JSON 结构
+        if (!sftoolParam.chip || !sftoolParam.write_flash || !Array.isArray(sftoolParam.write_flash.file)) {
+            vscode.window.showErrorMessage(`sftool_param.json 结构无效。缺少 'chip' 或 'write_flash.file' 字段。`);
+            console.error(`[SiFli Extension] Invalid sftool_param.json structure:`, sftoolParam);
+            return null;
         }
 
-        if (numFiles === 0) {
-            console.warn(`[SiFli Extension] ImgBurnList.ini 中未找到有效文件数量 (NUM=0)。`);
-            return [];
-        }
+        const filesToFlash = sftoolParam.write_flash.file.map(item => ({
+            path: item.path,
+            address: item.address
+        }));
 
-        for (let i = 0; i < numFiles; i++) {
-            const fileLine = lines.find(line => line.startsWith(`FILE${i}=`));
-            const addrLine = lines.find(line => line.startsWith(`ADDR${i}=`));
-
-            if (fileLine && addrLine) {
-                const relativeFilePath = fileLine.split('=')[1].trim();
-                const address = addrLine.split('=')[1].trim(); 
-                filesToFlash.push({
-                    file: relativeFilePath,
-                    address: address
-                });
-            } else {
-                console.warn(`[SiFli Extension] ImgBurnList.ini 中缺少 FILE${i} 或 ADDR${i} 条目。`);
-            }
-        }
-        console.log(`[SiFli Extension] Parsed ImgBurnList.ini:`, filesToFlash);
-        return filesToFlash;
+        console.log(`[SiFli Extension] Parsed sftool_param.json:`, { chip: sftoolParam.chip, files: filesToFlash });
+        return {
+            chip: sftoolParam.chip,
+            files: filesToFlash
+        };
 
     } catch (error) {
-        vscode.window.showErrorMessage(`解析烧录列表文件 (${path.basename(iniFilePath)}) 失败: ${error.message}。请检查文件内容是否损坏。`);
-        console.error(`[SiFli Extension] Failed to read or parse ImgBurnList.ini:`, error);
-        return [];
+        vscode.window.showErrorMessage(`解析 sftool_param.json 失败: ${error.message}。请检查文件内容是否为有效 JSON。`);
+        console.error(`[SiFli Extension] Failed to read or parse sftool_param.json:`, error);
+        return null;
     }
 }
 
 
 /**
  * 辅助函数：根据选定的芯片模组和串口号动态生成 sftool 下载命令。
- * **增加：在生成下载命令前,检查关键固件文件是否存在。**
  * @param {string} boardName 选定的芯片模组名称 (e.g., "sf32lb52-lchspi-ulp").
  * @param {string} serialPortNum 串口号 (e.g., "5" for COM5).
- * @returns {Promise<string>} 完整的 sftool 下载命令。如果文件不存在,则返回空字符串。
+ * @returns {Promise<string>} 完整的 sftool 下载命令。如果文件不存在或参数获取失败,则返回空字符串。
  */
 async function getSftoolDownloadCommand(boardName, serialPortNum) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('未打开工作区,无法生成下载命令。');
+        vscode.window.showErrorMessage('未打开工作区，无法生成下载命令。');
         return '';
     }
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    const buildTargetFolder = getBuildTargetFolder(boardName); // 例如 "build_sf32lb52-lchspi-ulp_hcpu"
+    const buildTargetFolder = getBuildTargetFolder(boardName);
     const buildPath = path.join(workspaceRoot, PROJECT_SUBFOLDER, buildTargetFolder);
 
-    // **新增：检查关键 .bin 文件是否存在**
-    const bootloaderPath = path.join(buildPath, 'bootloader', 'bootloader.bin');
-    const ftabPath = path.join(buildPath, 'ftab', 'ftab.bin');
-    const mainBinPath = path.join(buildPath, 'main.bin');
+    // **新增：读取 sftool_param.json 获取芯片类型和文件列表**
+    const sftoolParams = await readSftoolParamJson(boardName);
+    if (!sftoolParams) {
+        // readSftoolParamJson 内部已经处理了文件不存在或解析失败的提示
+        return '';
+    }
 
+    const chipType = sftoolParams.chip;
+    const filesToFlash = sftoolParams.files;
+
+    if (filesToFlash.length === 0) {
+        vscode.window.showWarningMessage(
+            `sftool_param.json 中未指定任何烧录文件。无法生成下载命令。`
+        );
+        return ''; 
+    }
+
+    // **保留：检查核心 .bin 文件是否存在（基于 JSON 中的路径）**
     const missingFiles = [];
-    if (!fs.existsSync(bootloaderPath)) {
-        missingFiles.push(path.relative(workspaceRoot, bootloaderPath));
-    }
-    if (!fs.existsSync(ftabPath)) {
-        missingFiles.push(path.relative(workspaceRoot, ftabPath));
-    }
-    if (!fs.existsSync(mainBinPath)) {
-        missingFiles.push(path.relative(workspaceRoot, mainBinPath));
+    for (const fileEntry of filesToFlash) {
+        const fullFilePath = path.join(buildPath, fileEntry.path);
+        if (!fs.existsSync(fullFilePath)) {
+            missingFiles.push(path.relative(workspaceRoot, fullFilePath));
+        }
     }
 
     if (missingFiles.length > 0) {
         vscode.window.showWarningMessage(
-            `当前模组 (${boardName}) 的以下关键固件文件未找到,无法执行下载操作：\n` +
+            `当前模组 (${boardName}) 的以下关键固件文件未找到，无法执行下载操作：\n` +
             `- ${missingFiles.join('\n- ')}\n` +
-            `请尝试先执行“Build”操作,确保项目已成功编译。`
+            `请尝试先执行“Build”操作，确保项目已成功编译。`
         );
-        return ''; // 文件缺失,不生成下载命令
+        return ''; // 文件缺失，不生成下载命令
     }
 
-    // 从 boardName 中提取芯片类型,例如 "sf32lb52-lcd_base" -> "SF32LB52"
-    // 假定芯片类型是第一个连字符之前的部分,并转换为大写。
-    const chipType = boardName.substring(0, boardName.indexOf('-')).toUpperCase();
-
-    // 调用辅助函数来读取烧录文件列表和地址
-    const filesToFlash = await readImgBurnListIni(boardName);
-    // 如果 filesToFlash 为空,但关键bin文件都存在,说明ImgBurnList.ini有问题,但下载可能仍基于默认或硬编码（如果sftool支持）
-    // 但更安全做法是如果文件列表为空,则阻止下载,因为 sftool 需要知道烧录什么
-    if (filesToFlash.length === 0) {
-        vscode.window.showWarningMessage(
-            `当前模组 (${boardName}) 的烧录列表文件 (${path.basename(buildPath)}/ImgBurnList.ini) 无效或内容为空,无法生成下载命令。`
-        );
-        return ''; // 读取 ImgBurnList.ini 失败或内容为空,不生成下载命令
-    }
 
     // 构建 write_flash 部分的参数
-    // 每个文件路径都需要相对于 `project` 目录,因为终端会 `cd` 到 `project`
-    // ImgBurnList.ini 中的文件路径是相对于 `build_sf32lb52-lchspi-ulp_hcpu` 的。
     const flashArguments = filesToFlash.map(item => {
-        // 构建完整的相对路径,例如 "build_sf32lb52-lchspi-ulp_hcpu\bootloader\bootloader.bin"
-        const fullRelativePath = path.join(buildTargetFolder, item.file).replace(/\\/g, '\\\\'); // Windows路径可能需要双反斜杠转义
+        // JSON 中的路径是相对于构建输出目录的，直接拼接即可
+        const fullRelativePath = path.join(buildTargetFolder, item.path).replace(/\\/g, '\\\\'); // Windows路径可能需要双反斜杠转义
         return `"${fullRelativePath}@${item.address}"`;
     }).join(' ');
 
@@ -800,6 +793,7 @@ function initializeStatusBarItems(context) {
 
     // 新增：显示当前串口的状态栏项
     currentSerialPortStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 89); // 优先级略低于板卡
+    // currentSerialPortStatusItem.text = '🔌 COM: N/A';
     currentSerialPortStatusItem.command = CMD_PREFIX + 'selectDownloadPort'; // 绑定新的命令
     currentSerialPortStatusItem.show();
     context.subscriptions.push(currentSerialPortStatusItem);
