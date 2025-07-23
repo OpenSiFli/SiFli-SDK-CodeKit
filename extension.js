@@ -169,7 +169,7 @@ function getBuildTargetFolder(boardName) {
 }
 
 /**
- * **替换 readImgBurnListIni：** 辅助函数：读取并解析 sftool_param.json 文件。
+ * 辅助函数：读取并解析 sftool_param.json 文件。
  * @param {string} boardName 选定的芯片模组名称 (用于确定 build 路径)。
  * @returns {Promise<{chip: string, files: Array<{path: string, address: string}>}|null>} 返回一个 Promise，解析为包含芯片类型和文件列表的对象，如果文件不存在或解析失败则返回 null。
  */
@@ -187,8 +187,8 @@ async function readSftoolParamJson(boardName) {
 
     if (!fs.existsSync(jsonFilePath)) {
         vscode.window.showWarningMessage(
-            `未找到当前模组 (${boardName}) 的下载参数文件 (${path.basename(jsonFilePath)})。` + 
-            `这通常意味着项目尚未编译或编译失败。请尝试先执行“构建”操作。`
+            `未找到当前模组 (${boardName}) 的下载参数文件 (${path.basename(jsonFilePath)})。` +
+            `请尝试先执行“Build”操作。`
         );
         return null;
     }
@@ -198,15 +198,19 @@ async function readSftoolParamJson(boardName) {
         const sftoolParam = JSON.parse(fileContent);
 
         // 验证 JSON 结构
-        if (!sftoolParam.chip || !sftoolParam.write_flash || !Array.isArray(sftoolParam.write_flash.file)) {
-            vscode.window.showErrorMessage(`sftool_param.json 结构无效。缺少 'chip' 或 'write_flash.file' 字段。`);
+        // 更改：将 sftoolParam.write_flash.file 改为 sftoolParam.write_flash.files
+        // 并且检查 sftoolParam.chip 和 sftoolParam.write_flash 字段是否存在
+        if (!sftoolParam.chip || !sftoolParam.write_flash || !Array.isArray(sftoolParam.write_flash.files)) {
+            vscode.window.showErrorMessage(`sftool_param.json 结构无效。缺少 'chip' 或 'write_flash.files' 字段。`);
             console.error(`[SiFli Extension] Invalid sftool_param.json structure:`, sftoolParam);
             return null;
         }
 
-        const filesToFlash = sftoolParam.write_flash.file.map(item => ({
-            path: item.path,
-            address: item.address
+        // 更改：从 sftoolParam.write_flash.files 中映射数据
+        // 并且将 item.file 映射到 path，item.addr 映射到 address
+        const filesToFlash = sftoolParam.write_flash.files.map(item => ({
+            path: item.file,
+            address: item.addr
         }));
 
         console.log(`[SiFli Extension] Parsed sftool_param.json:`, { chip: sftoolParam.chip, files: filesToFlash });
@@ -297,11 +301,12 @@ function updateConfiguration() {
     const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
     SF32_TERMINAL_PATH = config.get('powershellPath');
     SIFLI_SDK_EXPORT_SCRIPT_PATH = config.get('sifliSdkExportScriptPath');
-    
+
     // **确保这里始终从配置中读取 selectedBoardName**
-    selectedBoardName = config.get('defaultChipModule'); 
-    
-    numThreads = config.get('numThreads', os.cpus().length > 0 ? os.cpus().length : 8); 
+    // 如果配置中没有或为空，则 selectedBoardName 将保持为空字符串，在状态栏中会显示为 N/A
+    selectedBoardName = config.get('defaultChipModule', ''); // 确保获取时有默认值，如果未设置则为''
+
+    numThreads = config.get('numThreads', os.cpus().length > 0 ? os.cpus().length : 8);
 
     // 根据 export 脚本路径计算 SDK 根目录
     // 假设 export.ps1 位于 SDK 的根目录
@@ -714,7 +719,9 @@ function executeCleanCommand() {
     }
 }
 
-// 更新状态栏按钮的提示信息
+/**
+ * 更新状态栏按钮的提示信息
+ */
 function updateStatusBarItems() {
     // getCompileCommand 和 getMenuconfigCommand 现在是异步的，不能直接在这里调用。
     // 状态栏的tooltip可以简化，或者在需要时才异步更新。
@@ -729,17 +736,18 @@ function updateStatusBarItems() {
         cleanBtn.tooltip = `删除 SiFli 构建缓存 (${getBuildTargetFolder(selectedBoardName)})`;
     }
     if (downloadBtn) {
-        downloadBtn.tooltip = `执行 SiFli 下载 (当前模组: ${selectedBoardName})`;
+        downloadBtn.tooltip = `执行 SiFli 下载 (当前模组: ${selectedBoardName || '未选择'})`; // 更新提示
     }
     if (menuconfigBtn) {
         menuconfigBtn.tooltip = `打开 SiFli Menuconfig`;
     }
     if (buildDownloadBtn) {
-        buildDownloadBtn.tooltip = `构建并下载 SiFli 项目 (当前模组: ${selectedBoardName})`;
+        buildDownloadBtn.tooltip = `构建并下载 SiFli 项目 (当前模组: ${selectedBoardName || '未选择'})`; // 更新提示
     }
     if (currentBoardStatusItem) {
-        currentBoardStatusItem.text = `SiFli Board: ${selectedBoardName} (J${numThreads})`; // 显示线程数
-        currentBoardStatusItem.tooltip = `当前 SiFli 芯片模组: ${selectedBoardName}\n编译线程数: J${numThreads}\n点击切换芯片模组或修改线程数`;
+        // 如果 selectedBoardName 为空字符串，则显示 "N/A"
+        currentBoardStatusItem.text = `SiFli Board: ${selectedBoardName || 'N/A'} (J${numThreads})`;
+        currentBoardStatusItem.tooltip = `当前 SiFli 芯片模组: ${selectedBoardName || '未选择'}\n编译线程数: J${numThreads}\n点击切换芯片模组或修改线程数`;
     }
     // 更新串口状态栏项
     if (currentSerialPortStatusItem) {
@@ -852,13 +860,15 @@ async function promptForInitialBoardSelection(context) {
     const availableBoardsDetails = await discoverBoards();
 
     // 检查是否需要提示用户选择初始芯片模组
-    // 条件：从未进行过初始设置 OR 当前配置的默认模组无效 OR 当前配置的默认模组不在已发现的板子列表中
+    // 条件：从未进行过初始设置 OR 当前配置的默认模组无效/未设置 OR 当前配置的默认模组不在已发现的板子列表中
     if (!hasRunInitialSetup || !currentDefaultBoard || !availableBoardsDetails.some(b => b.name === currentDefaultBoard)) {
         vscode.window.showInformationMessage('请选择您当前要开发的芯片模组。');
 
         if (availableBoardsDetails.length === 0) {
             vscode.window.showWarningMessage('未发现任何 SiFli 芯片模组。请检查您的 SDK 安装或自定义板子路径设置。');
-            await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true); // 即使没有板子,也标记为已运行,避免每次启动都弹出
+            // 即使没有板子,也标记为已运行,避免每次启动都弹出
+            await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true);
+            // 此时 selectedBoardName 保持为空或无效值，updateConfiguration 会将其显示为 N/A
             return;
         }
 
@@ -888,13 +898,9 @@ async function promptForInitialBoardSelection(context) {
             await config.update('defaultChipModule', selected.label, vscode.ConfigurationTarget.Global);
             vscode.window.showInformationMessage(`SiFli 默认模组已设置为: ${selected.label}`);
         } else {
-            // 如果用户取消选择,但有可用的板子,则默认选择第一个
-            if (availableBoardsDetails.length > 0) {
-                await config.update('defaultChipModule', availableBoardsDetails[0].name, vscode.ConfigurationTarget.Global);
-                vscode.window.showWarningMessage(`未选择芯片模组,已将默认模组设置为第一个可用模组: ${availableBoardsDetails[0].name}。您可以在 VS Code 设置中修改。`);
-            } else {
-                vscode.window.showWarningMessage(`未选择芯片模组且未发现可用模组。请确保 SDK 安装正确且存在板子配置。`);
-            }
+            // 用户取消初始选择，清空配置中的 defaultChipModule，使其显示为 N/A
+            await config.update('defaultChipModule', '', vscode.ConfigurationTarget.Global);
+            vscode.window.showInformationMessage('已取消芯片模组选择。请稍后点击状态栏中的“SiFli Board: N/A”重新选择。');
         }
         await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true);
         // 这里不需要再手动更新 selectedBoardName 和 updateStatusBarItems(),
@@ -939,12 +945,17 @@ async function selectChipModule() {
         title: '选择芯片模组'
     });
 
-    if (selectedQuickPickItem && selectedQuickPickItem.label !== selectedBoardName) {
-        const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
-        // 更新全局配置
-        await config.update('defaultChipModule', selectedQuickPickItem.label, vscode.ConfigurationTarget.Global);
-        vscode.window.showInformationMessage(`SiFli 芯片模组已切换为: ${selectedQuickPickItem.label}`);
-        // updateConfiguration() 会在配置变化监听器中自动调用,更新 selectedBoardName
+    if (selectedQuickPickItem) {
+        if (selectedQuickPickItem.label !== selectedBoardName) {
+            const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+            // 更新全局配置
+            await config.update('defaultChipModule', selectedQuickPickItem.label, vscode.ConfigurationTarget.Global);
+            vscode.window.showInformationMessage(`SiFli 芯片模组已切换为: ${selectedQuickPickItem.label}`);
+            // updateConfiguration() 会在配置变化监听器中自动调用,更新 selectedBoardName
+        }
+    } else {
+        // 用户取消选择，不做任何操作，保持原有的 defaultChipModule 不变。
+        // vscode.window.showInformationMessage('已取消芯片模组选择。'); // 可以选择不显示此消息，避免打扰用户
     }
 
     // 允许用户修改线程数
