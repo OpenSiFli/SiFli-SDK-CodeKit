@@ -1114,6 +1114,44 @@ async function fetchSiFliSdkReleases(source) {
 }
 
 /**
+ * 新增：从 GitHub 或 Gitee API 获取 SiFli SDK 的分支列表。
+ * @param {'github' | 'gitee'} source
+ * @returns {Promise<Array<{name: string, commitSha: string}>>}
+ */
+async function fetchSiFliSdkBranches(source) {
+    const url = source === 'github' ? `${SIFLI_SDK_GITHUB_REPO_BASE}/branches` : `${SIFLI_SDK_GITEE_REPO_BASE}/branches`;
+    const headers = { 'User-Agent': 'VSCode-SiFli-Extension' };
+
+    try {
+        const response = await axios.get(url, { headers });
+        const branches = response.data;
+
+        const formattedBranches = branches.map(branch => ({
+            name: branch.name,
+            commitSha: branch.commit.sha
+        }));
+
+        // 优先显示 main/master,然后按字母顺序排序
+        formattedBranches.sort((a, b) => {
+            if (a.name === 'main' || a.name === 'master') return -1;
+            if (b.name === 'main' || b.name === 'master') return 1;
+            return a.name.localeCompare(b.name);
+        });
+
+        return formattedBranches;
+    } catch (error) {
+        console.error(`[SiFli SDK Manager] 获取分支失败 (${source}): ${error.message}`);
+        if (error.response) {
+            console.error(`Status: ${error.response.status}, Data:`, error.response.data);
+        } else if (error.request) {
+            console.error('No response received:', error.request);
+        }
+        throw new Error(`获取分支失败: ${error.message}`);
+    }
+}
+
+
+/**
  * 获取 WebView 的 HTML 内容。
  * @param {vscode.Webview} webview
  * @param {vscode.Uri} extensionUri
@@ -1200,6 +1238,21 @@ async function createSdkManagementWebview(context) {
                         });
                     }
                     return;
+                case 'fetchBranches': // 新增：处理获取分支的命令
+                    try {
+                        const branches = await fetchSiFliSdkBranches(message.source);
+                        panel.webview.postMessage({
+                            command: 'displayBranches',
+                            branches: branches
+                        });
+                    } catch (error) {
+                        panel.webview.postMessage({
+                            command: 'logMessage',
+                            level: 'error',
+                            message: `获取分支列表失败: ${error.message}`
+                        });
+                    }
+                    return;
                 case 'startSdkInstallation':
                     // 检查 Git 是否安装
                     if (!await isGitInstalled()) {
@@ -1208,9 +1261,10 @@ async function createSdkManagementWebview(context) {
                         return;
                     }
 
-                    vscode.window.showInformationMessage(`正在为版本 ${message.version} 在 ${message.installPath} 启动 SiFli SDK 安装 (通过 Git)`);
+                    vscode.window.showInformationMessage(`正在为 ${message.type === 'tag' ? '版本' : '分支'} ${message.name} 在 ${message.installPath} 启动 SiFli SDK 安装 (通过 Git)`);
                     try {
-                        await installSiFliSdk(message.source, message.version, message.installPath, panel.webview);
+                        // 传递 type 和 name 给 installSiFliSdk
+                        await installSiFliSdk(message.source, message.type, message.name, message.installPath, panel.webview);
                         vscode.window.showInformationMessage('SiFli SDK 安装成功完成！');
                         panel.webview.postMessage({ command: 'installationComplete' });
                     } catch (error) {
@@ -1227,38 +1281,41 @@ async function createSdkManagementWebview(context) {
 
 /**
  * 执行 SiFli SDK 的下载和安装（通过 Git）。
- * @param {'github' | 'gitee'} source
- * @param {string} versionTag 版本标签 (例如: v1.0.0, release/v2.4)
+ * @param {'github' | 'gitee'} source Git仓库来源
+ * @param {'tag' | 'branch'} type 下载类型：标签(release)或分支
+ * @param {string} name 对应的标签名称或分支名称
  * @param {string} installPath 安装目录的完整路径
  * @param {vscode.Webview} webview 用于向 WebView 发送日志消息
  * @returns {Promise<void>}
  */
-async function installSiFliSdk(source, versionTag, installPath, webview) {
-    webview.postMessage({ command: 'logMessage', level: 'info', message: `开始通过 Git 安装 SiFli SDK (版本: ${versionTag}, 路径: ${installPath})` });
+async function installSiFliSdk(source, type, name, installPath, webview) {
+    webview.postMessage({ command: 'logMessage', level: 'info', message: `开始通过 Git 安装 SiFli SDK (${type}: ${name}, 路径: ${installPath})` });
 
     const repoUrl = source === 'github' ? SIFLI_SDK_GITHUB_REPO_GIT : SIFLI_SDK_GITEE_REPO_GIT;
 
-    // --- 1. 检查并提示最新版本 ---
-    try {
-        const allReleases = await fetchSiFliSdkReleases(source); // 获取所有发布版本
-        if (allReleases.length > 0) {
-            const latestReleaseTag = allReleases[0].tagName; // 因为 fetchSiFliSdkReleases 已经按日期降序排序
-            if (versionTag !== latestReleaseTag) {
-                const userChoice = await vscode.window.showWarningMessage(
-                    `您选择的版本是 ${versionTag},但最新版本是 ${latestReleaseTag}。是否要安装最新版本？`,
-                    '安装最新版本', '安装我选择的版本'
-                );
-                if (userChoice === '安装最新版本') {
-                    versionTag = latestReleaseTag;
-                    webview.postMessage({ command: 'logMessage', level: 'info', message: `用户选择安装最新版本: ${versionTag}` });
-                } else if (userChoice === undefined) { // 用户关闭了提示框
-                    throw new Error('用户取消安装。');
+    // --- 1. 检查并提示最新版本 (仅对 release 有效) ---
+    if (type === 'tag') {
+        try {
+            const allReleases = await fetchSiFliSdkReleases(source); // 获取所有发布版本
+            if (allReleases.length > 0) {
+                const latestReleaseTag = allReleases[0].tagName; // 因为 fetchSiFliSdkReleases 已经按日期降序排序
+                if (name !== latestReleaseTag) {
+                    const userChoice = await vscode.window.showWarningMessage(
+                        `您选择的版本是 ${name},但最新版本是 ${latestReleaseTag}。是否要安装最新版本？`,
+                        '安装最新版本', '安装我选择的版本'
+                    );
+                    if (userChoice === '安装最新版本') {
+                        name = latestReleaseTag; // 更新为最新版本
+                        webview.postMessage({ command: 'logMessage', level: 'info', message: `用户选择安装最新版本: ${name}` });
+                    } else if (userChoice === undefined) { // 用户关闭了提示框
+                        throw new Error('用户取消安装。');
+                    }
                 }
             }
+        } catch (error) {
+            webview.postMessage({ command: 'logMessage', level: 'warn', message: `无法获取最新版本信息或处理版本选择: ${error.message}` });
+            // 如果无法获取最新版本,不应该阻止安装用户指定的版本,只是无法提供提示
         }
-    } catch (error) {
-        webview.postMessage({ command: 'logMessage', level: 'warn', message: `无法获取最新版本信息或处理版本选择: ${error.message}` });
-        // 如果无法获取最新版本,不应该阻止安装用户指定的版本,只是无法提供提示
     }
 
 
@@ -1294,11 +1351,11 @@ async function installSiFliSdk(source, versionTag, installPath, webview) {
 
     // --- 3. 执行 Git Clone 和 Checkout ---
     try {
-        webview.postMessage({ command: 'logMessage', level: 'info', message: `克隆仓库: ${repoUrl} 到 ${installPath} 并切换到版本: ${versionTag}` });
+        webview.postMessage({ command: 'logMessage', level: 'info', message: `克隆仓库: ${repoUrl} 到 ${installPath} 并切换到 ${type}: ${name}` });
         // 直接使用 -b 参数克隆指定分支或标签
-        await executeGitCommand(`clone --recursive --progress ${repoUrl} -b "${versionTag}" "${installPath}"`, parentDir, webview);
+        await executeGitCommand(`clone --recursive --progress ${repoUrl} -b "${name}" "${installPath}"`, parentDir, webview);
 
-        webview.postMessage({ command: 'logMessage', level: 'info', message: 'Git 克隆和版本切换完成。' });
+        webview.postMessage({ command: 'logMessage', level: 'info', message: 'Git 克隆和版本/分支切换完成。' });
 
     } catch (error) {
         // 如果克隆失败,尝试清理部分克隆的目录
@@ -1314,7 +1371,7 @@ async function installSiFliSdk(source, versionTag, installPath, webview) {
     }
 
 
-    // --- 4. 更新 VS Code 配置 ---
+    // --- 4. 更新 VS Code 配置 (保留注释掉的代码,作为参考) ---
     // const config = vscode.workspace.getConfiguration('one-step-for-sifli');
     // const exportPs1Path = path.join(installPath, 'export.ps1'); // 假设 export.ps1 在 SDK 根目录下
     // if (fs.existsSync(exportPs1Path)) {

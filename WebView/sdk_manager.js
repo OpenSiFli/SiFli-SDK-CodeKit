@@ -3,14 +3,20 @@
     const vscode = acquireVsCodeApi();
 
     const sdkSourceSelect = document.getElementById('sdkSource');
+    const downloadTypeSelect = document.getElementById('downloadType'); // 新增：下载类型下拉框
+    const releaseSection = document.getElementById('releaseSection');
+    const branchSection = document.getElementById('branchSection');
+
     const sdkVersionSelect = document.getElementById('sdkVersion');
-    const manualVersionInput = document.getElementById('manualVersion');
+    const sdkBranchSelect = document.getElementById('sdkBranch'); // 新增：分支下拉框
+
     const installPathInput = document.getElementById('installPath');
     const browsePathButton = document.getElementById('browsePath');
     const installSdkButton = document.getElementById('installSdk');
     const logContainer = document.getElementById('logContainer');
 
     let availableReleases = [];
+    let availableBranches = [];
 
     function log(message, level = 'info') {
         const p = document.createElement('p');
@@ -20,15 +26,34 @@
         logContainer.scrollTop = logContainer.scrollHeight; // 滚动到底部
     }
 
-    // 初始化：获取并显示 SDK 版本
-    function fetchAndDisplayReleases() {
-        log('正在从服务器获取 SDK 发布版本...', 'info');
+    // 初始化：获取并显示 SDK 版本/分支
+    function fetchAndDisplayOptions() {
+        const selectedSource = sdkSourceSelect.value;
+        const selectedDownloadType = downloadTypeSelect.value; // 从下拉框获取下载类型
+
+        // 清空所有选择框并禁用
         sdkVersionSelect.innerHTML = '<option value="">正在加载版本...</option>';
         sdkVersionSelect.disabled = true;
-        vscode.postMessage({
-            command: 'fetchReleases',
-            source: sdkSourceSelect.value
-        });
+        sdkBranchSelect.innerHTML = '<option value="">正在加载分支...</option>';
+        sdkBranchSelect.disabled = true;
+
+        if (selectedDownloadType === 'release') {
+            releaseSection.style.display = 'block';
+            branchSection.style.display = 'none';
+            log('正在从服务器获取 SDK 发布版本...', 'info');
+            vscode.postMessage({
+                command: 'fetchReleases',
+                source: selectedSource
+            });
+        } else { // 'branch'
+            releaseSection.style.display = 'none';
+            branchSection.style.display = 'block';
+            log('正在从服务器获取 SDK 分支列表...', 'info');
+            vscode.postMessage({
+                command: 'fetchBranches',
+                source: selectedSource
+            });
+        }
     }
 
     // 处理来自扩展程序的消息
@@ -54,6 +79,22 @@
                     sdkVersionSelect.value = availableReleases[0].tagName; // 默认选择最新版本
                 }
                 break;
+            case 'displayBranches':
+                availableBranches = message.branches;
+                sdkBranchSelect.innerHTML = '<option value="">请选择一个分支</option>';
+                availableBranches.forEach(branch => {
+                    const option = document.createElement('option');
+                    option.value = branch.name;
+                    option.textContent = branch.name;
+                    sdkBranchSelect.appendChild(option);
+                });
+                sdkBranchSelect.disabled = false;
+                log('SDK 分支列表加载完成。', 'info');
+                if (availableBranches.length > 0) {
+                    const defaultBranch = availableBranches.find(b => b.name === 'main' || b.name === 'master');
+                    sdkBranchSelect.value = defaultBranch ? defaultBranch.name : availableBranches[0].name; // 默认选择 main/master 或第一个分支
+                }
+                break;
             case 'logMessage':
                 log(message.message, message.level);
                 break;
@@ -75,35 +116,28 @@
         });
     });
 
-    sdkSourceSelect.addEventListener('change', fetchAndDisplayReleases);
+    sdkSourceSelect.addEventListener('change', fetchAndDisplayOptions); // 源改变时重新获取
 
-    manualVersionInput.addEventListener('input', () => {
-        // 如果手动输入了版本，禁用选择框
-        sdkVersionSelect.disabled = manualVersionInput.value !== '';
-        if (manualVersionInput.value !== '') {
-            sdkVersionSelect.value = ''; // 清空选择框的选择
-        }
-    });
-
-    sdkVersionSelect.addEventListener('change', () => {
-        // 如果从选择框选择了版本，清空手动输入框
-        if (sdkVersionSelect.value !== '') {
-            manualVersionInput.value = '';
-        }
-    });
-
+    downloadTypeSelect.addEventListener('change', fetchAndDisplayOptions); // 下载类型改变时重新获取
 
     installSdkButton.addEventListener('click', () => {
-        let version = sdkVersionSelect.value;
-        if (manualVersionInput.value) {
-            version = manualVersionInput.value;
-        }
-
         const source = sdkSourceSelect.value;
         const installPath = installPathInput.value;
+        const downloadType = downloadTypeSelect.value; // 从下拉框获取下载类型
 
-        if (!version) {
-            log('请选择或输入一个 SDK 版本。', 'error');
+        let selectedName = ''; // 统一存储选中的版本或分支名称
+        let typeParam = '';
+
+        if (downloadType === 'release') {
+            selectedName = sdkVersionSelect.value;
+            typeParam = 'tag';
+        } else { // 'branch'
+            selectedName = sdkBranchSelect.value;
+            typeParam = 'branch';
+        }
+
+        if (!selectedName) {
+            log(`请选择一个 SDK ${downloadType === 'release' ? '版本' : '分支'}。`, 'error');
             return;
         }
         if (!installPath) {
@@ -116,24 +150,13 @@
         vscode.postMessage({
             command: 'startSdkInstallation',
             source: source,
-            version: version,
+            type: typeParam, // 传递类型参数 (tag 或 branch)
+            name: selectedName, // 传递选中的名称 (tag_name 或 branch_name)
             installPath: installPath
         });
     });
 
-    // 页面加载完成后立即获取版本信息
-    fetchAndDisplayReleases();
-
-    // 尝试从 VS Code 的状态中恢复安装路径，如果用户之前设置过
-    // 这需要你在扩展程序保存 WebView 状态时进行设置
-    // const previousState = vscode.getState();
-    // if (previousState && previousState.installPath) {
-    //     installPathInput.value = previousState.installPath;
-    // }
-
-    // 每次更新 UI 时保存状态，例如当 installPathInput.value 改变时
-    // installPathInput.addEventListener('change', () => {
-    //     vscode.setState({ installPath: installPathInput.value });
-    // });
+    // 页面加载完成后立即获取版本信息 (根据默认选中的 Release)
+    fetchAndDisplayOptions();
 
 })();
