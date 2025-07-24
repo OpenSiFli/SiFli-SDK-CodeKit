@@ -38,7 +38,7 @@ const REBUILD_TASK_NAME = "SiFli: Rebuild";
 const BUILD_DOWNLOAD_TASK_NAME = "SiFli: Build & Download";
 
 // 状态栏按钮变量
-let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn, currentBoardStatusItem, sdkManageBtn, currentSerialPortStatusItem; // 新增 currentSerialPortStatusItem
+let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn, currentBoardStatusItem, sdkManageBtn, currentSerialPortStatusItem; // 新增 currentSerialPortItem
 
 // 定义一个常量用于全局状态的键,表示是否已经执行过首次设置
 const HAS_RUN_INITIAL_SETUP_KEY = 'oneStepForSifli.hasRunInitialSetup';
@@ -71,12 +71,12 @@ async function getCompileCommand(boardName, threads) {
 
     if (currentBoardDetails) {
         if (currentBoardDetails.type === 'sdk') {
-            // 如果板子来源于SDK，scons默认会找到，--board_search_path 可以省略或指向任意路径
-            // 在这种情况下，我们不添加 --board_search_path 参数，保持命令简洁
+            // 如果板子来源于SDK,scons默认会找到,--board_search_path 可以省略或指向任意路径
+            // 在这种情况下,我们不添加 --board_search_path 参数,保持命令简洁
             boardSearchArg = ''; 
             console.log(`[SiFli Extension] Board '${boardName}' is from SDK. No --board_search_path needed.`);
         } else if (currentBoardDetails.type === 'project_local') {
-            // 如果板子来源于项目同级的 boards 目录，相对于 project 目录是 '../boards'
+            // 如果板子来源于项目同级的 boards 目录,相对于 project 目录是 '../boards'
             // board.path 是 'workspaceRoot/boards/board_name'
             // 我们需要 'workspaceRoot/boards' 相对于 'projectPath' 的路径
             const projectLocalBoardsDir = path.dirname(currentBoardDetails.path); // 获取到 .../boards 目录
@@ -93,21 +93,21 @@ async function getCompileCommand(boardName, threads) {
             const isSameDrive = path.parse(customBoardSearchDir).root.toLowerCase() === path.parse(projectPath).root.toLowerCase();
 
             if (isSameDrive) {
-                // 如果在同一盘符，计算相对路径
+                // 如果在同一盘符,计算相对路径
                 const relativeToProject = path.relative(projectPath, customBoardSearchDir);
                 boardSearchArg = `--board_search_path="${relativeToProject.replace(/\\/g, '/')}"`;
                 console.log(`[SiFli Extension] Board '${boardName}' is from custom path on same drive. Using --board_search_path="${relativeToProject}".`);
             } else {
-                // 如果不在同一盘符，使用绝对路径
+                // 如果不在同一盘符,使用绝对路径
                 boardSearchArg = `--board_search_path="${customBoardSearchDir.replace(/\\/g, '/')}"`; // SCons 通常接受正斜杠的绝对路径
                 console.log(`[SiFli Extension] Board '${boardName}' is from custom path on different drive. Using absolute --board_search_path="${customBoardSearchDir}".`);
             }
         }
     } else {
-        // 如果 selectedBoardName 不在任何发现的板子列表中，可能是无效配置，发出警告
+        // 如果 selectedBoardName 不在任何发现的板子列表中,可能是无效配置,发出警告
         vscode.window.showWarningMessage(`当前选择的芯片模组 "${boardName}" 未找到有效配置。请在设置中重新选择。`);
         console.warn(`[SiFli Extension] Selected board "${boardName}" not found in discovered boards.`);
-        // 尝试使用默认的 project_local 路径作为 fallback，以避免命令失败
+        // 尝试使用默认的 project_local 路径作为 fallback,以避免命令失败
         // 这里仍旧回退到项目同级的 boards 目录
         boardSearchArg = `--board_search_path="../boards"`; 
     }
@@ -171,12 +171,12 @@ function getBuildTargetFolder(boardName) {
 /**
  * 辅助函数：读取并解析 sftool_param.json 文件。
  * @param {string} boardName 选定的芯片模组名称 (用于确定 build 路径)。
- * @returns {Promise<{chip: string, files: Array<{path: string, address: string}>}|null>} 返回一个 Promise，解析为包含芯片类型和文件列表的对象，如果文件不存在或解析失败则返回 null。
+ * @returns {Promise<{chip: string, memory: string, files: Array<{file: string, addr: string}>}|null>} 返回一个 Promise,解析为包含芯片类型、存储类型和文件列表的对象,如果文件不存在或解析失败则返回 null。
  */
 async function readSftoolParamJson(boardName) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('未打开工作区，无法读取 sftool_param.json。');
+        vscode.window.showErrorMessage('未打开工作区,无法读取 sftool_param.json。');
         return null;
     }
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
@@ -187,8 +187,8 @@ async function readSftoolParamJson(boardName) {
 
     if (!fs.existsSync(jsonFilePath)) {
         vscode.window.showWarningMessage(
-            `未找到当前模组 (${boardName}) 的下载参数文件 (${path.basename(jsonFilePath)})。` +
-            `请尝试先执行“Build”操作。`
+            `未找到当前模组 (${boardName}) 的下载参数文件 (${path.basename(jsonFilePath)})。` + 
+            `请尝试先执行“构建”操作。`
         );
         return null;
     }
@@ -198,24 +198,26 @@ async function readSftoolParamJson(boardName) {
         const sftoolParam = JSON.parse(fileContent);
 
         // 验证 JSON 结构
-        // 更改：将 sftoolParam.write_flash.file 改为 sftoolParam.write_flash.files
-        // 并且检查 sftoolParam.chip 和 sftoolParam.write_flash 字段是否存在
+        // 确保 'chip', 'write_flash' 和 'write_flash.files' 字段存在且类型正确
         if (!sftoolParam.chip || !sftoolParam.write_flash || !Array.isArray(sftoolParam.write_flash.files)) {
             vscode.window.showErrorMessage(`sftool_param.json 结构无效。缺少 'chip' 或 'write_flash.files' 字段。`);
             console.error(`[SiFli Extension] Invalid sftool_param.json structure:`, sftoolParam);
             return null;
         }
 
-        // 更改：从 sftoolParam.write_flash.files 中映射数据
-        // 并且将 item.file 映射到 path，item.addr 映射到 address
+        // 获取 memory 字段,如果不存在则默认为 'NOR'
+        const memoryType = sftoolParam.memory || 'NOR';
+
+        // 映射文件列表,注意 json 文件的键是 "file" 和 "addr"
         const filesToFlash = sftoolParam.write_flash.files.map(item => ({
-            path: item.file,
-            address: item.addr
+            file: item.file,
+            addr: item.addr
         }));
 
-        console.log(`[SiFli Extension] Parsed sftool_param.json:`, { chip: sftoolParam.chip, files: filesToFlash });
+        console.log(`[SiFli Extension] Parsed sftool_param.json:`, { chip: sftoolParam.chip, memory: memoryType, files: filesToFlash });
         return {
             chip: sftoolParam.chip,
+            memory: memoryType,
             files: filesToFlash
         };
 
@@ -234,16 +236,25 @@ async function readSftoolParamJson(boardName) {
  * @returns {Promise<string>} 完整的 sftool 下载命令。如果文件不存在或参数获取失败,则返回空字符串。
  */
 async function getSftoolDownloadCommand(boardName, serialPortNum) {
+    if (!boardName) {
+        vscode.window.showWarningMessage('未选择 SiFli 芯片模组。请点击状态栏中的“SiFli Board: N/A”选择模组。');
+        return '';
+    }
+    if (!serialPortNum) {
+        vscode.window.showWarningMessage('未选择下载串口。请点击状态栏中的“COM: N/A”选择串口。');
+        return '';
+    }
+
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('未打开工作区，无法生成下载命令。');
+        vscode.window.showErrorMessage('未打开工作区,无法生成下载命令。');
         return '';
     }
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
     const buildTargetFolder = getBuildTargetFolder(boardName);
     const buildPath = path.join(workspaceRoot, PROJECT_SUBFOLDER, buildTargetFolder);
 
-    // 读取 sftool_param.json 获取芯片类型和文件列表
+    // 读取 sftool_param.json 获取芯片类型、存储类型和文件列表
     const sftoolParams = await readSftoolParamJson(boardName);
     if (!sftoolParams) {
         // readSftoolParamJson 内部已经处理了文件不存在或解析失败的提示
@@ -251,6 +262,7 @@ async function getSftoolDownloadCommand(boardName, serialPortNum) {
     }
 
     const chipType = sftoolParams.chip;
+    const memoryType = sftoolParams.memory.toLowerCase(); // 转换为小写,如 "nor", "nand", "sd"
     const filesToFlash = sftoolParams.files;
 
     if (filesToFlash.length === 0) {
@@ -260,10 +272,10 @@ async function getSftoolDownloadCommand(boardName, serialPortNum) {
         return ''; 
     }
 
-    // **保留：检查核心 .bin 文件是否存在（基于 JSON 中的路径）**
+    // 检查核心 .bin 文件是否存在（基于 JSON 中的路径）
     const missingFiles = [];
     for (const fileEntry of filesToFlash) {
-        const fullFilePath = path.join(buildPath, fileEntry.path);
+        const fullFilePath = path.join(buildPath, fileEntry.file); // 注意这里是 item.file
         if (!fs.existsSync(fullFilePath)) {
             missingFiles.push(path.relative(workspaceRoot, fullFilePath));
         }
@@ -271,23 +283,23 @@ async function getSftoolDownloadCommand(boardName, serialPortNum) {
 
     if (missingFiles.length > 0) {
         vscode.window.showWarningMessage(
-            `当前模组 (${boardName}) 的以下关键固件文件未找到，无法执行下载操作：\n` +
+            `当前模组 (${boardName}) 的以下关键固件文件未找到,无法执行下载操作：\n` +
             `- ${missingFiles.join('\n- ')}\n` +
-            `请尝试先执行“Build”操作，确保项目已成功编译。`
+            `请尝试先执行“Build”操作,确保项目已成功编译。`
         );
-        return ''; // 文件缺失，不生成下载命令
+        return ''; // 文件缺失,不生成下载命令
     }
 
 
     // 构建 write_flash 部分的参数
     const flashArguments = filesToFlash.map(item => {
-        // JSON 中的路径是相对于构建输出目录的，直接拼接即可
-        const fullRelativePath = path.join(buildTargetFolder, item.path).replace(/\\/g, '\\\\'); // Windows路径可能需要双反斜杠转义
-        return `"${fullRelativePath}@${item.address}"`;
+        // JSON 中的路径是相对于构建输出目录的,直接拼接即可
+        const fullRelativePath = path.join(buildTargetFolder, item.file).replace(/\\/g, '\\\\'); // Windows路径可能需要双反斜杠转义
+        return `"${fullRelativePath}@${item.addr}"`; // 注意这里是 item.addr
     }).join(' ');
 
-    // 构造完整的 sftool 命令
-    const downloadCommand = `sftool -p COM${serialPortNum} -c ${chipType} write_flash ${flashArguments}`;
+    // 构造完整的 sftool 命令,加入 -m 参数
+    const downloadCommand = `sftool -p COM${serialPortNum} -m ${memoryType} -c ${chipType} write_flash ${flashArguments}`;
     console.log(`[SiFli Extension] Generated sftool command: ${downloadCommand}`);
     return downloadCommand;
 }
@@ -301,12 +313,12 @@ function updateConfiguration() {
     const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
     SF32_TERMINAL_PATH = config.get('powershellPath');
     SIFLI_SDK_EXPORT_SCRIPT_PATH = config.get('sifliSdkExportScriptPath');
-
+    
     // **确保这里始终从配置中读取 selectedBoardName**
-    // 如果配置中没有或为空，则 selectedBoardName 将保持为空字符串，在状态栏中会显示为 N/A
-    selectedBoardName = config.get('defaultChipModule', ''); // 确保获取时有默认值，如果未设置则为''
-
-    numThreads = config.get('numThreads', os.cpus().length > 0 ? os.cpus().length : 8);
+    // 如果配置中没有或为空,则 selectedBoardName 将保持为空字符串,在状态栏中会显示为 N/A
+    selectedBoardName = config.get('defaultChipModule', ''); // 确保获取时有默认值,如果未设置则为''
+    
+    numThreads = config.get('numThreads', os.cpus().length > 0 ? os.cpus().length : 8); 
 
     // 根据 export 脚本路径计算 SDK 根目录
     // 假设 export.ps1 位于 SDK 的根目录
@@ -330,7 +342,7 @@ function updateConfiguration() {
     console.log(`[SiFli Extension] Configuration updated:`);
     console.log(`  PowerShell Path: ${SF32_TERMINAL_PATH}`);
     console.log(`  SiFli SDK Export Script Path: ${SIFLI_SDK_EXPORT_SCRIPT_PATH}`);
-    console.log(`  Selected SiFli Board: ${selectedBoardName}`); // 确认这里会显示新值
+    console.log(`  Selected SiFli Board: ${selectedBoardName}`); 
     console.log(`  Compilation Threads: ${numThreads}`);
 
 
@@ -510,7 +522,6 @@ async function selectSerialPort() { // 此函数不再是下载前的选择,而�
         const serialPorts = await getSerialPorts();
 
         if (serialPorts.length === 0) {
-            // 将警告信息降级为信息提示,更友好
             vscode.window.showInformationMessage('未检测到任何串行端口设备。请检查设备连接和驱动安装。');
             selectedSerialPort = null; // 未检测到串口时清空已选串口
             updateStatusBarItems(); // 更新状态栏显示
@@ -542,6 +553,8 @@ async function selectSerialPort() { // 此函数不再是下载前的选择,而�
                 return comPortNum;
             } else {
                 vscode.window.showInformationMessage('已取消串口选择。');
+                selectedSerialPort = null; // 明确设置为 null
+                updateStatusBarItems(); // 更新状态栏
                 return null;
             }
         }
@@ -554,7 +567,7 @@ async function selectSerialPort() { // 此函数不再是下载前的选择,而�
 
 
 /**
- * 辅助函数：扫描指定目录，查找符合条件的板子配置。
+ * 辅助函数：扫描指定目录,查找符合条件的板子配置。
  * @param {string} directoryPath 要扫描的目录路径
  * @param {Map<string, {name: string, path: string, type: 'sdk'|'custom'|'project_local'}>} boardMap 存储发现板子信息的 Map
  * @param {'sdk'|'custom'|'project_local'} sourceType 当前扫描的板子来源类型
@@ -575,16 +588,16 @@ async function scanDirectoryForBoards(directoryPath, boardMap, sourceType) {
                 const ptabJsonPath = path.join(boardFullPath, PTAB_JSON_FILE); // 检查 ptab.json 文件
 
                 if (fs.existsSync(hcpuPath) && fs.lstatSync(hcpuPath).isDirectory() && fs.existsSync(ptabJsonPath) && fs.lstatSync(ptabJsonPath).isFile()) {
-                    // 优先级逻辑：如果高优先级类型（custom/project_local）的板子与已存在板子同名，则覆盖
+                    // 优先级逻辑：如果高优先级类型（custom/project_local）的板子与已存在板子同名,则覆盖
                     // SDK板子优先级最低
                     if (sourceType === 'sdk' && boardMap.has(boardName)) {
-                        // 如果当前是SDK板子，但Map中已有同名板子，则跳过（因为Map中的板子优先级更高）
+                        // 如果当前是SDK板子,但Map中已有同名板子,则跳过（因为Map中的板子优先级更高）
                         console.log(`[SiFli Extension] Skipping SDK board ${boardName} as higher priority board already exists.`);
                         continue;
                     } else if ((sourceType === 'custom' || sourceType === 'project_local') && boardMap.has(boardName)) {
-                        // 如果当前是自定义或项目本地板子，且Map中已有同名板子，则覆盖
+                        // 如果当前是自定义或项目本地板子,且Map中已有同名板子,则覆盖
                         console.log(`[SiFli Extension] Overwriting board ${boardName} with higher priority board from ${sourceType} path.`);
-                        boardMap.delete(boardName); // 删除旧的，添加新的
+                        boardMap.delete(boardName); // 删除旧的,添加新的
                     }
                     
                     boardMap.set(boardName, {
@@ -608,13 +621,13 @@ async function scanDirectoryForBoards(directoryPath, boardMap, sourceType) {
  * 遵循以下扫描规则：
  * 1. 扫描SDK目录下的 customer/boards (最低优先级)。
  * 2. 扫描工程中与 project 同级的 boards 目录下 (中等优先级)。
- * 3. 如果设置了 customBoardSearchPath，则扫描该目录 (最高优先级)。
+ * 3. 如果设置了 customBoardSearchPath,则扫描该目录 (最高优先级)。
  * 有效的板子选项需同时存在 `hcpu` 目录和 `ptab.json` 文件。
  *
- * @returns {Promise<Array<{name: string, path: string, type: 'sdk'|'custom'|'project_local'}>>} 返回一个 Promise，解析为有效板子信息的数组。
+ * @returns {Promise<Array<{name: string, path: string, type: 'sdk'|'custom'|'project_local'}>>} 返回一个 Promise,解析为有效板子信息的数组。
  */
 async function discoverBoards() {
-    // 使用 Map 来存储板子，键为板子名称，值是包含其路径和类型的对象，以便处理优先级
+    // 使用 Map 来存储板子,键为板子名称,值是包含其路径和类型的对象,以便处理优先级
     const discoveredBoardMap = new Map();
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -635,7 +648,7 @@ async function discoverBoards() {
     const projectLocalBoardsPath = path.join(workspaceRoot, 'boards'); // 与 project 同级
     await scanDirectoryForBoards(projectLocalBoardsPath, discoveredBoardMap, 'project_local');
 
-    // 3. 如果设置了 customBoardSearchPath，则扫描该目录 (最高优先级)
+    // 3. 如果设置了 customBoardSearchPath,则扫描该目录 (最高优先级)
     if (customBoardSearchPath) {
         const targetCustomBoardPath = path.isAbsolute(customBoardSearchPath) ?
                                       customBoardSearchPath :
@@ -652,6 +665,12 @@ async function discoverBoards() {
 
 // 执行编译任务
 async function executeCompileTask() {
+    // 统一检查板子是否已选择
+    if (!selectedBoardName) {
+        vscode.window.showWarningMessage('未选择 SiFli 芯片模组。请点击状态栏中的“SiFli Board: N/A”选择模组。');
+        return;
+    }
+
     try {
         const allSaved = await vscode.workspace.saveAll();
         if (!allSaved) {
@@ -665,7 +684,9 @@ async function executeCompileTask() {
     }
 
     const compileCommand = await getCompileCommand(selectedBoardName, numThreads); // getCompileCommand 变为 async
-    await executeShellCommandInSiFliTerminal(compileCommand, BUILD_TASK_NAME);
+    if (compileCommand) { // 只有命令生成成功才执行
+        await executeShellCommandInSiFliTerminal(compileCommand, BUILD_TASK_NAME);
+    }
 }
 
 // 执行下载任务
@@ -723,9 +744,9 @@ function executeCleanCommand() {
  * 更新状态栏按钮的提示信息
  */
 function updateStatusBarItems() {
-    // getCompileCommand 和 getMenuconfigCommand 现在是异步的，不能直接在这里调用。
-    // 状态栏的tooltip可以简化，或者在需要时才异步更新。
-    // 为了避免在这里await，我们移除tooltip中动态命令的显示。
+    // getCompileCommand 和 getMenuconfigCommand 现在是异步的,不能直接在这里调用。
+    // 状态栏的tooltip可以简化,或者在需要时才异步更新。
+    // 为了避免在这里await,我们移除tooltip中动态命令的显示。
     if (compileBtn) {
         compileBtn.tooltip = `执行 SiFli 构建`;
     }
@@ -733,7 +754,7 @@ function updateStatusBarItems() {
         rebuildBtn.tooltip = `清理并执行 SiFli 构建`;
     }
     if (cleanBtn) {
-        cleanBtn.tooltip = `删除 SiFli 构建缓存 (${getBuildTargetFolder(selectedBoardName)})`;
+        cleanBtn.tooltip = `删除 SiFli 构建缓存 (${selectedBoardName || 'N/A'})`; // tooltip也同步N/A状态
     }
     if (downloadBtn) {
         downloadBtn.tooltip = `执行 SiFli 下载 (当前模组: ${selectedBoardName || '未选择'})`; // 更新提示
@@ -745,7 +766,7 @@ function updateStatusBarItems() {
         buildDownloadBtn.tooltip = `构建并下载 SiFli 项目 (当前模组: ${selectedBoardName || '未选择'})`; // 更新提示
     }
     if (currentBoardStatusItem) {
-        // 如果 selectedBoardName 为空字符串，则显示 "N/A"
+        // 如果 selectedBoardName 为空字符串,则显示 "N/A"
         currentBoardStatusItem.text = `SiFli Board: ${selectedBoardName || 'N/A'} (J${numThreads})`;
         currentBoardStatusItem.tooltip = `当前 SiFli 芯片模组: ${selectedBoardName || '未选择'}\n编译线程数: J${numThreads}\n点击切换芯片模组或修改线程数`;
     }
@@ -753,6 +774,9 @@ function updateStatusBarItems() {
     if (currentSerialPortStatusItem) {
         currentSerialPortStatusItem.text = `COM: ${selectedSerialPort || 'N/A'}`; // 如果没有选择,显示 N/A
         currentSerialPortStatusItem.tooltip = `当前下载串口: ${selectedSerialPort || '未选择'}\n点击选择串口`;
+    }
+    if (sdkManageBtn) { // 更新 SDK 管理按钮的 tooltip
+        sdkManageBtn.tooltip = '管理 SiFli SDK 安装';
     }
 }
 
@@ -809,6 +833,14 @@ function initializeStatusBarItems(context) {
     currentSerialPortStatusItem.show();
     context.subscriptions.push(currentSerialPortStatusItem);
 
+    // SDK 管理按钮
+    sdkManageBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 101); // 更高的优先级
+    sdkManageBtn.text = '$(cloud-download) SDK';
+    sdkManageBtn.tooltip = '管理 SiFli SDK 安装';
+    sdkManageBtn.command = CMD_PREFIX + 'manageSiFliSdk';
+    sdkManageBtn.show();
+    context.subscriptions.push(sdkManageBtn);
+
     updateStatusBarItems(); // 初始化tooltip和板卡、串口显示
 }
 
@@ -847,7 +879,7 @@ async function executeBuildAndDownloadTask() {
 }
 
 /**
- * 提示用户选择初始芯片模组,并保存到配置中。
+ * 提示用户选择初始芯片模组。
  * 仅在首次激活且未设置有效默认模组时调用。
  * @param {vscode.ExtensionContext} context 扩展上下文,用于访问全局状态。
  */
@@ -868,7 +900,7 @@ async function promptForInitialBoardSelection(context) {
             vscode.window.showWarningMessage('未发现任何 SiFli 芯片模组。请检查您的 SDK 安装或自定义板子路径设置。');
             // 即使没有板子,也标记为已运行,避免每次启动都弹出
             await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, true);
-            // 此时 selectedBoardName 保持为空或无效值，updateConfiguration 会将其显示为 N/A
+            // 此时 selectedBoardName 保持为空或无效值,updateConfiguration 会将其显示为 N/A
             return;
         }
 
@@ -898,7 +930,7 @@ async function promptForInitialBoardSelection(context) {
             await config.update('defaultChipModule', selected.label, vscode.ConfigurationTarget.Global);
             vscode.window.showInformationMessage(`SiFli 默认模组已设置为: ${selected.label}`);
         } else {
-            // 用户取消初始选择，清空配置中的 defaultChipModule，使其显示为 N/A
+            // 用户取消初始选择,清空配置中的 defaultChipModule,使其显示为 N/A
             await config.update('defaultChipModule', '', vscode.ConfigurationTarget.Global);
             vscode.window.showInformationMessage('已取消芯片模组选择。请稍后点击状态栏中的“SiFli Board: N/A”重新选择。');
         }
@@ -940,7 +972,7 @@ async function selectChipModule() {
         };
     });
 
-    const selectedQuickPickItem = await vscode.window.showQuickPick(boardPickOptions, {
+    const selectedQuickPickItem = await vscode.window.showQuickPick(pickOptions, {
         placeHolder: '选择 SiFli 芯片模组',
         title: '选择芯片模组'
     });
@@ -954,8 +986,8 @@ async function selectChipModule() {
             // updateConfiguration() 会在配置变化监听器中自动调用,更新 selectedBoardName
         }
     } else {
-        // 用户取消选择，不做任何操作，保持原有的 defaultChipModule 不变。
-        // vscode.window.showInformationMessage('已取消芯片模组选择。'); // 可以选择不显示此消息，避免打扰用户
+        // 用户取消选择,不做任何操作,保持原有的 defaultChipModule 不变。
+        // vscode.window.showInformationMessage('已取消芯片模组选择。'); // 可以选择不显示此消息,避免打扰用户
     }
 
     // 允许用户修改线程数
@@ -987,6 +1019,316 @@ async function selectDownloadPort() {
     await selectSerialPort(); // 直接调用通用的串口选择函数
 }
 
+// --- 新增 Git 相关辅助函数 ---
+
+/**
+ * 检查系统是否安装了 Git。
+ * @returns {Promise<boolean>}
+ */
+async function isGitInstalled() {
+    return new Promise(resolve => {
+        exec('git --version', (error) => {
+            if (error) {
+                console.error(`[SiFli Extension] Git is not installed or not in PATH: ${error.message}`);
+                resolve(false);
+            } else {
+                resolve(true);
+            }
+        });
+    });
+}
+
+/**
+ * 执行 Git 命令。
+ * @param {string} command Git命令字符串 (例如 'clone <url>' 或 'checkout <tag>')
+ * @param {string} cwd 命令执行的工作目录
+ * @param {vscode.Webview} webview 用于向 WebView 发送日志消息
+ * @returns {Promise<void>}
+ */
+async function executeGitCommand(command, cwd, webview) {
+    return new Promise((resolve, reject) => {
+        webview.postMessage({ command: 'logMessage', level: 'info', message: `执行 Git 命令: git ${command} (工作目录: ${cwd})` });
+        const gitProcess = exec(`git ${command}`, { cwd: cwd, timeout: 600000 }); // 10分钟超时
+
+        gitProcess.stdout.on('data', (data) => {
+            webview.postMessage({ command: 'logMessage', level: 'info', message: data.toString().trim() });
+        });
+
+        gitProcess.stderr.on('data', (data) => {
+            webview.postMessage({ command: 'logMessage', level: 'warn', message: data.toString().trim() });
+        });
+
+        gitProcess.on('close', (code) => {
+            if (code === 0) {
+                resolve();
+            } else {
+                reject(new Error(`Git 命令失败,退出码: ${code}`));
+            }
+        });
+
+        gitProcess.on('error', (err) => {
+            reject(new Error(`执行 Git 命令出错: ${err.message}`));
+        });
+    });
+}
+
+
+
+// --- SDK 管理相关的函数修改 ---
+
+/**
+ * 从 GitHub 或 Gitee API 获取 SiFli SDK 的发布版本列表 (现在返回更全面的信息)。
+ * @param {'github' | 'gitee'} source
+ * @returns {Promise<Array<{name: string, tagName: string, downloadUrl?: string, publishedAt: string}>>}
+ * downloadUrl 现在可能为空,因为我们主用 Git。
+ * publishedAt 用于排序和判断最新。
+ */
+async function fetchSiFliSdkReleases(source) {
+    const url = source === 'github' ? `${SIFLI_SDK_GITHUB_REPO_BASE}/releases` : `${SIFLI_SDK_GITEE_REPO_BASE}/releases`;
+    const headers = { 'User-Agent': 'VSCode-SiFli-Extension' };
+
+    try {
+        const response = await axios.get(url, { headers });
+        const releases = response.data;
+
+        const formattedReleases = releases.map(release => ({
+            name: release.name || release.tag_name,
+            tagName: release.tag_name,
+            downloadUrl: release.zipball_url || '', // 兼容性保留,主用 Git 后可以忽略
+            publishedAt: release.published_at
+        }));
+
+        // 按发布日期降序排序,确保第一个是最新版本
+        formattedReleases.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+        return formattedReleases;
+    } catch (error) {
+        console.error(`[SiFli SDK Manager] 获取发布版本失败 (${source}): ${error.message}`);
+        if (error.response) {
+            console.error(`Status: ${error.response.status}, Data:`, error.response.data);
+        } else if (error.request) {
+            console.error('No response received:', error.request);
+        }
+        throw new Error(`获取发布版本失败: ${error.message}`);
+    }
+}
+
+/**
+ * 获取 WebView 的 HTML 内容。
+ * @param {vscode.Webview} webview
+ * @param {vscode.Uri} extensionUri
+ * @returns {string} HTML 字符串 
+ */
+function getSdkManagementWebviewContent(webview, extensionUri) {
+    const nonce = getNonce();
+    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'sdk_manager.js'));
+    const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'sdk_manager.css'));
+
+    // 读取 HTML 文件内容
+    const htmlFilePath = vscode.Uri.joinPath(extensionUri, 'media', 'sdk_manager.html');
+    let htmlContent = fs.readFileSync(htmlFilePath.fsPath, 'utf8');
+
+    // 替换占位符
+    htmlContent = htmlContent.replace(/{{nonce}}/g, nonce);
+    htmlContent = htmlContent.replace(/{{cspSource}}/g, webview.cspSource);
+    htmlContent = htmlContent.replace(/{{scriptUri}}/g, scriptUri);
+    htmlContent = htmlContent.replace(/{{styleUri}}/g, styleUri);
+
+    return htmlContent;
+}
+
+/**
+ * 生成一个随机字符串作为 CSP 的 nonce。
+ * @returns {string}
+ */
+function getNonce() {
+    let text = '';
+    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < 32; i++) { //
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+}
+
+/**
+ * 创建并显示用于 SiFli SDK 管理的 WebView。
+ * @param {vscode.ExtensionContext} context
+ */
+async function createSdkManagementWebview(context) {
+    const panel = vscode.window.createWebviewPanel(
+        'sifliSdkManager', // Identifies the type of the webview. Used internally
+        'SiFli SDK 管理器', // Title of the panel displayed to the user
+        vscode.ViewColumn.One, // Editor column to show the new webview panel in.
+        {
+            enableScripts: true, // Enable JavaScript in the webview
+            retainContextWhenHidden: true // Keep the state of the webview even when it's not visible
+        }
+    );
+
+    panel.webview.html = getSdkManagementWebviewContent(panel.webview, context.extensionUri);
+
+    // Handle messages from the webview
+    panel.webview.onDidReceiveMessage(
+        async message => {
+            switch (message.command) {
+                case 'browseInstallPath':
+                    const selectedFolders = await vscode.window.showOpenDialog({
+                        canSelectFolders: true,
+                        canSelectFiles: false,
+                        canSelectMany: false,
+                        title: '选择 SiFli SDK 安装目录'
+                    });
+                    if (selectedFolders && selectedFolders.length > 0) {
+                        panel.webview.postMessage({
+                            command: 'installPathSelected',
+                            path: selectedFolders[0].fsPath
+                        });
+                    }
+                    return;
+                case 'fetchReleases':
+                    try {
+                        const releases = await fetchSiFliSdkReleases(message.source);
+                        panel.webview.postMessage({
+                            command: 'displayReleases',
+                            releases: releases
+                        });
+                    } catch (error) {
+                        panel.webview.postMessage({
+                            command: 'logMessage',
+                            level: 'error',
+                            message: `获取发布版本失败: ${error.message}`
+                        });
+                    }
+                    return;
+                case 'startSdkInstallation':
+                    // 检查 Git 是否安装
+                    if (!await isGitInstalled()) {
+                        vscode.window.showErrorMessage('Git 未安装或不在 PATH 中。请先安装 Git。');
+                        panel.webview.postMessage({ command: 'installationError', error: 'Git 未安装。' });
+                        return;
+                    }
+
+                    vscode.window.showInformationMessage(`正在为版本 ${message.version} 在 ${message.installPath} 启动 SiFli SDK 安装 (通过 Git)`);
+                    try {
+                        await installSiFliSdk(message.source, message.version, message.installPath, panel.webview);
+                        vscode.window.showInformationMessage('SiFli SDK 安装成功完成！');
+                        panel.webview.postMessage({ command: 'installationComplete' });
+                    } catch (error) {
+                        vscode.window.showErrorMessage(`SiFli SDK 安装失败: ${error.message}`);
+                        panel.webview.postMessage({ command: 'installationError', error: error.message });
+                    }
+                    return;
+            }
+        },
+        undefined,
+        context.subscriptions
+    );
+}
+
+/**
+ * 执行 SiFli SDK 的下载和安装（通过 Git）。
+ * @param {'github' | 'gitee'} source
+ * @param {string} versionTag 版本标签 (例如: v1.0.0, release/v2.4)
+ * @param {string} installPath 安装目录的完整路径
+ * @param {vscode.Webview} webview 用于向 WebView 发送日志消息
+ * @returns {Promise<void>}
+ */
+async function installSiFliSdk(source, versionTag, installPath, webview) {
+    webview.postMessage({ command: 'logMessage', level: 'info', message: `开始通过 Git 安装 SiFli SDK (版本: ${versionTag}, 路径: ${installPath})` });
+
+    const repoUrl = source === 'github' ? SIFLI_SDK_GITHUB_REPO_GIT : SIFLI_SDK_GITEE_REPO_GIT;
+
+    // --- 1. 检查并提示最新版本 ---
+    try {
+        const allReleases = await fetchSiFliSdkReleases(source); // 获取所有发布版本
+        if (allReleases.length > 0) {
+            const latestReleaseTag = allReleases[0].tagName; // 因为 fetchSiFliSdkReleases 已经按日期降序排序
+            if (versionTag !== latestReleaseTag) {
+                const userChoice = await vscode.window.showWarningMessage(
+                    `您选择的版本是 ${versionTag},但最新版本是 ${latestReleaseTag}。是否要安装最新版本？`,
+                    '安装最新版本', '安装我选择的版本'
+                );
+                if (userChoice === '安装最新版本') {
+                    versionTag = latestReleaseTag;
+                    webview.postMessage({ command: 'logMessage', level: 'info', message: `用户选择安装最新版本: ${versionTag}` });
+                } else if (userChoice === undefined) { // 用户关闭了提示框
+                    throw new Error('用户取消安装。');
+                }
+            }
+        }
+    } catch (error) {
+        webview.postMessage({ command: 'logMessage', level: 'warn', message: `无法获取最新版本信息或处理版本选择: ${error.message}` });
+        // 如果无法获取最新版本,不应该阻止安装用户指定的版本,只是无法提供提示
+    }
+
+
+    // --- 2. 检查安装路径并处理 ---
+    if (fs.existsSync(installPath)) {
+        const response = await vscode.window.showWarningMessage(
+            `安装路径 '${installPath}' 已存在。是否清空并继续安装？`,
+            '清空并继续', '取消'
+        );
+        if (response === '清空并继续') {
+            webview.postMessage({ command: 'logMessage', level: 'info', message: `清空现有目录: ${installPath}` });
+            try {
+                fs.rmSync(installPath, { recursive: true, force: true });
+            } catch (error) {
+                throw new Error(`清空目录失败: ${error.message}`);
+            }
+        } else {
+            throw new Error('用户取消安装。');
+        }
+    }
+
+    // 创建安装目录 (git clone 会自动创建,但为了明确,我们先创建父目录)
+    const parentDir = path.dirname(installPath);
+    if (!fs.existsSync(parentDir)) {
+        try {
+            fs.mkdirSync(parentDir, { recursive: true });
+            webview.postMessage({ command: 'logMessage', level: 'info', message: `创建父目录: ${parentDir}` });
+        } catch (error) {
+            throw new Error(`创建父目录失败: ${error.message}`);
+        }
+    }
+
+
+    // --- 3. 执行 Git Clone 和 Checkout ---
+    try {
+        webview.postMessage({ command: 'logMessage', level: 'info', message: `克隆仓库: ${repoUrl} 到 ${installPath} 并切换到版本: ${versionTag}` });
+        // 直接使用 -b 参数克隆指定分支或标签
+        await executeGitCommand(`clone --recursive --progress ${repoUrl} -b "${versionTag}" "${installPath}"`, parentDir, webview);
+
+        webview.postMessage({ command: 'logMessage', level: 'info', message: 'Git 克隆和版本切换完成。' });
+
+    } catch (error) {
+        // 如果克隆失败,尝试清理部分克隆的目录
+        if (fs.existsSync(installPath)) {
+            try {
+                fs.rmSync(installPath, { recursive: true, force: true });
+                webview.postMessage({ command: 'logMessage', level: 'warn', message: `Git 安装失败,已尝试清理目录: ${installPath}` });
+            } catch (cleanupError) {
+                webview.postMessage({ command: 'logMessage', level: 'error', message: `Git 安装失败后清理目录也失败: ${cleanupError.message}` });
+            }
+        }
+        throw new Error(`Git 安装失败: ${error.message}`);
+    }
+
+
+    // --- 4. 更新 VS Code 配置 ---
+    // const config = vscode.workspace.getConfiguration('one-step-for-sifli');
+    // const exportPs1Path = path.join(installPath, 'export.ps1'); // 假设 export.ps1 在 SDK 根目录下
+    // if (fs.existsSync(exportPs1Path)) {
+    //     await config.update('sifliSdkExportScriptPath', exportPs1Path, vscode.ConfigurationTarget.Global);
+    //     vscode.window.showInformationMessage(`SiFli SDK 安装完成,已更新 'SiFli SDK 导出脚本路径' 到: ${exportPs1Path}`);
+    //     webview.postMessage({ command: 'logMessage', level: 'info', message: `配置 'sifliSdkExportScriptPath' 更新为: ${exportPs1Path}` });
+    // } else {
+    //     vscode.window.showWarningMessage(`SDK 安装完成,但未找到 'export.ps1' 脚本于 ${exportPs1Path}。请手动配置。`);
+    //     webview.postMessage({ command: 'logMessage', level: 'warn', message: `未找到 'export.ps1' 脚本,请手动配置。` });
+    // }
+
+    webview.postMessage({ command: 'logMessage', level: 'info', message: 'SiFli SDK 安装和配置流程完成。' });
+}
+
 async function activate(context) {
     console.log('Congratulations, your SiFli extension is now active!');
 
@@ -997,7 +1339,7 @@ async function activate(context) {
     // ******************************************************
 
     // 在插件激活时立即读取配置
-    updateConfiguration(); // 首次加载时调用，初始化 selectedBoardName 等
+    updateConfiguration(); // 首次加载时调用,初始化 selectedBoardName 等
 
     // 只有是 SiFli 项目才激活插件功能
     if (isSiFliProject()) {
@@ -1010,14 +1352,14 @@ async function activate(context) {
         setTimeout(async () => {
             await promptForInitialBoardSelection(context); // 调用此函数可能会更新 defaultChipModule 配置
 
-            // 在 promptForInitialBoardSelection 完成并可能更新配置后，再次调用 updateConfiguration
+            // 在 promptForInitialBoardSelection 完成并可能更新配置后,再次调用 updateConfiguration
             // 确保 selectedBoardName 和状态栏显示与最新配置同步
             updateConfiguration(); 
             
-            // 在插件初始化后，如果串口未连接，主动提醒用户选择串口
+            // 在插件初始化后,如果串口未连接,主动提醒用户选择串口
             if (!selectedSerialPort) {
-                vscode.window.showInformationMessage('首次启动或串口未连接。请点击状态栏中的 "COM: N/A" 选择串口，以便进行下载操作。');
-                // 可以选择在这里直接调用 selectSerialPort() 让用户选择，但信息提示更柔和
+                vscode.window.showInformationMessage('首次启动或串口未连接。请点击状态栏中的 "COM: N/A" 选择串口,以便进行下载操作。');
+                // 可以选择在这里直接调用 selectSerialPort() 让用户选择,但信息提示更柔和
                 // await selectSerialPort(); 
             }
 
@@ -1026,12 +1368,11 @@ async function activate(context) {
             await getOrCreateSiFliTerminalAndCdProject();
         }, 500);
 
-
         // 监听配置变化,当用户在 VS Code 设置中修改插件的相关配置时,重新读取并更新这些路径变量。
         context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
             // 检查是否是 'sifli-sdk-codekit' 相关的配置发生了变化
             if (e.affectsConfiguration('sifli-sdk-codekit')) {
-                updateConfiguration(); // 更新内部的路径变量，并自动更新状态栏
+                updateConfiguration(); // 更新内部的路径变量,并自动更新状态栏
             }
         }));
 
@@ -1049,7 +1390,8 @@ async function activate(context) {
             vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => executeMenuconfigTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'buildAndDownload', () => executeBuildAndDownloadTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'selectChipModule', () => selectChipModule()),
-            vscode.commands.registerCommand(CMD_PREFIX + 'selectDownloadPort', () => selectDownloadPort()) // 注册新的命令
+            vscode.commands.registerCommand(CMD_PREFIX + 'selectDownloadPort', () => selectDownloadPort()), // 注册新的命令
+            vscode.commands.registerCommand(CMD_PREFIX + 'manageSiFliSdk', () => createSdkManagementWebview(context))
         );
     } else {
         console.log('[SiFli Extension] Not a SiFli project. Extension features will not be activated.');
@@ -1066,6 +1408,7 @@ function deactivate() {
     if (buildDownloadBtn) buildDownloadBtn.dispose();
     if (currentBoardStatusItem) currentBoardStatusItem.dispose();
     if (currentSerialPortStatusItem) currentSerialPortStatusItem.dispose();
+    if (sdkManageBtn) sdkManageBtn.dispose();
 
     console.log('[SiFli Extension] Extension deactivated.');
 }

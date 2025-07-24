@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SiFli SDK 管理器</title>
+    <link href="{{styleUri}}" rel="stylesheet">
+    <style>
+        /* 这些样式已移到 sdk_manager.css 中，此处保留少量内联样式以确保基础显示 */
+        body { font-family: sans-serif; padding: 20px; color: var(--vscode-editor-foreground); background-color: var(--vscode-editor-background); }
+        .log-info { color: var(--vscode-terminal-ansiBrightGreen); }
+        .log-warn { color: var(--vscode-terminal-ansiBrightYellow); }
+        .log-error { color: var(--vscode-terminal-ansiBrightRed); }
+    </style>
+</head>
+<body>
+    <h1>SiFli SDK 管理器</h1>
+
+    <label for="sdkSource">SDK 来源:</label>
+    <select id="sdkSource">
+        <option value="github">GitHub</option>
+        <option value="gitee">Gitee</option>
+    </select>
+
+    <label for="sdkVersion">SDK 版本:</label>
+    <select id="sdkVersion" disabled>
+        <option value="">正在加载版本...</option>
+    </select>
+    <input type="text" id="manualVersion" placeholder="或手动输入版本 (例如: v1.0.0)">
+
+    <label for="installPath">安装路径:</label>
+    <div class="path-input-group">
+        <input type="text" id="installPath" placeholder="选择 SDK 安装目录">
+        <button id="browsePath">浏览</button>
+    </div>
+
+    <button id="installSdk">安装 SDK</button>
+
+    <div class="log-container" id="logContainer">
+        <p class="log-info">准备就绪。</p>
+    </div>
+
+    <script src="{{scriptUri}}"></script>
+</body>
+</html>
