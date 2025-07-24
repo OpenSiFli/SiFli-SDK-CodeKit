@@ -1095,7 +1095,7 @@ async function fetchSiFliSdkReleases(source) {
             name: release.name || release.tag_name,
             tagName: release.tag_name,
             downloadUrl: release.zipball_url || '', // 兼容性保留,主用 Git 后可以忽略
-            publishedAt: release.published_at
+            publishedAt: release.created_at
         }));
 
         // 按发布日期降序排序,确保第一个是最新版本
@@ -1121,11 +1121,11 @@ async function fetchSiFliSdkReleases(source) {
  */
 function getSdkManagementWebviewContent(webview, extensionUri) {
     const nonce = getNonce();
-    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'sdk_manager.js'));
-    const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'sdk_manager.css'));
+    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'WebView', 'sdk_manager.js'));
+    const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'WebView', 'sdk_manager.css'));
 
     // 读取 HTML 文件内容
-    const htmlFilePath = vscode.Uri.joinPath(extensionUri, 'media', 'sdk_manager.html');
+    const htmlFilePath = vscode.Uri.joinPath(extensionUri, 'WebView', 'sdk_manager.html');
     let htmlContent = fs.readFileSync(htmlFilePath.fsPath, 'utf8');
 
     // 替换占位符
