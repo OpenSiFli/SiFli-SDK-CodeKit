@@ -972,7 +972,7 @@ async function selectChipModule() {
         };
     });
 
-    const selectedQuickPickItem = await vscode.window.showQuickPick(pickOptions, {
+    const selectedQuickPickItem = await vscode.window.showQuickPick(boardPickOptions, {
         placeHolder: '选择 SiFli 芯片模组',
         title: '选择芯片模组'
     });
