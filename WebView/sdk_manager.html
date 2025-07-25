@@ -8,9 +8,9 @@
     <style>
         /* 这些样式已移到 sdk_manager.css 中，此处保留少量内联样式以确保基础显示 */
         body { font-family: sans-serif; padding: 20px; color: var(--vscode-editor-foreground); background-color: var(--vscode-editor-background); }
-        .log-info { color: var(--vscode-terminal-ansiBrightGreen); }
-        .log-warn { color: var(--vscode-terminal-ansiBrightYellow); }
-        .log-error { color: var(--vscode-terminal-ansiBrightRed); }
+        /* .log-info { color: var(--vscode-terminal-ansiBrightGreen); } */ /* <<<<<< 移除或注释此行 */
+        /* .log-warn { color: var(--vscode-terminal-ansiBrightYellow); } */ /* <<<<<< 移除或注释此行 */
+        /* .log-error { color: var(--vscode-terminal-ansiBrightRed); } */ /* <<<<<< 移除或注释此行 */
     </style>
 </head>
 <body>
@@ -49,10 +49,6 @@
     </div>
 
     <button id="installSdk">安装 SDK</button>
-
-    <div class="log-container" id="logContainer">
-        <p class="log-info">准备就绪。</p>
-    </div>
 
     <script src="{{scriptUri}}"></script>
 </body>
