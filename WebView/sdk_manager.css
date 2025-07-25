@@ -78,21 +78,6 @@ button:disabled {
     margin-right: 10px;
 }
 
-/* 移除 .radio-group 样式，因为不再使用 */
-/*
-.radio-group {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 15px;
-    margin-top: 5px;
-}
-
-.radio-group input[type="radio"] {
-    width: auto;
-    margin-right: 5px;
-}
-*/
-
 .log-container {
     background-color: var(--vscode-editor-background);
     border: 1px solid var(--vscode-editorGroup-border);
