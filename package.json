@@ -26,10 +26,6 @@
         "title": "💾 Download"
       },
       {
-        "command": "extension.buildAndDownload",
-        "title": " 🚀 Build & Download"
-      },
-      {
         "command": "extension.clean",
         "title": "🗑️ Clean"
       },
