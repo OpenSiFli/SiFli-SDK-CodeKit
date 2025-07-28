@@ -36,10 +36,11 @@ const DOWNLOAD_TASK_NAME = "SiFli: Download";
 const MENUCONFIG_TASK_NAME = "SiFli: Menuconfig";
 const CLEAN_TASK_NAME = "SiFli: Clean";
 const REBUILD_TASK_NAME = "SiFli: Rebuild";
-const BUILD_DOWNLOAD_TASK_NAME = "SiFli: Build & Download";
+// const BUILD_DOWNLOAD_TASK_NAME = "SiFli: Build & Download"; // - 删除此行
 
 // 状态栏按钮变量
-let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn, currentBoardStatusItem, sdkManageBtn, currentSerialPortStatusItem; // 新增 currentSerialPortItem
+// let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn, currentBoardStatusItem, sdkManageBtn, currentSerialPortStatusItem; // 新增 currentSerialPortItem // - 删除 buildDownloadBtn
+let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, currentBoardStatusItem, sdkManageBtn, currentSerialPortStatusItem; //
 
 // 定义一个常量用于全局状态的键,表示是否已经执行过首次设置
 const HAS_RUN_INITIAL_SETUP_KEY = 'oneStepForSifli.hasRunInitialSetup';
@@ -763,17 +764,14 @@ function updateStatusBarItems() {
     if (menuconfigBtn) {
         menuconfigBtn.tooltip = `打开 SiFli Menuconfig`;
     }
-    if (buildDownloadBtn) {
-        buildDownloadBtn.tooltip = `构建并下载 SiFli 项目 (当前模组: ${selectedBoardName || '未选择'})`; // 更新提示
-    }
     if (currentBoardStatusItem) {
         // 如果 selectedBoardName 为空字符串,则显示 "N/A"
-        currentBoardStatusItem.text = `SiFli Board: ${selectedBoardName || 'N/A'} (J${numThreads})`;
+        currentBoardStatusItem.text = `$(circuit-board) SiFli Board: ${selectedBoardName || 'N/A'} (J${numThreads})`;
         currentBoardStatusItem.tooltip = `当前 SiFli 芯片模组: ${selectedBoardName || '未选择'}\n编译线程数: J${numThreads}\n点击切换芯片模组或修改线程数`;
     }
     // 更新串口状态栏项
     if (currentSerialPortStatusItem) {
-        currentSerialPortStatusItem.text = `COM: ${selectedSerialPort || 'N/A'}`; // 如果没有选择,显示 N/A
+        currentSerialPortStatusItem.text = `$(plug) COM: ${selectedSerialPort || 'N/A'}`; // 如果没有选择,显示 N/A
         currentSerialPortStatusItem.tooltip = `当前下载串口: ${selectedSerialPort || '未选择'}\n点击选择串口`;
     }
     if (sdkManageBtn) { // 更新 SDK 管理按钮的 tooltip
@@ -785,98 +783,59 @@ function updateStatusBarItems() {
 function initializeStatusBarItems(context) {
     const CMD_PREFIX = "extension.";
 
-    compileBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-    compileBtn.text = '🛠️ Build';
-    compileBtn.command = CMD_PREFIX + 'compile';
-    compileBtn.show();
-    context.subscriptions.push(compileBtn);
-
-    rebuildBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
-    rebuildBtn.text = '♻️ Rebuild';
-    rebuildBtn.command = CMD_PREFIX + 'rebuild';
-    rebuildBtn.show();
-    context.subscriptions.push(rebuildBtn);
-
-    cleanBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 98);
-    cleanBtn.text = '🗑️ Clean';
-    cleanBtn.command = CMD_PREFIX + 'clean';
-    cleanBtn.show();
-    context.subscriptions.push(cleanBtn);
-
-    downloadBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 97);
-    downloadBtn.text = '💾 Download';
-    downloadBtn.command = CMD_PREFIX + 'download';
-    downloadBtn.show();
-    context.subscriptions.push(downloadBtn);
-
-    buildDownloadBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 96);
-    buildDownloadBtn.text = '🚀 Build & Download';
-    buildDownloadBtn.command = CMD_PREFIX + 'buildAndDownload';
-    buildDownloadBtn.show();
-    context.subscriptions.push(buildDownloadBtn);
-
-    menuconfigBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 95);
-    menuconfigBtn.text = '⚙️ Menuconfig';
-    menuconfigBtn.command = CMD_PREFIX + 'menuconfig';
-    menuconfigBtn.show();
-    context.subscriptions.push(menuconfigBtn);
-
-    // 显示当前板卡的状态栏项 (现在可点击)
-    currentBoardStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 90);
-    currentBoardStatusItem.command = CMD_PREFIX + 'selectChipModule'; // 绑定命令
-    currentBoardStatusItem.show();
-    context.subscriptions.push(currentBoardStatusItem);
-
-    // 显示当前串口的状态栏项
-    currentSerialPortStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 89); // 优先级略低于板卡
-    // currentSerialPortStatusItem.text = '🔌 COM: N/A';
-    currentSerialPortStatusItem.command = CMD_PREFIX + 'selectDownloadPort'; // 绑定新的命令
-    currentSerialPortStatusItem.show();
-    context.subscriptions.push(currentSerialPortStatusItem);
-
     // SDK 管理按钮
-    sdkManageBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 101); // 更高的优先级
+    sdkManageBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 101);
     sdkManageBtn.text = '$(cloud-download) SiFli SDK';
     sdkManageBtn.tooltip = '管理 SiFli SDK 安装';
     sdkManageBtn.command = CMD_PREFIX + 'manageSiFliSdk';
     sdkManageBtn.show();
     context.subscriptions.push(sdkManageBtn);
+    
+    // 显示当前板卡的状态栏项
+    currentBoardStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    currentBoardStatusItem.text = '$(circuit-board) SiFli Board: N/A';
+    currentBoardStatusItem.command = CMD_PREFIX + 'selectChipModule';
+    currentBoardStatusItem.show();
+    context.subscriptions.push(currentBoardStatusItem);
+
+    // 显示当前串口的状态栏项
+    currentSerialPortStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+    currentSerialPortStatusItem.text = '$(plug) COM: N/A';
+    currentSerialPortStatusItem.command = CMD_PREFIX + 'selectDownloadPort';
+    currentSerialPortStatusItem.show();
+    context.subscriptions.push(currentSerialPortStatusItem);
+    
+    compileBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 98);
+    compileBtn.text = '$(symbol-property)';
+    compileBtn.command = CMD_PREFIX + 'compile';
+    compileBtn.show();
+    context.subscriptions.push(compileBtn);
+
+    rebuildBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 97);
+    rebuildBtn.text = '$(sync)';
+    rebuildBtn.command = CMD_PREFIX + 'rebuild';
+    rebuildBtn.show();
+    context.subscriptions.push(rebuildBtn);
+
+    cleanBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 96);
+    cleanBtn.text = '$(trashcan)';
+    cleanBtn.command = CMD_PREFIX + 'clean';
+    cleanBtn.show();
+    context.subscriptions.push(cleanBtn);
+
+    downloadBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 95);
+    downloadBtn.text = '$(symbol-event)';
+    downloadBtn.command = CMD_PREFIX + 'download';
+    downloadBtn.show();
+    context.subscriptions.push(downloadBtn);
+
+    menuconfigBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 94);
+    menuconfigBtn.text = '$(settings-gear)';
+    menuconfigBtn.command = CMD_PREFIX + 'menuconfig';
+    menuconfigBtn.show();
+    context.subscriptions.push(menuconfigBtn);
 
     updateStatusBarItems(); // 初始化tooltip和板卡、串口显示
-}
-
-// 执行编译并下载任务
-async function executeBuildAndDownloadTask() {
-    try {
-        const allSaved = await vscode.workspace.saveAll();
-        if (!allSaved) {
-            vscode.window.showWarningMessage('部分文件未能保存,构建可能基于旧版文件。');
-            console.warn('[SiFli Extension] Not all files saved before build and download.');
-        }
-    } catch (error) {
-        vscode.window.showErrorMessage(`保存文件时出错: ${error.message}`);
-        console.error('[SiFli Extension] Error saving files:', error);
-        return;
-    }
-
-    // 检查是否已选择串口,如果未选择则提示用户选择
-    if (!selectedSerialPort) {
-        // 将这里的警告改为信息提示,避免打扰用户
-        vscode.window.showInformationMessage('请先选择一个用于下载的串口。点击状态栏中的 "COM: N/A" 进行选择。');
-        const chosenPort = await selectSerialPort(); // 尝试让用户选择
-        if (!chosenPort) { // 如果用户仍然没有选择,则退出
-            return;
-        }
-    }
-
-    const compileCommand = await getCompileCommand(selectedBoardName, numThreads); // 确保这里是 await
-    const sftoolDownloadCommand = await getSftoolDownloadCommand(selectedBoardName, selectedSerialPort);
-
-    if (sftoolDownloadCommand) { // 只有在成功生成命令后才执行
-        // PowerShell 命令组合,确保编译成功后才执行下载
-        const command = `${compileCommand}; if ($LASTEXITCODE -eq 0) { ${sftoolDownloadCommand} }`;
-        await executeShellCommandInSiFliTerminal(command, BUILD_DOWNLOAD_TASK_NAME);
-    }
 }
 
 /**
@@ -1047,7 +1006,7 @@ async function isGitInstalled() {
  * @param {string} cwd 命令执行的工作目录
  * @returns {Promise<void>}
  */
-async function executeGitCommand(command, args, cwd) { // 参数改为 command 和 args 数组
+async function executeGitCommand(command, args, cwd) { // 参数改为 command 和 args 数组 
     let lastProgressMessage = ''; // 存储上一个进度消息，避免重复报告
     let lastKnownProgress = 0; // 上次已知的Git下载百分比
     
@@ -1213,7 +1172,7 @@ function getSdkManagementWebviewContent(webview, extensionUri) {
     const nonce = getNonce();
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'WebView', 'sdk_manager.js'));
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'WebView', 'sdk_manager.css'));
-    const logoUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'images', 'readme', 'SiFli.png'));
+    const logoUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'images', 'SiFli.png'));
 
     // 读取 HTML 文件内容
     const htmlFilePath = vscode.Uri.joinPath(extensionUri, 'WebView', 'sdk_manager.html');
@@ -1526,7 +1485,6 @@ async function activate(context) {
             vscode.commands.registerCommand(CMD_PREFIX + 'clean', () => executeCleanCommand()),
             vscode.commands.registerCommand(CMD_PREFIX + 'download', () => executeDownloadTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => executeMenuconfigTask()),
-            vscode.commands.registerCommand(CMD_PREFIX + 'buildAndDownload', () => executeBuildAndDownloadTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'selectChipModule', () => selectChipModule()),
             vscode.commands.registerCommand(CMD_PREFIX + 'selectDownloadPort', () => selectDownloadPort()), // 注册新的命令
             vscode.commands.registerCommand(CMD_PREFIX + 'manageSiFliSdk', () => createSdkManagementWebview(context))
@@ -1543,7 +1501,7 @@ function deactivate() {
     if (cleanBtn) cleanBtn.dispose();
     if (downloadBtn) downloadBtn.dispose();
     if (menuconfigBtn) menuconfigBtn.dispose();
-    if (buildDownloadBtn) buildDownloadBtn.dispose();
+    // if (buildDownloadBtn) buildDownloadBtn.dispose(); // - 删除此行
     if (currentBoardStatusItem) currentBoardStatusItem.dispose();
     if (currentSerialPortStatusItem) currentSerialPortStatusItem.dispose();
     if (sdkManageBtn) sdkManageBtn.dispose();
