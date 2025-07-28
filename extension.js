@@ -1213,6 +1213,7 @@ function getSdkManagementWebviewContent(webview, extensionUri) {
     const nonce = getNonce();
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'WebView', 'sdk_manager.js'));
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'WebView', 'sdk_manager.css'));
+    const logoUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'images', 'readme', 'SiFli.png'));
 
     // 读取 HTML 文件内容
     const htmlFilePath = vscode.Uri.joinPath(extensionUri, 'WebView', 'sdk_manager.html');
@@ -1223,6 +1224,7 @@ function getSdkManagementWebviewContent(webview, extensionUri) {
     htmlContent = htmlContent.replace(/{{cspSource}}/g, webview.cspSource);
     htmlContent = htmlContent.replace(/{{scriptUri}}/g, scriptUri);
     htmlContent = htmlContent.replace(/{{styleUri}}/g, styleUri);
+    htmlContent = htmlContent.replace(/{{logoUri}}/g, logoUri);
 
     return htmlContent;
 }
