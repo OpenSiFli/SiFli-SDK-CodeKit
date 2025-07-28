@@ -2,7 +2,7 @@
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const os = require('os');
 const axios = require('axios');
 
@@ -21,6 +21,7 @@ const PTAB_JSON_FILE = 'ptab.json'; // 板子目录下的 ptab.json 文件
 const SFTOOL_PARAM_JSON_FILE = 'sftool_param.json';
 
 // 从 VS Code 用户配置中读取路径,初始化为 let 变量
+let gitOutputChannel;           // 专属Git输出通道
 let SF32_TERMINAL_PATH;
 let SIFLI_SDK_EXPORT_SCRIPT_PATH;
 let SIFLI_SDK_ROOT_PATH;
@@ -835,7 +836,7 @@ function initializeStatusBarItems(context) {
 
     // SDK 管理按钮
     sdkManageBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 101); // 更高的优先级
-    sdkManageBtn.text = '$(cloud-download) SDK';
+    sdkManageBtn.text = '$(cloud-download) SiFli SDK';
     sdkManageBtn.tooltip = '管理 SiFli SDK 安装';
     sdkManageBtn.command = CMD_PREFIX + 'manageSiFliSdk';
     sdkManageBtn.show();
@@ -1040,42 +1041,87 @@ async function isGitInstalled() {
 
 /**
  * 辅助函数：执行 Git 命令。
- * @param {string} command Git命令字符串 (例如 'clone <url>' 或 'checkout <tag>')
+ * 使用 child_process.spawn 结合 progress 监听 Git 输出，并将详细日志写入输出通道。
+ * @param {string} command Git命令 (例如 'clone')
+ * @param {string[]} args 命令参数 (例如 ['--recursive', '--progress', '<url>', '-b', '<tag>', '<path>'])
  * @param {string} cwd 命令执行的工作目录
- * @param {(message: string, increment?: number) => void} progressReporter 用于报告进度的回调函数
  * @returns {Promise<void>}
  */
-async function executeGitCommand(command, cwd, progressReporter) { // 增加 progressReporter 参数
-    return new Promise((resolve, reject) => {
-        progressReporter(`执行 Git 命令: git ${command} (工作目录: ${cwd})`);
-        const gitProcess = exec(`git ${command}`, { cwd: cwd, timeout: 600000 }); // 10分钟超时
+async function executeGitCommand(command, args, cwd) { // 参数改为 command 和 args 数组
+    let lastProgressMessage = ''; // 存储上一个进度消息，避免重复报告
+    let lastKnownProgress = 0; // 上次已知的Git下载百分比
+    
+    // 返回一个 Promise，以便外部的 withProgress 可以等待这个子操作完成
+    return vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: `Git ${command} - 下载中...`,
+        cancellable: false
+    }, async (gitProgress) => {
+        return new Promise((resolve, reject) => {
+            gitOutputChannel.show(true); // 显示输出通道
+            gitOutputChannel.appendLine(`>>> 执行 Git 命令: git ${command} ${args.join(' ')} (工作目录: ${cwd})`);
+            gitProgress.report({ message: `启动 Git ${command}...` });
 
-        gitProcess.stdout.on('data', (data) => {
-            // 将 Git 的标准输出报告为进度消息
-            progressReporter(data.toString().trim());
-        });
+            const gitProcess = spawn(command, args, { cwd: cwd, timeout: 600000 }); // 10分钟超时
 
-        gitProcess.stderr.on('data', (data) => {
-            // 将 Git 的标准错误输出报告为进度警告或错误
-            // 注意：Git 的进度信息通常通过 stderr 输出
-            const stderrMessage = data.toString().trim();
-            if (stderrMessage.includes('Cloning into') || stderrMessage.includes('Receiving objects') || stderrMessage.includes('Resolving deltas')) {
-                progressReporter(`Git 进度: ${stderrMessage}`);
-            } else {
-                progressReporter(`Git 警告: ${stderrMessage}`);
-            }
-        });
+            gitProcess.stdout.on('data', (data) => {
+                const message = data.toString().trim();
+                if (message) {
+                    gitOutputChannel.appendLine(`[stdout] ${message}`);
+                    // 对于标准输出，通常是文件列表等信息，可以在进度条上简要显示
+                    if (message.length < 100) { // 避免过长的文件名刷屏
+                        gitProgress.report({ message: message });
+                    }
+                }
+            });
 
-        gitProcess.on('close', (code) => {
-            if (code === 0) {
-                resolve();
-            } else {
-                reject(new Error(`Git 命令失败,退出码: ${code}`));
-            }
-        });
+            gitProcess.stderr.on('data', (data) => {
+                const message = data.toString().trim();
+                if (!message) return;
 
-        gitProcess.on('error', (err) => {
-            reject(new Error(`执行 Git 命令出错: ${err.message}`));
+                gitOutputChannel.appendLine(`[stderr] ${message}`);
+
+                // 尝试匹配 Git 克隆进度百分比
+                const progressMatch = message.match(/Receiving objects: (\d+)%/);
+                if (progressMatch && progressMatch[1]) {
+                    const currentPercent = parseInt(progressMatch[1]);
+                    // 仅当百分比有变化时才更新进度条
+                    if (currentPercent !== lastKnownProgress) {
+                        gitProgress.report({ increment: currentPercent - lastKnownProgress, message: `Git 进度: ${message}` });
+                        lastKnownProgress = currentPercent;
+                    }
+                } else if (message.includes('Cloning into') || message.includes('Resolving deltas')) {
+                    // 其他重要 Git 进度信息，但不包含百分比
+                    if (message !== lastProgressMessage) { // 避免重复显示相同消息
+                        gitProgress.report({ message: `Git 消息: ${message}` });
+                        lastProgressMessage = message;
+                    }
+                } else {
+                    // 其他 stderr 输出，也报告给进度条，但可以设置一个长度限制避免刷屏
+                    if (message.length < 100 && message !== lastProgressMessage) {
+                        gitProgress.report({ message: `Git 警告/信息: ${message}` });
+                        lastProgressMessage = message;
+                    }
+                }
+            });
+
+            gitProcess.on('close', (code) => {
+                if (code === 0) {
+                    gitOutputChannel.appendLine(`<<< Git 命令完成 (退出码: ${code})`);
+                    gitProgress.report({ message: `Git ${command} 完成。`, increment: 100 - lastKnownProgress }); // 确保进度条走完
+                    resolve();
+                } else {
+                    const errorMessage = `Git 命令失败 (退出码: ${code})`;
+                    gitOutputChannel.appendLine(`!!! ${errorMessage}`);
+                    reject(new Error(errorMessage));
+                }
+            });
+
+            gitProcess.on('error', (err) => {
+                const errorMessage = `执行 Git 命令出错: ${err.message}`;
+                gitOutputChannel.appendLine(`!!! ${errorMessage}`);
+                reject(new Error(errorMessage));
+            });
         });
     });
 }
@@ -1297,29 +1343,28 @@ async function createSdkManagementWebview(context) {
 async function installSiFliSdk(source, type, name, installPath, webview) {
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification, // 显示在通知区域
-        title: "SiFli SDK 安装中",
-        cancellable: false // 用户不能取消此操作
+        title: "SiFli SDK 整体安装中", // 更改标题以反映整体进度
+        cancellable: false
     }, async (progress) => {
-        let currentProgressValue = 0; // 用于计算百分比的内部变量
-        const totalSteps = 100; // 总进度，方便百分比计算
+        let currentOverallProgress = 0;
+        // 总共约 7 个主要步骤，每个步骤分配一定的权重
+        const totalStepsWeight = 100;
 
-        // 辅助函数，用于更新进度弹窗的消息和进度条
-        const reportProgress = (message, increment = 0) => {
-            currentProgressValue = Math.min(totalSteps, currentProgressValue + increment);
-            progress.report({ message: message, increment: increment });
-            console.log(`[SiFli SDK Installer] ${message} (${currentProgressValue}%)`); // 仍然可以在控制台保留日志
+        const updateOverallProgress = (message, weight) => {
+            currentOverallProgress += weight;
+            progress.report({ message: message, increment: weight });
+            // 可以在这里也记录到输出通道，如果需要整体日志
+            gitOutputChannel.appendLine(`[SDK Installer] ${message} (${currentOverallProgress}%)`);
         };
 
         try {
-            reportProgress('检查 Git 安装...', 5);
-            // 1. 检查 Git 是否安装
+            updateOverallProgress('检查 Git 安装...', 5);
             if (!await isGitInstalled()) {
                 throw new Error('Git 未安装或不在 PATH 中。请先安装 Git。');
             }
 
-            // 检查并提示最新版本 (仅对 release 有效)
             if (type === 'tag') {
-                reportProgress('检查最新版本信息...', 10);
+                updateOverallProgress('检查最新版本信息...', 10);
                 try {
                     const allReleases = await fetchSiFliSdkReleases(source);
                     if (allReleases.length > 0) {
@@ -1331,29 +1376,26 @@ async function installSiFliSdk(source, type, name, installPath, webview) {
                             );
                             if (userChoice === '安装最新版本') {
                                 name = latestReleaseTag;
-                                reportProgress(`用户选择安装最新版本: ${name}`, 0);
+                                updateOverallProgress(`用户选择安装最新版本: ${name}`, 0);
                             } else if (userChoice === undefined) {
                                 throw new Error('用户取消安装。');
                             }
                         }
                     }
                 } catch (error) {
-                    reportProgress('无法获取最新版本信息，继续安装指定版本。', 0);
-                    // 记录到控制台，不作为错误抛出给用户
+                    updateOverallProgress('无法获取最新版本信息，继续安装指定版本。', 0);
                     console.warn(`[SiFli SDK Manager] 无法获取最新版本信息或处理版本选择: ${error.message}`);
                 }
             }
 
-
-            reportProgress('准备安装路径...', 10);
-            // 2. 检查安装路径并处理
+            updateOverallProgress('准备安装路径...', 10);
             if (fs.existsSync(installPath)) {
                 const response = await vscode.window.showWarningMessage(
                     `安装路径 '${installPath}' 已存在。是否清空并继续安装？`,
                     '清空并继续', '取消'
                 );
                 if (response === '清空并继续') {
-                    reportProgress(`清空现有目录: ${installPath}`, 10);
+                    updateOverallProgress(`清空现有目录: ${installPath}`, 10);
                     try {
                         fs.rmSync(installPath, { recursive: true, force: true });
                     } catch (error) {
@@ -1364,10 +1406,9 @@ async function installSiFliSdk(source, type, name, installPath, webview) {
                 }
             }
 
-            // 创建安装目录 (git clone 会自动创建，但为了明确，我们先创建父目录)
             const parentDir = path.dirname(installPath);
             if (!fs.existsSync(parentDir)) {
-                reportProgress(`创建父目录: ${parentDir}`, 5);
+                updateOverallProgress(`创建父目录: ${parentDir}`, 5);
                 try {
                     fs.mkdirSync(parentDir, { recursive: true });
                 } catch (error) {
@@ -1375,49 +1416,47 @@ async function installSiFliSdk(source, type, name, installPath, webview) {
                 }
             }
 
-            reportProgress(`开始克隆仓库 (${type}: ${name})...`, 30);
-            // 3. 执行 Git Clone 和 Checkout
+            updateOverallProgress(`开始克隆 Git 仓库 (${type}: ${name})...`, 0); // 进度交给子进度条
             const repoUrl = source === 'github' ? SIFLI_SDK_GITHUB_REPO_GIT : SIFLI_SDK_GITEE_REPO_GIT;
-            // 将 reportProgress 函数作为参数传递给 executeGitCommand
-            await executeGitCommand(`clone --recursive --progress ${repoUrl} -b "${name}" "${installPath}"`, parentDir, reportProgress);
+            const gitArgs = ['clone', '--recursive', '--progress', repoUrl, '-b', name, installPath];
 
-            reportProgress('Git 克隆和版本/分支切换完成。', 15);
+            // <<<<<< 调用修改后的 executeGitCommand
+            await executeGitCommand('git', gitArgs, parentDir);
+            updateOverallProgress('Git 克隆和版本/分支切换完成。', 45); // Git操作完成后，增加整体进度
 
-            // 4. 更新 VS Code 配置
-            const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
-            const exportPs1Path = path.join(installPath, 'export.ps1');
+            updateOverallProgress('更新 VS Code 配置...', 10);
+            // const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+            // const exportPs1Path = path.join(installPath, 'export.ps1');
 
-            if (fs.existsSync(exportPs1Path)) {
-                reportProgress('更新 VS Code 配置...', 5);
-                await config.update('sifliSdkExportScriptPath', exportPs1Path, vscode.ConfigurationTarget.Global);
-                vscode.window.showInformationMessage(`SiFli SDK 安装完成，并已更新 'SiFli SDK 导出脚本路径' 到: ${exportPs1Path}`);
-            } else {
-                vscode.window.showWarningMessage(`SDK 安装完成，但未找到 'export.ps1' 脚本于 ${exportPs1Path}。请手动配置。`);
-            }
+            // if (fs.existsSync(exportPs1Path)) {
+            //     await config.update('sifliSdkExportScriptPath', exportPs1Path, vscode.ConfigurationTarget.Global);
+            //     vscode.window.showInformationMessage(`SiFli SDK 安装完成，并已更新 'SiFli SDK 导出脚本路径' 到: ${exportPs1Path}`);
+            // } else {
+            //     vscode.window.showWarningMessage(`SDK 安装完成，但未找到 'export.ps1' 脚本于 ${exportPs1Path}。请手动配置。`);
+            // }
 
-            reportProgress('SDK 安装流程完成。', 10); // 最后的进度更新
+            updateOverallProgress('SDK 安装流程最终完成。', 5); // 确保总进度达到100
             vscode.window.showInformationMessage('SiFli SDK 已成功安装！');
-            // 通知 WebView 安装完成，以便它更新 UI (例如，重新启用安装按钮)
             webview.postMessage({ command: 'installationComplete' });
 
         } catch (error) {
-            // 在遇到错误时，显示错误消息
             vscode.window.showErrorMessage(`SiFli SDK 安装失败: ${error.message}`);
-            console.error(`[SiFli SDK Installer] Installation failed:`, error);
-            // 通知 WebView 安装失败
+            gitOutputChannel.appendLine(`!!! SiFli SDK 安装失败: ${error.message}`); // 错误也写入输出通道
             webview.postMessage({ command: 'installationError', error: error.message });
 
-            // 尝试清理部分克隆的目录
             if (fs.existsSync(installPath)) {
                 try {
                     vscode.window.showWarningMessage(`安装失败，尝试清理部分文件...`);
                     fs.rmSync(installPath, { recursive: true, force: true });
-                    console.log(`[SiFli SDK Installer] Cleaned up partially installed directory: ${installPath}`);
+                    gitOutputChannel.appendLine(`!!! 已尝试清理部分安装目录: ${installPath}`);
                 } catch (cleanupError) {
-                    console.error(`[SiFli SDK Installer] Failed to clean up partially installed directory: ${cleanupError.message}`);
+                    gitOutputChannel.appendLine(`!!! 清理目录失败: ${cleanupError.message}`);
                     vscode.window.showWarningMessage(`安装失败，且无法完全清理目录: ${cleanupError.message}`);
                 }
             }
+        } finally {
+            // 确保在安装无论成功或失败后，输出通道都可见，方便查看日志
+            gitOutputChannel.show(true);
         }
     });
 }
@@ -1431,6 +1470,10 @@ async function activate(context) {
     await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false); // <--- 生产环境请注释或删除此行
     // ******************************************************
 
+    // <<<<<< 新增：初始化输出通道
+    gitOutputChannel = vscode.window.createOutputChannel("SiFli SDK Git Operations");
+    context.subscriptions.push(gitOutputChannel); // 确保通道在插件停用时被清理
+    
     // 在插件激活时立即读取配置
     updateConfiguration(); // 首次加载时调用,初始化 selectedBoardName 等
 
@@ -1502,6 +1545,8 @@ function deactivate() {
     if (currentBoardStatusItem) currentBoardStatusItem.dispose();
     if (currentSerialPortStatusItem) currentSerialPortStatusItem.dispose();
     if (sdkManageBtn) sdkManageBtn.dispose();
+
+    if (gitOutputChannel) gitOutputChannel.dispose();
 
     console.log('[SiFli Extension] Extension deactivated.');
 }

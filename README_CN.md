@@ -1,5 +1,5 @@
 <a href="https://marketplace.visualstudio.com/items?itemName=SiFli.sifli-sdk-codekit">
-  <img src="images\SiFli.png" alt="SiFli SDK" title="SiFli" align="right" height="100" />
+  <img src="images/readme\SiFli.png" alt="SiFli SDK" title="SiFli" align="right" height="100" />
 </a>
 
 # sifli-sdk-codekit - VS Code 插件
@@ -56,7 +56,7 @@
     |   |
     |   +---launch.json                 // VS Code 调试配置文件。
     |
-    +---images                          // 插件的使用说明图片
+    +---images/readme                          // 插件的使用说明图片
     |
     +---extension.js                    // 插件的主入口文件。
     |
@@ -110,30 +110,30 @@
 2. 快捷键 `Ctrl+Shift+X` 进入插件市场。
 3. 搜索 `sifli-sdk-codekit` 并安装。
 4. 安装示意图如下：
-   ![安装](images/sifli-sdk-codekit_install.png)
+   ![安装](images/readme/readme/sifli-sdk-codekit_install.png)
 
 ### 插件配置
 
 - **选择芯片模组与线程数**
   - 点击状态栏 `SIFLI Board` 进行选择
-  - ![选择芯片模组](images/select_the_current_module.png)
-  - ![线程数选择](images/Select_the_number_of_threads.png)
+  - ![选择芯片模组](images/readme/select_the_current_module.png)
+  - ![线程数选择](images/readme/Select_the_number_of_threads.png)
 
 - **配置 SDK 路径**
   - 打开设置（`文件 -> 首选项 -> 设置`）
   - 搜索 `sifli-sdk-codekit`
   - 填写 PowerShell 路径与 `export.ps1` 脚本路径
-  - ![路径设置](images/change_module_and_path_setting.png)
+  - ![路径设置](images/readme/change_module_and_path_setting.png)
 
 ---
 
 ## 🔄 串口切换演示
 
 - **单个串口设备时自动选择**
-  ![单设备](images/one_serial_device.png)
+  ![单设备](images/readme/one_serial_device.png)
 
 - **多个串口设备时弹窗选择**
-  ![多设备](images/multiple_serial_devices.png)
+  ![多设备](images/readme/multiple_serial_devices.png)
 
 ---
 

@@ -1,5 +1,5 @@
 <a href="https://marketplace.visualstudio.com/items?itemName=SiFli.sifli-sdk-codekit">
-  <img src="images\SiFli.png" alt="SiFli SDK" title="SiFli" align="right" height="100" />
+  <img src="images/readme\SiFli.png" alt="SiFli SDK" title="SiFli" align="right" height="100" />
 </a>
 
 # sifli-sdk-codekit - VS Code Extension
@@ -57,7 +57,7 @@
     |   |
     |   +---launch.json                 // VS Code debug config
     |
-    +---images                          // Usage images for the extension
+    +---images/readme                   // Usage images/readme for the extension
     |
     +---extension.js                    // Main entry script
     |
@@ -110,14 +110,14 @@
 2. Use shortcut `Ctrl+Shift+X` to open the Extensions Marketplace.
 3. Search for `sifli-sdk-codekit` and install it.
 4. Installation UI example:  
-   ![Installation](images/sifli-sdk-codekit_install.png)
+   ![Installation](images/readme/sifli-sdk-codekit_install.png)
 
 ### Configuration
 
 - **Select Chip Module and Thread Count**
   - Click `SIFLI Board` in the status bar.
-  - ![Select chip module](images/select_the_current_module.png)
-  - ![Select thread count](images/Select_the_number_of_threads.png)
+  - ![Select chip module](images/readme/select_the_current_module.png)
+  - ![Select thread count](images/readme/Select_the_number_of_threads.png)
 
 - **Configure SDK Paths**
   - Open `File -> Preferences -> Settings`
@@ -125,17 +125,17 @@
   - Set the following:
     - PowerShell executable path
     - `export.ps1` full script path
-  - ![Path settings](images/change_module_and_path_setting.png)
+  - ![Path settings](images/readme/change_module_and_path_setting.png)
 
 ---
 
 ## 🔄 Serial Port Selection Demo
 
 - **Single Serial Port Auto-Selected**
-  ![Single device](images/one_serial_device.png)
+  ![Single device](images/readme/one_serial_device.png)
 
 - **Multiple Devices - Manual Selection**
-  ![Multiple devices](images/multiple_serial_devices.png)
+  ![Multiple devices](images/readme/multiple_serial_devices.png)
 
 ---
 
