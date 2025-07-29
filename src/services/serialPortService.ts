@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { exec } from 'child_process';
+import { SerialPort as SerialPortAPI } from 'serialport';
 import { SerialPort } from '../types';
 
 export class SerialPortService {
@@ -27,28 +27,22 @@ export class SerialPortService {
    * 获取可用的串口列表
    */
   public async getSerialPorts(): Promise<SerialPort[]> {
-    return new Promise((resolve, reject) => {
-      const command = process.platform === 'win32' 
-        ? 'powershell "Get-WmiObject -query \\"SELECT * from Win32_SerialPort\\" | ForEach-Object {$_.DeviceID}"'
-        : process.platform === 'darwin'
-        ? 'ls /dev/cu.*'
-        : 'ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null || echo ""';
-
-      exec(command, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`[SerialPortService] Error getting serial ports: ${error.message}`);
-          resolve([]);
-          return;
-        }
-
-        const lines = stdout.trim().split('\n').filter(line => line.trim());
-        const ports: SerialPort[] = lines.map(line => ({
-          path: line.trim()
-        }));
-
-        resolve(ports);
-      });
-    });
+    try {
+      const ports = await SerialPortAPI.list();
+      
+      return ports.map(port => ({
+        path: port.path,
+        manufacturer: port.manufacturer,
+        serialNumber: port.serialNumber,
+        pnpId: port.pnpId,
+        locationId: port.locationId,
+        productId: port.productId,
+        vendorId: port.vendorId
+      }));
+    } catch (error) {
+      console.error(`[SerialPortService] Error getting serial ports: ${error}`);
+      return [];
+    }
   }
 
   /**
