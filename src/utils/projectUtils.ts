@@ -30,8 +30,8 @@ export function isSiFliProject(): boolean {
     return false;
   }
 
-  // 检查是否存在 src 子文件夹
-  const srcPath = path.join(projectPath, SRC_SUBFOLDER);
+  // 检查是否存在 src 子文件夹（在工作区根目录下）
+  const srcPath = path.join(workspaceRoot, SRC_SUBFOLDER);
   if (!isDirectory(srcPath)) {
     console.log(`[ProjectUtils] Source directory not found: ${srcPath}`);
     return false;
@@ -58,7 +58,7 @@ export function getProjectInfo(): {
 
   const workspaceRoot = workspaceFolders[0].uri.fsPath;
   const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
-  const srcPath = path.join(projectPath, SRC_SUBFOLDER);
+  const srcPath = path.join(workspaceRoot, SRC_SUBFOLDER); // src在工作区根目录下
   const sconscriptPath = path.join(projectPath, SCONSCRIPT_FILE);
 
   return {

@@ -4,7 +4,7 @@
     {
       "label": "watch",
       "type": "shell",
-      "command": "pnpm",
+      "command": "yarn",
       "args": ["run", "watch"],
       "group": "build",
       "isBackground": true,
@@ -16,11 +16,39 @@
     {
       "label": "Build Extension",
       "type": "shell",
-      "command": "pnpm",
+      "command": "yarn",
       "args": ["run", "compile"],
       "group": "build",
       "isBackground": false,
       "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "lint",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["run", "lint"],
+      "group": "build",
+      "isBackground": false,
+      "problemMatcher": ["$eslint-stylish"]
+    },
+    {
+      "label": "format",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["run", "format"],
+      "group": "build",
+      "isBackground": false
+    },
+    {
+      "label": "package",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["run", "package"],
+      "group": "build",
+      "isBackground": false,
+      "presentation": {
+        "reveal": "always"
+      }
     }
   ]
 }
