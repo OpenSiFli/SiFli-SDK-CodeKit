@@ -42,6 +42,10 @@
         "title": "管理 SiFli SDK 安装"
       },
       {
+        "command": "extension.switchSdkVersion",
+        "title": "切换 SiFli SDK 版本"
+      },
+      {
         "command": "extension.selectDownloadPort",
         "title": "选择下载串口"
       }
@@ -56,6 +60,14 @@
         "sifli-sdk-codekit.sifliSdkExportScriptPath": {
           "type": "string",
           "description": "Full path to the SiFli SDK export.ps1 script. (e.g., D:\\OpenSiFli\\SiFli-SDK\\export.ps1)"
+        },
+        "sifli-sdk-codekit.installedSdkPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "List of installed SiFli SDK root directories. Used for version switching."
         },
         "sifli-sdk-codekit.defaultChipModule": {
           "type": "string",

@@ -36,11 +36,10 @@ const DOWNLOAD_TASK_NAME = "SiFli: Download";
 const MENUCONFIG_TASK_NAME = "SiFli: Menuconfig";
 const CLEAN_TASK_NAME = "SiFli: Clean";
 const REBUILD_TASK_NAME = "SiFli: Rebuild";
-// const BUILD_DOWNLOAD_TASK_NAME = "SiFli: Build & Download"; // - 删除此行
 
 // 状态栏按钮变量
-// let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, buildDownloadBtn, currentBoardStatusItem, sdkManageBtn, currentSerialPortStatusItem; // 新增 currentSerialPortItem // - 删除 buildDownloadBtn
-let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, currentBoardStatusItem, sdkManageBtn, currentSerialPortStatusItem; //
+let compileBtn, rebuildBtn, cleanBtn, downloadBtn, menuconfigBtn, currentBoardStatusItem, sdkManageBtn, currentSerialPortStatusItem, currentSdkVersionStatusItem;
+let detectedSdkVersions = [];    // 存储发现的 SDK 版本信息
 
 // 定义一个常量用于全局状态的键,表示是否已经执行过首次设置
 const HAS_RUN_INITIAL_SETUP_KEY = 'oneStepForSifli.hasRunInitialSetup';
@@ -311,10 +310,10 @@ async function getSftoolDownloadCommand(boardName, serialPortNum) {
  * 辅助函数：读取并更新插件配置中的路径信息。
  * 在插件激活时调用,并在用户修改配置时监听并更新。
  */
-function updateConfiguration() {
+async function updateConfiguration() { // 变为 async 函数,因为会调用 discoverSiFliSdks
     const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
     SF32_TERMINAL_PATH = config.get('powershellPath');
-    SIFLI_SDK_EXPORT_SCRIPT_PATH = config.get('sifliSdkExportScriptPath');
+    SIFLI_SDK_EXPORT_SCRIPT_PATH = config.get('sifliSdkExportScriptPath'); // 这是当前激活的 SDK 脚本路径
     
     // **确保这里始终从配置中读取 selectedBoardName**
     // 如果配置中没有或为空,则 selectedBoardName 将保持为空字符串,在状态栏中会显示为 N/A
@@ -322,14 +321,30 @@ function updateConfiguration() {
     
     numThreads = config.get('numThreads', os.cpus().length > 0 ? os.cpus().length : 8); 
 
-    // 根据 export 脚本路径计算 SDK 根目录
+    // 根据当前激活的 export 脚本路径计算 SDK 根目录
     // 假设 export.ps1 位于 SDK 的根目录
     if (SIFLI_SDK_EXPORT_SCRIPT_PATH && fs.existsSync(SIFLI_SDK_EXPORT_SCRIPT_PATH)) {
         SIFLI_SDK_ROOT_PATH = path.dirname(SIFLI_SDK_EXPORT_SCRIPT_PATH);
     } else {
-        SIFLI_SDK_ROOT_PATH = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
-            ? vscode.workspace.workspaceFolders[0].uri.fsPath : os.homedir();
-        vscode.window.showWarningMessage('SiFli SDK export.ps1 脚本路径未配置或无效,请在扩展设置中检查。');
+        // 如果当前配置的 export 脚本路径无效,尝试从已安装路径中查找第一个有效的
+        const installedPaths = config.get('installedSdkPaths', []);
+        let foundValidPath = false;
+        for (const sdkPath of installedPaths) {
+            const exportScript = path.join(sdkPath, 'export.ps1');
+            if (fs.existsSync(exportScript)) {
+                SIFLI_SDK_EXPORT_SCRIPT_PATH = exportScript;
+                SIFLI_SDK_ROOT_PATH = sdkPath;
+                await config.update('sifliSdkExportScriptPath', exportScript, vscode.ConfigurationTarget.Global); // 更新配置为第一个找到的有效路径
+                vscode.window.showInformationMessage(`SiFli SDK export.ps1 脚本路径已自动设置为: ${exportScript}`);
+                foundValidPath = true;
+                break;
+            }
+        }
+        if (!foundValidPath) {
+            SIFLI_SDK_ROOT_PATH = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
+                ? vscode.workspace.workspaceFolders[0].uri.fsPath : os.homedir();
+            vscode.window.showWarningMessage('SiFli SDK export.ps1 脚本路径未配置或无效，且未在已安装路径中找到有效 SDK。请在扩展设置中检查。');
+        }
     }
 
     // 重新构建终端启动参数
@@ -341,14 +356,64 @@ function updateConfiguration() {
         SIFLI_SDK_EXPORT_SCRIPT_PATH
     ];
 
+    // 发现所有已安装的 SDK 版本
+    detectedSdkVersions = await discoverSiFliSdks(); // 调用新的发现函数
+
     console.log(`[SiFli Extension] Configuration updated:`);
     console.log(`  PowerShell Path: ${SF32_TERMINAL_PATH}`);
     console.log(`  SiFli SDK Export Script Path: ${SIFLI_SDK_EXPORT_SCRIPT_PATH}`);
     console.log(`  Selected SiFli Board: ${selectedBoardName}`); 
     console.log(`  Compilation Threads: ${numThreads}`);
-
+    console.log(`  Detected SDK Versions:`, detectedSdkVersions);
 
     updateStatusBarItems(); // 配置更新后,更新状态栏显示
+}
+
+/**
+ * 辅助函数：扫描所有已配置的 SDK 路径，并尝试识别其版本（仅从 version.txt 读取）。
+ * @returns {Promise<Array<{path: string, version: string, current: boolean, isValid: boolean}>>}
+ */
+async function discoverSiFliSdks() {
+    const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+    const installedPaths = config.get('installedSdkPaths', []);
+    const currentActiveSdkPath = SIFLI_SDK_ROOT_PATH; // 当前激活的 SDK 根目录
+
+    const discovered = [];
+
+    for (const sdkPath of installedPaths) {
+        const exportScriptPath = path.join(sdkPath, 'export.ps1');
+        const versionFile = path.join(sdkPath, 'version.txt');
+
+        let sdkVersion = '未知版本';
+        let isValidSdk = false;
+
+        if (fs.existsSync(exportScriptPath)) {
+            isValidSdk = true;
+            try {
+                // 仅从 version.txt 文件读取版本号
+                if (fs.existsSync(versionFile)) {
+                    sdkVersion = fs.readFileSync(versionFile, 'utf8').trim();
+                } else {
+                    sdkVersion = '无 version.txt 文件';
+                }
+            } catch (err) {
+                console.error(`[SiFli Extension] 读取 SDK 版本信息失败 for ${sdkPath}: ${err.message}`);
+                sdkVersion = '读取失败';
+            }
+        } else {
+            isValidSdk = false;
+            sdkVersion = '无效 SDK 路径 (无 export.ps1)';
+        }
+
+        discovered.push({
+            path: sdkPath,
+            version: sdkVersion,
+            isValid: isValidSdk,
+            current: sdkPath === currentActiveSdkPath
+        });
+    }
+
+    return discovered;
 }
 
 /**
@@ -441,6 +506,66 @@ async function executeShellCommandInSiFliTerminal(commandLine, taskName) { // �
     console.log(`[SiFli Extension] Sending command "${commandLine}" for task "${taskName}" to SF32 terminal.`);
     terminal.sendText(commandLine); // 直接向终端发送命令
 }
+
+/**
+ * 切换 SiFli SDK 版本的命令。
+ * 弹出 Quick Pick 列表供用户选择。
+ */
+async function switchSdkVersion() {
+    if (detectedSdkVersions.length === 0) {
+        vscode.window.showInformationMessage('未发现任何已安装的 SiFli SDK 版本。请通过“管理 SiFli SDK”功能进行安装。');
+        return;
+    }
+
+    const pickOptions = detectedSdkVersions.map(sdk => ({
+        label: sdk.version,
+        description: sdk.path,
+        detail: sdk.current ? '当前激活' : (sdk.isValid ? '' : '无效路径'),
+        sdkPath: sdk.path,
+        isValid: sdk.isValid
+    }));
+
+    const selected = await vscode.window.showQuickPick(pickOptions, {
+        placeHolder: '选择要切换的 SiFli SDK 版本',
+        title: '切换 SiFli SDK 版本'
+    });
+
+    if (selected) {
+        if (!selected.isValid) {
+            vscode.window.showWarningMessage(`选择的 SDK 路径无效：${selected.sdkPath}。请检查该路径下是否存在 'export.ps1'。`);
+            return;
+        }
+        
+        // 如果选择的是当前激活的 SDK，则不做任何操作
+        if (selected.sdkPath === SIFLI_SDK_ROOT_PATH) {
+            vscode.window.showInformationMessage(`SiFli SDK 已是当前版本：${selected.version}`);
+            return;
+        }
+
+        const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+        const newExportScriptPath = path.join(selected.sdkPath, 'export.ps1');
+
+        await config.update('sifliSdkExportScriptPath', newExportScriptPath, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(`SiFli SDK 已切换到版本: ${selected.version}`);
+        
+        // 强制重新初始化终端以加载新的环境变量
+        vscode.window.showInformationMessage('SiFli SDK 环境已更新。正在重新加载终端...');
+        const terminal = vscode.window.terminals.find(t => t.name === TERMINAL_NAME);
+        if (terminal) {
+            terminal.dispose(); // 关闭现有终端
+        }
+
+        // 确保 updateConfiguration 已经执行，因为它会更新 SF32_TERMINAL_ARGS
+        // 由于 config.update 触发 onDidChangeConfiguration -> updateConfiguration，
+        // 可以在这里加一个短延迟确保 updateConfiguration 完成，尽管通常不是严格必要，但为了健壮性可以保留。
+        await new Promise(resolve => setTimeout(resolve, 100)); // 短暂延迟
+        await updateConfiguration(); // 再次确保所有配置最新，特别是 SF32_TERMINAL_ARGS
+        await getOrCreateSiFliTerminalAndCdProject(); // 立即创建并显示新终端，它会执行新的 export.ps1 并 cd 到项目目录
+    } else {
+        vscode.window.showInformationMessage('已取消 SDK 版本切换。');
+    }
+}
+
 
 /**
  * 辅助函数：通过 PowerShell Get-WmiObject 获取当前系统中所有可用的串口设备（通用）。
@@ -777,19 +902,34 @@ function updateStatusBarItems() {
     if (sdkManageBtn) { // 更新 SDK 管理按钮的 tooltip
         sdkManageBtn.tooltip = '管理 SiFli SDK 安装';
     }
+    if (currentSdkVersionStatusItem) {
+        // 查找当前激活的 SDK 版本信息
+        const currentSdk = detectedSdkVersions.find(sdk => sdk.current);
+        const sdkVersionText = currentSdk ? currentSdk.version : 'N/A';
+        currentSdkVersionStatusItem.text = `SDK: ${sdkVersionText}`; // 带有图标和版本号
+        currentSdkVersionStatusItem.tooltip = `当前 SiFli SDK 版本: ${sdkVersionText}\n点击切换 SDK 版本`;
+    }
 }
 
 // 初始化状态栏按钮
 function initializeStatusBarItems(context) {
     const CMD_PREFIX = "extension.";
 
-    // SDK 管理按钮
-    sdkManageBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 101);
-    sdkManageBtn.text = '$(cloud-download) SiFli SDK';
+    // SDK 管理按钮 (保持不变，或根据需要调整优先级)
+    sdkManageBtn = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 102);
+    sdkManageBtn.text = '$(cloud-download)';
     sdkManageBtn.tooltip = '管理 SiFli SDK 安装';
     sdkManageBtn.command = CMD_PREFIX + 'manageSiFliSdk';
     sdkManageBtn.show();
     context.subscriptions.push(sdkManageBtn);
+
+    // 新增：SDK 版本切换按钮
+    currentSdkVersionStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 101);
+    currentSdkVersionStatusItem.text = 'SDK: N/A'; // 初始文本
+    currentSdkVersionStatusItem.tooltip = '点击切换 SiFli SDK 版本';
+    currentSdkVersionStatusItem.command = CMD_PREFIX + 'switchSdkVersion'; // 绑定新的切换命令
+    currentSdkVersionStatusItem.show();
+    context.subscriptions.push(currentSdkVersionStatusItem);
     
     // 显示当前板卡的状态栏项
     currentBoardStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -1431,63 +1571,48 @@ async function activate(context) {
     await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false); // <--- 生产环境请注释或删除此行
     // ******************************************************
 
-    // <<<<<< 新增：初始化输出通道
     gitOutputChannel = vscode.window.createOutputChannel("SiFli SDK Git Operations");
-    context.subscriptions.push(gitOutputChannel); // 确保通道在插件停用时被清理
+    context.subscriptions.push(gitOutputChannel);
     
-    // 在插件激活时立即读取配置
-    updateConfiguration(); // 首次加载时调用,初始化 selectedBoardName 等
+    // 在插件激活时立即读取配置 (注意现在 updateConfiguration 是 async 的)
+    await updateConfiguration(); // 确保在后续逻辑执行前完成配置和 SDK 发现
 
-    // 只有是 SiFli 项目才激活插件功能
     if (isSiFliProject()) {
         console.log('[SiFli Extension] SiFli project detected. Activating full extension features.');
 
-        initializeStatusBarItems(context); // 只有是 SiFli 项目才初始化状态栏按钮
+        initializeStatusBarItems(context);
 
-        // 在初始化配置和状态栏后,检查是否需要提示用户选择初始芯片模组
-        // 使用 setTimeout 稍微延迟,确保初始化完成
         setTimeout(async () => {
-            await promptForInitialBoardSelection(context); // 调用此函数可能会更新 defaultChipModule 配置
-
-            // 在 promptForInitialBoardSelection 完成并可能更新配置后,再次调用 updateConfiguration
-            // 确保 selectedBoardName 和状态栏显示与最新配置同步
-            updateConfiguration(); 
+            await promptForInitialBoardSelection(context); 
+            await updateConfiguration(); // 再次调用以确保在 promptForInitialBoardSelection 之后更新 SDK 列表和状态栏
             
-            // 在插件初始化后,如果串口未连接,主动提醒用户选择串口
             if (!selectedSerialPort) {
                 vscode.window.showInformationMessage('首次启动或串口未连接。请点击状态栏中的 "COM: N/A" 选择串口,以便进行下载操作。');
-                // 可以选择在这里直接调用 selectSerialPort() 让用户选择,但信息提示更柔和
-                // await selectSerialPort(); 
             }
-
-
-            // 确保终端在所有配置更新和板子选择后创建
             await getOrCreateSiFliTerminalAndCdProject();
         }, 500);
 
-        // 监听配置变化,当用户在 VS Code 设置中修改插件的相关配置时,重新读取并更新这些路径变量。
-        context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
-            // 检查是否是 'sifli-sdk-codekit' 相关的配置发生了变化
+        context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(async e => { // 监听器也变为 async
             if (e.affectsConfiguration('sifli-sdk-codekit')) {
-                updateConfiguration(); // 更新内部的路径变量,并自动更新状态栏
+                await updateConfiguration(); // 确保配置变化时重新发现 SDK 并更新 UI
             }
         }));
 
         const CMD_PREFIX = "extension.";
-        // 只有是 SiFli 项目才注册命令
         context.subscriptions.push(
             vscode.commands.registerCommand(CMD_PREFIX + 'compile', () => executeCompileTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'rebuild', async () => {
                 executeCleanCommand();
-                await new Promise(resolve => setTimeout(resolve, 500)); // 添加一个小的延迟,确保清理完成再开始编译
+                await new Promise(resolve => setTimeout(resolve, 500));
                 await executeCompileTask();
             }),
             vscode.commands.registerCommand(CMD_PREFIX + 'clean', () => executeCleanCommand()),
             vscode.commands.registerCommand(CMD_PREFIX + 'download', () => executeDownloadTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => executeMenuconfigTask()),
             vscode.commands.registerCommand(CMD_PREFIX + 'selectChipModule', () => selectChipModule()),
-            vscode.commands.registerCommand(CMD_PREFIX + 'selectDownloadPort', () => selectDownloadPort()), // 注册新的命令
-            vscode.commands.registerCommand(CMD_PREFIX + 'manageSiFliSdk', () => createSdkManagementWebview(context))
+            vscode.commands.registerCommand(CMD_PREFIX + 'selectDownloadPort', () => selectDownloadPort()),
+            vscode.commands.registerCommand(CMD_PREFIX + 'manageSiFliSdk', () => createSdkManagementWebview(context)),
+            vscode.commands.registerCommand(CMD_PREFIX + 'switchSdkVersion', () => switchSdkVersion()) // 注册新的命令
         );
     } else {
         console.log('[SiFli Extension] Not a SiFli project. Extension features will not be activated.');
@@ -1501,7 +1626,7 @@ function deactivate() {
     if (cleanBtn) cleanBtn.dispose();
     if (downloadBtn) downloadBtn.dispose();
     if (menuconfigBtn) menuconfigBtn.dispose();
-    // if (buildDownloadBtn) buildDownloadBtn.dispose(); // - 删除此行
+    if (currentSdkVersionStatusItem) currentSdkVersionStatusItem.dispose();
     if (currentBoardStatusItem) currentBoardStatusItem.dispose();
     if (currentSerialPortStatusItem) currentSerialPortStatusItem.dispose();
     if (sdkManageBtn) sdkManageBtn.dispose();
