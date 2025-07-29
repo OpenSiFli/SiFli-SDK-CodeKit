@@ -61,7 +61,6 @@
         switch (message.command) {
             case 'installPathSelected':
                 installPathInput.value = message.path;
-                // log(`已选择安装路径: ${message.path}`, 'info'); // <<<<<< 移除此行
                 break;
             case 'displayReleases':
                 availableReleases = message.releases;
@@ -69,11 +68,10 @@
                 availableReleases.forEach(release => {
                     const option = document.createElement('option');
                     option.value = release.tagName;
-                    option.textContent = `${release.name} (${release.tagName})`;
+                    option.textContent = release.tagName;
                     sdkVersionSelect.appendChild(option);
                 });
                 sdkVersionSelect.disabled = false;
-                // log('SDK 发布版本加载完成。', 'info'); // <<<<<< 移除此行
                 if (availableReleases.length > 0) {
                     sdkVersionSelect.value = availableReleases[0].tagName;
                 }
