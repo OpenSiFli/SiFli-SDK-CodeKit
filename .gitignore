@@ -3,3 +3,6 @@ update_plan.md
 issues_image/
 images/icons/
 node_modules/
+out/
+dist/
+*.vsix
