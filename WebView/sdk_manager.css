@@ -1,239 +1,268 @@
 /* media/sdk_manager.css - Updated for a more "grand" Primer-style aesthetic with logo support, without background box and shadow */
 
 :root {
-    /* Primer.style 基础颜色变量映射到 VS Code 主题变量 */
-    --primer-blue-500: var(--vscode-button-background);
-    --primer-blue-600: var(--vscode-button-hoverBackground);
-    --primer-gray-200: var(--vscode-input-background);
-    --primer-gray-300: var(--vscode-input-border); /* 明确用于输入框边框，通常会与背景有对比 */
-    --primer-gray-400: var(--vscode-input-placeholderForeground);
-    --primer-gray-500: var(--vscode-editorGroup-border); /* 用于分隔线等 */
-    --primer-border-color: var(--vscode-editorGroup-border);
+  /* Primer.style 基础颜色变量映射到 VS Code 主题变量 */
+  --primer-blue-500: var(--vscode-button-background);
+  --primer-blue-600: var(--vscode-button-hoverBackground);
+  --primer-gray-200: var(--vscode-input-background);
+  --primer-gray-300: var(
+    --vscode-input-border
+  ); /* 明确用于输入框边框，通常会与背景有对比 */
+  --primer-gray-400: var(--vscode-input-placeholderForeground);
+  --primer-gray-500: var(--vscode-editorGroup-border); /* 用于分隔线等 */
+  --primer-border-color: var(--vscode-editorGroup-border);
 
-    /* Text colors */
-    --primer-text-primary: var(--vscode-editor-foreground);
-    --primer-text-secondary: var(--vscode-button-foreground); /* 通常用于亮色按钮上的文字 */
-    --primer-text-muted: var(--vscode-foreground); /* 浅色文本，用于副标题、描述等 */
-    --primer-text-placeholder: var(--vscode-input-placeholderForeground);
+  /* Text colors */
+  --primer-text-primary: var(--vscode-editor-foreground);
+  --primer-text-secondary: var(
+    --vscode-button-foreground
+  ); /* 通常用于亮色按钮上的文字 */
+  --primer-text-muted: var(
+    --vscode-foreground
+  ); /* 浅色文本，用于副标题、描述等 */
+  --primer-text-placeholder: var(--vscode-input-placeholderForeground);
 
-    /* Focus and interactive colors */
-    --primer-focus-ring-color: var(--vscode-focusBorder);
-    --primer-btn-disabled-bg: var(--vscode-button-secondaryBackground);
-    --primer-btn-disabled-text: var(--vscode-button-foreground); /* Disabled text usually still needs to be visible */
+  /* Focus and interactive colors */
+  --primer-focus-ring-color: var(--vscode-focusBorder);
+  --primer-btn-disabled-bg: var(--vscode-button-secondaryBackground);
+  --primer-btn-disabled-text: var(
+    --vscode-button-foreground
+  ); /* Disabled text usually still needs to be visible */
 }
 
 body {
-    font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji");
-    font-size: var(--vscode-font-size, 14px); /* 基础字号略微调大 */
-    line-height: 1.6; /* 更自然舒适的行高 */
-    color: var(--primer-text-primary);
-    background-color: var(--vscode-editor-background);
-    padding: 40px; /* 增加整体内边距，提升留白感 */
-    -webkit-font-smoothing: antialiased; /* 更好的字体抗锯齿效果 */
+  font-family: var(
+    --vscode-font-family,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Helvetica,
+    Arial,
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji"
+  );
+  font-size: var(--vscode-font-size, 14px); /* 基础字号略微调大 */
+  line-height: 1.6; /* 更自然舒适的行高 */
+  color: var(--primer-text-primary);
+  background-color: var(--vscode-editor-background);
+  padding: 40px; /* 增加整体内边距，提升留白感 */
+  -webkit-font-smoothing: antialiased; /* 更好的字体抗锯齿效果 */
 }
 
 .container {
-    max-width: 680px; /* 适当增加最大宽度，提供更开阔的视觉效果 */
-    margin: 0 auto; /* 居中显示 */
-    /* 移除了背景色和阴影，使其融入 VS Code 背景 */
-    /* background-color: var(--vscode-editor-background); */
-    /* border-radius: 8px; */
-    /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); */
+  max-width: 680px; /* 适当增加最大宽度，提供更开阔的视觉效果 */
+  margin: 0 auto; /* 居中显示 */
+  /* 移除了背景色和阴影，使其融入 VS Code 背景 */
+  /* background-color: var(--vscode-editor-background); */
+  /* border-radius: 8px; */
+  /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); */
 }
 
 .page-header {
-    text-align: center;
-    padding: 32px 0 24px; /* 顶部更多空间，底部与内容有一定间隔 */
-    margin-bottom: 24px;
-    border-bottom: 1px solid var(--primer-gray-500); /* 柔和的分隔线 */
+  text-align: center;
+  padding: 32px 0 24px; /* 顶部更多空间，底部与内容有一定间隔 */
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--primer-gray-500); /* 柔和的分隔线 */
 }
 
 .brand-logo-placeholder {
-    width: 64px; /* Logo 区域宽度 */
-    height: 64px; /* Logo 区域高度 */
-    margin: 0 auto 16px; /* 居中显示，与标题有间隔 */
-    /* background-color: var(--vscode-button-background); /* 示例背景色，可根据实际 Logo 调整或移除 */
-    border-radius: 8px; /* 圆角与容器一致 */
-    display: flex; /* 确保 Logo 居中 */
-    align-items: center;
-    justify-content: center;
-    overflow: hidden; /* 防止 Logo 溢出 */
+  width: 64px; /* Logo 区域宽度 */
+  height: 64px; /* Logo 区域高度 */
+  margin: 0 auto 16px; /* 居中显示，与标题有间隔 */
+  /* background-color: var(--vscode-button-background); /* 示例背景色，可根据实际 Logo 调整或移除 */
+  border-radius: 8px; /* 圆角与容器一致 */
+  display: flex; /* 确保 Logo 居中 */
+  align-items: center;
+  justify-content: center;
+  overflow: hidden; /* 防止 Logo 溢出 */
 }
 
 /* 如果 Logo 是 SVG，并且您希望它自适应主题颜色，请确保 SVG 内部的 fill="currentColor" */
 .brand-logo-placeholder svg,
 .brand-logo-placeholder img {
-    max-width: 100%;
-    max-height: 100%;
-    display: block; /* 移除图片默认下边距 */
+  max-width: 100%;
+  max-height: 100%;
+  display: block; /* 移除图片默认下边距 */
 }
 
 h1 {
-    font-size: 32px; /* 更大的主标题，更具冲击力 */
-    font-weight: 700; /* 加粗 */
-    margin-bottom: 8px; /* 与副标题的间距 */
-    color: var(--primer-text-primary);
+  font-size: 32px; /* 更大的主标题，更具冲击力 */
+  font-weight: 700; /* 加粗 */
+  margin-bottom: 8px; /* 与副标题的间距 */
+  color: var(--primer-text-primary);
 }
 
 .subtitle {
-    font-size: 16px; /* 副标题字号 */
-    color: var(--primer-text-muted); /* 柔和的颜色，形成对比 */
-    margin-top: 0;
-    margin-bottom: 0;
+  font-size: 16px; /* 副标题字号 */
+  color: var(--primer-text-muted); /* 柔和的颜色，形成对比 */
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .form-section {
-    /* 左右和底部内边距可以保持，让内容与页面边缘有一定距离 */
-    padding: 0 40px 40px;
+  /* 左右和底部内边距可以保持，让内容与页面边缘有一定距离 */
+  padding: 0 40px 40px;
 }
 
 .form-group {
-    margin-bottom: 20px; /* 增加表单组之间的间距 */
+  margin-bottom: 20px; /* 增加表单组之间的间距 */
 }
 
 .form-label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600; /* 半粗体 */
-    margin-bottom: 8px; /* 标签与输入框之间的间距 */
-    color: var(--primer-text-primary);
+  display: block;
+  font-size: 13px;
+  font-weight: 600; /* 半粗体 */
+  margin-bottom: 8px; /* 标签与输入框之间的间距 */
+  color: var(--primer-text-primary);
 }
 
 .form-input,
 .form-select {
-    width: 100%;
-    padding: 10px 12px; /* 略微增加输入框内边距 */
-    font-size: 14px; /* 输入框字体与 body 保持一致 */
-    line-height: 20px;
-    color: var(--vscode-input-foreground);
-    background-color: var(--primer-gray-200);
-    
-    /* ***** 针对输入框可见性的核心修改 ***** */
-    /* 增加边框的可见性，确保在浅色背景下也能清晰可见 */
-    border: 1px solid var(--vscode-editorWidget-border); /* 使用编辑器小部件的边框色，通常更明显 */
-    /* 保持轻微内阴影，增加深度感 */
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08); 
-    /* ************************************ */
+  width: 100%;
+  padding: 10px 12px; /* 略微增加输入框内边距 */
+  font-size: 14px; /* 输入框字体与 body 保持一致 */
+  line-height: 20px;
+  color: var(--vscode-input-foreground);
+  background-color: var(--primer-gray-200);
 
-    border-radius: 6px;
-    transition: border-color 0.2s cubic-bezier(0.3, 0, 0.5, 1), box-shadow 0.2s cubic-bezier(0.3, 0, 0.5, 1);
-    box-sizing: border-box;
+  /* ***** 针对输入框可见性的核心修改 ***** */
+  /* 增加边框的可见性，确保在浅色背景下也能清晰可见 */
+  border: 1px solid var(--vscode-editorWidget-border); /* 使用编辑器小部件的边框色，通常更明显 */
+  /* 保持轻微内阴影，增加深度感 */
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+  /* ************************************ */
+
+  border-radius: 6px;
+  transition:
+    border-color 0.2s cubic-bezier(0.3, 0, 0.5, 1),
+    box-shadow 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+  box-sizing: border-box;
 }
 
 .form-input::placeholder {
-    color: var(--primer-text-placeholder);
+  color: var(--primer-text-placeholder);
 }
 
 .form-input:focus,
 .form-select:focus {
-    outline: none;
-    border-color: var(--primer-blue-500);
-    /* 焦点时的外发光效果 */
-    box-shadow: 0 0 0 3px var(--primer-focus-ring-color);
+  outline: none;
+  border-color: var(--primer-blue-500);
+  /* 焦点时的外发光效果 */
+  box-shadow: 0 0 0 3px var(--primer-focus-ring-color);
 }
 
 .form-select {
-    appearance: none;
-    background-image: url('data:image/svg+xml;utf8,<svg fill="currentColor" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M4.427 7.427l3.354 3.354a.25.25 0 00.354 0l3.354-3.354a.75.75 0 011.06 1.06l-3.878 3.878a1.75 1.75 0 01-2.474 0L3.366 8.487a.75.75 0 011.06-1.06z"></path></svg>');
-    background-repeat: no-repeat;
-    background-position: right 12px center; /* 调整箭头位置 */
-    background-size: 16px;
-    padding-right: 36px; /* 为箭头留更多空间 */
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg fill="currentColor" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M4.427 7.427l3.354 3.354a.25.25 0 00.354 0l3.354-3.354a.75.75 0 011.06 1.06l-3.878 3.878a1.75 1.75 0 01-2.474 0L3.366 8.487a.75.75 0 011.06-1.06z"></path></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center; /* 调整箭头位置 */
+  background-size: 16px;
+  padding-right: 36px; /* 为箭头留更多空间 */
 }
 
 .input-group {
-    display: flex;
-    gap: 12px; /* 增加输入框与按钮的间距 */
-    align-items: center;
+  display: flex;
+  gap: 12px; /* 增加输入框与按钮的间距 */
+  align-items: center;
 }
 
 .input-group .form-input {
-    flex-grow: 1;
-    margin-bottom: 0;
+  flex-grow: 1;
+  margin-bottom: 0;
 }
 
 /* Buttons */
 .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 20px; /* 增加按钮内边距，使按钮更饱满 */
-    font-size: 14px; /* 按钮字号与输入框一致 */
-    font-weight: 600;
-    line-height: 20px;
-    cursor: pointer;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1), border-color 0.2s cubic-bezier(0.3, 0, 0.5, 1), box-shadow 0.2s cubic-bezier(0.3, 0, 0.5, 1);
-    white-space: nowrap;
-    box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px; /* 增加按钮内边距，使按钮更饱满 */
+  font-size: 14px; /* 按钮字号与输入框一致 */
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition:
+    background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1),
+    border-color 0.2s cubic-bezier(0.3, 0, 0.5, 1),
+    box-shadow 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 /* Primary Button (e.g., Install SDK) */
 .btn-primary {
-    color: var(--primer-text-secondary); /* 保持白色字体 */
-    background-color: var(--primer-blue-500);
-    border-color: var(--primer-blue-500);
+  color: var(--primer-text-secondary); /* 保持白色字体 */
+  background-color: var(--primer-blue-500);
+  border-color: var(--primer-blue-500);
 }
 
 .btn-primary:hover {
-    background-color: var(--primer-blue-600);
-    border-color: var(--primer-blue-600);
+  background-color: var(--primer-blue-600);
+  border-color: var(--primer-blue-600);
 }
 
 .btn-primary:focus {
-    box-shadow: 0 0 0 3px var(--primer-focus-ring-color);
-    outline: none;
+  box-shadow: 0 0 0 3px var(--primer-focus-ring-color);
+  outline: none;
 }
 
 /* Secondary Button (e.g., Browse) */
 .btn-secondary {
-    /* ***** 针对按钮字体颜色的修改 ***** */
-    color: var(--primer-text-secondary); /* 统一使用 --primer-text-secondary，确保白色字体 */
-    /* ******************************** */
-    background-color: var(--primer-blue-500);
-    border-color: var(--primer-blue-500);
+  /* ***** 针对按钮字体颜色的修改 ***** */
+  color: var(
+    --primer-text-secondary
+  ); /* 统一使用 --primer-text-secondary，确保白色字体 */
+  /* ******************************** */
+  background-color: var(--primer-blue-500);
+  border-color: var(--primer-blue-500);
 }
 
 .btn-secondary:hover {
-    background-color: var(--primer-blue-600);
-    border-color: var(--primer-blue-600);
+  background-color: var(--primer-blue-600);
+  border-color: var(--primer-blue-600);
 }
 
 .btn-secondary:focus {
-    box-shadow: 0 0 0 3px var(--primer-focus-ring-color);
-    outline: none;
+  box-shadow: 0 0 0 3px var(--primer-focus-ring-color);
+  outline: none;
 }
 
 .btn:disabled,
 .btn[disabled] {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background-color: var(--primer-btn-disabled-bg);
-    color: var(--primer-btn-disabled-text);
-    border-color: var(--primer-btn-disabled-bg);
-    box-shadow: none;
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--primer-btn-disabled-bg);
+  color: var(--primer-btn-disabled-text);
+  border-color: var(--primer-btn-disabled-bg);
+  box-shadow: none;
 }
 
 .btn-block {
-    width: 100%;
-    margin-top: 32px; /* 主操作按钮上方留白更多 */
+  width: 100%;
+  margin-top: 32px; /* 主操作按钮上方留白更多 */
 }
 
 /* Loading spinner (optional, if you want to reuse) */
 #loadingSpinner {
-    display: none;
-    border: 4px solid var(--vscode-button-border);
-    border-top: 4px solid var(--vscode-button-background);
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    animation: spin 1s linear infinite;
-    margin-left: 10px;
-    vertical-align: middle;
+  display: none;
+  border: 4px solid var(--vscode-button-border);
+  border-top: 4px solid var(--vscode-button-background);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+  margin-left: 10px;
+  vertical-align: middle;
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }

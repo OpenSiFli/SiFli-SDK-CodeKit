@@ -1,59 +1,72 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SiFli SDK 管理器</title>
-    <link href="{{styleUri}}" rel="stylesheet">
-</head>
-<body>
+    <link href="{{styleUri}}" rel="stylesheet" />
+  </head>
+  <body>
     <main class="container">
-        <header class="page-header">
-            <div class="brand-logo-placeholder">
-                <img src="{{logoUri}}" alt="SiFli Logo" class="brand-logo" />
-            </div>
-            <h1 class="brand-title">SiFli SDK 管理器</h1>
-            <p class="subtitle">简化 SiFli SDK 的下载、安装与管理</p>
-        </header>
-        <form class="form-section">
-            <div class="form-group">
-                <label for="sdkSource" class="form-label">SDK 来源</label>
-                <select id="sdkSource" class="form-select">
-                    <option value="github">GitHub</option>
-                    <option value="gitee">Gitee</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="downloadType" class="form-label">下载类型</label>
-                <select id="downloadType" class="form-select">
-                    <option value="release">发布版本 (Release)</option>
-                    <option value="branch">开发分支 (Branch)</option>
-                </select>
-            </div>
-            <div id="releaseSection" class="form-group">
-                <label for="sdkVersion" class="form-label">SDK 版本</label>
-                <select id="sdkVersion" class="form-select" disabled>
-                    <option value="">正在加载版本...</option>
-                </select>
-            </div>
-            <div id="branchSection" class="form-group" style="display: none;">
-                <label for="sdkBranch" class="form-label">SDK 分支</label>
-                <select id="sdkBranch" class="form-select" disabled>
-                    <option value="">正在加载分支...</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="installPath" class="form-label">安装路径</label>
-                <div class="input-group">
-                    <input type="text" id="installPath" class="form-input" placeholder="选择 SDK 安装目录" />
-                    <button id="browsePath" type="button" class="btn btn-secondary">浏览</button>
-                </div>
-            </div>
-            <div class="form-actions">
-                <button id="installSdk" type="submit" class="btn btn-primary btn-block">安装 SDK</button>
-            </div>
-        </form>
+      <header class="page-header">
+        <div class="brand-logo-placeholder">
+          <img src="{{logoUri}}" alt="SiFli Logo" class="brand-logo" />
+        </div>
+        <h1 class="brand-title">SiFli SDK 管理器</h1>
+        <p class="subtitle">简化 SiFli SDK 的下载、安装与管理</p>
+      </header>
+      <form class="form-section">
+        <div class="form-group">
+          <label for="sdkSource" class="form-label">SDK 来源</label>
+          <select id="sdkSource" class="form-select">
+            <option value="github">GitHub</option>
+            <option value="gitee">Gitee</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="downloadType" class="form-label">下载类型</label>
+          <select id="downloadType" class="form-select">
+            <option value="release">发布版本 (Release)</option>
+            <option value="branch">开发分支 (Branch)</option>
+          </select>
+        </div>
+        <div id="releaseSection" class="form-group">
+          <label for="sdkVersion" class="form-label">SDK 版本</label>
+          <select id="sdkVersion" class="form-select" disabled>
+            <option value="">正在加载版本...</option>
+          </select>
+        </div>
+        <div id="branchSection" class="form-group" style="display: none">
+          <label for="sdkBranch" class="form-label">SDK 分支</label>
+          <select id="sdkBranch" class="form-select" disabled>
+            <option value="">正在加载分支...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="installPath" class="form-label">安装路径</label>
+          <div class="input-group">
+            <input
+              type="text"
+              id="installPath"
+              class="form-input"
+              placeholder="选择 SDK 安装目录"
+            />
+            <button id="browsePath" type="button" class="btn btn-secondary">
+              浏览
+            </button>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button
+            id="installSdk"
+            type="submit"
+            class="btn btn-primary btn-block"
+          >
+            安装 SDK
+          </button>
+        </div>
+      </form>
     </main>
     <script src="{{scriptUri}}"></script>
-</body>
+  </body>
 </html>

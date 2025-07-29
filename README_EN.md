@@ -17,18 +17,20 @@
 ## 🚀 Changelog
 
 ### v1.0.5
+
 - Added serial port switching in the status bar. You can now click `COM:` to select the active serial device, which will be used automatically in download operations.
 - Added support for serial devices beyond `USB-SERIAL CH340`.
 - Replaced the old download script with `sftool` to resolve character loss issues during download operations.
 
 ### v1.0.4
+
 - Improved user experience.
 - You can now click `SiFLi Board` in the lower-left status bar to select your chip module and thread count.
 - Still supports configuration through VS Code settings.
 
 ### v1.0.3
-- Added support for various SiFli chip modules:
 
+- Added support for various SiFli chip modules:
   - sf32lb52 series: lcd_52d, lcd_base, lcd_n16r8, lchspi-ulp, lchspi-ulp_base, nano_52b, nano_52j, nano_base
   - sf32lb56 series: lcd_a128r12n1, lcd_base, lcd_n16r12n1
   - sf32lb58 series: lcd_a128r32n1_dsi, lcd_base, lcd_n16r32n1_dpi, lcd_n16r32n1_dsi, lcd_n16r64n4
@@ -36,12 +38,14 @@
 - On first activation, the plugin prompts users to select a chip module (defaults to `sf32lb52-lchspi-ulp` if none selected).
 
 ### v1.0.2
+
 - Enhanced serial port auto-detection for `USB-SERIAL CH340`:
   - Prompts when no serial device is found.
   - Auto-selects when only one device is found.
   - Displays selection UI when multiple are detected.
 
 ### v1.0.1
+
 - Initial release:
   - Supports build, download, clean, rebuild, and Menuconfig.
   - Auto-detects SiFli projects and auto-saves unsaved files.
@@ -141,22 +145,27 @@
 
 ## ❓ FAQ
 
-**Q1: Why isn't the extension activated?**  
+**Q1: Why isn't the extension activated?**
+
 - Make sure your workspace root contains the `src/SConscript` file.
 
-**Q2: Command execution fails?**  
+**Q2: Command execution fails?**
+
 - Check if PowerShell path and SDK script path are correctly configured.
 - Ensure your SiFli-SDK environment is valid and required tools (`scons`, `sftool`, etc.) are accessible.
 
-**Q3: Terminal didn’t switch to the `project` directory?**  
+**Q3: Terminal didn’t switch to the `project` directory?**
+
 - Make sure your workspace contains a `project` folder at the root level.
 
-**Q4: Serial port not detected?**  
+**Q4: Serial port not detected?**
+
 - Check if the serial device is connected and powered.
 - Verify correct driver installation in Device Manager.
 - Ensure PowerShell can execute commands with appropriate permissions.
 
-**Q5: Unknown issue?**  
+**Q5: Unknown issue?**
+
 - Feel free to open an issue on GitHub to help improve the extension:  
   [GitHub Repository](https://github.com/OpenSiFli/SiFli-SDK-CodeKit)
 
