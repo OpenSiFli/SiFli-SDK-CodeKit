@@ -4,13 +4,13 @@
   "description": "Develop and debug applications for SiFli chips with SiFli-SDK",
   "version": "1.0.5",
   "engines": {
-    "vscode": "^1.100.2"
+    "vscode": "^1.102.0"
   },
-  "main": "extension.js",
+  "main": "./out/extension.js",
   "activationEvents": [
     "onStartupFinished"
   ],
-  "icon": "images/SiFli.png",
+  "icon": "images/readme/SiFli.png",
   "contributes": {
     "commands": [
       {
@@ -95,11 +95,25 @@
     "url": "https://github.com/OpenSiFli/SiFli-SDK-CodeKit"
   },
   "scripts": {
-    "format": "prettier . --write"
+    "vscode:prepublish": "yarn run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "yarn run compile && yarn run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "format": "prettier . --write",
+    "package": "vsce package",
+    "package:pre-release": "vsce package --pre-release",
+    "publish": "vsce publish",
+    "publish:pre-release": "vsce publish --pre-release"
   },
   "devDependencies": {
     "@types/node": "^24.1.0",
     "@types/vscode": "^1.102.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@vscode/vsce": "^3.6.0",
+    "eslint": "^8.57.0",
     "prettier": "^3.3.2",
     "typescript": "^5.8.3"
   },

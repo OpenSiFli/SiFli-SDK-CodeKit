@@ -4,7 +4,9 @@
       "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
       "name": "Launch Extension",
       "request": "launch",
-      "type": "extensionHost"
+      "type": "extensionHost",
+      "outFiles": ["${workspaceFolder}/out/**/*.js"],
+      "preLaunchTask": "${workspaceFolder}/.vscode/tasks.json:watch"
     }
   ]
 }
