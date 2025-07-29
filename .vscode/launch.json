@@ -6,7 +6,7 @@
       "request": "launch",
       "type": "extensionHost",
       "outFiles": ["${workspaceFolder}/out/**/*.js"],
-      "preLaunchTask": "${workspaceFolder}/.vscode/tasks.json:watch"
+      "preLaunchTask": "watch"
     }
   ]
 }
