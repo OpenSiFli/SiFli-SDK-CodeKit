@@ -161,7 +161,7 @@ export class BoardService {
       }
     }
 
-    return `scons -j${threads} BOARD=${boardName}${boardSearchArg}`;
+    return `scons --board=${boardName}${boardSearchArg} -j${threads}`;
   }
 
   /**

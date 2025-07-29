@@ -18,5 +18,6 @@ issues_image/**
 !README_EN.md
 !LICENSE
 !images/readme/SiFli.png
+!webview-ui/**
 extension.js.backup
 WebView/**
