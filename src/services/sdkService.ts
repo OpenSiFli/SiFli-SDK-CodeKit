@@ -172,7 +172,8 @@ export class SdkService {
         canPickMany: false
       });
 
-      if (selectedItem && !selectedItem.sdk.current) {
+      // if (selectedItem && !selectedItem.sdk.current) {
+      if (selectedItem) {
         await this.activateSdk(selectedItem.sdk);
       }
     } catch (error) {

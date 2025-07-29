@@ -27,7 +27,8 @@ export class WebviewProvider {
         retainContextWhenHidden: true,
         localResourceRoots: [
           vscode.Uri.file(path.join(context.extensionPath, 'webview-ui')),
-          vscode.Uri.file(path.join(context.extensionPath, 'WebView'))
+          vscode.Uri.file(path.join(context.extensionPath, 'WebView')),
+          vscode.Uri.file(path.join(context.extensionPath, 'images'))
         ]
       }
     );
@@ -76,30 +77,28 @@ export class WebviewProvider {
       // 更新资源路径
       const webviewDir = path.dirname(htmlPath);
       
-      // 替换 CSS 和 JS 文件路径
-      html = html.replace(
-        /href="([^"]*\.css)"/g,
-        (match, fileName) => {
-          const resourcePath = path.join(webviewDir, fileName);
-          if (fs.existsSync(resourcePath)) {
-            const resourceUri = webview.asWebviewUri(vscode.Uri.file(resourcePath));
-            return `href="${resourceUri}"`;
-          }
-          return match;
-        }
-      );
+      // 处理 CSS 文件
+      const cssPath = path.join(webviewDir, 'sdk_manager.css');
+      const cssUri = fs.existsSync(cssPath) 
+        ? webview.asWebviewUri(vscode.Uri.file(cssPath)).toString()
+        : '';
+      
+      // 处理 JS 文件
+      const jsPath = path.join(webviewDir, 'sdk_manager.js');
+      const jsUri = fs.existsSync(jsPath) 
+        ? webview.asWebviewUri(vscode.Uri.file(jsPath)).toString()
+        : '';
+      
+      // 处理 Logo 文件
+      const logoPath = path.join(extensionPath, 'images', 'readme', 'SiFli.png');
+      const logoUri = fs.existsSync(logoPath) 
+        ? webview.asWebviewUri(vscode.Uri.file(logoPath)).toString()
+        : '';
 
-      html = html.replace(
-        /src="([^"]*\.js)"/g,
-        (match, fileName) => {
-          const resourcePath = path.join(webviewDir, fileName);
-          if (fs.existsSync(resourcePath)) {
-            const resourceUri = webview.asWebviewUri(vscode.Uri.file(resourcePath));
-            return `src="${resourceUri}"`;
-          }
-          return match;
-        }
-      );
+      // 替换模板变量
+      html = html.replace(/\{\{styleUri\}\}/g, cssUri);
+      html = html.replace(/\{\{scriptUri\}\}/g, jsUri);
+      html = html.replace(/\{\{logoUri\}\}/g, logoUri);
 
       return html;
     } catch (error) {
@@ -280,12 +279,15 @@ export class WebviewProvider {
   private async handleWebviewMessage(message: any, webview: vscode.Webview): Promise<void> {
     const { SdkCommands } = await import('../commands/sdkCommands');
     const { SdkService } = await import('../services/sdkService');
+    const { GitService } = await import('../services/gitService');
     
     const sdkCommands = SdkCommands.getInstance();
     const sdkService = SdkService.getInstance();
+    const gitService = GitService.getInstance();
 
     switch (message.command) {
       case 'installSdk':
+      case 'startSdkInstallation':
         await sdkCommands.installSiFliSdk(
           message.source,
           message.type,
@@ -301,6 +303,62 @@ export class WebviewProvider {
           command: 'updateSdkList',
           sdks
         });
+        break;
+
+      case 'fetchReleases':
+        try {
+          const releases = await gitService.fetchSiFliSdkReleases(message.source);
+          webview.postMessage({
+            command: 'displayReleases',
+            releases
+          });
+        } catch (error) {
+          console.error('[WebviewProvider] Error fetching releases:', error);
+          webview.postMessage({
+            command: 'error',
+            message: '获取版本列表失败: ' + (error instanceof Error ? error.message : String(error))
+          });
+        }
+        break;
+
+      case 'fetchBranches':
+        try {
+          const branches = await gitService.fetchSiFliSdkBranches(message.source);
+          webview.postMessage({
+            command: 'displayBranches',
+            branches
+          });
+        } catch (error) {
+          console.error('[WebviewProvider] Error fetching branches:', error);
+          webview.postMessage({
+            command: 'error',
+            message: '获取分支列表失败: ' + (error instanceof Error ? error.message : String(error))
+          });
+        }
+        break;
+
+      case 'browseInstallPath':
+        try {
+          const result = await vscode.window.showOpenDialog({
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false,
+            title: '选择 SDK 安装目录'
+          });
+          
+          if (result && result.length > 0) {
+            webview.postMessage({
+              command: 'installPathSelected',
+              path: result[0].fsPath
+            });
+          }
+        } catch (error) {
+          console.error('[WebviewProvider] Error browsing path:', error);
+          webview.postMessage({
+            command: 'error',
+            message: '选择路径失败: ' + (error instanceof Error ? error.message : String(error))
+          });
+        }
         break;
 
       default:
