@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="vscode">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SiFli SDK 管理器</title>
+  <style>
+    /* VS Code WebView 特定的 CSP 兼容样式 */
+    :root {
+      --vscode-foreground: var(--vscode-foreground, #cccccc);
+      --vscode-background: var(--vscode-editor-background, #1e1e1e);
+      --vscode-button-background: var(--vscode-button-background, #0e639c);
+      --vscode-button-foreground: var(--vscode-button-foreground, #ffffff);
+      --vscode-button-hover: var(--vscode-button-hoverBackground, #1177bb);
+      --vscode-input-background: var(--vscode-input-background, #3c3c3c);
+      --vscode-input-foreground: var(--vscode-input-foreground, #cccccc);
+      --vscode-input-border: var(--vscode-input-border, #6c6c6c);
+      --vscode-input-placeholder: var(--vscode-input-placeholderForeground, #888888);
+      --vscode-panel-border: var(--vscode-panel-border, #6c6c6c);
+      --vscode-focus-border: var(--vscode-focusBorder, #007acc);
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--vscode-background);
+      color: var(--vscode-foreground);
+      font-family: var(--vscode-font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
+      font-size: var(--vscode-font-size, 14px);
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

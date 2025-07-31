@@ -88,6 +88,24 @@
       "runOptions": {
         "runOn": "folderOpen"
       }
+    },
+    {
+      "label": "build-vue-webview",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["run", "build:webview"],
+      "group": "build",
+      "isBackground": false,
+      "problemMatcher": []
+    },
+    {
+      "label": "watch-vue-webview",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["run", "watch:webview"],
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": []
     }
   ]
 }

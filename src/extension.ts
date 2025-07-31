@@ -10,6 +10,7 @@ import { BuildCommands } from './commands/buildCommands';
 import { ConfigCommands } from './commands/configCommands';
 import { SdkCommands } from './commands/sdkCommands';
 import { StatusBarProvider } from './providers/statusBarProvider';
+import { VueWebviewProvider } from './providers/vueWebviewProvider';
 import { isSiFliProject } from './utils/projectUtils';
 
 /**
@@ -41,6 +42,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   
   // 初始化状态栏提供者
   const statusBarProvider = StatusBarProvider.getInstance();
+  
+  // 初始化 Vue WebView 提供者
+  const vueWebviewProvider = VueWebviewProvider.getInstance();
 
   // 注册输出通道和 Git 输出通道到订阅列表
   context.subscriptions.push(
@@ -127,7 +131,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         configCommands.selectDownloadPort()
       ),
       vscode.commands.registerCommand(CMD_PREFIX + 'manageSiFliSdk', () => 
-        sdkCommands.manageSiFliSdk(context)
+        vueWebviewProvider.createSdkManagementWebview(context)
       ),
       vscode.commands.registerCommand(CMD_PREFIX + 'switchSdkVersion', () => 
         configCommands.switchSdkVersion()

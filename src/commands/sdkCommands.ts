@@ -20,16 +20,6 @@ export class SdkCommands {
   }
 
   /**
-   * 管理 SiFli SDK 安装
-   */
-  public async manageSiFliSdk(context: vscode.ExtensionContext): Promise<void> {
-    // 这里将调用 WebView 提供者
-    const { WebviewProvider } = await import('../providers/webviewProvider');
-    const webviewProvider = WebviewProvider.getInstance();
-    await webviewProvider.createSdkManagementWebview(context);
-  }
-
-  /**
    * 安装 SiFli SDK
    */
   public async installSiFliSdk(

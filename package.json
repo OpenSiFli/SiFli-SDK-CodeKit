@@ -100,7 +100,7 @@
     "url": "https://github.com/OpenSiFli/SiFli-SDK-CodeKit"
   },
   "scripts": {
-    "vscode:prepublish": "yarn run compile",
+    "vscode:prepublish": "yarn run build:webview && yarn run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "dev": "tsc -watch -p ./ --preserveWatchOutput",
@@ -111,7 +111,9 @@
     "package": "vsce package",
     "package:pre-release": "vsce package --pre-release",
     "publish": "vsce publish",
-    "publish:pre-release": "vsce publish --pre-release"
+    "publish:pre-release": "vsce publish --pre-release",
+    "build:webview": "cd webview-vue && yarn build",
+    "watch:webview": "cd webview-vue && yarn watch"
   },
   "devDependencies": {
     "@types/node": "^24.1.0",

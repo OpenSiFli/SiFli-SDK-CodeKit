@@ -2,7 +2,8 @@
   "configurations": [
     {
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}"
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--disable-extensions"
       ],
       "name": "Launch Extension",
       "request": "launch",
@@ -12,13 +13,25 @@
     },
     {
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}"
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--disable-extensions"
       ],
       "name": "Launch Extension (Watch Mode)",
       "request": "launch",
       "type": "extensionHost",
       "outFiles": ["${workspaceFolder}/out/**/*.js"],
       "preLaunchTask": "watch"
+    },
+    {
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--disable-extensions"
+      ],
+      "name": "Launch Extension (Vue WebView)",
+      "request": "launch",
+      "type": "extensionHost",
+      "outFiles": ["${workspaceFolder}/out/**/*.js"],
+      "preLaunchTask": "build-vue-webview"
     }
   ]
 }
