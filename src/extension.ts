@@ -50,6 +50,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   if (isSiFliProject()) {
     console.log('[SiFli Extension] SiFli project detected. Activating full extension features.');
 
+    // 如果有当前 SDK，在插件激活时自动激活它
+    const currentSdk = configService.getCurrentSdk();
+    if (currentSdk && currentSdk.valid) {
+      try {
+        await sdkService.activateSdk(currentSdk);
+      } catch (error) {
+        console.error('[SiFli Extension] Error activating current SDK on startup:', error);
+      }
+    }
+    console.log('[SiFli Extension] SiFli project detected. Activating full extension features.');
+
     // 初始化状态栏
     statusBarProvider.initializeStatusBarItems(context);
 

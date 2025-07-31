@@ -1,8 +1,20 @@
 {
   "configurations": [
     {
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
       "name": "Launch Extension",
+      "request": "launch",
+      "type": "extensionHost",
+      "outFiles": ["${workspaceFolder}/out/**/*.js"],
+      "preLaunchTask": "compile-and-watch"
+    },
+    {
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
+      "name": "Launch Extension (Watch Mode)",
       "request": "launch",
       "type": "extensionHost",
       "outFiles": ["${workspaceFolder}/out/**/*.js"],

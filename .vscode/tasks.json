@@ -9,9 +9,13 @@
       "group": "build",
       "isBackground": true,
       "presentation": {
-        "reveal": "never"
+        "reveal": "silent",
+        "panel": "dedicated"
       },
-      "problemMatcher": ["$tsc-watch"]
+      "problemMatcher": ["$tsc-watch"],
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
     },
     {
       "label": "Build Extension",
@@ -21,6 +25,24 @@
       "group": "build",
       "isBackground": false,
       "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "compile-and-watch",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["run", "compile"],
+      "group": "build",
+      "isBackground": false,
+      "problemMatcher": ["$tsc"],
+      "dependsOn": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": false
+      }
     },
     {
       "label": "lint",
@@ -48,6 +70,23 @@
       "isBackground": false,
       "presentation": {
         "reveal": "always"
+      }
+    },
+    {
+      "label": "dev-watch",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["run", "dev"],
+      "group": "build",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": ["$tsc-watch"],
+      "runOptions": {
+        "runOn": "folderOpen"
       }
     }
   ]

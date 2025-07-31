@@ -3,13 +3,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { SdkVersion } from '../types';
 import { ConfigService } from './configService';
+import { TerminalService } from './terminalService';
 
 export class SdkService {
   private static instance: SdkService;
   private configService: ConfigService;
+  private terminalService: TerminalService;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
+    this.terminalService = TerminalService.getInstance();
   }
 
   public static getInstance(): SdkService {
@@ -114,18 +117,15 @@ export class SdkService {
    */
   private validateSdkPath(sdkPath: string): boolean {
     try {
-      // 检查必要的文件和目录
-      const requiredPaths = [
-        path.join(sdkPath, 'customer'),
-        path.join(sdkPath, 'export.ps1'), // Windows
-        path.join(sdkPath, 'export.sh')   // Unix-like
-      ];
+      // 检查必要的目录
+      const customerDir = path.join(sdkPath, 'customer');
+      if (!fs.existsSync(customerDir)) {
+        return false;
+      }
 
-      // 至少需要存在 customer 目录和一个导出脚本
-      const hasCustomerDir = fs.existsSync(requiredPaths[0]);
-      const hasExportScript = fs.existsSync(requiredPaths[1]) || fs.existsSync(requiredPaths[2]);
-
-      return hasCustomerDir && hasExportScript;
+      // 检查当前平台对应的导出脚本
+      const activationScript = this.getActivationScriptForPlatform(sdkPath);
+      return activationScript !== null;
     } catch (error) {
       console.error(`[SdkService] Error validating SDK path ${sdkPath}:`, error);
       return false;
@@ -185,40 +185,31 @@ export class SdkService {
   /**
    * 激活指定的 SDK
    */
-  private async activateSdk(sdk: SdkVersion): Promise<void> {
+  public async activateSdk(sdk: SdkVersion): Promise<void> {
     try {
       if (!sdk.valid) {
         vscode.window.showErrorMessage(`选定的 SDK 路径无效: ${sdk.path}`);
         return;
       }
 
-      // 查找导出脚本
-      const exportScripts = [
-        path.join(sdk.path, 'export.ps1'),
-        path.join(sdk.path, 'export.sh')
-      ];
-
-      let exportScriptPath: string | undefined;
-      for (const scriptPath of exportScripts) {
-        if (fs.existsSync(scriptPath)) {
-          exportScriptPath = scriptPath;
-          break;
-        }
-      }
-
-      if (!exportScriptPath) {
-        vscode.window.showErrorMessage(`在 SDK 路径中未找到导出脚本: ${sdk.path}`);
+      // 获取当前平台对应的激活脚本路径
+      const activationScript = this.getActivationScriptForPlatform(sdk.path);
+      if (!activationScript) {
+        vscode.window.showErrorMessage(`在 SDK 路径中未找到适用于当前平台的导出脚本: ${sdk.path}`);
         return;
       }
 
-      // 更新配置
-      await this.configService.updateConfigValue('sifliSdkExportScriptPath', exportScriptPath);
+      // 更新配置（保存找到的脚本路径用于配置）
+      await this.configService.updateConfigValue('sifliSdkExportScriptPath', activationScript.configPath);
 
       // 添加到已安装 SDK 路径列表（如果不存在）
       const installedPaths = this.configService.config.installedSdkPaths;
       if (!installedPaths.includes(sdk.path)) {
         await this.configService.updateConfigValue('installedSdkPaths', [...installedPaths, sdk.path]);
       }
+
+      // 在终端中执行激活命令
+      await this.executeActivationScript(activationScript);
 
       vscode.window.showInformationMessage(
         `已切换到 SiFli SDK 版本: ${sdk.version}`
@@ -230,6 +221,59 @@ export class SdkService {
     } catch (error) {
       console.error('[SdkService] Error activating SDK:', error);
       vscode.window.showErrorMessage(`激活 SDK 失败: ${error}`);
+    }
+  }
+
+  /**
+   * 获取当前平台对应的激活脚本信息
+   */
+  private getActivationScriptForPlatform(sdkPath: string): { scriptPath: string; configPath: string; command: string } | null {
+    if (process.platform === 'win32') {
+      // Windows 平台
+      const ps1ScriptPath = path.join(sdkPath, 'export.ps1');
+      if (fs.existsSync(ps1ScriptPath)) {
+        return {
+          scriptPath: ps1ScriptPath,
+          configPath: ps1ScriptPath, // 配置中保存的路径
+          command: './export.ps1'    // 在SDK目录下执行的相对命令
+        };
+      }
+    } else {
+      // Unix-like 系统 (macOS, Linux)
+      const shScriptPath = path.join(sdkPath, 'export.sh');
+      if (fs.existsSync(shScriptPath)) {
+        return {
+          scriptPath: shScriptPath,
+          configPath: shScriptPath,    // 配置中保存的路径
+          command: '. ./export.sh'     // 在SDK目录下执行的相对命令
+        };
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * 在终端中执行 SDK 激活脚本
+   */
+  private async executeActivationScript(activationScript: { scriptPath: string; configPath: string; command: string }): Promise<void> {
+    try {
+      const terminal = await this.terminalService.getOrCreateSiFliTerminalAndCdProject();
+      
+      // 构建完整命令：切换到SDK目录并执行激活脚本
+      const scriptDir = path.dirname(activationScript.scriptPath);
+      const command = `cd "${scriptDir}" && ${activationScript.command}`;
+
+      // 显示并聚焦终端
+      terminal.show();
+      
+      // 发送命令到终端
+      terminal.sendText(command);
+      
+      console.log(`[SdkService] Executed SDK activation command: ${command}`);
+    } catch (error) {
+      console.error('[SdkService] Error executing activation script:', error);
+      throw error;
     }
   }
 
