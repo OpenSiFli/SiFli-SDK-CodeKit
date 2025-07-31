@@ -5,6 +5,7 @@ export interface SiFliConfig {
   defaultChipModule: string;
   numThreads: number;
   customBoardSearchPath?: string;
+  selectedSerialPort?: string; // 记忆选择的串口
 }
 
 export interface ExtensionState {

@@ -3,6 +3,7 @@ import { CMD_PREFIX, HAS_RUN_INITIAL_SETUP_KEY } from './constants';
 import { ConfigService } from './services/configService';
 import { SdkService } from './services/sdkService';
 import { GitService } from './services/gitService';
+import { SerialPortService } from './services/serialPortService';
 import { TerminalService } from './services/terminalService';
 import { LogService } from './services/logService';
 import { BuildCommands } from './commands/buildCommands';
@@ -30,6 +31,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const configService = ConfigService.getInstance();
   const sdkService = SdkService.getInstance();
   const gitService = GitService.getInstance();
+  const serialPortService = SerialPortService.getInstance();
   const terminalService = TerminalService.getInstance();
   
   // 初始化命令处理器
@@ -49,6 +51,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 在插件激活时立即读取配置
   await configService.updateConfiguration();
   logService.info('Configuration loaded successfully');
+  
+  // 初始化串口服务（恢复之前保存的串口选择）
+  await serialPortService.initialize();
   
   // 发现 SDK 版本
   const sdkVersions = await sdkService.discoverSiFliSdks();

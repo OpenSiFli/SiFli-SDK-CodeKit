@@ -3,6 +3,7 @@ import { ConfigService } from '../services/configService';
 import { BoardService } from '../services/boardService';
 import { SerialPortService } from '../services/serialPortService';
 import { SdkService } from '../services/sdkService';
+import { StatusBarProvider } from '../providers/statusBarProvider';
 import { HAS_RUN_INITIAL_SETUP_KEY } from '../constants';
 
 export class ConfigCommands {
@@ -11,12 +12,14 @@ export class ConfigCommands {
   private boardService: BoardService;
   private serialPortService: SerialPortService;
   private sdkService: SdkService;
+  private statusBarProvider: StatusBarProvider;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
     this.boardService = BoardService.getInstance();
     this.serialPortService = SerialPortService.getInstance();
     this.sdkService = SdkService.getInstance();
+    this.statusBarProvider = StatusBarProvider.getInstance();
   }
 
   public static getInstance(): ConfigCommands {
@@ -72,6 +75,8 @@ export class ConfigCommands {
         vscode.window.showInformationMessage(
           `SiFli 芯片模组已切换为: ${selectedQuickPickItem.label}`
         );
+        // 更新状态栏显示
+        this.statusBarProvider.updateStatusBarItems();
       }
 
       // 允许用户修改线程数
@@ -92,6 +97,8 @@ export class ConfigCommands {
         const newThreads = parseInt(numThreadsInput);
         await this.configService.updateConfigValue('numThreads', newThreads);
         vscode.window.showInformationMessage(`编译线程数已设置为: J${newThreads}`);
+        // 更新状态栏显示
+        this.statusBarProvider.updateStatusBarItems();
       }
     } catch (error) {
       console.error('[ConfigCommands] Error in selectChipModule:', error);
@@ -103,7 +110,11 @@ export class ConfigCommands {
    * 选择下载串口
    */
   public async selectDownloadPort(): Promise<void> {
-    await this.serialPortService.selectSerialPort();
+    const selectedPort = await this.serialPortService.selectSerialPort();
+    if (selectedPort) {
+      // 更新状态栏显示
+      this.statusBarProvider.updateStatusBarItems();
+    }
   }
 
   /**

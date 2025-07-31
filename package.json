@@ -83,6 +83,11 @@
           "type": "string",
           "description": "Optional: Absolute or relative path to a directory containing custom SiFli board configurations. (e.g., C:\\MyBoards or ../my_boards)",
           "default": ""
+        },
+        "sifli-sdk-codekit.selectedSerialPort": {
+          "type": "string",
+          "description": "Currently selected serial port for device communication",
+          "default": ""
         }
       }
     }

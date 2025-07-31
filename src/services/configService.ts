@@ -38,7 +38,8 @@ export class ConfigService {
       installedSdkPaths: config.get<string[]>('installedSdkPaths') || [],
       defaultChipModule: config.get<string>('defaultChipModule') || '',
       numThreads: config.get<number>('numThreads') || 8,
-      customBoardSearchPath: config.get<string>('customBoardSearchPath')
+      customBoardSearchPath: config.get<string>('customBoardSearchPath'),
+      selectedSerialPort: config.get<string>('selectedSerialPort')
     };
   }
 
