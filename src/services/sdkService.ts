@@ -4,15 +4,18 @@ import * as path from 'path';
 import { SdkVersion } from '../types';
 import { ConfigService } from './configService';
 import { TerminalService } from './terminalService';
+import { LogService } from './logService';
 
 export class SdkService {
   private static instance: SdkService;
   private configService: ConfigService;
   private terminalService: TerminalService;
+  private logService: LogService;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
     this.terminalService = TerminalService.getInstance();
+    this.logService = LogService.getInstance();
   }
 
   public static getInstance(): SdkService {
@@ -26,9 +29,13 @@ export class SdkService {
    * 发现所有 SiFli SDK
    */
   public async discoverSiFliSdks(): Promise<SdkVersion[]> {
+    this.logService.info('Starting SDK discovery...');
     const sdkVersions: SdkVersion[] = [];
     const installedSdkPaths = this.configService.config.installedSdkPaths;
     const currentSdkPath = this.configService.config.sifliSdkExportScriptPath;
+
+    this.logService.debug(`Configured SDK paths: ${installedSdkPaths.join(', ')}`);
+    this.logService.debug(`Current SDK export script path: ${currentSdkPath || 'None'}`);
 
     // 从配置的 SDK 路径列表中发现 SDK
     for (const sdkPath of installedSdkPaths) {
@@ -36,16 +43,21 @@ export class SdkService {
         if (fs.existsSync(sdkPath)) {
           const version = this.extractVersionFromPath(sdkPath);
           const isCurrent = currentSdkPath ? currentSdkPath.startsWith(sdkPath) : false;
+          const isValid = this.validateSdkPath(sdkPath);
           
           sdkVersions.push({
             version,
             path: sdkPath,
             current: isCurrent,
-            valid: this.validateSdkPath(sdkPath)
+            valid: isValid
           });
+
+          this.logService.debug(`Found SDK: ${version} at ${sdkPath} (valid: ${isValid}, current: ${isCurrent})`);
+        } else {
+          this.logService.warn(`SDK path does not exist: ${sdkPath}`);
         }
       } catch (error) {
-        console.error(`[SdkService] Error checking SDK path ${sdkPath}:`, error);
+        this.logService.error(`Error checking SDK path ${sdkPath}:`, error);
       }
     }
 
@@ -54,12 +66,14 @@ export class SdkService {
       const currentSdkRoot = this.extractSdkRootFromExportScript(currentSdkPath);
       if (currentSdkRoot && !installedSdkPaths.includes(currentSdkRoot)) {
         const version = this.extractVersionFromPath(currentSdkRoot);
+        const isValid = this.validateSdkPath(currentSdkRoot);
         sdkVersions.push({
           version,
           path: currentSdkRoot,
           current: true,
-          valid: this.validateSdkPath(currentSdkRoot)
+          valid: isValid
         });
+        this.logService.debug(`Added current SDK from export script: ${version} at ${currentSdkRoot} (valid: ${isValid})`);
       }
     }
 
@@ -69,6 +83,7 @@ export class SdkService {
     // 按版本排序
     sdkVersions.sort((a, b) => b.version.localeCompare(a.version));
 
+    this.logService.info(`SDK discovery completed. Found ${sdkVersions.length} SDK(s)`);
     return sdkVersions;
   }
 
@@ -104,10 +119,9 @@ export class SdkService {
   private extractSdkRootFromExportScript(exportScriptPath: string): string | null {
     try {
       const scriptDir = path.dirname(exportScriptPath);
-      // 假设导出脚本在 SDK 根目录
       return scriptDir;
     } catch (error) {
-      console.error('[SdkService] Error extracting SDK root from export script:', error);
+      this.logService.error('Error extracting SDK root from export script:', error);
       return null;
     }
   }
@@ -120,14 +134,21 @@ export class SdkService {
       // 检查必要的目录
       const customerDir = path.join(sdkPath, 'customer');
       if (!fs.existsSync(customerDir)) {
+        this.logService.debug(`SDK validation failed: customer directory not found at ${customerDir}`);
         return false;
       }
 
       // 检查当前平台对应的导出脚本
       const activationScript = this.getActivationScriptForPlatform(sdkPath);
-      return activationScript !== null;
+      const isValid = activationScript !== null;
+      
+      if (!isValid) {
+        this.logService.debug(`SDK validation failed: no activation script found for current platform at ${sdkPath}`);
+      }
+      
+      return isValid;
     } catch (error) {
-      console.error(`[SdkService] Error validating SDK path ${sdkPath}:`, error);
+      this.logService.error(`Error validating SDK path ${sdkPath}:`, error);
       return false;
     }
   }
@@ -151,12 +172,13 @@ export class SdkService {
    */
   public async switchSdkVersion(): Promise<void> {
     try {
+      this.logService.info('Starting SDK version switch...');
       const sdkVersions = await this.discoverSiFliSdks();
       
       if (sdkVersions.length === 0) {
-        vscode.window.showWarningMessage(
-          '未发现任何 SiFli SDK。请先使用 SDK 管理器安装 SDK。'
-        );
+        const message = '未发现任何 SiFli SDK。请先使用 SDK 管理器安装 SDK。';
+        this.logService.warn(message);
+        vscode.window.showWarningMessage(message);
         return;
       }
 
@@ -174,10 +196,13 @@ export class SdkService {
 
       // if (selectedItem && !selectedItem.sdk.current) {
       if (selectedItem) {
+        this.logService.info(`User selected SDK: ${selectedItem.sdk.version} at ${selectedItem.sdk.path}`);
         await this.activateSdk(selectedItem.sdk);
+      } else {
+        this.logService.info('SDK version switch cancelled by user');
       }
     } catch (error) {
-      console.error('[SdkService] Error in switchSdkVersion:', error);
+      this.logService.error('Error in switchSdkVersion:', error);
       vscode.window.showErrorMessage(`切换 SDK 版本失败: ${error}`);
     }
   }
@@ -187,17 +212,25 @@ export class SdkService {
    */
   public async activateSdk(sdk: SdkVersion): Promise<void> {
     try {
+      this.logService.info(`Activating SDK: ${sdk.version} at ${sdk.path}`);
+      
       if (!sdk.valid) {
-        vscode.window.showErrorMessage(`选定的 SDK 路径无效: ${sdk.path}`);
+        const message = `选定的 SDK 路径无效: ${sdk.path}`;
+        this.logService.error(message);
+        vscode.window.showErrorMessage(message);
         return;
       }
 
       // 获取当前平台对应的激活脚本路径
       const activationScript = this.getActivationScriptForPlatform(sdk.path);
       if (!activationScript) {
-        vscode.window.showErrorMessage(`在 SDK 路径中未找到适用于当前平台的导出脚本: ${sdk.path}`);
+        const message = `在 SDK 路径中未找到适用于当前平台的导出脚本: ${sdk.path}`;
+        this.logService.error(message);
+        vscode.window.showErrorMessage(message);
         return;
       }
+
+      this.logService.debug(`Using activation script: ${activationScript.scriptPath}`);
 
       // 更新配置（保存找到的脚本路径用于配置）
       await this.configService.updateConfigValue('sifliSdkExportScriptPath', activationScript.configPath);
@@ -206,20 +239,21 @@ export class SdkService {
       const installedPaths = this.configService.config.installedSdkPaths;
       if (!installedPaths.includes(sdk.path)) {
         await this.configService.updateConfigValue('installedSdkPaths', [...installedPaths, sdk.path]);
+        this.logService.debug(`Added SDK path to installed list: ${sdk.path}`);
       }
 
       // 在终端中执行激活命令
       await this.executeActivationScript(activationScript);
 
-      vscode.window.showInformationMessage(
-        `已切换到 SiFli SDK 版本: ${sdk.version}`
-      );
+      const successMessage = `已切换到 SiFli SDK 版本: ${sdk.version}`;
+      this.logService.info(successMessage);
+      vscode.window.showInformationMessage(successMessage);
 
       // 重新加载配置以更新 UI
       await this.configService.updateConfiguration();
 
     } catch (error) {
-      console.error('[SdkService] Error activating SDK:', error);
+      this.logService.error('Error activating SDK:', error);
       vscode.window.showErrorMessage(`激活 SDK 失败: ${error}`);
     }
   }
@@ -258,6 +292,7 @@ export class SdkService {
    */
   private async executeActivationScript(activationScript: { scriptPath: string; configPath: string; command: string }): Promise<void> {
     try {
+      this.logService.info(`Executing SDK activation script: ${activationScript.command}`);
       const terminal = await this.terminalService.getOrCreateSiFliTerminalAndCdProject();
       
       // 构建完整命令：切换到SDK目录并执行激活脚本
@@ -270,9 +305,9 @@ export class SdkService {
       // 发送命令到终端
       terminal.sendText(command);
       
-      console.log(`[SdkService] Executed SDK activation command: ${command}`);
+      this.logService.info(`SDK activation command executed successfully: ${command}`);
     } catch (error) {
-      console.error('[SdkService] Error executing activation script:', error);
+      this.logService.error('Error executing activation script:', error);
       throw error;
     }
   }

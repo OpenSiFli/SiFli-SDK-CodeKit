@@ -3,13 +3,16 @@ import * as path from 'path';
 import { TERMINAL_NAME, PROJECT_SUBFOLDER } from '../constants';
 import { TaskName } from '../types';
 import { ConfigService } from './configService';
+import { LogService } from './logService';
 
 export class TerminalService {
   private static instance: TerminalService;
   private configService: ConfigService;
+  private logService: LogService;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
+    this.logService = LogService.getInstance();
   }
 
   public static getInstance(): TerminalService {
@@ -26,7 +29,10 @@ export class TerminalService {
     let terminal = this.findSiFliTerminal();
     
     if (!terminal) {
+      this.logService.info('Creating new SiFli terminal');
       terminal = this.createSiFliTerminal();
+    } else {
+      this.logService.debug('Reusing existing SiFli terminal');
     }
 
     // 切换到项目目录
@@ -35,6 +41,7 @@ export class TerminalService {
       const workspaceRoot = workspaceFolders[0].uri.fsPath;
       const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
       terminal.sendText(`cd "${projectPath}"`);
+      this.logService.debug(`Changed terminal directory to: ${projectPath}`);
     }
 
     return terminal;
@@ -64,6 +71,7 @@ export class TerminalService {
    */
   public async executeShellCommandInSiFliTerminal(commandLine: string, taskName: TaskName): Promise<void> {
     try {
+      this.logService.info(`Executing ${taskName}: ${commandLine}`);
       const terminal = await this.getOrCreateSiFliTerminalAndCdProject();
       
       // 显示并聚焦终端
@@ -72,9 +80,9 @@ export class TerminalService {
       // 发送命令
       terminal.sendText(commandLine);
       
-      console.log(`[TerminalService] Executed ${taskName}: ${commandLine}`);
+      this.logService.info(`Successfully executed ${taskName}`);
     } catch (error) {
-      console.error(`[TerminalService] Error executing ${taskName}:`, error);
+      this.logService.error(`Error executing ${taskName}:`, error);
       vscode.window.showErrorMessage(`执行 ${taskName} 失败: ${error}`);
     }
   }
@@ -84,6 +92,9 @@ export class TerminalService {
    */
   public disposeSiFliTerminals(): void {
     const sifliTerminals = vscode.window.terminals.filter(terminal => terminal.name === TERMINAL_NAME);
-    sifliTerminals.forEach(terminal => terminal.dispose());
+    if (sifliTerminals.length > 0) {
+      this.logService.info(`Disposing ${sifliTerminals.length} SiFli terminal(s)`);
+      sifliTerminals.forEach(terminal => terminal.dispose());
+    }
   }
 }

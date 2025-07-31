@@ -4,13 +4,16 @@ import * as path from 'path';
 import { Board, BoardDiscoveryResult, SftoolParam } from '../types';
 import { CUSTOMER_BOARDS_SUBFOLDER, HCPU_SUBFOLDER, PTAB_JSON_FILE, SFTOOL_PARAM_JSON_FILE } from '../constants';
 import { ConfigService } from './configService';
+import { LogService } from './logService';
 
 export class BoardService {
   private static instance: BoardService;
   private configService: ConfigService;
+  private logService: LogService;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
+    this.logService = LogService.getInstance();
   }
 
   public static getInstance(): BoardService {
@@ -86,9 +89,9 @@ export class BoardService {
           }
         }
       }
-    } catch (error) {
-      console.error(`[BoardService] Error scanning directory ${directoryPath}:`, error);
-    }
+          } catch (error) {
+        this.logService.error(`Error scanning directory ${directoryPath}:`, error);
+      }
   }
 
   private getBoardTypePriority(type: Board['type']): number {
@@ -126,14 +129,14 @@ export class BoardService {
       const sftoolParamPath = path.join(workspaceRoot, buildFolder, SFTOOL_PARAM_JSON_FILE);
 
       if (!fs.existsSync(sftoolParamPath)) {
-        console.warn(`[BoardService] sftool_param.json not found at: ${sftoolParamPath}`);
+        this.logService.warn(`sftool_param.json not found at: ${sftoolParamPath}`);
         return null;
       }
 
       const content = fs.readFileSync(sftoolParamPath, 'utf8');
       return JSON.parse(content);
     } catch (error) {
-      console.error(`[BoardService] Error reading sftool_param.json for board ${boardName}:`, error);
+      this.logService.error(`Error reading sftool_param.json for board ${boardName}:`, error);
       return null;
     }
   }

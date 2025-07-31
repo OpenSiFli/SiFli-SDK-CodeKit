@@ -4,6 +4,7 @@ import { ConfigService } from './services/configService';
 import { SdkService } from './services/sdkService';
 import { GitService } from './services/gitService';
 import { TerminalService } from './services/terminalService';
+import { LogService } from './services/logService';
 import { BuildCommands } from './commands/buildCommands';
 import { ConfigCommands } from './commands/configCommands';
 import { SdkCommands } from './commands/sdkCommands';
@@ -14,7 +15,10 @@ import { isSiFliProject } from './utils/projectUtils';
  * 扩展激活函数
  */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  console.log('Congratulations, your SiFli extension is now active!');
+  // 初始化日志服务
+  const logService = LogService.getInstance();
+  
+  logService.info('SiFli SDK CodeKit extension is activating...');
 
   // *** 仅在开发调试时使用：强制重置首次运行标志 ***
   // 这将使得每次"重新运行调试"时,Quick Pick 都会弹出。
@@ -36,27 +40,33 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 初始化状态栏提供者
   const statusBarProvider = StatusBarProvider.getInstance();
 
-  // 注册 Git 输出通道到订阅列表
-  context.subscriptions.push(gitService.getOutputChannel());
+  // 注册输出通道和 Git 输出通道到订阅列表
+  context.subscriptions.push(
+    logService.getOutputChannel(),
+    gitService.getOutputChannel()
+  );
 
   // 在插件激活时立即读取配置
   await configService.updateConfiguration();
+  logService.info('Configuration loaded successfully');
   
   // 发现 SDK 版本
   const sdkVersions = await sdkService.discoverSiFliSdks();
   configService.detectedSdkVersions = sdkVersions;
+  logService.info(`Discovered ${sdkVersions.length} SDK versions`);
 
   // 检查是否为 SiFli 项目
   if (isSiFliProject()) {
-    console.log('[SiFli Extension] SiFli project detected. Activating full extension features.');
+    logService.info('SiFli project detected. Activating full extension features.');
 
     // 如果有当前 SDK，在插件激活时自动激活它
     const currentSdk = configService.getCurrentSdk();
     if (currentSdk && currentSdk.valid) {
       try {
+        logService.info(`Auto-activating current SDK: ${currentSdk.version} at ${currentSdk.path}`);
         await sdkService.activateSdk(currentSdk);
       } catch (error) {
-        console.error('[SiFli Extension] Error activating current SDK on startup:', error);
+        logService.error('Error activating current SDK on startup:', error);
       }
     }
     console.log('[SiFli Extension] SiFli project detected. Activating full extension features.');
@@ -78,10 +88,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration(async (e) => {
         if (e.affectsConfiguration('sifli-sdk-codekit')) {
+          logService.info('Configuration changed, updating...');
           await configService.updateConfiguration();
           const newSdkVersions = await sdkService.discoverSiFliSdks();
           configService.detectedSdkVersions = newSdkVersions;
           statusBarProvider.updateStatusBarItems();
+          logService.info('Configuration update completed');
         }
       })
     );
@@ -114,13 +126,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       ),
       vscode.commands.registerCommand(CMD_PREFIX + 'switchSdkVersion', () => 
         configCommands.switchSdkVersion()
-      )
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'showLogs', () => {
+        logService.show();
+        logService.info('Logs displayed by user request');
+      })
     ];
 
     context.subscriptions.push(...commands);
 
+    logService.info('SiFli SDK CodeKit extension activated successfully');
+
   } else {
-    console.log('[SiFli Extension] Not a SiFli project. Extension features will not be activated.');
+    logService.info('Not a SiFli project. Extension features will not be activated.');
   }
 }
 
@@ -128,7 +146,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
  * 扩展停用函数
  */
 export function deactivate(): void {
-  console.log('[SiFli Extension] Extension deactivated.');
+  const logService = LogService.getInstance();
+  logService.info('SiFli SDK CodeKit extension is deactivating...');
   
   // 清理状态栏
   const statusBarProvider = StatusBarProvider.getInstance();
@@ -141,4 +160,8 @@ export function deactivate(): void {
   // 清理 Git 服务
   const gitService = GitService.getInstance();
   gitService.dispose();
+  
+  // 清理日志服务
+  logService.info('SiFli SDK CodeKit extension deactivated');
+  logService.dispose();
 }
