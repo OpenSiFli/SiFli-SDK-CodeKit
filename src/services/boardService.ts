@@ -189,7 +189,7 @@ export class BoardService {
       }
     }
 
-    return `scons --menuconfig BOARD=${boardName}${boardSearchArg}`;
+    return `scons --board=${boardName}${boardSearchArg} --menuconfig`;
   }
 
   /**

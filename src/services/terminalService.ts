@@ -51,32 +51,10 @@ export class TerminalService {
    * 创建新的 SiFli 终端
    */
   private createSiFliTerminal(): vscode.Terminal {
-    const currentSdk = this.configService.getCurrentSdk();
-    let terminalOptions: vscode.TerminalOptions = {
+    // 创建一个普通的终端，SDK 激活通过 sdkService.activateSdk 方法来处理
+    const terminalOptions: vscode.TerminalOptions = {
       name: TERMINAL_NAME
     };
-
-    // 如果有配置的 SDK 导出脚本，使用 PowerShell
-    if (currentSdk?.path && this.configService.config.sifliSdkExportScriptPath) {
-      if (process.platform === 'win32') {
-        const powershellPath = this.configService.config.powershellPath || 'powershell';
-        terminalOptions = {
-          name: TERMINAL_NAME,
-          shellPath: powershellPath,
-          shellArgs: [
-            '-NoExit',
-            '-ExecutionPolicy',
-            'Bypass',
-            '-Command',
-            `& "${this.configService.config.sifliSdkExportScriptPath}"`
-          ]
-        };
-      } else {
-        // macOS/Linux: 使用 source 命令
-        const exportScript = this.configService.config.sifliSdkExportScriptPath.replace('.ps1', '.sh');
-        terminalOptions.shellArgs = ['-c', `source "${exportScript}" && exec $SHELL`];
-      }
-    }
 
     return vscode.window.createTerminal(terminalOptions);
   }
