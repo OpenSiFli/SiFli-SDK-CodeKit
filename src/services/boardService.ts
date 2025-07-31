@@ -100,11 +100,15 @@ export class BoardService {
     }
   }
 
+  public getProjectFolderPath(): string {
+    return 'project';
+  }
+
   /**
    * 获取构建目标文件夹
    */
   public getBuildTargetFolder(boardName: string): string {
-    return `build_${boardName}`;
+    return path.join(this.getProjectFolderPath(), `build_${boardName}_hcpu`);
   }
 
   /**
@@ -210,13 +214,39 @@ export class BoardService {
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
     const buildFolder = this.getBuildTargetFolder(boardName);
     
-    let command = `sftool -p ${serialPortNum}`;
+    // 构建基础命令
+    let command = `sftool -p ${serialPortNum} -c ${sftoolParam.chip}`;
     
-    if (sftoolParam.load_file && sftoolParam.load_addr) {
-      const loadFile = path.isAbsolute(sftoolParam.load_file) 
-        ? sftoolParam.load_file 
-        : path.join(workspaceRoot, buildFolder, sftoolParam.load_file);
-      command += ` -a ${sftoolParam.load_addr} "${loadFile}"`;
+    if (sftoolParam.memory) {
+      command += ` -m ${sftoolParam.memory.toLowerCase()}`;
+    }
+
+    // 处理 write_flash 命令
+    if (sftoolParam.write_flash && sftoolParam.write_flash.files && sftoolParam.write_flash.files.length > 0) {
+      command += ' write_flash';
+      
+      // 添加 write_flash 选项
+      if (sftoolParam.write_flash.verify) {
+        command += ' --verify';
+      }
+      if (sftoolParam.write_flash.erase_all) {
+        command += ' --erase-all';
+      }
+      if (sftoolParam.write_flash.no_compress) {
+        command += ' --no-compress';
+      }
+
+      // 添加文件和地址
+      for (const fileInfo of sftoolParam.write_flash.files) {
+        // 构建完整文件路径
+        const fullFilePath = path.isAbsolute(fileInfo.path) 
+          ? fileInfo.path 
+          : path.join(workspaceRoot, buildFolder, fileInfo.path);
+
+        command += ` ${fileInfo.address} "${fullFilePath}"`;
+      }
+    } else {
+      throw new Error('sftool 参数文件中未找到有效的写入文件配置');
     }
 
     return command;
