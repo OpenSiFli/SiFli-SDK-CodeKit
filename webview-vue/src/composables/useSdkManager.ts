@@ -2,10 +2,7 @@ import { ref, computed, watch } from 'vue';
 import { useVsCodeApi } from './useVsCodeApi';
 import type { 
   SdkManagerState, 
-  SdkSource, 
-  DownloadType, 
-  SdkRelease, 
-  SdkBranch 
+  SdkVersionInfo
 } from '@/types';
 
 export function useSdkManager() {
@@ -15,8 +12,7 @@ export function useSdkManager() {
   const state = ref<SdkManagerState>({
     sdkSource: 'github',
     downloadType: 'release',
-    availableReleases: [],
-    availableBranches: [],
+    availableVersions: [], // 新的统一版本信息
     selectedVersion: '',
     selectedBranch: '',
     installPath: '',
@@ -34,6 +30,26 @@ export function useSdkManager() {
     { value: 'release', label: '发布版本 (Release)' },
     { value: 'branch', label: '开发分支 (Branch)' }
   ]);
+
+  // 从统一版本信息中分离发布版本和分支
+  const releases = computed(() => {
+    return state.value.availableVersions
+      .filter((v: SdkVersionInfo) => !v.type || v.type !== 'branch')
+      .map((v: SdkVersionInfo) => ({
+        tagName: v.version,
+        name: v.version,
+        supportedChips: v.supported_chips
+      }));
+  });
+
+  const branches = computed(() => {
+    return state.value.availableVersions
+      .filter((v: SdkVersionInfo) => v.type === 'branch')
+      .map((v: SdkVersionInfo) => ({
+        name: v.version,
+        supportedChips: v.supported_chips
+      }));
+  });
 
   // 计算最终的安装路径
   const finalInstallPath = computed(() => {
@@ -71,21 +87,18 @@ export function useSdkManager() {
   });
 
   // 方法
-  const fetchOptions = () => {
-    state.value.isLoading = true;
-    state.value.selectedVersion = '';
-    state.value.selectedBranch = '';
-    
-    if (state.value.downloadType === 'release') {
+  const fetchOptions = async () => {
+    try {
+      state.value.isLoading = true;
+      
+      // 通过后端获取版本信息以避免 CORS 问题
       postMessage({
-        command: 'fetchReleases',
-        source: state.value.sdkSource
+        command: 'fetchVersions'
       });
-    } else {
-      postMessage({
-        command: 'fetchBranches',
-        source: state.value.sdkSource
-      });
+      
+    } catch (error) {
+      console.error('Failed to fetch versions:', error);
+      state.value.isLoading = false;
     }
   };
 
@@ -96,40 +109,41 @@ export function useSdkManager() {
   };
 
   const installSdk = () => {
-    const selectedName = state.value.downloadType === 'release' 
-      ? state.value.selectedVersion 
-      : state.value.selectedBranch;
-
-    if (!selectedName || !state.value.installPath) {
-      return;
-    }
-
     state.value.isInstalling = true;
-    
     postMessage({
-      command: 'startSdkInstallation',
+      command: 'installSdk',
       source: state.value.sdkSource,
-      type: state.value.downloadType === 'release' ? 'tag' : 'branch',
-      name: selectedName,
-      installPath: finalInstallPath.value
+      type: state.value.downloadType,
+      name: state.value.downloadType === 'release' 
+        ? state.value.selectedVersion 
+        : state.value.selectedBranch,
+      installPath: state.value.installPath
     });
   };
 
   // 消息处理器
-  onMessage('displayReleases', (data: { releases: SdkRelease[] }) => {
-    console.log('[useSdkManager] Received releases:', data.releases);
-    state.value.availableReleases = data.releases;
-    state.value.isLoading = false;
-    // 不自动选择版本，让用户手动选择
+  onMessage('displayVersions', (data: { versions: SdkVersionInfo[] }) => {
+    console.log('[useSdkManager] Received versions:', data.versions);
+    state.value.availableVersions = data.versions;
+    
+    // 为兼容性更新旧数组
+    state.value.availableReleases = data.versions
+      .filter(v => !v.type || v.type !== 'branch')
+      .map(v => ({
+        tagName: v.version,
+        name: v.version
+      }));
+    
+    state.value.availableBranches = data.versions
+      .filter(v => v.type === 'branch')
+      .map(v => ({
+        name: v.version
+      }));
+    
+    // 清空选择
     state.value.selectedVersion = '';
-  });
-
-  onMessage('displayBranches', (data: { branches: SdkBranch[] }) => {
-    console.log('[useSdkManager] Received branches:', data.branches);
-    state.value.availableBranches = data.branches;
-    state.value.isLoading = false;
-    // 不自动选择分支，让用户手动选择
     state.value.selectedBranch = '';
+    state.value.isLoading = false;
   });
 
   onMessage('installPathSelected', (data: { path: string }) => {
@@ -159,6 +173,8 @@ export function useSdkManager() {
     state,
     sourceOptions,
     downloadTypeOptions,
+    releases,
+    branches,
     finalInstallPath,
     isFormValid,
     fetchOptions,

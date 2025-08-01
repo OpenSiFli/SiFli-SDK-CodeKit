@@ -25,6 +25,7 @@ export class VueWebviewProvider {
       {
         enableScripts: true,
         retainContextWhenHidden: true,
+        enableCommandUris: true,
         localResourceRoots: [
           vscode.Uri.file(path.join(context.extensionPath, 'webview-vue', 'dist')),
           vscode.Uri.file(path.join(context.extensionPath, 'webview-vue', 'dist', 'assets'))
@@ -220,34 +221,26 @@ export class VueWebviewProvider {
         });
         break;
 
-      case 'fetchReleases':
+
+
+      case 'fetchVersions':
         try {
-          const releases = await gitService.fetchSiFliSdkReleases(message.source);
+          // 在后端调用统一的版本 API，避免 webview 的 CORS 问题
+          const response = await fetch('https://downloads.sifli.com/dl/sifli-sdk/version.json');
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const versions = await response.json();
           webview.postMessage({
-            command: 'displayReleases',
-            releases
+            command: 'displayVersions',
+            versions
           });
         } catch (error) {
-          console.error('[VueWebviewProvider] Error fetching releases:', error);
+          console.error('[VueWebviewProvider] Error fetching unified versions:', error);
           webview.postMessage({
             command: 'error',
             message: '获取版本列表失败: ' + (error instanceof Error ? error.message : String(error))
-          });
-        }
-        break;
-
-      case 'fetchBranches':
-        try {
-          const branches = await gitService.fetchSiFliSdkBranches(message.source);
-          webview.postMessage({
-            command: 'displayBranches',
-            branches
-          });
-        } catch (error) {
-          console.error('[VueWebviewProvider] Error fetching branches:', error);
-          webview.postMessage({
-            command: 'error',
-            message: '获取分支列表失败: ' + (error instanceof Error ? error.message : String(error))
           });
         }
         break;

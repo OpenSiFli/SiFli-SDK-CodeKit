@@ -21,6 +21,13 @@ export interface SdkBranch {
   };
 }
 
+// 统一 API 版本信息类型
+export interface SdkVersionInfo {
+  version: string;
+  supported_chips: string[];
+  type?: 'branch'; // 如果存在则为分支，否则为发布版本
+}
+
 export type SdkSource = 'github' | 'gitee';
 export type DownloadType = 'release' | 'branch';
 
@@ -34,8 +41,7 @@ export interface WebviewMessage {
 export interface SdkManagerState {
   sdkSource: SdkSource;
   downloadType: DownloadType;
-  availableReleases: SdkRelease[];
-  availableBranches: SdkBranch[];
+  availableVersions: SdkVersionInfo[]; // 统一版本信息
   selectedVersion: string;
   selectedBranch: string;
   installPath: string;
