@@ -131,6 +131,11 @@
       "label": "Toolchain download source:",
       "sifli": "SiFli Mirror (Recommended for Chinese mainland users)",
       "github": "GitHub"
+    },
+    "toolsPath": {
+      "label": "SiFli SDK Tools Directory (SIFLI_SDK_TOOLS_PATH):",
+      "placeholder": "Enter tools directory path",
+      "description": "Specify the installation directory path for SiFli SDK toolchain"
     }
   },
   "sdkSource": {

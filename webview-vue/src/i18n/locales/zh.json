@@ -131,6 +131,11 @@
       "label": "工具链下载源：",
       "sifli": "SiFli 镜像(建议中国大陆用户选择)",
       "github": "GitHub"
+    },
+    "toolsPath": {
+      "label": "SiFli SDK 工具链目录 (SIFLI_SDK_TOOLS_PATH)：",
+      "placeholder": "输入工具链目录路径",
+      "description": "指定 SiFli SDK 工具链的安装目录路径"
     }
   },
   "sdkSource": {

@@ -63,6 +63,12 @@
           @browse="sdkManager.browsePath"
         />
 
+        <!-- Toolchain Tools Path Selection -->
+        <ToolsPathSelector
+          v-model="toolsPath"
+          @browse="browseToolsPath"
+        />
+
         <!-- Advanced Options -->
         <div class="animate-slide-in-up" style="animation-delay: 0.3s;">
           <h3 class="text-lg font-semibold mb-4 text-vscode-editor-foreground">Advanced Options</h3>
@@ -182,6 +188,7 @@ import { useSdkManager } from '@/composables/useSdkManager';
 import BaseButton from '@/components/common/BaseButton.vue';
 import SdkSourceSelector from '@/components/sdk/SdkSourceSelector.vue';
 import ToolchainSourceSelector from '@/components/sdk/ToolchainSourceSelector.vue';
+import ToolsPathSelector from '@/components/sdk/ToolsPathSelector.vue';
 import DownloadTypeSelector from '@/components/sdk/DownloadTypeSelector.vue';
 import SdkVersionSelector from '@/components/sdk/SdkVersionSelector.vue';
 import InstallPathSelector from '@/components/sdk/InstallPathSelector.vue';
@@ -195,6 +202,9 @@ const emit = defineEmits<{
 // 工具链下载源
 const toolchainSource = ref<'sifli' | 'github'>('sifli');
 
+// 工具链目录路径
+const toolsPath = ref('');
+
 // Advanced options
 const advancedOptions = ref({
   skipVerification: false,
@@ -204,10 +214,19 @@ const advancedOptions = ref({
 
 const sdkManager = useSdkManager();
 
+// 浏览工具链路径
+const browseToolsPath = () => {
+  // 通过 VS Code API 打开文件夹选择对话框
+  // 这里可以发送消息给后端来处理文件夹选择
+  console.log('Browse tools path requested');
+};
+
 const handleInstall = async () => {
   try {
     // 可以在这里处理高级选项，传递给后端
     console.log('Advanced options:', advancedOptions.value);
+    console.log('Toolchain source:', toolchainSource.value);
+    console.log('Tools path:', toolsPath.value);
     await sdkManager.installSdk();
     emit('installation-complete');
   } catch (error) {
