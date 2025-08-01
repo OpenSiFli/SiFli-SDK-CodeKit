@@ -17,14 +17,7 @@
 
       <!-- Header -->
       <header class="text-center mb-6 pb-4 border-b border-vscode-panel-border">
-        <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-          <img 
-            :src="logoSrc" 
-            alt="SiFli Logo" 
-            class="w-14 h-14 object-contain transition-transform duration-300 hover:scale-110"
-          />
-        </div>
-        <h1 class="text-2xl font-bold mb-2">{{ $t('advanced.title') }}</h1>
+        <h1 class="text-3xl font-bold mb-2">{{ $t('advanced.title') }}</h1>
         <p class="text-vscode-input-placeholder text-sm">{{ $t('advanced.subtitle') }}</p>
       </header>
 
@@ -185,9 +178,6 @@ import SdkSourceSelector from '@/components/sdk/SdkSourceSelector.vue';
 import DownloadTypeSelector from '@/components/sdk/DownloadTypeSelector.vue';
 import SdkVersionSelector from '@/components/sdk/SdkVersionSelector.vue';
 import InstallPathSelector from '@/components/sdk/InstallPathSelector.vue';
-
-// 直接引入 Logo 图片
-import logoSrc from '@/assets/images/SiFli.png';
 
 // 定义 emits
 const emit = defineEmits<{

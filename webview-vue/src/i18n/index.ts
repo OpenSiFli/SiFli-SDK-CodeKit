@@ -1,4 +1,5 @@
 import { createI18n } from 'vue-i18n';
+import { getVSCodeApiInstance } from '@/utils/vsCodeApi';
 
 // 导入语言资源
 import en from './locales/en.json';
@@ -33,31 +34,13 @@ export function getCurrentLocale(): SupportedLocale {
   return i18n.global.locale.value as SupportedLocale;
 }
 
-// VS Code API 接口
-interface VSCodeAPI {
-  postMessage: (message: any) => void;
-  getState: () => any;
-  setState: (state: any) => void;
-}
-
-declare global {
-  interface Window {
-    acquireVsCodeApi?: () => VSCodeAPI;
-  }
-}
-
-// 获取 VS Code API
-let vscodeApi: VSCodeAPI | null = null;
-if (typeof window !== 'undefined' && window.acquireVsCodeApi) {
-  vscodeApi = window.acquireVsCodeApi();
-}
-
 // 初始化语言设置
 export function initializeLocale() {
   // 从 VS Code 获取语言设置，如果获取不到则使用默认语言
   let locale: SupportedLocale = defaultLocale;
   
   // 通知 VS Code 我们已准备好接收初始化数据
+  const vscodeApi = getVSCodeApiInstance();
   if (vscodeApi) {
     vscodeApi.postMessage({ command: 'ready' });
   } else {
@@ -97,6 +80,7 @@ export function setupVSCodeMessageListener() {
 
 // 通知 VS Code 语言变化（用于手动切换语言时）
 export function notifyVSCodeLocaleChange(locale: SupportedLocale) {
+  const vscodeApi = getVSCodeApiInstance();
   if (vscodeApi) {
     vscodeApi.postMessage({
       command: 'localeChanged',

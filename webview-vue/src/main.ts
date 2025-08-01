@@ -1,6 +1,10 @@
 import { createApp } from 'vue';
 import { i18n, initializeLocale, setupVSCodeMessageListener } from './i18n';
+import { initializeVSCodeApi } from './utils/vsCodeApi';
 import './styles/index.css';
+
+// 首先初始化 VS Code API（必须在其他模块之前）
+initializeVSCodeApi();
 
 // 设置 VS Code 消息监听器
 setupVSCodeMessageListener();

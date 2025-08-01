@@ -34,7 +34,7 @@ defineEmits<{
 }>();
 
 const buttonClasses = computed(() => {
-  const baseClasses = 'btn vscode-button btn-ripple transition-all duration-200 transform hover:scale-105 active:scale-95 focus:ring-2 focus:ring-opacity-50 rounded-md px-4 py-2 font-medium';
+  const baseClasses = 'btn vscode-button btn-ripple transition-all duration-200 transform hover:scale-105 active:scale-95 focus:ring-2 focus:ring-opacity-50 rounded-md px-4 py-2 font-medium border-none focus:border-none';
   
   const variantClasses = {
     primary: 'btn-primary',
@@ -66,6 +66,22 @@ const buttonClasses = computed(() => {
 .btn-ripple {
   position: relative;
   overflow: hidden;
+  border: none !important;
+  outline: none !important;
+}
+
+.btn-ripple:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
+}
+
+.btn-ripple:hover {
+  border: none !important;
+}
+
+.btn-ripple:active {
+  border: none !important;
 }
 
 .btn-ripple::before {
