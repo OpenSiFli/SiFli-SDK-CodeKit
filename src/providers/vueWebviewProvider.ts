@@ -269,6 +269,30 @@ export class VueWebviewProvider {
         }
         break;
 
+      case 'browseToolsPath':
+        try {
+          const result = await vscode.window.showOpenDialog({
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false,
+            title: '选择工具链目录'
+          });
+          
+          if (result && result.length > 0) {
+            webview.postMessage({
+              command: 'toolsPathSelected',
+              path: result[0].fsPath
+            });
+          }
+        } catch (error) {
+          console.error('[VueWebviewProvider] Error browsing tools path:', error);
+          webview.postMessage({
+            command: 'error',
+            message: '选择工具链路径失败: ' + (error instanceof Error ? error.message : String(error))
+          });
+        }
+        break;
+
       case 'getDefaultInstallPath':
         try {
           const os = require('os');

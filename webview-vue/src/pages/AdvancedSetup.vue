@@ -99,6 +99,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useSdkManager } from '@/composables/useSdkManager';
+import { useVsCodeApi } from '@/composables/useVsCodeApi';
 import BaseButton from '@/components/common/BaseButton.vue';
 import SdkSourceSelector from '@/components/sdk/SdkSourceSelector.vue';
 import ToolchainSourceSelector from '@/components/sdk/ToolchainSourceSelector.vue';
@@ -113,6 +114,8 @@ const emit = defineEmits<{
   'installation-complete': []
 }>();
 
+const { postMessage, onMessage } = useVsCodeApi();
+
 // 工具链下载源
 const toolchainSource = ref<'sifli' | 'github'>('sifli');
 
@@ -123,10 +126,15 @@ const sdkManager = useSdkManager();
 
 // 浏览工具链路径
 const browseToolsPath = () => {
-  // 通过 VS Code API 打开文件夹选择对话框
-  // 这里可以发送消息给后端来处理文件夹选择
-  console.log('Browse tools path requested');
+  postMessage({
+    command: 'browseToolsPath'
+  });
 };
+
+// 监听工具链路径选择结果
+onMessage('toolsPathSelected', (data: { path: string }) => {
+  toolsPath.value = data.path;
+});
 
 const handleInstall = async () => {
   try {
