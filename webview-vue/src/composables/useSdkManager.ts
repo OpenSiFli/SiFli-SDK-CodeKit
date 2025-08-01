@@ -45,10 +45,23 @@ export function useSdkManager() {
   const branches = computed(() => {
     return state.value.availableVersions
       .filter((v: SdkVersionInfo) => v.type === 'branch')
-      .map((v: SdkVersionInfo) => ({
-        name: v.version,
-        supportedChips: v.supported_chips
-      }));
+      .map((v: SdkVersionInfo) => {
+        let branchName = v.version;
+        
+        // 处理分支名称逻辑
+        if (v.version === 'latest') {
+          // latest 分支改为 main
+          branchName = 'main';
+        } else {
+          // 其他分支加上 release/ 前缀
+          branchName = `release/${v.version}`;
+        }
+        
+        return {
+          name: branchName,
+          supportedChips: v.supported_chips
+        };
+      });
   });
 
   // 计算最终的安装路径
@@ -62,7 +75,7 @@ export function useSdkManager() {
     
     if (!selectedName) return basePath;
     
-    // 处理分支名称，移除 'release/' 前缀
+    // 处理分支名称，移除 'release/' 前缀用于目录名
     let folderName = selectedName;
     if (state.value.downloadType === 'branch' && selectedName.startsWith('release/')) {
       folderName = selectedName.replace('release/', '');
@@ -110,6 +123,7 @@ export function useSdkManager() {
 
   const installSdk = () => {
     state.value.isInstalling = true;
+    
     postMessage({
       command: 'installSdk',
       source: state.value.sdkSource,
@@ -136,9 +150,17 @@ export function useSdkManager() {
     
     state.value.availableBranches = data.versions
       .filter(v => v.type === 'branch')
-      .map(v => ({
-        name: v.version
-      }));
+      .map(v => {
+        let displayName = v.version;
+        if (v.version === 'latest') {
+          displayName = 'main';
+        } else {
+          displayName = `release/${v.version}`;
+        }
+        return {
+          name: displayName
+        };
+      });
     
     // 清空选择
     state.value.selectedVersion = '';
