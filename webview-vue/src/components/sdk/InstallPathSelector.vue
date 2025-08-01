@@ -6,29 +6,39 @@
     
     <!-- 主输入区域 -->
     <div class="flex items-center gap-2 mb-3">
+      <!-- 复合输入框 -->
       <div class="flex-1 relative">
-        <BaseInput
-          v-model="installPath"
-          placeholder="/Users/username/sifli-sdk"
-          class="pr-20"
-          @update:modelValue="$emit('update:modelValue', $event)"
-        />
-        <!-- 建议路径按钮 -->
-        <div class="absolute right-2 top-1/2 transform -translate-y-1/2">
-          <button
-            @click="showSuggestions = !showSuggestions"
-            class="text-vscode-input-placeholder hover:text-vscode-foreground transition-colors duration-200 p-1"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
+        <!-- 输入框容器 -->
+        <div class="flex border border-vscode-input-border rounded overflow-hidden bg-vscode-input-background focus-within:ring-2 focus-within:ring-vscode-focus-border focus-within:border-vscode-focus-border transition-all duration-200">
+          <!-- 左侧输入区域 -->
+          <div class="flex-1 relative">
+            <input
+              v-model="installPath"
+              type="text"
+              placeholder="/Users/username/sifli-sdk"
+              class="w-full px-3 py-2 bg-transparent text-vscode-input-foreground placeholder-vscode-input-placeholder border-0 outline-none"
+              @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+            />
+            <!-- 建议路径按钮 -->
+            <div class="absolute right-2 top-1/2 transform -translate-y-1/2">
+              <button
+                @click="showSuggestions = !showSuggestions"
+                class="text-vscode-input-placeholder hover:text-vscode-foreground transition-colors duration-200 p-1"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <!-- 右侧后缀区域 -->
+          <div v-if="pathSuffix" class="border-l border-vscode-input-border bg-vscode-input-background bg-opacity-50">
+            <div class="px-3 py-2 text-vscode-input-placeholder font-mono text-sm whitespace-nowrap">
+              /{{ pathSuffix }}
+            </div>
+          </div>
         </div>
-      </div>
-      
-      <!-- 路径后缀显示 -->
-      <div v-if="pathSuffix" class="px-3 py-2 bg-vscode-button-background bg-opacity-10 border border-vscode-button-background border-opacity-30 rounded text-sm text-vscode-button-background font-mono">
-        /{{ pathSuffix }}
       </div>
       
       <!-- 浏览按钮 -->
@@ -98,7 +108,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import BaseInput from '@/components/common/BaseInput.vue';
 import BaseButton from '@/components/common/BaseButton.vue';
 
 interface Props {
