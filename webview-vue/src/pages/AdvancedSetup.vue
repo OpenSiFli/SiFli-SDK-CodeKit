@@ -71,34 +71,53 @@
 
         <!-- Installation Button and Progress -->
         <div class="pt-4 animate-slide-in-up" style="animation-delay: 0.4s;">
-          <!-- Installation Progress -->
+          <!-- Installation Log Window -->
           <div v-if="sdkManager.state.value.isInstalling" class="mb-4 p-4 bg-vscode-editor-background border border-vscode-editor-foreground/20 rounded">
             <div class="flex items-center mb-2">
               <div class="loading loading-spinner loading-sm text-vscode-button-background mr-2"></div>
               <span class="text-sm font-medium">{{ sdkManager.state.value.installationProgress.message }}</span>
             </div>
-            <div class="w-full bg-vscode-input-background rounded-full h-2">
-              <div 
-                class="bg-vscode-button-background h-2 rounded-full transition-all duration-300"
-                :style="{ width: `${sdkManager.state.value.installationProgress.percentage}%` }"
-              ></div>
-            </div>
-            <div class="text-xs text-vscode-input-placeholder mt-1">
-              {{ sdkManager.state.value.installationProgress.percentage }}%
+            
+            <!-- 日志窗口 -->
+            <div 
+              ref="logContainer"
+              class="mt-3 bg-black/50 text-green-400 text-xs font-mono p-3 rounded border max-h-64 overflow-y-auto scroll-smooth"
+              style="scrollbar-width: thin; scrollbar-color: #4a5568 #2d3748;"
+            >
+              <div class="mb-2 text-gray-300 font-semibold border-b border-gray-600 pb-1">安装日志:</div>
+              <div v-for="(log, index) in sdkManager.state.value.installationLogs" :key="index" class="mb-1 leading-tight">
+                <span class="text-gray-500 mr-2">[{{ getTimestamp() }}]</span>{{ log }}
+              </div>
+              <div v-if="sdkManager.state.value.installationLogs.length === 0" class="text-gray-500 italic">
+                等待日志输出...
+              </div>
             </div>
           </div>
 
           <!-- Install Button -->
-          <BaseButton
-            variant="primary"
-            size="lg"
-            block
-            :disabled="!sdkManager.isFormValid.value || sdkManager.state.value.isInstalling"
-            :loading="sdkManager.state.value.isInstalling"
-            @click="handleInstall"
-          >
-            {{ sdkManager.state.value.isInstalling ? 'Installing...' : 'Install SiFli SDK' }}
-          </BaseButton>
+          <div class="flex gap-3">
+            <BaseButton
+              variant="primary"
+              size="lg"
+              :disabled="!sdkManager.isFormValid.value || sdkManager.state.value.isInstalling"
+              :loading="sdkManager.state.value.isInstalling"
+              @click="handleInstall"
+              class="flex-1"
+            >
+              {{ sdkManager.state.value.isInstalling ? 'Installing...' : 'Install SiFli SDK' }}
+            </BaseButton>
+            
+            <!-- 取消按钮 -->
+            <BaseButton
+              v-if="sdkManager.state.value.isInstalling"
+              variant="secondary"
+              size="lg"
+              @click="handleCancelInstall"
+              class="px-6"
+            >
+              取消
+            </BaseButton>
+          </div>
         </div>
       </div>
 
@@ -114,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
 import { useSdkManager } from '@/composables/useSdkManager';
 import { useVsCodeApi } from '@/composables/useVsCodeApi';
 import BaseButton from '@/components/common/BaseButton.vue';
@@ -139,7 +158,34 @@ const toolchainSource = ref<'sifli' | 'github'>('sifli');
 // 工具链目录路径
 const toolsPath = ref('');
 
+// 日志容器的引用
+const logContainer = ref<HTMLElement>();
+
 const sdkManager = useSdkManager();
+
+// 监听日志变化，自动滚动到底部
+watch(
+  () => sdkManager.state.value.installationLogs,
+  () => {
+    nextTick(() => {
+      if (logContainer.value) {
+        logContainer.value.scrollTop = logContainer.value.scrollHeight;
+      }
+    });
+  },
+  { deep: true }
+);
+
+// 获取当前时间戳
+const getTimestamp = () => {
+  const now = new Date();
+  return now.toLocaleTimeString('zh-CN', { 
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+};
 
 // 浏览工具链路径
 const browseToolsPath = () => {
@@ -167,6 +213,14 @@ const handleInstall = () => {
   } catch (error) {
     console.error('Installation failed:', error);
   }
+};
+
+// 取消安装
+const handleCancelInstall = () => {
+  console.log('[AdvancedSetup] Cancelling SDK installation...');
+  postMessage({
+    command: 'cancelInstallation'
+  });
 };
 
 onMounted(() => {

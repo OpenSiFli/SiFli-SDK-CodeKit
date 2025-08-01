@@ -75,7 +75,24 @@ export class VueWebviewProvider {
 
     panel.onDidDispose(() => {
       configChangeListener.dispose();
+      
+      // 关闭WebView时终止所有Git进程
+      console.log('[VueWebviewProvider] WebView disposed, terminating Git processes...');
+      this.terminateGitProcesses();
     });
+  }
+
+  /**
+   * 终止所有Git进程
+   */
+  private async terminateGitProcesses(): Promise<void> {
+    try {
+      const { GitService } = await import('../services/gitService');
+      const gitService = GitService.getInstance();
+      gitService.terminateAllProcesses();
+    } catch (error) {
+      console.error('[VueWebviewProvider] Error terminating Git processes:', error);
+    }
   }
 
   /**
@@ -321,23 +338,44 @@ export class VueWebviewProvider {
           console.log('[VueWebviewProvider] SDK base path:', sdkBasePath);
           console.log('[VueWebviewProvider] Full install path:', fullInstallPath);
 
+          // 发送日志消息
+          webview.postMessage({
+            command: 'installationLog',
+            log: `🚀 准备安装 SiFli SDK ${version.name}`
+          });
+
+          webview.postMessage({
+            command: 'installationLog',
+            log: `🔗 源码仓库: ${repoUrl}`
+          });
+
+          webview.postMessage({
+            command: 'installationLog',
+            log: `📂 安装路径: ${fullInstallPath}`
+          });
+
           // 确保 SiFli-SDK 基础目录存在
           if (!fs.existsSync(sdkBasePath)) {
             console.log('[VueWebviewProvider] Creating SDK base directory:', sdkBasePath);
             fs.mkdirSync(sdkBasePath, { recursive: true });
+            webview.postMessage({
+              command: 'installationLog',
+              log: `📁 创建基础目录: ${sdkBasePath}`
+            });
           }
 
           // 检查具体版本目录是否已存在
           if (fs.existsSync(fullInstallPath)) {
             console.log('[VueWebviewProvider] Directory already exists, will overwrite');
-            // 可以选择删除现有目录或提示用户
+            webview.postMessage({
+              command: 'installationLog',
+              log: `⚠️  目标目录已存在，将进行覆盖安装`
+            });
           }
 
-          // 发送进度更新
           webview.postMessage({
-            command: 'installationProgress',
-            message: '正在克隆仓库（包含子模块）...',
-            percentage: 10
+            command: 'installationLog',
+            log: `🔄 开始克隆仓库（包含子模块）...`
           });
 
           console.log('[VueWebviewProvider] Starting clone operation...');
@@ -347,21 +385,29 @@ export class VueWebviewProvider {
             branch: version.type === 'release' ? version.tagName : version.name,
             onProgress: (progress) => {
               console.log('[VueWebviewProvider] Clone progress:', progress);
+              // 发送 Git 日志到前端
               webview.postMessage({
-                command: 'installationProgress',
-                message: `克隆进度: ${progress}`,
-                percentage: 50
+                command: 'installationLog',
+                log: progress
               });
             }
           });
 
           console.log('[VueWebviewProvider] Clone operation completed');
 
-          // 发送进度更新 - 完成
           webview.postMessage({
-            command: 'installationProgress',
-            message: '安装完成！',
-            percentage: 100
+            command: 'installationLog',
+            log: '🎉 Git 克隆操作完成！'
+          });
+
+          webview.postMessage({
+            command: 'installationLog',
+            log: `✅ SiFli SDK ${version.name} 安装成功！`
+          });
+
+          webview.postMessage({
+            command: 'installationLog',
+            log: `📁 安装路径: ${fullInstallPath}`
           });
 
           // 发送安装成功消息
@@ -375,9 +421,45 @@ export class VueWebviewProvider {
 
         } catch (error) {
           console.error('[VueWebviewProvider] SDK installation failed:', error);
+          
+          // 安装失败时终止Git进程
+          await this.terminateGitProcesses();
+          
+          // 发送错误日志
+          webview.postMessage({
+            command: 'installationLog',
+            log: `❌ 安装失败: ${error instanceof Error ? error.message : String(error)}`
+          });
+          
           webview.postMessage({
             command: 'installationFailed',
             message: '安装失败: ' + (error instanceof Error ? error.message : String(error))
+          });
+        }
+        break;
+
+      case 'cancelInstallation':
+        try {
+          console.log('[VueWebviewProvider] Cancelling SDK installation...');
+          
+          // 终止所有Git进程
+          await this.terminateGitProcesses();
+          
+          webview.postMessage({
+            command: 'installationLog',
+            log: '⚠️ 用户取消了安装操作'
+          });
+          
+          webview.postMessage({
+            command: 'installationFailed',
+            message: '安装已取消'
+          });
+          
+        } catch (error) {
+          console.error('[VueWebviewProvider] Error cancelling installation:', error);
+          webview.postMessage({
+            command: 'installationLog',
+            log: `❌ 取消安装时发生错误: ${error instanceof Error ? error.message : String(error)}`
           });
         }
         break;

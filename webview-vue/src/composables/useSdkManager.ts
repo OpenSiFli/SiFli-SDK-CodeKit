@@ -23,7 +23,8 @@ export function useSdkManager() {
     installationProgress: {
       message: '',
       percentage: 0
-    }
+    },
+    installationLogs: [] // 初始化日志数组
   });
 
   // 计算属性
@@ -232,10 +233,17 @@ export function useSdkManager() {
   });
 
   onMessage('installationStarted', (data: { message: string }) => {
+    // 清空之前的日志
+    state.value.installationLogs = [];
     state.value.installationProgress = {
       message: data.message,
       percentage: 0
     };
+  });
+
+  // 新增日志消息处理
+  onMessage('installationLog', (data: { log: string }) => {
+    state.value.installationLogs.push(data.log);
   });
 
   onMessage('installationProgress', (data: { message: string; percentage: number }) => {

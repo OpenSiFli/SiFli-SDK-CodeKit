@@ -53,6 +53,7 @@ export interface SdkManagerState {
     message: string;
     percentage: number;
   };
+  installationLogs: string[]; // 新增安装日志数组
 }
 
 // 组件 Props 类型

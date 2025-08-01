@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawn } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import axios from 'axios';
 import { SdkRelease, SdkBranch } from '../types';
 import { GIT_REPOS } from '../constants';
@@ -9,6 +9,7 @@ import { GIT_REPOS } from '../constants';
 export class GitService {
   private static instance: GitService;
   private gitOutputChannel: vscode.OutputChannel;
+  private activeProcesses: Map<string, ChildProcess> = new Map(); // 跟踪活跃的Git进程
 
   private constructor() {
     this.gitOutputChannel = vscode.window.createOutputChannel('SiFli SDK Git Operations');
@@ -26,6 +27,46 @@ export class GitService {
   }
 
   /**
+   * 终止所有活跃的Git进程
+   */
+  public terminateAllProcesses(): void {
+    console.log(`[GitService] Terminating ${this.activeProcesses.size} active processes...`);
+    this.gitOutputChannel.appendLine(`[Git] Terminating ${this.activeProcesses.size} active processes...`);
+    
+    for (const [processId, process] of this.activeProcesses) {
+      try {
+        if (!process.killed) {
+          console.log(`[GitService] Killing process ${processId}...`);
+          this.gitOutputChannel.appendLine(`[Git] Killing process ${processId}...`);
+          process.kill('SIGTERM');
+          
+          // 如果进程在3秒内没有退出，使用SIGKILL强制终止
+          setTimeout(() => {
+            if (!process.killed) {
+              console.log(`[GitService] Force killing process ${processId}...`);
+              this.gitOutputChannel.appendLine(`[Git] Force killing process ${processId}...`);
+              process.kill('SIGKILL');
+            }
+          }, 3000);
+        }
+      } catch (error) {
+        console.error(`[GitService] Error terminating process ${processId}:`, error);
+        this.gitOutputChannel.appendLine(`[Git] Error terminating process ${processId}: ${error}`);
+      }
+    }
+    
+    this.activeProcesses.clear();
+  }
+
+  /**
+   * 移除已完成的进程
+   */
+  private removeProcess(processId: string): void {
+    this.activeProcesses.delete(processId);
+    console.log(`[GitService] Removed process ${processId}, ${this.activeProcesses.size} processes remaining`);
+  }
+
+  /**
    * 检查 Git 是否已安装
    */
   public async isGitInstalled(): Promise<boolean> {
@@ -35,13 +76,28 @@ export class GitService {
           stdio: ['ignore', 'pipe', 'pipe']
         });
         
+        // 为版本检查进程生成ID
+        const processId = `version-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        this.activeProcesses.set(processId, gitProcess);
+        
         gitProcess.on('close', (code) => {
+          this.removeProcess(processId);
           resolve(code === 0);
         });
         
         gitProcess.on('error', () => {
+          this.removeProcess(processId);
           resolve(false);
         });
+        
+        // 版本检查超时
+        setTimeout(() => {
+          if (this.activeProcesses.has(processId) && !gitProcess.killed) {
+            gitProcess.kill();
+            this.removeProcess(processId);
+            resolve(false);
+          }
+        }, 5000); // 5秒超时
       });
     } catch (error) {
       console.error(`[GitService] Git is not installed or not in PATH: ${error}`);
@@ -173,10 +229,14 @@ export class GitService {
       console.log(`[GitService] Native git command: git ${args.join(' ')}`);
       this.gitOutputChannel.appendLine(`[Git] Command: git ${args.join(' ')}`);
 
-      const { spawn } = require('child_process');
       const gitProcess = spawn('git', args, {
         stdio: ['ignore', 'pipe', 'pipe']
       });
+
+      // 生成进程ID并跟踪进程
+      const processId = `clone-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      this.activeProcesses.set(processId, gitProcess);
+      console.log(`[GitService] Started clone process ${processId}`);
 
       let hasError = false;
       let errorOutput = '';
@@ -209,8 +269,11 @@ export class GitService {
       });
 
       gitProcess.on('close', (code: number) => {
-        console.log(`[GitService] Native clone process exited with code: ${code}`);
-        this.gitOutputChannel.appendLine(`[Git] Process exited with code: ${code}`);
+        console.log(`[GitService] Native clone process ${processId} exited with code: ${code}`);
+        this.gitOutputChannel.appendLine(`[Git] Process ${processId} exited with code: ${code}`);
+        
+        // 从活跃进程列表中移除
+        this.removeProcess(processId);
         
         if (code === 0 && !hasError) {
           resolve();
@@ -224,16 +287,21 @@ export class GitService {
       });
 
       gitProcess.on('error', (error: Error) => {
-        console.error(`[GitService] Native clone process error:`, error);
-        this.gitOutputChannel.appendLine(`[Git] Process error: ${error.message}`);
+        console.error(`[GitService] Native clone process ${processId} error:`, error);
+        this.gitOutputChannel.appendLine(`[Git] Process ${processId} error: ${error.message}`);
+        
+        // 从活跃进程列表中移除
+        this.removeProcess(processId);
         reject(error);
       });
 
       // 设置超时
       setTimeout(() => {
-        if (!gitProcess.killed) {
-          console.log(`[GitService] Native clone timeout, killing process...`);
+        if (this.activeProcesses.has(processId) && !gitProcess.killed) {
+          console.log(`[GitService] Native clone timeout, killing process ${processId}...`);
+          this.gitOutputChannel.appendLine(`[Git] Process ${processId} timeout, killing...`);
           gitProcess.kill();
+          this.removeProcess(processId);
           reject(new Error('Git clone 操作超时'));
         }
       }, 10 * 60 * 1000); // 10分钟超时
