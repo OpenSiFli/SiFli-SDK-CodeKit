@@ -1,30 +1,17 @@
 <template>
   <div class="min-h-screen bg-vscode-background text-vscode-foreground font-vscode">
-    <!-- Language Selector -        <BaseButton
-          variant="secondary"
-          @click="$emit('go-back')"
-          class="px-6 py-3"
-        >
-          {{ $t('common.cancel') }}
-        </BaseButton>
-        <BaseButton
-          variant="primary"
-          :disabled="!selectedMode"
-          @click="proceedWithMode"
-          class="px-8 py-3"
-        >
-          {{ $t('common.continue') }}
-        </BaseButton>ss="absolute top-4 right-4 z-10">
+    <!-- Language Selector -->
+    <div class="absolute top-4 right-4 z-10">
       <LanguageSelector />
     </div>
 
     <!-- Header -->
-    <header class="text-center py-8 border-b border-vscode-panel-border">
-      <div class="flex flex-col items-center justify-center mb-4">
+    <header class="text-center py-4 border-b border-vscode-panel-border">
+      <div class="flex flex-col items-center justify-center mb-2">
         <img 
           :src="logoSrc" 
           alt="SiFli Logo" 
-          class="w-16 h-16 object-contain mb-3"
+          class="w-16 h-16 object-contain mb-2"
         />
         <div>
           <h1 class="text-2xl font-bold text-vscode-foreground">{{ $t('welcome.title') }}</h1>
@@ -34,10 +21,10 @@
     </header>
 
     <!-- Content -->
-    <div class="max-w-4xl mx-auto px-8 py-8">
+    <div class="max-w-4xl mx-auto px-8 py-4 w-full">
       <!-- Welcome Message -->
-      <div class="text-center mb-8">
-        <h2 class="text-2xl font-bold mb-3">{{ $t('welcome.greeting') }}</h2>
+      <div class="text-center mb-6">
+        <h2 class="text-3xl font-bold mb-2">{{ $t('welcome.greeting') }}</h2>
         <p class="text-sm text-vscode-input-placeholder mb-1">
           {{ $t('welcome.prerequisites.intro') }}
         </p>
@@ -54,14 +41,14 @@
       </div>
 
       <!-- Setup Mode Selection -->
-      <div class="mb-6">
-        <h3 class="text-lg font-semibold text-center mb-4">{{ $t('welcome.setupMode.title') }}</h3>
-        <p class="text-center text-vscode-input-placeholder mb-6 text-sm">
+      <div class="mb-4">
+        <h3 class="text-lg font-semibold text-center mb-3">{{ $t('welcome.setupMode.title') }}</h3>
+        <p class="text-center text-vscode-input-placeholder mb-4 text-sm">
           {{ $t('welcome.setupMode.subtitle') }}
         </p>
 
         <!-- Options Grid -->
-        <div class="grid gap-6 max-w-3xl mx-auto">
+        <div class="grid gap-4 max-w-3xl mx-auto">
           <!-- Express Mode -->
           <div 
             @click="selectMode('express')"
@@ -77,7 +64,7 @@
                 </div>
               </div>
               <div class="flex-1">
-                <h4 class="text-lg font-semibold mb-2">{{ $t('welcome.modes.express.title') }}</h4>
+                <h4 class="text-lg font-semibold mb-3">{{ $t('welcome.modes.express.title') }}</h4>
                 <p class="text-sm text-vscode-input-placeholder">
                   {{ $t('welcome.modes.express.description') }}
                 </p>
@@ -100,7 +87,7 @@
                 </div>
               </div>
               <div class="flex-1">
-                <h4 class="text-lg font-semibold mb-2">{{ $t('welcome.modes.advanced.title') }}</h4>
+                <h4 class="text-lg font-semibold mb-3">{{ $t('welcome.modes.advanced.title') }}</h4>
                 <p class="text-sm text-vscode-input-placeholder">
                   {{ $t('welcome.modes.advanced.description') }}
                 </p>
@@ -123,7 +110,7 @@
                 </div>
               </div>
               <div class="flex-1">
-                <h4 class="text-lg font-semibold mb-2">{{ $t('welcome.modes.existing.title') }}</h4>
+                <h4 class="text-lg font-semibold mb-3">{{ $t('welcome.modes.existing.title') }}</h4>
                 <p class="text-sm text-vscode-input-placeholder">
                   {{ $t('welcome.modes.existing.description') }}
                 </p>
@@ -134,8 +121,7 @@
       </div>
 
       <!-- Action Buttons -->
-            <!-- Action Buttons -->
-      <div class="flex justify-center mt-8">
+      <div class="flex justify-center mt-6">
         <BaseButton
           variant="primary"
           :disabled="!selectedMode"
