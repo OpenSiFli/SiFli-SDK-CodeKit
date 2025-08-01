@@ -45,8 +45,14 @@ export interface SdkManagerState {
   selectedVersion: string;
   selectedBranch: string;
   installPath: string;
+  toolchainSource: SdkSource;
+  toolsPath: string;
   isLoading: boolean;
   isInstalling: boolean;
+  installationProgress: {
+    message: string;
+    percentage: number;
+  };
 }
 
 // 组件 Props 类型

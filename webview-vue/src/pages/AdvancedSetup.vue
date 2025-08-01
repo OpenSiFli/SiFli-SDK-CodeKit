@@ -69,18 +69,35 @@
           @browse="browseToolsPath"
         />
 
-        <!-- Installation Button -->
+        <!-- Installation Button and Progress -->
         <div class="pt-4 animate-slide-in-up" style="animation-delay: 0.4s;">
+          <!-- Installation Progress -->
+          <div v-if="sdkManager.state.value.isInstalling" class="mb-4 p-4 bg-vscode-editor-background border border-vscode-editor-foreground/20 rounded">
+            <div class="flex items-center mb-2">
+              <div class="loading loading-spinner loading-sm text-vscode-button-background mr-2"></div>
+              <span class="text-sm font-medium">{{ sdkManager.state.value.installationProgress.message }}</span>
+            </div>
+            <div class="w-full bg-vscode-input-background rounded-full h-2">
+              <div 
+                class="bg-vscode-button-background h-2 rounded-full transition-all duration-300"
+                :style="{ width: `${sdkManager.state.value.installationProgress.percentage}%` }"
+              ></div>
+            </div>
+            <div class="text-xs text-vscode-input-placeholder mt-1">
+              {{ sdkManager.state.value.installationProgress.percentage }}%
+            </div>
+          </div>
+
+          <!-- Install Button -->
           <BaseButton
             variant="primary"
             size="lg"
             block
-            :disabled="!sdkManager.isFormValid.value"
+            :disabled="!sdkManager.isFormValid.value || sdkManager.state.value.isInstalling"
             :loading="sdkManager.state.value.isInstalling"
             @click="handleInstall"
           >
-            <span v-if="sdkManager.state.value.isInstalling">Installing...</span>
-            <span v-else">Install SiFli SDK</span>
+            {{ sdkManager.state.value.isInstalling ? 'Installing...' : 'Install SiFli SDK' }}
           </BaseButton>
         </div>
       </div>
@@ -136,13 +153,17 @@ onMessage('toolsPathSelected', (data: { path: string }) => {
   toolsPath.value = data.path;
 });
 
-const handleInstall = async () => {
+const handleInstall = () => {
   try {
-    // 传递工具链相关配置给后端
-    console.log('Toolchain source:', toolchainSource.value);
-    console.log('Tools path:', toolsPath.value);
-    await sdkManager.installSdk();
-    emit('installation-complete');
+    // 设置工具链配置到 SDK 管理器状态
+    sdkManager.state.value.toolchainSource = toolchainSource.value === 'github' ? 'github' : 'gitee';
+    sdkManager.state.value.toolsPath = toolsPath.value;
+    
+    console.log('[AdvancedSetup] Starting SDK installation...');
+    
+    // 调用安装方法（这是异步的，通过消息处理）
+    sdkManager.installSdk();
+    
   } catch (error) {
     console.error('Installation failed:', error);
   }

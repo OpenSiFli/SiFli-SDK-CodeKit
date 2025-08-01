@@ -16,8 +16,14 @@ export function useSdkManager() {
     selectedVersion: '',
     selectedBranch: '',
     installPath: '',
+    toolchainSource: 'github',
+    toolsPath: '',
     isLoading: false,
-    isInstalling: false
+    isInstalling: false,
+    installationProgress: {
+      message: '',
+      percentage: 0
+    }
   });
 
   // 计算属性
@@ -121,18 +127,67 @@ export function useSdkManager() {
     });
   };
 
-  const installSdk = () => {
-    state.value.isInstalling = true;
-    
+  const browseToolsPath = () => {
     postMessage({
-      command: 'installSdk',
-      source: state.value.sdkSource,
-      type: state.value.downloadType,
-      name: state.value.downloadType === 'release' 
-        ? state.value.selectedVersion 
-        : state.value.selectedBranch,
-      installPath: state.value.installPath
+      command: 'browseToolsPath'
     });
+  };
+
+  const installSdk = () => {
+    if (!isFormValid.value) {
+      console.warn('Form is not valid, cannot install SDK');
+      return;
+    }
+
+    try {
+      state.value.isInstalling = true;
+      state.value.installationProgress = {
+        message: '准备安装...',
+        percentage: 0
+      };
+
+      // 确定版本信息
+      const selectedVersionInfo = state.value.downloadType === 'release'
+        ? state.value.availableVersions.find((v: SdkVersionInfo) => v.version === state.value.selectedVersion)
+        : state.value.availableVersions.find((v: SdkVersionInfo) => v.type === 'branch' && 
+            (v.version === 'latest' ? 'main' : `release/${v.version}`) === state.value.selectedBranch);
+
+      if (!selectedVersionInfo) {
+        throw new Error('未找到选择的版本信息');
+      }
+
+      console.log('[useSdkManager] Starting SDK installation with data:', {
+        sdkSource: state.value.sdkSource,
+        version: selectedVersionInfo,
+        installPath: state.value.installPath,
+        toolchainSource: state.value.toolchainSource,
+        toolsPath: state.value.toolsPath
+      });
+
+      // 发送安装请求
+      postMessage({
+        command: 'installSdk',
+        data: {
+          sdkSource: state.value.sdkSource,
+          version: {
+            name: selectedVersionInfo.version,
+            tagName: selectedVersionInfo.version,
+            type: selectedVersionInfo.type || 'release'
+          },
+          installPath: state.value.installPath,
+          toolchainSource: state.value.toolchainSource,
+          toolsPath: state.value.toolsPath
+        }
+      });
+
+    } catch (error) {
+      console.error('Installation failed:', error);
+      state.value.isInstalling = false;
+      state.value.installationProgress = {
+        message: '安装失败: ' + (error instanceof Error ? error.message : String(error)),
+        percentage: 0
+      };
+    }
   };
 
   // 消息处理器
@@ -172,17 +227,46 @@ export function useSdkManager() {
     state.value.installPath = data.path;
   });
 
-  onMessage('installationComplete', () => {
-    state.value.isInstalling = false;
+  onMessage('toolsPathSelected', (data: { path: string }) => {
+    state.value.toolsPath = data.path;
   });
 
-  onMessage('installationError', (data: { error: string }) => {
+  onMessage('installationStarted', (data: { message: string }) => {
+    state.value.installationProgress = {
+      message: data.message,
+      percentage: 0
+    };
+  });
+
+  onMessage('installationProgress', (data: { message: string; percentage: number }) => {
+    state.value.installationProgress = {
+      message: data.message,
+      percentage: data.percentage
+    };
+  });
+
+  onMessage('installationCompleted', (data: { message: string; path: string }) => {
     state.value.isInstalling = false;
-    console.error('Installation error:', data.error);
+    state.value.installationProgress = {
+      message: data.message,
+      percentage: 100
+    };
+    
+    // 可以在这里添加成功后的处理逻辑
+    console.log('SDK 安装完成于:', data.path);
+  });
+
+  onMessage('installationFailed', (data: { message: string }) => {
+    state.value.isInstalling = false;
+    state.value.installationProgress = {
+      message: data.message,
+      percentage: 0
+    };
   });
 
   onMessage('error', (data: { message: string }) => {
     state.value.isLoading = false;
+    state.value.isInstalling = false;
     console.error('API error:', data.message);
   });
 
@@ -201,6 +285,7 @@ export function useSdkManager() {
     isFormValid,
     fetchOptions,
     browsePath,
+    browseToolsPath,
     installSdk,
     initialize
   };

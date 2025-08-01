@@ -202,17 +202,6 @@ export class VueWebviewProvider {
     const gitService = GitService.getInstance();
 
     switch (message.command) {
-      case 'installSdk':
-      case 'startSdkInstallation':
-        await sdkCommands.installSiFliSdk(
-          message.source,
-          message.type,
-          message.name,
-          message.installPath,
-          webview
-        );
-        break;
-
       case 'getSdkList':
         const sdks = await sdkService.discoverSiFliSdks();
         webview.postMessage({
@@ -289,6 +278,106 @@ export class VueWebviewProvider {
           webview.postMessage({
             command: 'error',
             message: '选择工具链路径失败: ' + (error instanceof Error ? error.message : String(error))
+          });
+        }
+        break;
+
+      case 'installSdk':
+        try {
+          console.log('[VueWebviewProvider] Starting SDK installation...');
+          const { sdkSource, version, installPath, toolchainSource, toolsPath } = message.data;
+          
+          console.log('[VueWebviewProvider] Installation parameters:', {
+            sdkSource,
+            version,
+            installPath,
+            toolchainSource,
+            toolsPath
+          });
+
+          // 首先检查 Git 是否可用
+          const isGitAvailable = await gitService.isGitInstalled();
+          if (!isGitAvailable) {
+            throw new Error('Git 未安装或不在系统 PATH 中。请先安装 Git。');
+          }
+          console.log('[VueWebviewProvider] Git is available');
+
+          // 发送安装开始消息
+          webview.postMessage({
+            command: 'installationStarted',
+            message: '开始安装 SiFli SDK...'
+          });
+
+          // 确定仓库 URL
+          const repoUrl = sdkSource === 'github' 
+            ? 'https://github.com/OpenSiFli/SiFli-SDK.git'
+            : 'https://gitee.com/SiFli/sifli-sdk.git';
+
+          console.log('[VueWebviewProvider] Repository URL:', repoUrl);
+
+          // 创建安装目录 - 修正路径结构为 installPath/SiFli-SDK/version
+          const sdkBasePath = path.join(installPath, 'SiFli-SDK');
+          const fullInstallPath = path.join(sdkBasePath, version.name);
+          console.log('[VueWebviewProvider] SDK base path:', sdkBasePath);
+          console.log('[VueWebviewProvider] Full install path:', fullInstallPath);
+
+          // 确保 SiFli-SDK 基础目录存在
+          if (!fs.existsSync(sdkBasePath)) {
+            console.log('[VueWebviewProvider] Creating SDK base directory:', sdkBasePath);
+            fs.mkdirSync(sdkBasePath, { recursive: true });
+          }
+
+          // 检查具体版本目录是否已存在
+          if (fs.existsSync(fullInstallPath)) {
+            console.log('[VueWebviewProvider] Directory already exists, will overwrite');
+            // 可以选择删除现有目录或提示用户
+          }
+
+          // 发送进度更新
+          webview.postMessage({
+            command: 'installationProgress',
+            message: '正在克隆仓库（包含子模块）...',
+            percentage: 10
+          });
+
+          console.log('[VueWebviewProvider] Starting clone operation...');
+
+          // 使用 GitService 克隆仓库，包含 --recursive 选项
+          await gitService.cloneRepository(repoUrl, fullInstallPath, {
+            branch: version.type === 'release' ? version.tagName : version.name,
+            onProgress: (progress) => {
+              console.log('[VueWebviewProvider] Clone progress:', progress);
+              webview.postMessage({
+                command: 'installationProgress',
+                message: `克隆进度: ${progress}`,
+                percentage: 50
+              });
+            }
+          });
+
+          console.log('[VueWebviewProvider] Clone operation completed');
+
+          // 发送进度更新 - 完成
+          webview.postMessage({
+            command: 'installationProgress',
+            message: '安装完成！',
+            percentage: 100
+          });
+
+          // 发送安装成功消息
+          webview.postMessage({
+            command: 'installationCompleted',
+            message: `SiFli SDK ${version.name} 安装成功！`,
+            path: fullInstallPath
+          });
+
+          console.log('[VueWebviewProvider] SDK installation completed successfully');
+
+        } catch (error) {
+          console.error('[VueWebviewProvider] SDK installation failed:', error);
+          webview.postMessage({
+            command: 'installationFailed',
+            message: '安装失败: ' + (error instanceof Error ? error.message : String(error))
           });
         }
         break;
