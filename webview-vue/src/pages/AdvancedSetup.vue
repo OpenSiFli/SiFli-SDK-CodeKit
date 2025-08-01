@@ -28,6 +28,12 @@
           v-model="sdkManager.state.value.sdkSource"
         />
 
+        <!-- Toolchain Source Selection -->
+        <ToolchainSourceSelector
+          v-model="toolchainSource"
+          :sdk-source="sdkManager.state.value.sdkSource"
+        />
+
         <!-- Download Type Selection -->
         <DownloadTypeSelector
           v-model="sdkManager.state.value.downloadType"
@@ -175,6 +181,7 @@ import { ref, onMounted } from 'vue';
 import { useSdkManager } from '@/composables/useSdkManager';
 import BaseButton from '@/components/common/BaseButton.vue';
 import SdkSourceSelector from '@/components/sdk/SdkSourceSelector.vue';
+import ToolchainSourceSelector from '@/components/sdk/ToolchainSourceSelector.vue';
 import DownloadTypeSelector from '@/components/sdk/DownloadTypeSelector.vue';
 import SdkVersionSelector from '@/components/sdk/SdkVersionSelector.vue';
 import InstallPathSelector from '@/components/sdk/InstallPathSelector.vue';
@@ -184,6 +191,9 @@ const emit = defineEmits<{
   'go-back': []
   'installation-complete': []
 }>();
+
+// 工具链下载源
+const toolchainSource = ref<'sifli' | 'github'>('sifli');
 
 // Advanced options
 const advancedOptions = ref({

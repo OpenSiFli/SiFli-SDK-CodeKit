@@ -126,6 +126,11 @@
       "target": "安装目标：",
       "waitingVersion": "等待版本选择",
       "selectVersionHint": "请选择版本或分支以查看完整的安装路径"
+    },
+    "toolchainSource": {
+      "label": "工具链下载源：",
+      "sifli": "SiFli 镜像(建议中国大陆用户选择)",
+      "github": "GitHub"
     }
   },
   "sdkSource": {

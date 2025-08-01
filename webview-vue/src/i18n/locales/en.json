@@ -126,6 +126,11 @@
       "target": "Installation target:",
       "waitingVersion": "Waiting for version selection",
       "selectVersionHint": "Please select a version or branch to see the complete installation path"
+    },
+    "toolchainSource": {
+      "label": "Toolchain download source:",
+      "sifli": "SiFli Mirror (Recommended for Chinese mainland users)",
+      "github": "GitHub"
     }
   },
   "sdkSource": {
