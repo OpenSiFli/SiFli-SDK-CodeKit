@@ -29,19 +29,37 @@ body {
 @layer components {
   .vscode-input {
     @apply bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border;
-    @apply focus:border-vscode-focus-border focus:outline-none;
+    @apply focus:border-vscode-focus-border focus:outline-none transition-all duration-300;
     @apply placeholder:text-vscode-input-placeholder;
+    @apply hover:border-opacity-70;
   }
 
   .vscode-button {
     @apply bg-vscode-button-background text-vscode-button-foreground;
-    @apply hover:bg-vscode-button-hover;
+    @apply hover:bg-vscode-button-hover transform transition-all duration-200;
     @apply focus:border-vscode-focus-border focus:outline-none;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply active:scale-95 hover:shadow-lg;
   }
 
   .vscode-card {
     @apply bg-vscode-background border border-vscode-panel-border;
+    @apply transition-all duration-300 hover:border-opacity-70;
+  }
+
+  .vscode-select {
+    @apply bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border;
+    @apply focus:border-vscode-focus-border focus:outline-none transition-all duration-300;
+    @apply hover:border-opacity-70 cursor-pointer;
+    @apply appearance-none bg-no-repeat bg-right bg-origin-content;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-size: 16px 16px;
+    background-position: right 12px center;
+    padding-right: 40px;
+  }
+
+  .vscode-select:focus {
+    @apply ring-2 ring-vscode-focus-border ring-opacity-50;
   }
 }
 
@@ -51,8 +69,47 @@ body {
   100% { transform: rotate(360deg); }
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .loading-spinner {
   animation: spin 1s linear infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.5s ease-out;
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale 0.3s ease-out;
 }
 
 /* 过渡动画 */
@@ -72,11 +129,68 @@ body {
 }
 
 .slide-enter-from {
-  transform: translateX(-20px);
+  transform: translateY(-10px);
   opacity: 0;
 }
 
 .slide-leave-to {
-  transform: translateX(20px);
+  transform: translateY(10px);
   opacity: 0;
+}
+
+/* 选择框悬停效果 */
+.select-container {
+  position: relative;
+}
+
+.select-container::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid var(--vscode-input-foreground);
+  pointer-events: none;
+  transition: transform 0.2s ease;
+}
+
+.select-container:hover::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* 表单项动画 */
+.form-item {
+  @apply transition-all duration-300;
+}
+
+.form-item:hover {
+  transform: translateX(2px);
+}
+
+/* 按钮涟漪效果 */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transition: width 0.3s, height 0.3s, top 0.3s, left 0.3s;
+  transform: translate(-50%, -50%);
+}
+
+.btn-ripple:active::before {
+  width: 300px;
+  height: 300px;
 }

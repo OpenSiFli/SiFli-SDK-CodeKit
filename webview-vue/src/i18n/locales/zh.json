@@ -1,0 +1,131 @@
+{
+  "common": {
+    "back": "返回",
+    "next": "下一步",
+    "cancel": "取消",
+    "confirm": "确认",
+    "install": "安装",
+    "installing": "安装中...",
+    "browse": "浏览",
+    "loading": "加载中...",
+    "success": "成功",
+    "error": "错误",
+    "retry": "重试",
+    "continue": "继续"
+  },
+  "welcome": {
+    "title": "SiFli SDK",
+    "subtitle": "Visual Studio Code 扩展",
+    "greeting": "欢迎使用",
+    "prerequisites": {
+      "intro": "请确保在选择安装模式前，已阅读",
+      "link": "SiFli SDK 先决条件",
+      "outro": "相关内容。"
+    },
+    "setupMode": {
+      "title": "选择安装模式",
+      "subtitle": "配置设置将保存在用户设置中。"
+    },
+    "modes": {
+      "express": {
+        "title": "快速安装",
+        "description": "最快速的选项。自动从 GitHub 下载并安装最新的 SiFli SDK。适合快速配置和立即开始使用。"
+      },
+      "advanced": {
+        "title": "高级安装",
+        "description": "可配置选项。选择 SiFli SDK 来源（GitHub/Gitee）、版本或分支，以及安装目录。可以选择特定版本或开发分支。"
+      },
+      "existing": {
+        "title": "使用现有安装",
+        "description": "使用现有的 SiFli SDK 安装。浏览并选择您现有的 SDK 目录来配置扩展。"
+      }
+    }
+  },
+  "express": {
+    "title": "快速安装",
+    "subtitle": "使用默认设置快速安装",
+    "steps": {
+      "preparing": "准备安装...",
+      "downloading": "下载 SiFli SDK...",
+      "extracting": "解压文件...",
+      "configuring": "配置环境...",
+      "completing": "完成安装..."
+    },
+    "progress": {
+      "current": "当前步骤",
+      "of": "共",
+      "complete": "安装完成！"
+    },
+    "settings": {
+      "source": "来源：GitHub（最新版本）",
+      "destination": "安装目录将自动确定"
+    }
+  },
+  "advanced": {
+    "title": "高级安装",
+    "subtitle": "自定义您的 SiFli SDK 安装",
+    "sections": {
+      "source": {
+        "title": "SDK 来源",
+        "description": "选择 SDK 下载来源"
+      },
+      "type": {
+        "title": "下载类型",
+        "description": "选择发布版本或开发分支"
+      },
+      "version": {
+        "title": "版本选择",
+        "description": "选择特定版本或分支"
+      },
+      "path": {
+        "title": "安装路径",
+        "description": "选择 SDK 安装位置"
+      }
+    },
+    "options": {
+      "title": "高级选项",
+      "skipVerification": {
+        "title": "跳过文件验证",
+        "description": "安装更快但可能错过损坏的文件"
+      },
+      "createShortcut": {
+        "title": "创建桌面快捷方式",
+        "description": "在桌面添加快捷方式以便快速访问"
+      },
+      "addToPath": {
+        "title": "添加到系统 PATH",
+        "description": "启用对 SDK 工具的全局访问"
+      }
+    },
+    "summary": {
+      "title": "安装摘要",
+      "source": "来源：",
+      "type": "类型：",
+      "version": "版本：",
+      "installTo": "安装到：",
+      "notSelected": "未选择",
+      "notConfigured": "未配置"
+    }
+  },
+  "existing": {
+    "title": "使用现有安装",
+    "subtitle": "浏览到您现有的 SiFli SDK 安装",
+    "comingSoon": {
+      "title": "即将推出",
+      "description": "此功能将在未来的更新中提供。"
+    }
+  },
+  "success": {
+    "title": "安装完成！",
+    "message": "SiFli SDK 已成功安装并配置。",
+    "returnHome": "返回主页"
+  },
+  "sdkSource": {
+    "github": "GitHub",
+    "gitee": "Gitee"
+  },
+  "downloadType": {
+    "release": "发布版",
+    "branch": "分支"
+  }
+}

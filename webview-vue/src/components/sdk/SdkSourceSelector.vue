@@ -1,12 +1,13 @@
 <template>
-  <div class="form-control w-full">
-    <label class="label">
-      <span class="label-text text-vscode-foreground">SDK 来源</span>
+  <div class="form-item animate-slide-in-up">
+    <label class="block text-sm font-medium text-vscode-foreground mb-2 transition-colors duration-200">
+      SDK 来源
     </label>
     <BaseSelect
       v-model="selectedSource"
       :options="sourceOptions"
-      @update:modelValue="$emit('update:modelValue', $event)"
+      placeholder="请选择 SDK 来源"
+      @update:modelValue="handleSourceUpdate"
     />
   </div>
 </template>
@@ -35,4 +36,33 @@ const sourceOptions = computed(() => [
   { value: 'github', label: 'GitHub' },
   { value: 'gitee', label: 'Gitee' }
 ]);
+
+const handleSourceUpdate = (value: string) => {
+  emit('update:modelValue', value as SdkSource);
+};
 </script>
+
+<style scoped>
+.form-item {
+  transition: all 0.3s ease;
+}
+
+.form-item:hover {
+  transform: translateX(2px);
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.5s ease-out;
+}
+</style>

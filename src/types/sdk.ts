@@ -11,11 +11,10 @@ export interface GitRepository {
 }
 
 export interface SdkRelease {
-  tag_name: string;
-  name: string;
-  published_at: string;
-  tarball_url: string;
-  zipball_url: string;
+  tagName: string;
+  name?: string;
+  publishedAt?: string;
+  prerelease?: boolean;
 }
 
 export interface SdkBranch {

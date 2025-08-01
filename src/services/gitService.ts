@@ -50,6 +50,9 @@ export class GitService {
         ? `${GIT_REPOS.GITHUB.API_BASE}/releases`
         : `${GIT_REPOS.GITEE.API_BASE}/releases`;
 
+      console.log(`[GitService] Fetching releases from: ${apiUrl}`);
+      this.gitOutputChannel.appendLine(`[GitService] Fetching releases from: ${apiUrl}`);
+
       const response = await axios.get(apiUrl, {
         timeout: 10000,
         headers: {
@@ -57,26 +60,34 @@ export class GitService {
         }
       });
 
+      console.log(`[GitService] Response status: ${response.status}, data length: ${response.data.length}`);
+      this.gitOutputChannel.appendLine(`[GitService] Response status: ${response.status}, data length: ${response.data.length}`);
+
       if (source === 'github') {
-        return response.data.map((release: any) => ({
-          tag_name: release.tag_name,
+        const releases = response.data.map((release: any) => ({
+          tagName: release.tag_name,
           name: release.name,
-          published_at: release.published_at,
-          tarball_url: release.tarball_url,
-          zipball_url: release.zipball_url
+          publishedAt: release.published_at,
+          prerelease: release.prerelease || false
         }));
+        console.log(`[GitService] Processed ${releases.length} GitHub releases`);
+        this.gitOutputChannel.appendLine(`[GitService] Processed ${releases.length} GitHub releases`);
+        return releases;
       } else {
         // Gitee API format
-        return response.data.map((release: any) => ({
-          tag_name: release.tag_name,
+        const releases = response.data.map((release: any) => ({
+          tagName: release.tag_name,
           name: release.name,
-          published_at: release.created_at,
-          tarball_url: release.tarball_url,
-          zipball_url: release.zipball_url
+          publishedAt: release.created_at,
+          prerelease: false
         }));
+        console.log(`[GitService] Processed ${releases.length} Gitee releases`);
+        this.gitOutputChannel.appendLine(`[GitService] Processed ${releases.length} Gitee releases`);
+        return releases;
       }
     } catch (error) {
       console.error(`[GitService] Error fetching releases from ${source}:`, error);
+      this.gitOutputChannel.appendLine(`[GitService] Error fetching releases from ${source}: ${error}`);
       throw new Error(`无法获取 ${source} 发布版本: ${error}`);
     }
   }
@@ -90,6 +101,9 @@ export class GitService {
         ? `${GIT_REPOS.GITHUB.API_BASE}/branches`
         : `${GIT_REPOS.GITEE.API_BASE}/branches`;
 
+      console.log(`[GitService] Fetching branches from: ${apiUrl}`);
+      this.gitOutputChannel.appendLine(`[GitService] Fetching branches from: ${apiUrl}`);
+
       const response = await axios.get(apiUrl, {
         timeout: 10000,
         headers: {
@@ -97,15 +111,23 @@ export class GitService {
         }
       });
 
-      return response.data.map((branch: any) => ({
+      console.log(`[GitService] Response status: ${response.status}, data length: ${response.data.length}`);
+      this.gitOutputChannel.appendLine(`[GitService] Response status: ${response.status}, data length: ${response.data.length}`);
+
+      const branches = response.data.map((branch: any) => ({
         name: branch.name,
         commit: {
           sha: branch.commit.sha,
           url: branch.commit.url
         }
       }));
+
+      console.log(`[GitService] Processed ${branches.length} branches`);
+      this.gitOutputChannel.appendLine(`[GitService] Processed ${branches.length} branches`);
+      return branches;
     } catch (error) {
       console.error(`[GitService] Error fetching branches from ${source}:`, error);
+      this.gitOutputChannel.appendLine(`[GitService] Error fetching branches from ${source}: ${error}`);
       throw new Error(`无法获取 ${source} 分支列表: ${error}`);
     }
   }
@@ -193,7 +215,7 @@ export class GitService {
             try {
               const allReleases = await this.fetchSiFliSdkReleases(source);
               if (allReleases.length > 0) {
-                const latestReleaseTag = allReleases[0].tag_name;
+                const latestReleaseTag = allReleases[0].tagName;
                 if (name !== latestReleaseTag) {
                   const userChoice = await vscode.window.showWarningMessage(
                     `您选择的版本是 ${name}, 但最新版本是 ${latestReleaseTag}。是否要安装最新版本？`,

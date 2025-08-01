@@ -1,0 +1,7 @@
+{
+    "idf.pythonInstallPath": "/usr/bin/python3",
+    "i18n-ally.localesPaths": [
+        "webview-vue/src/i18n",
+        "webview-vue/src/i18n/locales"
+    ]
+}

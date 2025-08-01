@@ -34,24 +34,24 @@ defineEmits<{
 }>();
 
 const buttonClasses = computed(() => {
-  const baseClasses = 'btn vscode-button transition-colors duration-200';
+  const baseClasses = 'btn vscode-button btn-ripple transition-all duration-200 transform hover:scale-105 active:scale-95 focus:ring-2 focus:ring-opacity-50 rounded-md px-4 py-2 font-medium';
   
   const variantClasses = {
     primary: 'btn-primary',
-    secondary: 'btn-secondary',
-    success: 'btn-success',
-    warning: 'btn-warning',
-    error: 'btn-error',
-    info: 'btn-info'
+    secondary: 'btn-secondary bg-gray-600 hover:bg-gray-500',
+    success: 'btn-success bg-green-600 hover:bg-green-500',
+    warning: 'btn-warning bg-yellow-600 hover:bg-yellow-500',
+    error: 'btn-error bg-red-600 hover:bg-red-500',
+    info: 'btn-info bg-blue-600 hover:bg-blue-500'
   };
 
   const sizeClasses = {
-    sm: 'btn-sm',
-    md: '',
-    lg: 'btn-lg'
+    sm: 'btn-sm text-sm px-3 py-1',
+    md: 'px-4 py-2',
+    lg: 'btn-lg text-lg px-6 py-3'
   };
 
-  const blockClass = props.block ? 'btn-block' : '';
+  const blockClass = props.block ? 'btn-block w-full' : '';
 
   return [
     baseClasses,
@@ -61,3 +61,29 @@ const buttonClasses = computed(() => {
   ].filter(Boolean).join(' ');
 });
 </script>
+
+<style scoped>
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transition: width 0.6s, height 0.6s, top 0.6s, left 0.6s;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.btn-ripple:active::before {
+  width: 300px;
+  height: 300px;
+}
+</style>

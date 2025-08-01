@@ -35,22 +35,61 @@ export class VueWebviewProvider {
     // 设置 WebView 内容
     panel.webview.html = this.getWebviewContent(panel.webview, context.extensionPath);
 
-    // 处理来自 WebView 的消息
+    // 发送初始化数据，包括语言设置
     panel.webview.onDidReceiveMessage(
       async (message) => {
-        try {
-          await this.handleWebviewMessage(message, panel.webview);
-        } catch (error) {
-          console.error('[VueWebviewProvider] Error handling webview message:', error);
+        if (message.command === 'ready') {
+          // 当 webview 准备就绪时发送初始化数据
+          const locale = this.getVSCodeLocale();
           panel.webview.postMessage({
-            command: 'error',
-            error: error instanceof Error ? error.message : String(error)
+            command: 'initializeLocale',
+            locale: locale
           });
+        } else {
+          try {
+            await this.handleWebviewMessage(message, panel.webview);
+          } catch (error) {
+            console.error('[VueWebviewProvider] Error handling webview message:', error);
+            panel.webview.postMessage({
+              command: 'error',
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
         }
       },
       undefined,
       context.subscriptions
     );
+
+    // 监听 VS Code 语言配置变化
+    const configChangeListener = vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration('locale')) {
+        const locale = this.getVSCodeLocale();
+        panel.webview.postMessage({
+          command: 'localeChanged',
+          locale: locale
+        });
+      }
+    });
+
+    panel.onDidDispose(() => {
+      configChangeListener.dispose();
+    });
+  }
+
+  /**
+   * 获取 VS Code 的语言设置
+   */
+  private getVSCodeLocale(): string {
+    // 获取 VS Code 的语言设置
+    const config = vscode.workspace.getConfiguration();
+    const locale = config.get<string>('locale') || vscode.env.language || 'en';
+    
+    // 将 VS Code 的语言代码映射到我们支持的语言
+    if (locale.startsWith('zh')) {
+      return 'zh';
+    }
+    return 'en';
   }
 
   /**
@@ -58,30 +97,56 @@ export class VueWebviewProvider {
    */
   private getWebviewContent(webview: vscode.Webview, extensionPath: string): string {
     const vueDistPath = path.join(extensionPath, 'webview-vue', 'dist');
-    const templatePath = path.join(__dirname, 'templates', 'webview.html');
+    const templatePath = path.join(extensionPath, 'src', 'providers', 'templates', 'webview.html');
+    
+    console.log('[VueWebviewProvider] Vue dist path:', vueDistPath);
+    console.log('[VueWebviewProvider] Template path:', templatePath);
     
     // 获取资源 URI
     const getResourceUri = (relativePath: string) => {
       const fullPath = path.join(vueDistPath, relativePath);
-      return fs.existsSync(fullPath) 
-        ? webview.asWebviewUri(vscode.Uri.file(fullPath)).toString()
-        : null;
+      console.log('[VueWebviewProvider] Checking resource:', fullPath);
+      const exists = fs.existsSync(fullPath);
+      console.log('[VueWebviewProvider] Resource exists:', exists);
+      
+      if (exists) {
+        const uri = webview.asWebviewUri(vscode.Uri.file(fullPath)).toString();
+        console.log('[VueWebviewProvider] Resource URI:', uri);
+        return uri;
+      }
+      return null;
     };
 
     const jsUri = getResourceUri('assets/index.js');
+    const cssFiles = fs.existsSync(path.join(vueDistPath, 'assets')) 
+      ? fs.readdirSync(path.join(vueDistPath, 'assets')).filter(f => f.endsWith('.css'))
+      : [];
+    
+    console.log('[VueWebviewProvider] CSS files found:', cssFiles);
+    
+    const cssUris = cssFiles.map(file => getResourceUri(`assets/${file}`)).filter(Boolean);
 
     if (!jsUri) {
+      console.error('[VueWebviewProvider] Vue script not found');
       return this.getErrorWebviewContent('Vue 应用脚本文件未找到，请运行 yarn build:webview');
     }
 
     if (!fs.existsSync(templatePath)) {
+      console.error('[VueWebviewProvider] Template not found');
       return this.getErrorWebviewContent('Webview 模板文件未找到');
     }
 
     try {
       let html = fs.readFileSync(templatePath, 'utf8');
+      
+      // 添加 CSS 链接
+      const cssLinks = cssUris.map(uri => `<link rel="stylesheet" href="${uri}">`).join('\n  ');
+      
       // 替换模板变量
       html = html.replace('{{VUE_SCRIPT_URI}}', jsUri);
+      html = html.replace('</head>', `  ${cssLinks}\n</head>`);
+      
+      console.log('[VueWebviewProvider] Generated HTML preview:', html.substring(0, 500));
       return html;
     } catch (error) {
       console.error('[VueWebviewProvider] Error reading template:', error);

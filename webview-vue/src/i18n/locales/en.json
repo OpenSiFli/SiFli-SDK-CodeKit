@@ -1,0 +1,131 @@
+{
+  "common": {
+    "back": "Back",
+    "next": "Next",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "install": "Install",
+    "installing": "Installing...",
+    "browse": "Browse",
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error",
+    "retry": "Retry",
+    "continue": "Continue"
+  },
+  "welcome": {
+    "title": "SiFli SDK",
+    "subtitle": "Extension for Visual Studio Code",
+    "greeting": "Welcome.",
+    "prerequisites": {
+      "intro": "Make sure that",
+      "link": "SiFli SDK Prerequisites",
+      "outro": "are reviewed before choosing the setup mode."
+    },
+    "setupMode": {
+      "title": "Choose a setup mode.",
+      "subtitle": "Configuration settings will be saved in User Settings."
+    },
+    "modes": {
+      "express": {
+        "title": "EXPRESS",
+        "description": "Fastest option. Automatically download and install the latest SiFli SDK from GitHub. Perfect for quick setup and getting started immediately."
+      },
+      "advanced": {
+        "title": "ADVANCED",
+        "description": "Configurable option. Choose SiFli SDK source (GitHub/Gitee), version or branch, and installation directory. Can select specific versions or development branches."
+      },
+      "existing": {
+        "title": "USE EXISTING SETUP",
+        "description": "Use an existing SiFli SDK installation. Browse and select your existing SDK directory to configure the extension."
+      }
+    }
+  },
+  "express": {
+    "title": "Express Setup",
+    "subtitle": "Quick installation with default settings",
+    "steps": {
+      "preparing": "Preparing installation...",
+      "downloading": "Downloading SiFli SDK...",
+      "extracting": "Extracting files...",
+      "configuring": "Configuring environment...",
+      "completing": "Finalizing setup..."
+    },
+    "progress": {
+      "current": "Current step",
+      "of": "of",
+      "complete": "Installation complete!"
+    },
+    "settings": {
+      "source": "Source: GitHub (latest release)",
+      "destination": "Installation directory will be automatically determined"
+    }
+  },
+  "advanced": {
+    "title": "Advanced Setup",
+    "subtitle": "Customize your SiFli SDK installation",
+    "sections": {
+      "source": {
+        "title": "SDK Source",
+        "description": "Choose where to download the SDK from"
+      },
+      "type": {
+        "title": "Download Type",
+        "description": "Select release version or development branch"
+      },
+      "version": {
+        "title": "Version Selection",
+        "description": "Choose specific version or branch"
+      },
+      "path": {
+        "title": "Installation Path",
+        "description": "Select where to install the SDK"
+      }
+    },
+    "options": {
+      "title": "Advanced Options",
+      "skipVerification": {
+        "title": "Skip file verification",
+        "description": "Faster installation but may miss corrupted files"
+      },
+      "createShortcut": {
+        "title": "Create desktop shortcut",
+        "description": "Add shortcut to desktop for quick access"
+      },
+      "addToPath": {
+        "title": "Add to system PATH",
+        "description": "Enable global access to SDK tools"
+      }
+    },
+    "summary": {
+      "title": "Installation Summary",
+      "source": "Source:",
+      "type": "Type:",
+      "version": "Version:",
+      "installTo": "Install to:",
+      "notSelected": "Not selected",
+      "notConfigured": "Not configured"
+    }
+  },
+  "existing": {
+    "title": "Use Existing Setup",
+    "subtitle": "Browse to your existing SiFli SDK installation",
+    "comingSoon": {
+      "title": "Coming Soon",
+      "description": "This feature will be available in a future update."
+    }
+  },
+  "success": {
+    "title": "Installation Complete!",
+    "message": "SiFli SDK has been successfully installed and configured.",
+    "returnHome": "Return to Home"
+  },
+  "sdkSource": {
+    "github": "GitHub",
+    "gitee": "Gitee"
+  },
+  "downloadType": {
+    "release": "Release",
+    "branch": "Branch"
+  }
+}

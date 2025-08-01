@@ -35,21 +35,25 @@ export function useSdkManager() {
     { value: 'branch', label: '开发分支 (Branch)' }
   ]);
 
-  const releaseOptions = computed(() => [
-    { value: '', label: '请选择一个版本', disabled: true },
-    ...state.value.availableReleases.map(release => ({
-      value: release.tagName,
-      label: release.tagName
-    }))
-  ]);
-
-  const branchOptions = computed(() => [
-    { value: '', label: '请选择一个分支', disabled: true },
-    ...state.value.availableBranches.map(branch => ({
-      value: branch.name,
-      label: branch.name
-    }))
-  ]);
+  // 计算最终的安装路径
+  const finalInstallPath = computed(() => {
+    if (!state.value.installPath) return '';
+    
+    const basePath = state.value.installPath;
+    const selectedName = state.value.downloadType === 'release' 
+      ? state.value.selectedVersion 
+      : state.value.selectedBranch;
+    
+    if (!selectedName) return basePath;
+    
+    // 处理分支名称，移除 'release/' 前缀
+    let folderName = selectedName;
+    if (state.value.downloadType === 'branch' && selectedName.startsWith('release/')) {
+      folderName = selectedName.replace('release/', '');
+    }
+    
+    return `${basePath}/SiFli-SDK/${folderName}`;
+  });
 
   const isFormValid = computed(() => {
     const hasSelection = state.value.downloadType === 'release' 
@@ -107,30 +111,25 @@ export function useSdkManager() {
       source: state.value.sdkSource,
       type: state.value.downloadType === 'release' ? 'tag' : 'branch',
       name: selectedName,
-      installPath: state.value.installPath
+      installPath: finalInstallPath.value
     });
   };
 
   // 消息处理器
   onMessage('displayReleases', (data: { releases: SdkRelease[] }) => {
+    console.log('[useSdkManager] Received releases:', data.releases);
     state.value.availableReleases = data.releases;
     state.value.isLoading = false;
-    if (data.releases.length > 0) {
-      state.value.selectedVersion = data.releases[0].tagName;
-    }
+    // 不自动选择版本，让用户手动选择
+    state.value.selectedVersion = '';
   });
 
   onMessage('displayBranches', (data: { branches: SdkBranch[] }) => {
+    console.log('[useSdkManager] Received branches:', data.branches);
     state.value.availableBranches = data.branches;
     state.value.isLoading = false;
-    if (data.branches.length > 0) {
-      const defaultBranch = data.branches.find(b => 
-        b.name === 'main' || b.name === 'master'
-      );
-      state.value.selectedBranch = defaultBranch 
-        ? defaultBranch.name 
-        : data.branches[0].name;
-    }
+    // 不自动选择分支，让用户手动选择
+    state.value.selectedBranch = '';
   });
 
   onMessage('installPathSelected', (data: { path: string }) => {
@@ -146,6 +145,11 @@ export function useSdkManager() {
     console.error('Installation error:', data.error);
   });
 
+  onMessage('error', (data: { message: string }) => {
+    state.value.isLoading = false;
+    console.error('API error:', data.message);
+  });
+
   // 初始化
   const initialize = () => {
     fetchOptions();
@@ -155,8 +159,7 @@ export function useSdkManager() {
     state,
     sourceOptions,
     downloadTypeOptions,
-    releaseOptions,
-    branchOptions,
+    finalInstallPath,
     isFormValid,
     fetchOptions,
     browsePath,
