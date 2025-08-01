@@ -120,6 +120,14 @@
     "message": "SiFli SDK 已成功安装并配置。",
     "returnHome": "返回主页"
   },
+  "sdk": {
+    "installPath": {
+      "label": "输入 SiFli SDK 容器目录：",
+      "target": "安装目标：",
+      "waitingVersion": "等待版本选择",
+      "selectVersionHint": "请选择版本或分支以查看完整的安装路径"
+    }
+  },
   "sdkSource": {
     "github": "GitHub",
     "gitee": "Gitee"

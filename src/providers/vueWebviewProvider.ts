@@ -269,6 +269,27 @@ export class VueWebviewProvider {
         }
         break;
 
+      case 'getDefaultInstallPath':
+        try {
+          const os = require('os');
+          const path = require('path');
+          const homeDir = os.homedir();
+          const defaultPath = path.join(homeDir, 'sifli');
+          
+          webview.postMessage({
+            command: 'defaultInstallPath',
+            path: defaultPath
+          });
+        } catch (error) {
+          console.error('[VueWebviewProvider] Error getting default install path:', error);
+          // 如果获取失败，发送一个通用默认路径
+          webview.postMessage({
+            command: 'defaultInstallPath',
+            path: '~/sifli'
+          });
+        }
+        break;
+
       default:
         console.warn('[VueWebviewProvider] Unknown command:', message.command);
     }

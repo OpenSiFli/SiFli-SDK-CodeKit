@@ -120,6 +120,14 @@
     "message": "SiFli SDK has been successfully installed and configured.",
     "returnHome": "Return to Home"
   },
+  "sdk": {
+    "installPath": {
+      "label": "Enter SiFli SDK container directory:",
+      "target": "Installation target:",
+      "waitingVersion": "Waiting for version selection",
+      "selectVersionHint": "Please select a version or branch to see the complete installation path"
+    }
+  },
   "sdkSource": {
     "github": "GitHub",
     "gitee": "Gitee"
