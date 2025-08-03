@@ -29,6 +29,7 @@ export interface SdkVersionInfo {
 }
 
 export type SdkSource = 'github' | 'gitee';
+export type ToolchainSource = 'github' | 'sifli';
 export type DownloadType = 'release' | 'branch';
 
 // 消息类型
@@ -45,7 +46,7 @@ export interface SdkManagerState {
   selectedVersion: string;
   selectedBranch: string;
   installPath: string;
-  toolchainSource: SdkSource;
+  toolchainSource: ToolchainSource;
   toolsPath: string;
   isLoading: boolean;
   isInstalling: boolean;

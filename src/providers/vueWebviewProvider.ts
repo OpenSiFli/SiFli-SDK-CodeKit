@@ -404,7 +404,7 @@ export class VueWebviewProvider {
           sendLog('🎉 Git 克隆操作完成！');
 
           // 自动安装工具链
-          await this.installToolchain(fullInstallPath, webview, installationLogs, toolsPathForEnv);
+          await this.installToolchain(fullInstallPath, webview, installationLogs, toolsPathForEnv, toolchainSource);
 
           // 如果设置了工具链路径，保存到配置中（与SDK路径绑定）
           if (toolsPathForEnv) {
@@ -549,7 +549,7 @@ export class VueWebviewProvider {
   /**
    * 安装工具链
    */
-  private async installToolchain(sdkPath: string, webview: vscode.Webview, installationLogs?: string[], toolsPath?: string | null): Promise<void> {
+  private async installToolchain(sdkPath: string, webview: vscode.Webview, installationLogs?: string[], toolsPath?: string | null, toolchainSource?: string): Promise<void> {
     try {
       console.log('[VueWebviewProvider] Starting toolchain installation...');
       const logMessage = '🔧 开始安装工具链...';
@@ -597,7 +597,7 @@ export class VueWebviewProvider {
       });
 
       // 执行安装脚本
-      await this.executeInstallScript(installScript, sdkPath, webview, installationLogs, toolsPath);
+      await this.executeInstallScript(installScript, sdkPath, webview, installationLogs, toolsPath, toolchainSource);
 
       const completedLog = '✅ 工具链安装完成！';
       if (installationLogs) {
@@ -645,7 +645,7 @@ export class VueWebviewProvider {
   /**
    * 执行安装脚本
    */
-  private async executeInstallScript(scriptPath: string, workingDir: string, webview: vscode.Webview, installationLogs?: string[], toolsPath?: string | null): Promise<void> {
+  private async executeInstallScript(scriptPath: string, workingDir: string, webview: vscode.Webview, installationLogs?: string[], toolsPath?: string | null, toolchainSource?: string): Promise<void> {
     return new Promise((resolve, reject) => {
       let command: string;
       let args: string[];
@@ -681,6 +681,36 @@ export class VueWebviewProvider {
         webview.postMessage({
           command: 'installationLog',
           log: envSetLog
+        });
+      }
+
+      // 根据工具链下载源设置额外的环境变量
+      // 当用户选择 'sifli' 镜像源时设置镜像环境变量
+      if (toolchainSource === 'sifli') {
+        // SiFli镜像源时设置额外的环境变量
+        env.SIFLI_SDK_GITHUB_ASSETS = 'downloads.sifli.com/github_assets';
+        env.PIP_INDEX_URL = 'https://mirrors.ustc.edu.cn/pypi/simple';
+        
+        const mirrorLogMessage = `🌐 检测到SiFli镜像源，设置镜像环境变量:`;
+        const githubAssetsLog = `   SIFLI_SDK_GITHUB_ASSETS=downloads.sifli.com/github_assets`;
+        const pipIndexLog = `   PIP_INDEX_URL=https://mirrors.ustc.edu.cn/pypi/simple`;
+        
+        if (installationLogs) {
+          installationLogs.push(mirrorLogMessage);
+          installationLogs.push(githubAssetsLog);
+          installationLogs.push(pipIndexLog);
+        }
+        webview.postMessage({
+          command: 'installationLog',
+          log: mirrorLogMessage
+        });
+        webview.postMessage({
+          command: 'installationLog',
+          log: githubAssetsLog
+        });
+        webview.postMessage({
+          command: 'installationLog',
+          log: pipIndexLog
         });
       }
 

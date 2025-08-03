@@ -202,7 +202,7 @@ onMessage('toolsPathSelected', (data: { path: string }) => {
 const handleInstall = () => {
   try {
     // 设置工具链配置到 SDK 管理器状态
-    sdkManager.state.value.toolchainSource = toolchainSource.value === 'github' ? 'github' : 'gitee';
+    sdkManager.state.value.toolchainSource = toolchainSource.value;
     sdkManager.state.value.toolsPath = toolsPath.value;
     
     console.log('[AdvancedSetup] Starting SDK installation...');
