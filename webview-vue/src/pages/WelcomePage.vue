@@ -170,7 +170,8 @@ const proceedWithMode = () => {
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  animation: fadeInUp 0.6s ease-out;
+  animation: fadeInUp 0.6s ease-out forwards;
+  opacity: 0;
 }
 
 .setup-card:hover {

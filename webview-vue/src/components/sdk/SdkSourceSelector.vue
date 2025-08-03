@@ -63,6 +63,7 @@ const handleSourceUpdate = (value: string) => {
 }
 
 .animate-slide-in-up {
-  animation: slideInUp 0.5s ease-out;
+  animation: slideInUp 0.5s ease-out forwards;
+  opacity: 0;
 }
 </style>

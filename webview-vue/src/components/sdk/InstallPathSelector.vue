@@ -1,5 +1,5 @@
 <template>
-  <div class="form-item animate-slide-in-up" style="animation-delay: 0.3s;">
+  <div class="form-item animate-slide-in-up">
     <label class="block text-sm font-medium text-vscode-foreground mb-3 transition-colors duration-200">
       {{ $t('sdk.installPath.label') }}
     </label>

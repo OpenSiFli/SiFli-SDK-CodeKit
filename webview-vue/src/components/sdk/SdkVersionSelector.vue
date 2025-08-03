@@ -1,5 +1,5 @@
 <template>
-  <div class="form-item animate-slide-in-up" style="animation-delay: 0.2s;">
+  <div class="form-item animate-slide-in-up">
     <label class="block text-sm font-medium text-vscode-foreground mb-2 transition-colors duration-200">
       {{ downloadType === 'release' ? 'SDK 版本' : 'SDK 分支' }}
     </label>
@@ -111,7 +111,17 @@ const handleBranchUpdate = (value: string) => {
 }
 
 .animate-slide-in-up {
-  animation: slideInUp 0.5s ease-out;
+  animation: slideInUp 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+/* Fade transition for content switching */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 
 .loading-spinner {

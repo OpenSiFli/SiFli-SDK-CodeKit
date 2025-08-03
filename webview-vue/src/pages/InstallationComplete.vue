@@ -379,19 +379,23 @@ const closeManager = () => {
 }
 
 .animate-fade-in {
-  animation: fade-in 0.6s ease-out;
+  animation: fade-in 0.6s ease-out forwards;
+  opacity: 0;
 }
 
 .animate-slide-in-left {
-  animation: slide-in-left 0.8s ease-out;
+  animation: slide-in-left 0.8s ease-out forwards;
+  opacity: 0;
 }
 
 .animate-slide-in-right {
-  animation: slide-in-right 0.8s ease-out;
+  animation: slide-in-right 0.8s ease-out forwards;
+  opacity: 0;
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.8s ease-out;
+  animation: fade-in-up 0.8s ease-out forwards;
+  opacity: 0;
 }
 
 /* 渐变文字效果 */

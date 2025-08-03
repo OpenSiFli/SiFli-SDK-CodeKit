@@ -1,5 +1,5 @@
 <template>
-  <div class="form-item animate-slide-in-up" style="animation-delay: 0.1s;">
+  <div class="form-item animate-slide-in-up">
     <label class="block text-sm font-medium text-vscode-foreground mb-2 transition-colors duration-200">
       下载类型
     </label>
@@ -63,6 +63,7 @@ const handleTypeUpdate = (value: string) => {
 }
 
 .animate-slide-in-up {
-  animation: slideInUp 0.5s ease-out;
+  animation: slideInUp 0.5s ease-out forwards;
+  opacity: 0;
 }
 </style>

@@ -22,7 +22,7 @@
       </header>
 
       <!-- Main Form -->
-      <div class="vscode-card rounded-lg p-6 space-y-8 animate-fade-in-scale">
+      <div class="vscode-card rounded-lg p-6 space-y-8 animate-fade-in-scale form-container">
         <!-- SDK Source Selection -->
         <SdkSourceSelector
           v-model="sdkManager.state.value.sdkSource"
@@ -40,18 +40,16 @@
         />
 
         <!-- Version/Branch Selection -->
-        <div class="animate-slide-in-up" style="animation-delay: 0.2s;">
-          <SdkVersionSelector
-            :download-type="sdkManager.state.value.downloadType"
-            :releases="sdkManager.state.value.availableReleases"
-            :branches="sdkManager.state.value.availableBranches"
-            :selected-version="sdkManager.state.value.selectedVersion"
-            :selected-branch="sdkManager.state.value.selectedBranch"
-            :is-loading="sdkManager.state.value.isLoading"
-            @update:version="sdkManager.state.value.selectedVersion = $event"
-            @update:branch="sdkManager.state.value.selectedBranch = $event"
-          />
-        </div>
+        <SdkVersionSelector
+          :download-type="sdkManager.state.value.downloadType"
+          :releases="sdkManager.state.value.availableReleases"
+          :branches="sdkManager.state.value.availableBranches"
+          :selected-version="sdkManager.state.value.selectedVersion"
+          :selected-branch="sdkManager.state.value.selectedBranch"
+          :is-loading="sdkManager.state.value.isLoading"
+          @update:version="sdkManager.state.value.selectedVersion = $event"
+          @update:branch="sdkManager.state.value.selectedBranch = $event"
+        />
 
         <!-- Installation Path Selection -->
         <InstallPathSelector
@@ -70,7 +68,7 @@
         />
 
         <!-- Installation Button and Progress -->
-        <div class="pt-4 animate-slide-in-up" style="animation-delay: 0.4s;">
+        <div class="pt-4 action-section">
           <!-- Installation Log Window -->
           <div v-if="sdkManager.state.value.isInstalling" class="mb-4 p-4 bg-vscode-editor-background border border-vscode-editor-foreground/20 rounded">
             <div class="flex items-center mb-2">
@@ -229,3 +227,31 @@ onMounted(() => {
   sdkManager.initialize();
 });
 </script>
+
+<style scoped>
+/* 统一的表单项动画延迟 */
+.form-container > *:nth-child(1) .form-item { animation-delay: 0.05s; }
+.form-container > *:nth-child(2) .form-item { animation-delay: 0.1s; }
+.form-container > *:nth-child(3) .form-item { animation-delay: 0.15s; }
+.form-container > *:nth-child(4) .form-item { animation-delay: 0.2s; }
+.form-container > *:nth-child(5) .form-item { animation-delay: 0.25s; }
+.form-container > *:nth-child(6) .form-item { animation-delay: 0.3s; }
+
+/* 操作区域动画延迟 */
+.action-section {
+  animation: slide-in-up 0.5s ease-out forwards;
+  animation-delay: 0.35s;
+  opacity: 0;
+}
+
+@keyframes slide-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
