@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { spawn, ChildProcess } from 'child_process';
 
 export class VueWebviewProvider {
   private static instance: VueWebviewProvider;
@@ -400,6 +401,9 @@ export class VueWebviewProvider {
             log: '🎉 Git 克隆操作完成！'
           });
 
+          // 自动安装工具链
+          await this.installToolchain(fullInstallPath, webview);
+
           webview.postMessage({
             command: 'installationLog',
             log: `✅ SiFli SDK ${version.name} 安装成功！`
@@ -488,5 +492,186 @@ export class VueWebviewProvider {
       default:
         console.warn('[VueWebviewProvider] Unknown command:', message.command);
     }
+  }
+
+  /**
+   * 安装工具链
+   */
+  private async installToolchain(sdkPath: string, webview: vscode.Webview): Promise<void> {
+    try {
+      console.log('[VueWebviewProvider] Starting toolchain installation...');
+      webview.postMessage({
+        command: 'installationLog',
+        log: '🔧 开始安装工具链...'
+      });
+
+      // 确定安装脚本路径
+      const installScript = this.getInstallScriptPath(sdkPath);
+      if (!installScript) {
+        webview.postMessage({
+          command: 'installationLog',
+          log: '⚠️ 未找到工具链安装脚本，跳过工具链安装'
+        });
+        return;
+      }
+
+      webview.postMessage({
+        command: 'installationLog',
+        log: `📜 找到安装脚本: ${path.basename(installScript)}`
+      });
+
+      // 执行安装脚本
+      await this.executeInstallScript(installScript, sdkPath, webview);
+
+      webview.postMessage({
+        command: 'installationLog',
+        log: '✅ 工具链安装完成！'
+      });
+
+    } catch (error) {
+      console.error('[VueWebviewProvider] Toolchain installation failed:', error);
+      webview.postMessage({
+        command: 'installationLog',
+        log: `❌ 工具链安装失败: ${error instanceof Error ? error.message : String(error)}`
+      });
+      // 不抛出错误，让SDK安装继续完成
+    }
+  }
+
+  /**
+   * 获取安装脚本路径
+   */
+  private getInstallScriptPath(sdkPath: string): string | null {
+    if (process.platform === 'win32') {
+      // Windows 平台查找 install.ps1
+      const ps1Script = path.join(sdkPath, 'install.ps1');
+      if (fs.existsSync(ps1Script)) {
+        return ps1Script;
+      }
+    } else {
+      // Unix-like 系统查找 install.sh
+      const shScript = path.join(sdkPath, 'install.sh');
+      if (fs.existsSync(shScript)) {
+        return shScript;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 执行安装脚本
+   */
+  private async executeInstallScript(scriptPath: string, workingDir: string, webview: vscode.Webview): Promise<void> {
+    return new Promise((resolve, reject) => {
+      let command: string;
+      let args: string[];
+
+      if (process.platform === 'win32') {
+        // Windows 使用 PowerShell 执行 .ps1 脚本
+        command = 'powershell.exe';
+        args = ['-ExecutionPolicy', 'Bypass', '-File', scriptPath];
+      } else {
+        // Unix-like 系统使用 bash 执行 .sh 脚本
+        command = 'bash';
+        args = [scriptPath];
+      }
+
+      console.log(`[VueWebviewProvider] Executing: ${command} ${args.join(' ')}`);
+      webview.postMessage({
+        command: 'installationLog',
+        log: `🏃 执行命令: ${command} ${args.join(' ')}`
+      });
+
+      const installProcess = spawn(command, args, {
+        cwd: workingDir,
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+
+      let hasError = false;
+      let errorOutput = '';
+
+      // 处理标准输出
+      installProcess.stdout?.on('data', (data: Buffer) => {
+        const output = data.toString().trim();
+        if (output) {
+          console.log(`[VueWebviewProvider] Install stdout: ${output}`);
+          webview.postMessage({
+            command: 'installationLog',
+            log: output
+          });
+        }
+      });
+
+      // 处理错误输出
+      installProcess.stderr?.on('data', (data: Buffer) => {
+        const output = data.toString().trim();
+        if (output) {
+          console.log(`[VueWebviewProvider] Install stderr: ${output}`);
+          errorOutput += output + '\n';
+          // 不是所有stderr输出都是错误（有些程序用stderr输出普通信息）
+          webview.postMessage({
+            command: 'installationLog',
+            log: output
+          });
+        }
+      });
+
+      // 处理进程退出
+      installProcess.on('close', (code: number) => {
+        console.log(`[VueWebviewProvider] Install script exited with code: ${code}`);
+        
+        if (code === 0) {
+          webview.postMessage({
+            command: 'installationLog',
+            log: `✅ 安装脚本执行成功（退出代码: ${code}）`
+          });
+          resolve();
+        } else {
+          const errorMessage = `安装脚本执行失败，退出代码: ${code}`;
+          console.error(`[VueWebviewProvider] ${errorMessage}`);
+          
+          if (errorOutput) {
+            console.error(`[VueWebviewProvider] Error details: ${errorOutput}`);
+          }
+          
+          webview.postMessage({
+            command: 'installationLog',
+            log: `❌ ${errorMessage}`
+          });
+          
+          if (errorOutput) {
+            webview.postMessage({
+              command: 'installationLog',
+              log: `错误详情: ${errorOutput}`
+            });
+          }
+          
+          reject(new Error(`${errorMessage}${errorOutput ? '\n' + errorOutput : ''}`));
+        }
+      });
+
+      // 处理进程错误
+      installProcess.on('error', (error: Error) => {
+        console.error(`[VueWebviewProvider] Install process error:`, error);
+        webview.postMessage({
+          command: 'installationLog',
+          log: `❌ 进程启动失败: ${error.message}`
+        });
+        reject(error);
+      });
+
+      // 设置超时（10分钟）
+      setTimeout(() => {
+        if (!installProcess.killed) {
+          console.log(`[VueWebviewProvider] Install script timeout, killing process...`);
+          webview.postMessage({
+            command: 'installationLog',
+            log: '⏰ 安装脚本执行超时，正在终止...'
+          });
+          installProcess.kill();
+          reject(new Error('安装脚本执行超时'));
+        }
+      }, 10 * 60 * 1000); // 10分钟超时
+    });
   }
 }
