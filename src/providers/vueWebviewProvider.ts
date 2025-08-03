@@ -313,6 +313,17 @@ export class VueWebviewProvider {
             toolsPath
           });
 
+          // 创建安装日志数组来收集所有日志
+          const installationLogs: string[] = [];
+          
+          // 辅助函数：发送日志并收集
+          const sendLog = (log: string) => {
+            installationLogs.push(log);
+            webview.postMessage({
+              command: 'installationLog',
+              log: log
+            });
+          };
           // 首先检查 Git 是否可用
           const isGitAvailable = await gitService.isGitInstalled();
           if (!isGitAvailable) {
@@ -340,44 +351,24 @@ export class VueWebviewProvider {
           console.log('[VueWebviewProvider] Full install path:', fullInstallPath);
 
           // 发送日志消息
-          webview.postMessage({
-            command: 'installationLog',
-            log: `🚀 准备安装 SiFli SDK ${version.name}`
-          });
-
-          webview.postMessage({
-            command: 'installationLog',
-            log: `🔗 源码仓库: ${repoUrl}`
-          });
-
-          webview.postMessage({
-            command: 'installationLog',
-            log: `📂 安装路径: ${fullInstallPath}`
-          });
+          sendLog(`🚀 准备安装 SiFli SDK ${version.name}`);
+          sendLog(`🔗 源码仓库: ${repoUrl}`);
+          sendLog(`📂 安装路径: ${fullInstallPath}`);
 
           // 确保 SiFli-SDK 基础目录存在
           if (!fs.existsSync(sdkBasePath)) {
             console.log('[VueWebviewProvider] Creating SDK base directory:', sdkBasePath);
             fs.mkdirSync(sdkBasePath, { recursive: true });
-            webview.postMessage({
-              command: 'installationLog',
-              log: `📁 创建基础目录: ${sdkBasePath}`
-            });
+            sendLog(`📁 创建基础目录: ${sdkBasePath}`);
           }
 
           // 检查具体版本目录是否已存在
           if (fs.existsSync(fullInstallPath)) {
             console.log('[VueWebviewProvider] Directory already exists, will overwrite');
-            webview.postMessage({
-              command: 'installationLog',
-              log: `⚠️  目标目录已存在，将进行覆盖安装`
-            });
+            sendLog(`⚠️  目标目录已存在，将进行覆盖安装`);
           }
 
-          webview.postMessage({
-            command: 'installationLog',
-            log: `🔄 开始克隆仓库（包含子模块）...`
-          });
+          sendLog(`🔄 开始克隆仓库（包含子模块）...`);
 
           console.log('[VueWebviewProvider] Starting clone operation...');
 
@@ -386,39 +377,34 @@ export class VueWebviewProvider {
             branch: version.type === 'release' ? version.tagName : version.name,
             onProgress: (progress) => {
               console.log('[VueWebviewProvider] Clone progress:', progress);
-              // 发送 Git 日志到前端
+              // 发送 Git 日志到前端并收集
+              const logMessage = progress;
+              installationLogs.push(logMessage);
               webview.postMessage({
                 command: 'installationLog',
-                log: progress
+                log: logMessage
               });
             }
           });
 
           console.log('[VueWebviewProvider] Clone operation completed');
 
-          webview.postMessage({
-            command: 'installationLog',
-            log: '🎉 Git 克隆操作完成！'
-          });
+          sendLog('🎉 Git 克隆操作完成！');
 
           // 自动安装工具链
-          await this.installToolchain(fullInstallPath, webview);
+          await this.installToolchain(fullInstallPath, webview, installationLogs);
 
-          webview.postMessage({
-            command: 'installationLog',
-            log: `✅ SiFli SDK ${version.name} 安装成功！`
-          });
+          sendLog(`✅ SiFli SDK ${version.name} 安装成功！`);
+          sendLog(`📁 安装路径: ${fullInstallPath}`);
 
-          webview.postMessage({
-            command: 'installationLog',
-            log: `📁 安装路径: ${fullInstallPath}`
-          });
-
-          // 发送安装成功消息
+          // 发送安装成功消息，包含详细信息
           webview.postMessage({
             command: 'installationCompleted',
             message: `SiFli SDK ${version.name} 安装成功！`,
-            path: fullInstallPath
+            path: fullInstallPath,
+            version: version.name,
+            source: sdkSource,
+            logs: installationLogs
           });
 
           console.log('[VueWebviewProvider] SDK installation completed successfully');
@@ -489,6 +475,47 @@ export class VueWebviewProvider {
         }
         break;
 
+      case 'openInExplorer':
+        try {
+          const { path: targetPath } = message;
+          if (targetPath && fs.existsSync(targetPath)) {
+            vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(targetPath));
+          } else {
+            vscode.window.showErrorMessage('目标路径不存在');
+          }
+        } catch (error) {
+          console.error('[VueWebviewProvider] Error opening in explorer:', error);
+          vscode.window.showErrorMessage('打开文件管理器失败');
+        }
+        break;
+
+      case 'openInTerminal':
+        try {
+          const { path: targetPath } = message;
+          if (targetPath && fs.existsSync(targetPath)) {
+            const terminal = vscode.window.createTerminal({
+              name: 'SiFli SDK',
+              cwd: targetPath
+            });
+            terminal.show();
+          } else {
+            vscode.window.showErrorMessage('目标路径不存在');
+          }
+        } catch (error) {
+          console.error('[VueWebviewProvider] Error opening in terminal:', error);
+          vscode.window.showErrorMessage('打开终端失败');
+        }
+        break;
+
+      case 'closeManager':
+        try {
+          // 关闭当前的webview panel
+          vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+        } catch (error) {
+          console.error('[VueWebviewProvider] Error closing manager:', error);
+        }
+        break;
+
       default:
         console.warn('[VueWebviewProvider] Unknown command:', message.command);
     }
@@ -497,42 +524,62 @@ export class VueWebviewProvider {
   /**
    * 安装工具链
    */
-  private async installToolchain(sdkPath: string, webview: vscode.Webview): Promise<void> {
+  private async installToolchain(sdkPath: string, webview: vscode.Webview, installationLogs?: string[]): Promise<void> {
     try {
       console.log('[VueWebviewProvider] Starting toolchain installation...');
+      const logMessage = '🔧 开始安装工具链...';
+      if (installationLogs) {
+        installationLogs.push(logMessage);
+      }
       webview.postMessage({
         command: 'installationLog',
-        log: '🔧 开始安装工具链...'
+        log: logMessage
       });
 
       // 确定安装脚本路径
       const installScript = this.getInstallScriptPath(sdkPath);
       if (!installScript) {
+        const logMessage = '⚠️ 未找到工具链安装脚本，跳过工具链安装';
+        if (installationLogs) {
+          installationLogs.push(logMessage);
+        }
         webview.postMessage({
           command: 'installationLog',
-          log: '⚠️ 未找到工具链安装脚本，跳过工具链安装'
+          log: logMessage
         });
         return;
       }
 
+      const foundScriptLog = `📜 找到安装脚本: ${path.basename(installScript)}`;
+      if (installationLogs) {
+        installationLogs.push(foundScriptLog);
+      }
       webview.postMessage({
         command: 'installationLog',
-        log: `📜 找到安装脚本: ${path.basename(installScript)}`
+        log: foundScriptLog
       });
 
       // 执行安装脚本
-      await this.executeInstallScript(installScript, sdkPath, webview);
+      await this.executeInstallScript(installScript, sdkPath, webview, installationLogs);
 
+      const completedLog = '✅ 工具链安装完成！';
+      if (installationLogs) {
+        installationLogs.push(completedLog);
+      }
       webview.postMessage({
         command: 'installationLog',
-        log: '✅ 工具链安装完成！'
+        log: completedLog
       });
 
     } catch (error) {
       console.error('[VueWebviewProvider] Toolchain installation failed:', error);
+      const errorLog = `❌ 工具链安装失败: ${error instanceof Error ? error.message : String(error)}`;
+      if (installationLogs) {
+        installationLogs.push(errorLog);
+      }
       webview.postMessage({
         command: 'installationLog',
-        log: `❌ 工具链安装失败: ${error instanceof Error ? error.message : String(error)}`
+        log: errorLog
       });
       // 不抛出错误，让SDK安装继续完成
     }
@@ -561,7 +608,7 @@ export class VueWebviewProvider {
   /**
    * 执行安装脚本
    */
-  private async executeInstallScript(scriptPath: string, workingDir: string, webview: vscode.Webview): Promise<void> {
+  private async executeInstallScript(scriptPath: string, workingDir: string, webview: vscode.Webview, installationLogs?: string[]): Promise<void> {
     return new Promise((resolve, reject) => {
       let command: string;
       let args: string[];
@@ -577,9 +624,13 @@ export class VueWebviewProvider {
       }
 
       console.log(`[VueWebviewProvider] Executing: ${command} ${args.join(' ')}`);
+      const execLog = `🏃 执行命令: ${command} ${args.join(' ')}`;
+      if (installationLogs) {
+        installationLogs.push(execLog);
+      }
       webview.postMessage({
         command: 'installationLog',
-        log: `🏃 执行命令: ${command} ${args.join(' ')}`
+        log: execLog
       });
 
       const installProcess = spawn(command, args, {
@@ -595,6 +646,9 @@ export class VueWebviewProvider {
         const output = data.toString().trim();
         if (output) {
           console.log(`[VueWebviewProvider] Install stdout: ${output}`);
+          if (installationLogs) {
+            installationLogs.push(output);
+          }
           webview.postMessage({
             command: 'installationLog',
             log: output
@@ -609,6 +663,9 @@ export class VueWebviewProvider {
           console.log(`[VueWebviewProvider] Install stderr: ${output}`);
           errorOutput += output + '\n';
           // 不是所有stderr输出都是错误（有些程序用stderr输出普通信息）
+          if (installationLogs) {
+            installationLogs.push(output);
+          }
           webview.postMessage({
             command: 'installationLog',
             log: output
@@ -621,9 +678,13 @@ export class VueWebviewProvider {
         console.log(`[VueWebviewProvider] Install script exited with code: ${code}`);
         
         if (code === 0) {
+          const successLog = `✅ 安装脚本执行成功（退出代码: ${code}）`;
+          if (installationLogs) {
+            installationLogs.push(successLog);
+          }
           webview.postMessage({
             command: 'installationLog',
-            log: `✅ 安装脚本执行成功（退出代码: ${code}）`
+            log: successLog
           });
           resolve();
         } else {
@@ -634,15 +695,23 @@ export class VueWebviewProvider {
             console.error(`[VueWebviewProvider] Error details: ${errorOutput}`);
           }
           
+          const errorLog = `❌ ${errorMessage}`;
+          if (installationLogs) {
+            installationLogs.push(errorLog);
+          }
           webview.postMessage({
             command: 'installationLog',
-            log: `❌ ${errorMessage}`
+            log: errorLog
           });
           
           if (errorOutput) {
+            const errorDetailLog = `错误详情: ${errorOutput}`;
+            if (installationLogs) {
+              installationLogs.push(errorDetailLog);
+            }
             webview.postMessage({
               command: 'installationLog',
-              log: `错误详情: ${errorOutput}`
+              log: errorDetailLog
             });
           }
           
@@ -653,9 +722,13 @@ export class VueWebviewProvider {
       // 处理进程错误
       installProcess.on('error', (error: Error) => {
         console.error(`[VueWebviewProvider] Install process error:`, error);
+        const processErrorLog = `❌ 进程启动失败: ${error.message}`;
+        if (installationLogs) {
+          installationLogs.push(processErrorLog);
+        }
         webview.postMessage({
           command: 'installationLog',
-          log: `❌ 进程启动失败: ${error.message}`
+          log: processErrorLog
         });
         reject(error);
       });
@@ -664,9 +737,13 @@ export class VueWebviewProvider {
       setTimeout(() => {
         if (!installProcess.killed) {
           console.log(`[VueWebviewProvider] Install script timeout, killing process...`);
+          const timeoutLog = '⏰ 安装脚本执行超时，正在终止...';
+          if (installationLogs) {
+            installationLogs.push(timeoutLog);
+          }
           webview.postMessage({
             command: 'installationLog',
-            log: '⏰ 安装脚本执行超时，正在终止...'
+            log: timeoutLog
           });
           installProcess.kill();
           reject(new Error('安装脚本执行超时'));

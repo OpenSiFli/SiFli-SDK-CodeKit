@@ -21,6 +21,17 @@
       @installation-complete="handleInstallationComplete"
     />
 
+    <!-- Installation Complete Page -->
+    <InstallationComplete
+      v-else-if="currentPage === 'complete'"
+      :sdk-version="installationResult.sdkVersion"
+      :install-path="installationResult.installPath"
+      :sdk-source="installationResult.sdkSource"
+      :installation-logs="installationResult.logs"
+      @go-back="currentPage = 'welcome'"
+      @new-installation="currentPage = 'welcome'"
+    />
+
     <!-- Existing Setup -->
     <div v-else-if="currentPage === 'existing'" class="min-h-screen bg-vscode-background text-vscode-foreground font-vscode p-8">
       <div class="max-w-2xl mx-auto">
@@ -97,14 +108,28 @@ import BaseButton from '@/components/common/BaseButton.vue';
 import WelcomePage from './WelcomePage.vue';
 import ExpressSetup from './ExpressSetup.vue';
 import AdvancedSetup from './AdvancedSetup.vue';
+import InstallationComplete from './InstallationComplete.vue';
 
 // 直接引入 Logo 图片
 import logoSrc from '@/assets/images/SiFli.png';
 
-type PageType = 'welcome' | 'express' | 'advanced' | 'existing' | 'success';
+type PageType = 'welcome' | 'express' | 'advanced' | 'existing' | 'success' | 'complete';
+
+interface InstallationResult {
+  sdkVersion: string;
+  installPath: string;
+  sdkSource: 'github' | 'gitee';
+  logs: string[];
+}
 
 const currentPage = ref<PageType>('welcome');
-const { isReady } = useVsCodeApi();
+const { isReady, onMessage } = useVsCodeApi();
+const installationResult = ref<InstallationResult>({
+  sdkVersion: '',
+  installPath: '',
+  sdkSource: 'github',
+  logs: []
+});
 
 const handleModeSelected = (mode: string) => {
   if (mode === 'express') {
@@ -116,9 +141,25 @@ const handleModeSelected = (mode: string) => {
   }
 };
 
-const handleInstallationComplete = () => {
-  currentPage.value = 'success';
+const handleInstallationComplete = (data?: any) => {
+  // 如果有数据传入，使用传入的数据，否则使用成功页面
+  if (data) {
+    currentPage.value = 'complete';
+  } else {
+    currentPage.value = 'success';
+  }
 };
+
+// 监听安装完成事件
+onMessage('installationCompleted', (data: { message: string; path: string; version?: string; source?: string; logs?: string[] }) => {
+  installationResult.value = {
+    sdkVersion: data.version || 'Unknown',
+    installPath: data.path,
+    sdkSource: (data.source as 'github' | 'gitee') || 'github',
+    logs: data.logs || []
+  };
+  currentPage.value = 'complete';
+});
 
 onMounted(() => {
   // 等待 VS Code API 准备好后再显示界面
