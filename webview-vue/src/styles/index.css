@@ -38,10 +38,254 @@ body {
     @apply bg-vscode-button-background text-vscode-button-foreground;
     @apply hover:bg-vscode-button-hover transform transition-all duration-200;
     @apply focus:border-vscode-focus-border focus:outline-none;
-    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply disabled:cursor-not-allowed;
     @apply active:scale-95 hover:shadow-lg;
     border: none !important;
     outline: none !important;
+  }
+
+  /* 增强按钮对比度，特别是在浅色模式下 */
+  .vscode-button-primary {
+    background-color: #2563eb !important;
+    color: white !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .vscode-button-primary:hover {
+    background-color: #1d4ed8 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  .vscode-button-primary:active {
+    background-color: #1e40af !important;
+  }
+
+  /* VS Code 主题按钮样式统一管理 */
+  
+  /* Primary 按钮 - 深色主题 */
+  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-primary,
+  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-primary {
+    background-color: #0e639c !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+
+  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-primary:hover,
+  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-primary:hover {
+    background-color: #1177bb !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+  }
+
+  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-primary:active,
+  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-primary:active {
+    background-color: #094771 !important;
+  }
+
+  /* Secondary 按钮 - 深色主题 */
+  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-secondary,
+  body[data-vscode-theme-kind="vscode-dark"] .btn.vscode-button-secondary,
+  body[data-vscode-theme-kind="vscode-dark"] button.vscode-button-secondary,
+  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-secondary {
+    background-color: #2d2d30 !important;
+    color: #cccccc !important;
+    border: 1px solid #3e3e42 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+  }
+
+  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-secondary:hover,
+  body[data-vscode-theme-kind="vscode-dark"] .btn.vscode-button-secondary:hover,
+  body[data-vscode-theme-kind="vscode-dark"] button.vscode-button-secondary:hover,
+  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-secondary:hover {
+    background-color: #37373d !important;
+    border-color: #464647 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-secondary:active,
+  body[data-vscode-theme-kind="vscode-dark"] .btn.vscode-button-secondary:active,
+  body[data-vscode-theme-kind="vscode-dark"] button.vscode-button-secondary:active,
+  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-secondary:active {
+    background-color: #252526 !important;
+    border-color: #3e3e42 !important;
+    transform: translateY(0px) !important;
+  }
+
+  /* Secondary 按钮 - 浅色主题 */
+  body[data-vscode-theme-kind="vscode-light"] .vscode-button-secondary,
+  body[data-vscode-theme-kind="vscode-light"] .btn.vscode-button-secondary,
+  body[data-vscode-theme-kind="vscode-light"] button.vscode-button-secondary,
+  body:not([data-vscode-theme-kind="vscode-dark"]) .vscode-button-secondary,
+  body:not([data-vscode-theme-kind="vscode-dark"]) .btn.vscode-button-secondary,
+  body:not([data-vscode-theme-kind="vscode-dark"]) button.vscode-button-secondary {
+    background-color: #f3f4f6 !important;
+    color: #374151 !important;
+    border: 1px solid #d1d5db !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+  }
+
+  body[data-vscode-theme-kind="vscode-light"] .vscode-button-secondary:hover,
+  body[data-vscode-theme-kind="vscode-light"] .btn.vscode-button-secondary:hover,
+  body[data-vscode-theme-kind="vscode-light"] button.vscode-button-secondary:hover,
+  body:not([data-vscode-theme-kind="vscode-dark"]) .vscode-button-secondary:hover,
+  body:not([data-vscode-theme-kind="vscode-dark"]) .btn.vscode-button-secondary:hover,
+  body:not([data-vscode-theme-kind="vscode-dark"]) button.vscode-button-secondary:hover {
+    background-color: #e5e7eb !important;
+    border-color: #9ca3af !important;
+    color: #1f2937 !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+  }
+
+  /* 注意：Secondary 按钮样式已移动到上方主题统一管理区域 */
+
+  /* VS Code 深色主题检测 - 更温和协调的secondary按钮，使用更高优先级 */
+  /* 注意：深色主题 secondary 按钮样式已移动到上方统一管理区域 */
+
+  /* 禁用按钮样式 - 保持灰色但确保可见性 */
+  .vscode-button:disabled,
+  .vscode-button[disabled] {
+    opacity: 1 !important; /* 移除默认的透明度 */
+    cursor: not-allowed !important;
+    transform: none !important; /* 禁用悬停动画 */
+  }
+
+  /* 浅色模式下的禁用按钮 */
+  .vscode-button-secondary:disabled,
+  .vscode-button-secondary[disabled] {
+    background-color: #e2e8f0 !important;
+    color: #64748b !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+  }
+
+  /* 深色模式下的禁用按钮 - 更明显的灰色 */
+  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-secondary:disabled,
+  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-secondary[disabled],
+  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-secondary:disabled,
+  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-secondary[disabled] {
+    background-color: #374151 !important;
+    color: #9ca3af !important;
+    border: 1px solid #4b5563 !important;
+    box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.2) !important;
+  }
+
+  /* Primary 按钮禁用状态 */
+  .vscode-button-primary:disabled,
+  .vscode-button-primary[disabled] {
+    background-color: #94a3b8 !important;
+    color: #e2e8f0 !important;
+    box-shadow: none !important;
+  }
+
+  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-primary:disabled,
+  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-primary[disabled],
+  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-primary:disabled,
+  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-primary[disabled] {
+    background-color: #374151 !important;
+    color: #6b7280 !important;
+    box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .vscode-button-success {
+    background-color: #059669 !important;
+    color: white !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .vscode-button-success:hover {
+    background-color: #047857 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 深色模式下的 success 按钮增强 */
+  .dark .vscode-button-success,
+  [data-theme="dark"] .vscode-button-success {
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+
+  .dark .vscode-button-success:hover,
+  [data-theme="dark"] .vscode-button-success:hover {
+    background-color: #059669 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+  }
+
+  .vscode-button-warning {
+    background-color: #f59e0b !important;
+    color: white !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .vscode-button-warning:hover {
+    background-color: #d97706 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 深色模式下的 warning 按钮增强 */
+  .dark .vscode-button-warning,
+  [data-theme="dark"] .vscode-button-warning {
+    background-color: #fbbf24 !important;
+    color: #1f2937 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+
+  .dark .vscode-button-warning:hover,
+  [data-theme="dark"] .vscode-button-warning:hover {
+    background-color: #f59e0b !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+  }
+
+  .vscode-button-error {
+    background-color: #dc2626 !important;
+    color: white !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .vscode-button-error:hover {
+    background-color: #b91c1c !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 深色模式下的 error 按钮增强 */
+  .dark .vscode-button-error,
+  [data-theme="dark"] .vscode-button-error {
+    background-color: #ef4444 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+
+  .dark .vscode-button-error:hover,
+  [data-theme="dark"] .vscode-button-error:hover {
+    background-color: #dc2626 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+  }
+
+  .vscode-button-info {
+    background-color: #0284c7 !important;
+    color: white !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .vscode-button-info:hover {
+    background-color: #0369a1 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 深色模式下的 info 按钮增强 */
+  .dark .vscode-button-info,
+  [data-theme="dark"] .vscode-button-info {
+    background-color: #06b6d4 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+
+  .dark .vscode-button-info:hover,
+  [data-theme="dark"] .vscode-button-info:hover {
+    background-color: #0284c7 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
   }
 
   .vscode-button:focus {

@@ -37,12 +37,12 @@ const buttonClasses = computed(() => {
   const baseClasses = 'btn vscode-button btn-ripple transition-all duration-200 transform hover:scale-105 active:scale-95 focus:ring-2 focus:ring-opacity-50 rounded-md px-4 py-2 font-medium border-none focus:border-none';
   
   const variantClasses = {
-    primary: 'btn-primary',
-    secondary: 'btn-secondary bg-gray-600 hover:bg-gray-500',
-    success: 'btn-success bg-green-600 hover:bg-green-500',
-    warning: 'btn-warning bg-yellow-600 hover:bg-yellow-500',
-    error: 'btn-error bg-red-600 hover:bg-red-500',
-    info: 'btn-info bg-blue-600 hover:bg-blue-500'
+    primary: 'btn-primary vscode-button-primary',
+    secondary: 'btn-secondary vscode-button-secondary',
+    success: 'btn-success vscode-button-success',
+    warning: 'btn-warning vscode-button-warning',
+    error: 'btn-error vscode-button-error',
+    info: 'btn-info vscode-button-info'
   };
 
   const sizeClasses = {
