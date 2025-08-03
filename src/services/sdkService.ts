@@ -285,6 +285,21 @@ export class SdkService {
   }
 
   /**
+   * 在终端中设置环境变量
+   */
+  private async setEnvironmentVariable(terminal: vscode.Terminal, name: string, value: string): Promise<void> {
+    this.logService.info(`Setting environment variable ${name}: ${value}`);
+    
+    if (process.platform === 'win32') {
+      // Windows PowerShell 设置环境变量
+      terminal.sendText(`$env:${name}="${value}"`);
+    } else {
+      // Unix-like 系统设置环境变量
+      terminal.sendText(`export ${name}="${value}"`);
+    }
+  }
+
+  /**
    * 在终端中执行 SDK 激活脚本
    */
   private async executeActivationScript(activationScript: { scriptPath: string; configPath: string; command: string }): Promise<void> {
@@ -299,15 +314,7 @@ export class SdkService {
       
       // 先设置 SIFLI_SDK_TOOLS_PATH 环境变量（如果有配置的话）
       if (toolsPath && toolsPath.trim() !== '') {
-        this.logService.info(`Setting SIFLI_SDK_TOOLS_PATH environment variable: ${toolsPath}`);
-        
-        if (process.platform === 'win32') {
-          // Windows PowerShell 设置环境变量
-          terminal.sendText(`$env:SIFLI_SDK_TOOLS_PATH="${toolsPath}"`);
-        } else {
-          // Unix-like 系统设置环境变量
-          terminal.sendText(`export SIFLI_SDK_TOOLS_PATH="${toolsPath}"`);
-        }
+        await this.setEnvironmentVariable(terminal, 'SIFLI_SDK_TOOLS_PATH', toolsPath);
       }
       
       // 直接执行导出脚本的绝对路径
