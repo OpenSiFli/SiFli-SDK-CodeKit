@@ -29,7 +29,7 @@
     "modes": {
       "express": {
         "title": "EXPRESS",
-        "description": "Fastest option. Automatically download and install the latest SiFli SDK from GitHub. Perfect for quick setup and getting started immediately."
+        "description": "Fastest option. Automatically downloads and configures SiFli-SDK. Ideal for quick setup and immediate use."
       },
       "advanced": {
         "title": "ADVANCED",
@@ -64,6 +64,18 @@
   "advanced": {
     "title": "Advanced Setup",
     "subtitle": "Customize your SiFli SDK installation",
+    "underDevelopment": {
+      "title": "Under Development",
+      "description": "Advanced setup features are currently under development. Please use Express Setup for now to install SiFli SDK.",
+      "suggestion": "We recommend returning to the home page and selecting Express Setup for a complete installation experience.",
+      "goToExpress": "Go to Express Setup"
+    },
+    "features": {
+      "customConfiguration": "Custom Configuration",
+      "customConfigurationDesc": "Full control over SDK installation parameters",
+      "multipleVersions": "Multi-Version Management",
+      "multipleVersionsDesc": "Manage multiple SDK versions simultaneously"
+    },
     "sections": {
       "source": {
         "title": "SDK Source",

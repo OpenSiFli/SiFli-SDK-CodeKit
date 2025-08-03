@@ -29,7 +29,7 @@
     "modes": {
       "express": {
         "title": "快速安装",
-        "description": "最快速的选项。自动从 GitHub 下载并安装最新的 SiFli SDK。适合快速配置和立即开始使用。"
+        "description": "最快速的选项。自动下载并配置 SiFli-SDK。适合快速配置和立即开始使用。"
       },
       "advanced": {
         "title": "高级安装",
@@ -64,6 +64,18 @@
   "advanced": {
     "title": "高级安装",
     "subtitle": "自定义您的 SiFli SDK 安装",
+    "underDevelopment": {
+      "title": "功能开发中",
+      "description": "高级安装功能正在开发中，敬请期待。当前建议使用快速安装功能来安装 SiFli SDK。",
+      "suggestion": "建议您返回首页，选择快速安装以获得完整的安装体验。",
+      "goToExpress": "前往快速安装"
+    },
+    "features": {
+      "customConfiguration": "自定义配置",
+      "customConfigurationDesc": "完全控制 SDK 安装参数",
+      "multipleVersions": "多版本管理",
+      "multipleVersionsDesc": "同时管理多个 SDK 版本"
+    },
     "sections": {
       "source": {
         "title": "SDK 来源",

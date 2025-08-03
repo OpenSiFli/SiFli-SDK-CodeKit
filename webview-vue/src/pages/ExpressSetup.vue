@@ -16,199 +16,252 @@
       </div>
 
       <!-- Header -->
-              <!-- Header -->
-        <header class="text-center mb-6 pb-4 border-b border-vscode-panel-border">
-          <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <img 
-              :src="logoSrc" 
-              alt="SiFli Logo" 
-              class="w-14 h-14 object-contain"
-            />
-          </div>
-          <h1 class="text-2xl font-bold mb-2">{{ $t('express.title') }}</h1>
-          <p class="text-vscode-input-placeholder text-sm">{{ $t('express.subtitle') }}</p>
-        </header>
+      <header class="text-center mb-6 pb-4 border-b border-vscode-panel-border">
+        <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+          <img 
+            :src="logoSrc" 
+            alt="SiFli Logo" 
+            class="w-14 h-14 object-contain"
+          />
+        </div>
+        <h1 class="text-3xl font-bold mb-2">{{ $t('express.title') }}</h1>
+        <p class="text-vscode-input-placeholder text-sm">{{ $t('express.subtitle') }}</p>
+      </header>
 
-      <!-- Installation Card -->
-      <div class="bg-vscode-input-background border border-vscode-panel-border rounded-lg p-6 mb-6">
-        <div class="text-center">
-          <div class="w-16 h-16 mx-auto mb-4 bg-vscode-button-background rounded-full flex items-center justify-center">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-            </svg>
-          </div>
-          <h3 class="text-xl font-semibold mb-2">Latest SiFli SDK</h3>
-          <p class="text-vscode-input-placeholder mb-4">
-            Will automatically download and install the latest stable version from GitHub
-          </p>
-          
-          <!-- Installation Path -->
-          <div class="bg-vscode-background border border-vscode-input-border rounded p-3 mb-4">
-            <div class="text-sm text-vscode-input-placeholder mb-1">Installation Path:</div>
-            <div class="font-mono text-sm text-vscode-foreground">
-              {{ installPath }}
+      <!-- Main Form -->
+      <div class="vscode-card rounded-lg p-6 space-y-8 animate-fade-in-scale form-container">
+        <!-- SDK Source Selection -->
+        <SdkSourceSelector
+          v-model="sdkManager.state.value.sdkSource"
+        />
+
+        <!-- Toolchain Source Selection -->
+        <ToolchainSourceSelector
+          v-model="toolchainSource"
+          :sdk-source="sdkManager.state.value.sdkSource"
+        />
+
+        <!-- Download Type Selection -->
+        <DownloadTypeSelector
+          v-model="sdkManager.state.value.downloadType"
+        />
+
+        <!-- Version/Branch Selection -->
+        <SdkVersionSelector
+          :download-type="sdkManager.state.value.downloadType"
+          :releases="sdkManager.state.value.availableReleases"
+          :branches="sdkManager.state.value.availableBranches"
+          :selected-version="sdkManager.state.value.selectedVersion"
+          :selected-branch="sdkManager.state.value.selectedBranch"
+          :is-loading="sdkManager.state.value.isLoading"
+          @update:version="sdkManager.state.value.selectedVersion = $event"
+          @update:branch="sdkManager.state.value.selectedBranch = $event"
+        />
+
+        <!-- Installation Path Selection -->
+        <InstallPathSelector
+          v-model="sdkManager.state.value.installPath"
+          :final-path="sdkManager.finalInstallPath.value"
+          :selected-version="sdkManager.state.value.selectedVersion"
+          :selected-branch="sdkManager.state.value.selectedBranch"
+          :download-type="sdkManager.state.value.downloadType"
+          @browse="sdkManager.browsePath"
+        />
+
+        <!-- Toolchain Tools Path Selection -->
+        <ToolsPathSelector
+          v-model="toolsPath"
+          @browse="browseToolsPath"
+        />
+
+        <!-- Installation Button and Progress -->
+        <div class="pt-4 action-section">
+          <!-- Installation Log Window -->
+          <div v-if="sdkManager.state.value.isInstalling" class="mb-4 p-4 bg-vscode-editor-background border border-vscode-editor-foreground/20 rounded">
+            <div class="flex items-center mb-2">
+              <div class="loading loading-spinner loading-sm text-vscode-button-background mr-2"></div>
+              <span class="text-sm font-medium">{{ sdkManager.state.value.installationProgress.message }}</span>
             </div>
-            <BaseButton
-              variant="secondary"
-              size="sm"
-              @click="browsePath"
-              class="mt-2"
+            
+            <!-- 日志窗口 -->
+            <div 
+              ref="logContainer"
+              class="mt-3 bg-black/50 text-green-400 text-xs font-mono p-3 rounded border max-h-64 overflow-y-auto scroll-smooth"
+              style="scrollbar-width: thin; scrollbar-color: #4a5568 #2d3748;"
             >
-              Change Path
+              <div class="mb-2 text-gray-300 font-semibold border-b border-gray-600 pb-1">安装日志:</div>
+              <div v-for="(log, index) in sdkManager.state.value.installationLogs" :key="index" class="mb-1 leading-tight">
+                <span class="text-gray-500 mr-2">[{{ getTimestamp() }}]</span>{{ log }}
+              </div>
+              <div v-if="sdkManager.state.value.installationLogs.length === 0" class="text-gray-500 italic">
+                等待日志输出...
+              </div>
+            </div>
+          </div>
+
+          <!-- Install Button -->
+          <div class="flex gap-3">
+            <BaseButton
+              variant="primary"
+              size="lg"
+              :disabled="!sdkManager.isFormValid.value || sdkManager.state.value.isInstalling"
+              :loading="sdkManager.state.value.isInstalling"
+              @click="handleInstall"
+              class="flex-1"
+            >
+              {{ sdkManager.state.value.isInstalling ? 'Installing...' : 'Install SiFli SDK' }}
+            </BaseButton>
+            
+            <!-- 取消按钮 -->
+            <BaseButton
+              v-if="sdkManager.state.value.isInstalling"
+              variant="secondary"
+              size="lg"
+              @click="handleCancelInstall"
+              class="px-6"
+            >
+              取消
             </BaseButton>
           </div>
         </div>
       </div>
 
-      <!-- Progress Section -->
-      <div v-if="isInstalling" class="mb-6">
-        <div class="bg-vscode-input-background border border-vscode-panel-border rounded-lg p-6">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="loading-spinner w-5 h-5 border-2 border-vscode-button-background border-t-transparent rounded-full"></div>
-            <span class="font-medium">Installing SiFli SDK...</span>
-          </div>
-          <div class="w-full bg-vscode-background rounded-full h-2">
-            <div 
-              class="bg-vscode-button-background h-2 rounded-full transition-all duration-300"
-              :style="{ width: `${progress}%` }"
-            ></div>
-          </div>
-          <div class="text-sm text-vscode-input-placeholder mt-2">{{ progressMessage }}</div>
+      <!-- Loading Status Indicator -->
+      <Transition name="fade">
+        <div v-if="sdkManager.state.value.isLoading" class="text-center mt-4">
+          <div class="loading loading-spinner loading-md text-vscode-button-background"></div>
+          <p class="text-sm text-vscode-input-placeholder mt-2">Loading options...</p>
         </div>
-      </div>
-
-      <!-- Action Button -->
-      <div class="text-center">
-        <BaseButton
-          variant="primary"
-          size="lg"
-          :disabled="isInstalling"
-          :loading="isInstalling"
-          @click="startInstallation"
-          class="px-12 py-4 text-lg"
-        >
-          <span v-if="isInstalling">Installing...</span>
-          <span v-else>Install SiFli SDK</span>
-        </BaseButton>
-      </div>
-
-      <!-- Features List -->
-      <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="text-center">
-          <div class="w-12 h-12 mx-auto mb-3 bg-green-500 bg-opacity-10 rounded-lg flex items-center justify-center">
-            <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-          <h4 class="font-medium mb-1">Latest Version</h4>
-          <p class="text-sm text-vscode-input-placeholder">Always get the most recent stable release</p>
-        </div>
-        
-        <div class="text-center">
-          <div class="w-12 h-12 mx-auto mb-3 bg-blue-500 bg-opacity-10 rounded-lg flex items-center justify-center">
-            <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v18m9-9H3"></path>
-            </svg>
-          </div>
-          <h4 class="font-medium mb-1">One-Click Setup</h4>
-          <p class="text-sm text-vscode-input-placeholder">No configuration needed, works out of the box</p>
-        </div>
-        
-        <div class="text-center">
-          <div class="w-12 h-12 mx-auto mb-3 bg-purple-500 bg-opacity-10 rounded-lg flex items-center justify-center">
-            <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-            </svg>
-          </div>
-          <h4 class="font-medium mb-1">Fast Download</h4>
-          <p class="text-sm text-vscode-input-placeholder">Optimized download from GitHub</p>
-        </div>
-      </div>
+      </Transition>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
+import { useSdkManager } from '@/composables/useSdkManager';
 import { useVsCodeApi } from '@/composables/useVsCodeApi';
 import BaseButton from '@/components/common/BaseButton.vue';
+import SdkSourceSelector from '@/components/sdk/SdkSourceSelector.vue';
+import ToolchainSourceSelector from '@/components/sdk/ToolchainSourceSelector.vue';
+import ToolsPathSelector from '@/components/sdk/ToolsPathSelector.vue';
+import DownloadTypeSelector from '@/components/sdk/DownloadTypeSelector.vue';
+import SdkVersionSelector from '@/components/sdk/SdkVersionSelector.vue';
+import InstallPathSelector from '@/components/sdk/InstallPathSelector.vue';
 
 // 直接引入 Logo 图片
 import logoSrc from '@/assets/images/SiFli.png';
 
-const { postMessage, onMessage } = useVsCodeApi();
-
-const isInstalling = ref(false);
-const progress = ref(0);
-const progressMessage = ref('');
-const userSelectedPath = ref('');
-
-const installPath = computed(() => {
-  return userSelectedPath.value || `${getDefaultPath()}/SiFli-SDK/latest`;
-});
-
-const getDefaultPath = () => {
-  // 在实际环境中，可以从 VS Code API 获取
-  return '/Users/username/sifli-sdk';
-};
-
+// 定义 emits
 const emit = defineEmits<{
-  'go-back': [];
-  'installation-complete': [];
+  'go-back': []
+  'installation-complete': []
 }>();
 
-const browsePath = () => {
-  postMessage({
-    command: 'browseInstallPath'
+const { postMessage, onMessage } = useVsCodeApi();
+
+// 工具链下载源
+const toolchainSource = ref<'sifli' | 'github'>('sifli');
+
+// 工具链目录路径
+const toolsPath = ref('');
+
+// 日志容器的引用
+const logContainer = ref<HTMLElement>();
+
+const sdkManager = useSdkManager();
+
+// 监听日志变化，自动滚动到底部
+watch(
+  () => sdkManager.state.value.installationLogs,
+  () => {
+    nextTick(() => {
+      if (logContainer.value) {
+        logContainer.value.scrollTop = logContainer.value.scrollHeight;
+      }
+    });
+  },
+  { deep: true }
+);
+
+// 获取当前时间戳
+const getTimestamp = () => {
+  const now = new Date();
+  return now.toLocaleTimeString('zh-CN', { 
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
   });
 };
 
-const startInstallation = () => {
-  isInstalling.value = true;
-  progress.value = 0;
-  progressMessage.value = 'Preparing installation...';
-  
+// 浏览工具链路径
+const browseToolsPath = () => {
   postMessage({
-    command: 'startSdkInstallation',
-    source: 'github',
-    type: 'tag',
-    name: 'latest',
-    installPath: installPath.value
+    command: 'browseToolsPath'
   });
 };
 
-// 消息监听
-onMessage('installPathSelected', (data: { path: string }) => {
-  userSelectedPath.value = data.path;
+// 监听工具链路径选择结果
+onMessage('toolsPathSelected', (data: { path: string }) => {
+  toolsPath.value = data.path;
 });
 
-onMessage('installationProgress', (data: { progress: number; message: string }) => {
-  progress.value = data.progress;
-  progressMessage.value = data.message;
-});
+const handleInstall = () => {
+  try {
+    // 设置工具链配置到 SDK 管理器状态
+    sdkManager.state.value.toolchainSource = toolchainSource.value;
+    sdkManager.state.value.toolsPath = toolsPath.value;
+    
+    console.log('[ExpressSetup] Starting SDK installation...');
+    console.log('[ExpressSetup] Tools path:', toolsPath.value);
+    console.log('[ExpressSetup] Will set SIFLI_SDK_TOOLS_PATH env var:', toolsPath.value && toolsPath.value.trim() !== '');
+    
+    // 调用安装方法（这是异步的，通过消息处理）
+    sdkManager.installSdk();
+    
+  } catch (error) {
+    console.error('Installation failed:', error);
+  }
+};
 
-onMessage('installationComplete', () => {
-  isInstalling.value = false;
-  progress.value = 100;
-  progressMessage.value = 'Installation completed successfully!';
-  setTimeout(() => {
-    emit('installation-complete');
-  }, 2000);
-});
+// 取消安装
+const handleCancelInstall = () => {
+  console.log('[ExpressSetup] Cancelling SDK installation...');
+  postMessage({
+    command: 'cancelInstallation'
+  });
+};
 
-onMessage('installationError', (data: { error: string }) => {
-  isInstalling.value = false;
-  progressMessage.value = `Installation failed: ${data.error}`;
+onMounted(() => {
+  sdkManager.initialize();
 });
 </script>
 
 <style scoped>
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* 统一的表单项动画延迟 */
+.form-container > *:nth-child(1) .form-item { animation-delay: 0.05s; }
+.form-container > *:nth-child(2) .form-item { animation-delay: 0.1s; }
+.form-container > *:nth-child(3) .form-item { animation-delay: 0.15s; }
+.form-container > *:nth-child(4) .form-item { animation-delay: 0.2s; }
+.form-container > *:nth-child(5) .form-item { animation-delay: 0.25s; }
+.form-container > *:nth-child(6) .form-item { animation-delay: 0.3s; }
+
+/* 操作区域动画延迟 */
+.action-section {
+  animation: slide-in-up 0.5s ease-out forwards;
+  animation-delay: 0.35s;
+  opacity: 0;
 }
 
-.loading-spinner {
-  animation: spin 1s linear infinite;
+@keyframes slide-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
