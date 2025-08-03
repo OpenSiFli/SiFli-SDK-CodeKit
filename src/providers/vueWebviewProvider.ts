@@ -2,11 +2,15 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn, ChildProcess } from 'child_process';
+import { TerminalService } from '../services/terminalService';
 
 export class VueWebviewProvider {
   private static instance: VueWebviewProvider;
+  private terminalService: TerminalService;
 
-  private constructor() {}
+  private constructor() {
+    this.terminalService = TerminalService.getInstance();
+  }
 
   public static getInstance(): VueWebviewProvider {
     if (!VueWebviewProvider.instance) {
@@ -651,8 +655,8 @@ export class VueWebviewProvider {
       let args: string[];
 
       if (process.platform === 'win32') {
-        // Windows 使用 PowerShell 执行 .ps1 脚本
-        command = 'powershell.exe';
+        // Windows 使用配置的 PowerShell 路径执行 .ps1 脚本
+        command = this.terminalService.getPowerShellExecutablePath();
         args = ['-ExecutionPolicy', 'Bypass', '-File', scriptPath];
       } else {
         // Unix-like 系统使用 bash 执行 .sh 脚本

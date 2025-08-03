@@ -289,39 +289,45 @@ export class SdkService {
    */
   private async executeActivationScript(activationScript: { scriptPath: string; configPath: string; command: string }): Promise<void> {
     try {
-      this.logService.info(`Executing SDK activation script: ${activationScript.command}`);
+      this.logService.info(`Executing SDK activation script: ${activationScript.scriptPath}`);
       const terminal = await this.terminalService.getOrCreateSiFliTerminalAndCdProject();
       
-      // 构建完整命令：切换到SDK目录并执行激活脚本
       const scriptDir = path.dirname(activationScript.scriptPath);
       
       // 获取当前SDK的工具链路径
       const toolsPath = this.configService.getSdkToolsPath(scriptDir);
-      let command: string;
       
+      // 先设置 SIFLI_SDK_TOOLS_PATH 环境变量（如果有配置的话）
       if (toolsPath && toolsPath.trim() !== '') {
-        this.logService.info(`Setting SIFLI_SDK_TOOLS_PATH environment variable for SDK at ${scriptDir}: ${toolsPath}`);
+        this.logService.info(`Setting SIFLI_SDK_TOOLS_PATH environment variable: ${toolsPath}`);
         
         if (process.platform === 'win32') {
-          // Windows PowerShell 命令
-          command = `cd "${scriptDir}"; $env:SIFLI_SDK_TOOLS_PATH="${toolsPath}"; ${activationScript.command}`;
+          // Windows PowerShell 设置环境变量
+          terminal.sendText(`$env:SIFLI_SDK_TOOLS_PATH="${toolsPath}"`);
         } else {
-          // Unix-like 系统命令
-          command = `cd "${scriptDir}" && export SIFLI_SDK_TOOLS_PATH="${toolsPath}" && ${activationScript.command}`;
+          // Unix-like 系统设置环境变量
+          terminal.sendText(`export SIFLI_SDK_TOOLS_PATH="${toolsPath}"`);
         }
+      }
+      
+      // 直接执行导出脚本的绝对路径
+      let executeCommand: string;
+      if (process.platform === 'win32') {
+        // Windows PowerShell 使用配置的 PowerShell 路径和 -ExecutionPolicy Bypass 执行脚本
+        const powershellPath = this.terminalService.getPowerShellExecutablePath();
+        executeCommand = `& "${activationScript.scriptPath}"`;
       } else {
-        // 没有工具链路径时的默认命令
-        this.logService.info(`No tools path configured for SDK at ${scriptDir}, using default environment`);
-        command = `cd "${scriptDir}" && ${activationScript.command}`;
+        // Unix-like 系统执行脚本
+        executeCommand = `. "${activationScript.scriptPath}"`;
       }
 
       // 显示并聚焦终端
       terminal.show();
       
       // 发送命令到终端
-      terminal.sendText(command);
+      terminal.sendText(executeCommand);
       
-      this.logService.info(`SDK activation command executed successfully: ${command}`);
+      this.logService.info(`SDK activation script executed successfully: ${executeCommand}`);
     } catch (error) {
       this.logService.error('Error executing activation script:', error);
       throw error;

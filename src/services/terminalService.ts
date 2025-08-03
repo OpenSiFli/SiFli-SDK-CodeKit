@@ -23,6 +23,18 @@ export class TerminalService {
   }
 
   /**
+   * 获取 PowerShell 可执行文件路径
+   */
+  private getPowerShellPath(): string {
+    if (process.platform !== 'win32') {
+      return 'powershell.exe'; // 非 Windows 平台返回默认值（实际不会使用）
+    }
+    
+    const configuredPath = this.configService.config.powershellPath;
+    return configuredPath && configuredPath.trim() !== '' ? configuredPath : 'powershell.exe';
+  }
+
+  /**
    * 获取或创建 SiFli 终端并切换到项目目录
    */
   public async getOrCreateSiFliTerminalAndCdProject(): Promise<vscode.Terminal> {
@@ -58,12 +70,29 @@ export class TerminalService {
    * 创建新的 SiFli 终端
    */
   private createSiFliTerminal(): vscode.Terminal {
-    // 创建一个普通的终端，SDK 激活通过 sdkService.activateSdk 方法来处理
+    // 根据平台设置终端配置
     const terminalOptions: vscode.TerminalOptions = {
       name: TERMINAL_NAME
     };
 
+    // 在 Windows 平台强制使用 PowerShell
+    if (process.platform === 'win32') {
+      const shellPath = this.getPowerShellPath();
+      terminalOptions.shellPath = shellPath;
+      this.logService.debug(`Creating Windows terminal with PowerShell: ${shellPath}`);
+    } else {
+      // macOS 和 Linux 使用默认 shell
+      this.logService.debug(`Creating terminal with default shell on ${process.platform}`);
+    }
+
     return vscode.window.createTerminal(terminalOptions);
+  }
+
+  /**
+   * 获取 PowerShell 可执行文件路径（公共方法）
+   */
+  public getPowerShellExecutablePath(): string {
+    return this.getPowerShellPath();
   }
 
   /**
