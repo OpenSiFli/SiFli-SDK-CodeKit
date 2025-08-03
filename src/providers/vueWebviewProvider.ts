@@ -324,6 +324,18 @@ export class VueWebviewProvider {
               log: log
             });
           };
+
+          // 存储工具链路径以便后续使用
+          const toolsPathForEnv = toolsPath && toolsPath.trim() !== '' ? toolsPath.trim() : null;
+          
+          if (toolsPathForEnv) {
+            console.log('[VueWebviewProvider] Tools path provided:', toolsPathForEnv);
+            sendLog(`🔧 检测到工具链路径: ${toolsPathForEnv}`);
+            sendLog(`🔧 将在脚本执行时设置环境变量 SIFLI_SDK_TOOLS_PATH`);
+          } else {
+            console.log('[VueWebviewProvider] No tools path provided');
+            sendLog(`ℹ️  未设置工具链路径，将使用默认环境`);
+          }
           // 首先检查 Git 是否可用
           const isGitAvailable = await gitService.isGitInstalled();
           if (!isGitAvailable) {
@@ -392,7 +404,20 @@ export class VueWebviewProvider {
           sendLog('🎉 Git 克隆操作完成！');
 
           // 自动安装工具链
-          await this.installToolchain(fullInstallPath, webview, installationLogs);
+          await this.installToolchain(fullInstallPath, webview, installationLogs, toolsPathForEnv);
+
+          // 如果设置了工具链路径，保存到配置中（与SDK路径绑定）
+          if (toolsPathForEnv) {
+            try {
+              const { ConfigService } = await import('../services/configService');
+              const configService = ConfigService.getInstance();
+              await configService.setSdkToolsPath(fullInstallPath, toolsPathForEnv);
+              sendLog(`💾 工具链路径已绑定到SDK: ${fullInstallPath} -> ${toolsPathForEnv}`);
+            } catch (error) {
+              console.error('[VueWebviewProvider] Failed to save tools path to config:', error);
+              sendLog(`⚠️ 保存工具链路径到配置失败: ${error instanceof Error ? error.message : String(error)}`);
+            }
+          }
 
           sendLog(`✅ SiFli SDK ${version.name} 安装成功！`);
           sendLog(`📁 安装路径: ${fullInstallPath}`);
@@ -524,7 +549,7 @@ export class VueWebviewProvider {
   /**
    * 安装工具链
    */
-  private async installToolchain(sdkPath: string, webview: vscode.Webview, installationLogs?: string[]): Promise<void> {
+  private async installToolchain(sdkPath: string, webview: vscode.Webview, installationLogs?: string[], toolsPath?: string | null): Promise<void> {
     try {
       console.log('[VueWebviewProvider] Starting toolchain installation...');
       const logMessage = '🔧 开始安装工具链...';
@@ -535,6 +560,18 @@ export class VueWebviewProvider {
         command: 'installationLog',
         log: logMessage
       });
+
+      // 如果设置了工具链路径，记录环境变量信息
+      if (toolsPath) {
+        const envLog = `🔧 设置环境变量 SIFLI_SDK_TOOLS_PATH=${toolsPath}`;
+        if (installationLogs) {
+          installationLogs.push(envLog);
+        }
+        webview.postMessage({
+          command: 'installationLog',
+          log: envLog
+        });
+      }
 
       // 确定安装脚本路径
       const installScript = this.getInstallScriptPath(sdkPath);
@@ -560,7 +597,7 @@ export class VueWebviewProvider {
       });
 
       // 执行安装脚本
-      await this.executeInstallScript(installScript, sdkPath, webview, installationLogs);
+      await this.executeInstallScript(installScript, sdkPath, webview, installationLogs, toolsPath);
 
       const completedLog = '✅ 工具链安装完成！';
       if (installationLogs) {
@@ -608,7 +645,7 @@ export class VueWebviewProvider {
   /**
    * 执行安装脚本
    */
-  private async executeInstallScript(scriptPath: string, workingDir: string, webview: vscode.Webview, installationLogs?: string[]): Promise<void> {
+  private async executeInstallScript(scriptPath: string, workingDir: string, webview: vscode.Webview, installationLogs?: string[], toolsPath?: string | null): Promise<void> {
     return new Promise((resolve, reject) => {
       let command: string;
       let args: string[];
@@ -633,9 +670,24 @@ export class VueWebviewProvider {
         log: execLog
       });
 
+      // 设置环境变量
+      const env = { ...process.env };
+      if (toolsPath) {
+        env.SIFLI_SDK_TOOLS_PATH = toolsPath;
+        const envSetLog = `🔧 环境变量已设置: SIFLI_SDK_TOOLS_PATH=${toolsPath}`;
+        if (installationLogs) {
+          installationLogs.push(envSetLog);
+        }
+        webview.postMessage({
+          command: 'installationLog',
+          log: envSetLog
+        });
+      }
+
       const installProcess = spawn(command, args, {
         cwd: workingDir,
-        stdio: ['ignore', 'pipe', 'pipe']
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: env
       });
 
       let hasError = false;

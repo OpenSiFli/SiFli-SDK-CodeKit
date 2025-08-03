@@ -206,6 +206,8 @@ const handleInstall = () => {
     sdkManager.state.value.toolsPath = toolsPath.value;
     
     console.log('[AdvancedSetup] Starting SDK installation...');
+    console.log('[AdvancedSetup] Tools path:', toolsPath.value);
+    console.log('[AdvancedSetup] Will set SIFLI_SDK_TOOLS_PATH env var:', toolsPath.value && toolsPath.value.trim() !== '');
     
     // 调用安装方法（这是异步的，通过消息处理）
     sdkManager.installSdk();

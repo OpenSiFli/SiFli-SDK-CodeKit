@@ -61,13 +61,24 @@
           "type": "string",
           "description": "Full path to the SiFli SDK export.ps1 script. (e.g., D:\\OpenSiFli\\SiFli-SDK\\export.ps1)"
         },
-        "sifli-sdk-codekit.installedSdkPaths": {
+        "sifli-sdk-codekit.sdkConfigs": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "SDK installation path"
+              },
+              "toolsPath": {
+                "type": "string",
+                "description": "Tools chain path for this SDK"
+              }
+            },
+            "required": ["path"]
           },
           "default": [],
-          "description": "List of installed SiFli SDK root directories. Used for version switching."
+          "description": "List of installed SiFli SDK configurations. Each entry contains path and optional tools path."
         },
         "sifli-sdk-codekit.defaultChipModule": {
           "type": "string",

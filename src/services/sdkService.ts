@@ -31,7 +31,7 @@ export class SdkService {
   public async discoverSiFliSdks(): Promise<SdkVersion[]> {
     this.logService.info('Starting SDK discovery...');
     const sdkVersions: SdkVersion[] = [];
-    const installedSdkPaths = this.configService.config.installedSdkPaths;
+    const installedSdkPaths = this.configService.getInstalledSdkPaths();
     const currentSdkPath = this.configService.config.sifliSdkExportScriptPath;
 
     this.logService.debug(`Configured SDK paths: ${installedSdkPaths.join(', ')}`);
@@ -235,12 +235,9 @@ export class SdkService {
       // 更新配置（保存找到的脚本路径用于配置）
       await this.configService.updateConfigValue('sifliSdkExportScriptPath', activationScript.configPath);
 
-      // 添加到已安装 SDK 路径列表（如果不存在）
-      const installedPaths = this.configService.config.installedSdkPaths;
-      if (!installedPaths.includes(sdk.path)) {
-        await this.configService.updateConfigValue('installedSdkPaths', [...installedPaths, sdk.path]);
-        this.logService.debug(`Added SDK path to installed list: ${sdk.path}`);
-      }
+      // 添加到已安装 SDK 配置列表（如果不存在）
+      await this.configService.addSdkConfig(sdk.path);
+      this.logService.debug(`Added SDK to config list: ${sdk.path}`);
 
       // 在终端中执行激活命令
       await this.executeActivationScript(activationScript);
@@ -297,7 +294,26 @@ export class SdkService {
       
       // 构建完整命令：切换到SDK目录并执行激活脚本
       const scriptDir = path.dirname(activationScript.scriptPath);
-      const command = `cd "${scriptDir}" && ${activationScript.command}`;
+      
+      // 获取当前SDK的工具链路径
+      const toolsPath = this.configService.getSdkToolsPath(scriptDir);
+      let command: string;
+      
+      if (toolsPath && toolsPath.trim() !== '') {
+        this.logService.info(`Setting SIFLI_SDK_TOOLS_PATH environment variable for SDK at ${scriptDir}: ${toolsPath}`);
+        
+        if (process.platform === 'win32') {
+          // Windows PowerShell 命令
+          command = `cd "${scriptDir}"; $env:SIFLI_SDK_TOOLS_PATH="${toolsPath}"; ${activationScript.command}`;
+        } else {
+          // Unix-like 系统命令
+          command = `cd "${scriptDir}" && export SIFLI_SDK_TOOLS_PATH="${toolsPath}" && ${activationScript.command}`;
+        }
+      } else {
+        // 没有工具链路径时的默认命令
+        this.logService.info(`No tools path configured for SDK at ${scriptDir}, using default environment`);
+        command = `cd "${scriptDir}" && ${activationScript.command}`;
+      }
 
       // 显示并聚焦终端
       terminal.show();
@@ -328,9 +344,9 @@ export class SdkService {
         throw new Error('无效的 SDK 路径');
       }
 
-      const installedPaths = this.configService.config.installedSdkPaths;
+      const installedPaths = this.configService.getInstalledSdkPaths();
       if (!installedPaths.includes(sdkPath)) {
-        await this.configService.updateConfigValue('installedSdkPaths', [...installedPaths, sdkPath]);
+        await this.configService.addSdkConfig(sdkPath);
         vscode.window.showInformationMessage(`已添加 SDK 路径: ${sdkPath}`);
       } else {
         vscode.window.showInformationMessage(`SDK 路径已存在: ${sdkPath}`);
@@ -346,11 +362,10 @@ export class SdkService {
    */
   public async removeSdkPath(sdkPath: string): Promise<void> {
     try {
-      const installedPaths = this.configService.config.installedSdkPaths;
-      const updatedPaths = installedPaths.filter(path => path !== sdkPath);
+      const installedPaths = this.configService.getInstalledSdkPaths();
       
-      if (updatedPaths.length !== installedPaths.length) {
-        await this.configService.updateConfigValue('installedSdkPaths', updatedPaths);
+      if (installedPaths.includes(sdkPath)) {
+        await this.configService.removeSdkConfig(sdkPath);
         vscode.window.showInformationMessage(`已移除 SDK 路径: ${sdkPath}`);
       } else {
         vscode.window.showWarningMessage(`SDK 路径不存在: ${sdkPath}`);
@@ -359,5 +374,25 @@ export class SdkService {
       console.error('[SdkService] Error removing SDK path:', error);
       vscode.window.showErrorMessage(`移除 SDK 路径失败: ${error}`);
     }
+  }
+
+  /**
+   * 设置SDK的工具链路径
+   */
+  public async setSdkToolsPath(sdkPath: string, toolsPath: string): Promise<void> {
+    try {
+      await this.configService.setSdkToolsPath(sdkPath, toolsPath);
+      vscode.window.showInformationMessage(`已设置 SDK ${path.basename(sdkPath)} 的工具链路径: ${toolsPath}`);
+    } catch (error) {
+      console.error('[SdkService] Error setting SDK tools path:', error);
+      vscode.window.showErrorMessage(`设置工具链路径失败: ${error}`);
+    }
+  }
+
+  /**
+   * 获取SDK的工具链路径
+   */
+  public getSdkToolsPath(sdkPath: string): string | undefined {
+    return this.configService.getSdkToolsPath(sdkPath);
   }
 }

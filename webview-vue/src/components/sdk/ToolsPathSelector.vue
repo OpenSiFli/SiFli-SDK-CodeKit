@@ -32,9 +32,14 @@
     </div>
     
     <!-- 描述文本 -->
-    <p class="text-xs text-vscode-input-placeholder mt-2">
-      {{ $t('sdk.toolsPath.description') }}
-    </p>
+    <div class="mt-2 space-y-1">
+      <p class="text-xs text-vscode-input-placeholder">
+        {{ $t('sdk.toolsPath.description') }}
+      </p>
+      <p class="text-xs text-vscode-input-placeholder opacity-80">
+        💡 如果设置了此路径，将在运行所有脚本时设置 SIFLI_SDK_TOOLS_PATH 环境变量
+      </p>
+    </div>
   </div>
 </template>
 
