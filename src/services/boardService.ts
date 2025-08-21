@@ -29,7 +29,7 @@ export class BoardService {
   public async discoverBoards(): Promise<Board[]> {
     const boardMap = new Map<string, Board>();
     const currentSdk = this.configService.getCurrentSdk();
-    
+
     if (currentSdk?.path) {
       // 扫描 SDK 中的板子
       const sdkBoardsPath = path.join(currentSdk.path, CUSTOMER_BOARDS_SUBFOLDER);
@@ -57,8 +57,8 @@ export class BoardService {
    * 扫描目录中的板子
    */
   private async scanDirectoryForBoards(
-    directoryPath: string, 
-    boardMap: Map<string, Board>, 
+    directoryPath: string,
+    boardMap: Map<string, Board>,
     sourceType: Board['type']
   ): Promise<void> {
     try {
@@ -67,7 +67,7 @@ export class BoardService {
       }
 
       const entries = fs.readdirSync(directoryPath, { withFileTypes: true });
-      
+
       for (const entry of entries) {
         if (entry.isDirectory()) {
           const boardPath = path.join(directoryPath, entry.name);
@@ -77,7 +77,7 @@ export class BoardService {
           // 检查是否存在 hcpu 目录和 ptab.json 文件
           if (fs.existsSync(hcpuPath) && fs.existsSync(ptabJsonPath)) {
             const boardName = entry.name;
-            
+
             // 避免重复添加（优先级：project_local > custom > sdk）
             if (!boardMap.has(boardName) || this.getBoardTypePriority(sourceType) > this.getBoardTypePriority(boardMap.get(boardName)!.type)) {
               boardMap.set(boardName, {
@@ -89,9 +89,9 @@ export class BoardService {
           }
         }
       }
-          } catch (error) {
-        this.logService.error(`Error scanning directory ${directoryPath}:`, error);
-      }
+    } catch (error) {
+      this.logService.error(`Error scanning directory ${directoryPath}:`, error);
+    }
   }
 
   private getBoardTypePriority(type: Board['type']): number {
@@ -146,8 +146,8 @@ export class BoardService {
    */
   public async getCompileCommand(boardName: string, threads: number): Promise<string> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
-    const workspaceRoot = workspaceFolders && workspaceFolders.length > 0 
-      ? workspaceFolders[0].uri.fsPath 
+    const workspaceRoot = workspaceFolders && workspaceFolders.length > 0
+      ? workspaceFolders[0].uri.fsPath
       : '';
     const projectPath = path.join(workspaceRoot, 'project');
 
@@ -176,8 +176,8 @@ export class BoardService {
    */
   public async getMenuconfigCommand(boardName: string): Promise<string> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
-    const workspaceRoot = workspaceFolders && workspaceFolders.length > 0 
-      ? workspaceFolders[0].uri.fsPath 
+    const workspaceRoot = workspaceFolders && workspaceFolders.length > 0
+      ? workspaceFolders[0].uri.fsPath
       : '';
     const projectPath = path.join(workspaceRoot, 'project');
 
@@ -204,7 +204,7 @@ export class BoardService {
    */
   public async getSftoolDownloadCommand(boardName: string, serialPortNum: string): Promise<string> {
     const sftoolParam = await this.readSftoolParamJson(boardName);
-    
+
     if (!sftoolParam) {
       throw new Error(`无法读取 ${boardName} 的 sftool 参数文件`);
     }
@@ -216,10 +216,10 @@ export class BoardService {
 
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
     const buildFolder = this.getBuildTargetFolder(boardName);
-    
+
     // 构建基础命令
     let command = `sftool -p ${serialPortNum} -c ${sftoolParam.chip}`;
-    
+
     if (sftoolParam.memory) {
       command += ` -m ${sftoolParam.memory.toLowerCase()}`;
     }
@@ -227,7 +227,7 @@ export class BoardService {
     // 处理 write_flash 命令
     if (sftoolParam.write_flash && sftoolParam.write_flash.files && sftoolParam.write_flash.files.length > 0) {
       command += ' write_flash';
-      
+
       // 添加 write_flash 选项
       if (sftoolParam.write_flash.verify) {
         command += ' --verify';
@@ -239,19 +239,22 @@ export class BoardService {
         command += ' --no-compress';
       }
 
-      // 添加文件和地址
       for (const fileInfo of sftoolParam.write_flash.files) {
         // 构建完整文件路径
-        const fullFilePath = path.isAbsolute(fileInfo.path) 
-          ? fileInfo.path 
+        const fullFilePath = path.isAbsolute(fileInfo.path)
+          ? fileInfo.path
           : path.join(workspaceRoot, buildFolder, fileInfo.path);
 
-        command += ` ${fileInfo.address} "${fullFilePath}"`;
+        // 将文件路径和地址组合在一起
+        const fileAndAddress = `${fullFilePath}@${fileInfo.address}`;
+
+        // 将组合后的字符串添加到命令中，并用双引号包裹
+        command += ` "${fileAndAddress}"`;
       }
-    } else {
+    }
+    else {
       throw new Error('sftool 参数文件中未找到有效的写入文件配置');
     }
-
     return command;
   }
 }
