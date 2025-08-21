@@ -342,8 +342,21 @@ export class GitService {
         fs.rmSync(localPath, { recursive: true, force: true });
       }
 
-      // 直接使用 native Git 命令
-      await this.cloneRepositoryNative(repoUrl, localPath, options);
+      // === 核心修改部分 ===
+      // 在调用 native Git 命令前，检查并修正分支名
+      let finalBranchName = options?.branch;
+      if (finalBranchName === 'latest') {
+        finalBranchName = 'main';
+        console.log(`[GitService] Correcting branch name from 'latest' to 'main' for git clone.`);
+        this.gitOutputChannel.appendLine(`[Git] Correcting branch name: 'latest' -> 'main'`);
+      }
+      // ====================
+
+      // 使用修正后的分支名来调用 native Git 命令
+      await this.cloneRepositoryNative(repoUrl, localPath, {
+        ...options,
+        branch: finalBranchName
+      });
       
       console.log(`[GitService] Clone operation completed successfully`);
       this.gitOutputChannel.appendLine(`[Git] Successfully cloned repository to ${localPath}`);
