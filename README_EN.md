@@ -4,7 +4,7 @@
 
 # sifli-sdk-codekit - VS Code Extension
 
-[中文](./README_CN.md)
+[中文](./README.md)
 
 ![Version](https://img.shields.io/github/package-json/v/OpenSiFli/SiFli-SDK-CodeKit)
 [![Releases](https://img.shields.io/badge/Github-main-blue)](https://github.com/OpenSiFli/SiFli-SDK-CodeKit)
