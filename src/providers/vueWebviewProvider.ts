@@ -1,8 +1,13 @@
+// 文件名: vueWebviewProvider.ts
+
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn, ChildProcess } from 'child_process';
 import { TerminalService } from '../services/terminalService';
+import { SdkService } from '../services/sdkService';
+import { GitService } from '../services/gitService';
+import { ConfigService } from '../services/configService';
 
 export class VueWebviewProvider {
   private static instance: VueWebviewProvider;
@@ -218,10 +223,12 @@ export class VueWebviewProvider {
     const { SdkCommands } = await import('../commands/sdkCommands');
     const { SdkService } = await import('../services/sdkService');
     const { GitService } = await import('../services/gitService');
+    const { ConfigService } = await import('../services/configService'); // 确保这里有 ConfigService 的引用
     
     const sdkCommands = SdkCommands.getInstance();
     const sdkService = SdkService.getInstance();
     const gitService = GitService.getInstance();
+    const configService = ConfigService.getInstance(); // 获取 ConfigService 实例
 
     switch (message.command) {
       case 'getSdkList':
@@ -360,14 +367,18 @@ export class VueWebviewProvider {
 
           console.log('[VueWebviewProvider] Repository URL:', repoUrl);
 
-          // 创建安装目录 - 修正路径结构为 installPath/SiFli-SDK/version
+          // 修正目录名，确保与前端显示一致
+          const dirName = version.name === 'latest' ? 'main' : version.name;
+
+          // 创建安装目录 - 修正路径结构为 installPath/SiFli-SDK/dirName
           const sdkBasePath = path.join(installPath, 'SiFli-SDK');
-          const fullInstallPath = path.join(sdkBasePath, version.name);
+          const fullInstallPath = path.join(sdkBasePath, dirName);
+
           console.log('[VueWebviewProvider] SDK base path:', sdkBasePath);
           console.log('[VueWebviewProvider] Full install path:', fullInstallPath);
 
           // 发送日志消息
-          sendLog(`🚀 准备安装 SiFli SDK ${version.name}`);
+          sendLog(`🚀 准备安装 SiFli SDK ${dirName}`);
           sendLog(`🔗 源码仓库: ${repoUrl}`);
           sendLog(`📂 安装路径: ${fullInstallPath}`);
 
@@ -410,11 +421,14 @@ export class VueWebviewProvider {
           // 自动安装工具链
           await this.installToolchain(fullInstallPath, webview, installationLogs, toolsPathForEnv, toolchainSource);
 
+          // === 核心修改部分 ===
+          // 在 SDK 成功安装后，将路径添加到配置中
+          await configService.addSdkConfig(fullInstallPath);
+          // ====================
+
           // 如果设置了工具链路径，保存到配置中（与SDK路径绑定）
           if (toolsPathForEnv) {
             try {
-              const { ConfigService } = await import('../services/configService');
-              const configService = ConfigService.getInstance();
               await configService.setSdkToolsPath(fullInstallPath, toolsPathForEnv);
               sendLog(`💾 工具链路径已绑定到SDK: ${fullInstallPath} -> ${toolsPathForEnv}`);
             } catch (error) {
@@ -423,15 +437,15 @@ export class VueWebviewProvider {
             }
           }
 
-          sendLog(`✅ SiFli SDK ${version.name} 安装成功！`);
+          sendLog(`✅ SiFli SDK ${dirName} 安装成功！`);
           sendLog(`📁 安装路径: ${fullInstallPath}`);
 
           // 发送安装成功消息，包含详细信息
           webview.postMessage({
             command: 'installationCompleted',
-            message: `SiFli SDK ${version.name} 安装成功！`,
+            message: `SiFli SDK ${dirName} 安装成功！`,
             path: fullInstallPath,
-            version: version.name,
+            version: dirName,
             source: sdkSource,
             logs: installationLogs
           });
