@@ -239,20 +239,39 @@ export class BoardService {
         command += ' --no-compress';
       }
 
-      for (const fileInfo of sftoolParam.write_flash.files) {
+      for (const fileInfo of sftoolParam.write_flash.files as any[]) {
+        // 兼容新旧版本字段，优先使用新版
+        const filePath = fileInfo.path || fileInfo.file;
+        const fileAddress = fileInfo.address || fileInfo.addr;
+
+        if (!filePath || !fileAddress) {
+          this.logService.warn('跳过一个不完整的文件配置（缺少路径或地址）');
+          continue;
+        }
+
         // 构建完整文件路径
-        const fullFilePath = path.isAbsolute(fileInfo.path)
-          ? fileInfo.path
-          : path.join(workspaceRoot, buildFolder, fileInfo.path);
+        const fullFilePath = path.isAbsolute(filePath)
+          ? filePath
+          : path.join(workspaceRoot, buildFolder, filePath);
 
         // 将文件路径和地址组合在一起
-        const fileAndAddress = `${fullFilePath}@${fileInfo.address}`;
+        const fileAndAddress = `${fullFilePath}@${fileAddress}`;
 
         // 将组合后的字符串添加到命令中，并用双引号包裹
         command += ` "${fileAndAddress}"`;
       }
-    }
-    else {
+    } else if (sftoolParam.load_file && sftoolParam.load_addr) {
+      // 兼容更旧的格式，直接使用 load_file 和 load_addr
+      command += ' write_flash';
+
+      // 构建完整文件路径
+      const fullFilePath = path.isAbsolute(sftoolParam.load_file)
+        ? sftoolParam.load_file
+        : path.join(workspaceRoot, buildFolder, sftoolParam.load_file);
+
+      const fileAndAddress = `${fullFilePath}@${sftoolParam.load_addr}`;
+      command += ` "${fileAndAddress}"`;
+    } else {
       throw new Error('sftool 参数文件中未找到有效的写入文件配置');
     }
     return command;
