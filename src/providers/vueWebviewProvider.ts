@@ -423,7 +423,7 @@ export class VueWebviewProvider {
 
           // === 核心修改部分 ===
           // 在 SDK 成功安装后，将路径添加到配置中
-          await configService.addSdkConfig(fullInstallPath);
+          await configService.addSdkConfig(fullInstallPath, toolsPathForEnv);
           // ====================
 
           // 如果设置了工具链路径，保存到配置中（与SDK路径绑定）
