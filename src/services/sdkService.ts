@@ -44,7 +44,7 @@ export class SdkService {
           const version = this.extractVersionFromPath(sdkPath);
           const isCurrent = currentSdkPath ? currentSdkPath.startsWith(sdkPath) : false;
           const isValid = this.validateSdkPath(sdkPath);
-          
+
           sdkVersions.push({
             version,
             path: sdkPath,
@@ -92,7 +92,7 @@ export class SdkService {
    */
   private extractVersionFromPath(sdkPath: string): string {
     const basename = path.basename(sdkPath);
-    
+
     // 尝试从目录名中提取版本号
     const versionMatch = basename.match(/(\d+\.\d+\.\d+)/);
     if (versionMatch) {
@@ -141,11 +141,11 @@ export class SdkService {
       // 检查当前平台对应的导出脚本
       const activationScript = this.getActivationScriptForPlatform(sdkPath);
       const isValid = activationScript !== null;
-      
+
       if (!isValid) {
         this.logService.debug(`SDK validation failed: no activation script found for current platform at ${sdkPath}`);
       }
-      
+
       return isValid;
     } catch (error) {
       this.logService.error(`Error validating SDK path ${sdkPath}:`, error);
@@ -158,7 +158,7 @@ export class SdkService {
    */
   private ensureSingleCurrentSdk(sdkVersions: SdkVersion[]): void {
     const currentSdks = sdkVersions.filter(sdk => sdk.current);
-    
+
     if (currentSdks.length > 1) {
       // 如果有多个当前 SDK，只保留第一个
       for (let i = 1; i < currentSdks.length; i++) {
@@ -174,7 +174,7 @@ export class SdkService {
     try {
       this.logService.info('Starting SDK version switch...');
       const sdkVersions = await this.discoverSiFliSdks();
-      
+
       if (sdkVersions.length === 0) {
         const message = '未发现任何 SiFli SDK。请先使用 SDK 管理器安装 SDK。';
         this.logService.warn(message);
@@ -235,12 +235,12 @@ export class SdkService {
       // 在终端中执行激活命令
       await this.executeActivationScript(activationScript);
 
+      // *** 关键修改: 显式更新配置，这会触发 onDidChangeConfiguration 事件 ***
+      await this.configService.updateConfigValue('sifliSdkExportScriptPath', activationScript.configPath);
+
       const successMessage = `已切换到 SiFli SDK 版本: ${sdk.version}`;
       this.logService.info(successMessage);
       vscode.window.showInformationMessage(successMessage);
-
-      // 重新加载配置以更新 UI
-      await this.configService.updateConfiguration();
 
     } catch (error) {
       this.logService.error('Error activating SDK:', error);
@@ -273,7 +273,7 @@ export class SdkService {
         };
       }
     }
-    
+
     return null;
   }
 
@@ -282,7 +282,7 @@ export class SdkService {
    */
   private async setEnvironmentVariable(terminal: vscode.Terminal, name: string, value: string): Promise<void> {
     this.logService.info(`Setting environment variable ${name}: ${value}`);
-    
+
     if (process.platform === 'win32') {
       // Windows PowerShell 设置环境变量
       terminal.sendText(`$env:${name}="${value}"`);
@@ -299,17 +299,17 @@ export class SdkService {
     try {
       this.logService.info(`Executing SDK activation script: ${activationScript.scriptPath}`);
       const terminal = await this.terminalService.getOrCreateSiFliTerminalAndCdProject();
-      
+
       const scriptDir = path.dirname(activationScript.scriptPath);
-      
+
       // 获取当前SDK的工具链路径
       const toolsPath = this.configService.getSdkToolsPath(scriptDir);
-      
+
       // 先设置 SIFLI_SDK_TOOLS_PATH 环境变量（如果有配置的话）
       if (toolsPath && toolsPath.trim() !== '') {
         await this.setEnvironmentVariable(terminal, 'SIFLI_SDK_TOOLS_PATH', toolsPath);
       }
-      
+
       // 直接执行导出脚本的绝对路径
       let executeCommand: string;
       if (process.platform === 'win32') {
@@ -323,10 +323,10 @@ export class SdkService {
 
       // 显示并聚焦终端
       terminal.show();
-      
+
       // 发送命令到终端
       terminal.sendText(executeCommand);
-      
+
       this.logService.info(`SDK activation script executed successfully: ${executeCommand}`);
     } catch (error) {
       this.logService.error('Error executing activation script:', error);
@@ -369,7 +369,7 @@ export class SdkService {
   public async removeSdkPath(sdkPath: string): Promise<void> {
     try {
       const installedPaths = this.configService.getInstalledSdkPaths();
-      
+
       if (installedPaths.includes(sdkPath)) {
         await this.configService.removeSdkConfig(sdkPath);
         vscode.window.showInformationMessage(`已移除 SDK 路径: ${sdkPath}`);
