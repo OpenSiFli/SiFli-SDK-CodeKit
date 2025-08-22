@@ -232,13 +232,6 @@ export class SdkService {
 
       this.logService.debug(`Using activation script: ${activationScript.scriptPath}`);
 
-      // 更新配置（保存找到的脚本路径用于配置）
-      await this.configService.updateConfigValue('sifliSdkExportScriptPath', activationScript.configPath);
-
-      // 添加到已安装 SDK 配置列表（如果不存在）
-      await this.configService.addSdkConfig(sdk.path);
-      this.logService.debug(`Added SDK to config list: ${sdk.path}`);
-
       // 在终端中执行激活命令
       await this.executeActivationScript(activationScript);
 
