@@ -165,7 +165,12 @@ export class StatusBarProvider {
     }
 
     if (this.currentSerialPortStatusItem) {
-      this.currentSerialPortStatusItem.text = `$(plug) COM: ${selectedSerialPort || 'N/A'}`;
+      // 获取用于显示的串口名称
+      const displayPortName = selectedSerialPort
+        ? SerialPortService.getDisplayPortName(selectedSerialPort)
+        : 'N/A';
+      
+      this.currentSerialPortStatusItem.text = `$(plug) COM: ${displayPortName}`;
       this.currentSerialPortStatusItem.tooltip = `当前下载串口: ${selectedSerialPort || '未选择'}\\n点击选择串口`;
     }
 
