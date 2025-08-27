@@ -6,3 +6,4 @@ dist/
 *.vsix
 .history
 issues_image
+.debug-extensions/

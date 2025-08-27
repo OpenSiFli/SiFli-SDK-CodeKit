@@ -127,7 +127,8 @@
     "publish:pre-release": "vsce publish --pre-release",
     "build:webview": "cd webview-vue && yarn build",
     "watch:webview": "cd webview-vue && yarn watch",
-    "copy-templates": "node scripts/copy-templates.js"
+    "copy-templates": "node scripts/copy-templates.js",
+    "setup-debug": "node scripts/setup-debug-extensions.js"
   },
   "devDependencies": {
     "@types/node": "^24.1.0",
@@ -142,5 +143,8 @@
   "dependencies": {
     "axios": "^1.10.0",
     "serialport": "^13.0.0"
-  }
+  },
+  "extensionPack": [
+    "eclipse-cdt.serial-monitor"
+  ]
 }
