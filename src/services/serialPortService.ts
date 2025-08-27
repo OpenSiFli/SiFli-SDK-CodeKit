@@ -14,7 +14,7 @@ export class SerialPortService {
   private logService: LogService;
 
   // 可选的波特率
-  private static readonly BAUD_RATES = [115200, 1000000, 1500000, 2000000, 3000000, 6000000];
+  private static readonly BAUD_RATES = [1000000, 115200, 1500000, 2000000, 3000000, 6000000];
 
   private constructor() {
     this.configService = ConfigService.getInstance();
@@ -132,7 +132,7 @@ export class SerialPortService {
       // 第二步：选择下载波特率
       const downloadBaudItems = SerialPortService.BAUD_RATES.map(baud => ({
         label: baud.toString(),
-        description: baud === this._downloadBaudRate ? '(当前)' : '',
+        // description: baud === this._downloadBaudRate ? '(当前)' : '',
         detail: `下载波特率: ${baud}`
       }));
 
@@ -148,7 +148,7 @@ export class SerialPortService {
       // 第三步：选择监视波特率
       const monitorBaudItems = SerialPortService.BAUD_RATES.map(baud => ({
         label: baud.toString(),
-        description: baud === this._monitorBaudRate ? '(当前)' : '',
+        // description: baud === this._monitorBaudRate ? '(当前)' : '',
         detail: `监视波特率: ${baud}`
       }));
 
