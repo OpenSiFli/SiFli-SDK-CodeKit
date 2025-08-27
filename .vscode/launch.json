@@ -3,7 +3,7 @@
     {
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}",
-        "--disable-extensions"
+        "--extensions-dir=${workspaceFolder}/.debug-extensions"
       ],
       "name": "Launch Extension",
       "request": "launch",
@@ -14,7 +14,7 @@
     {
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}",
-        "--disable-extensions"
+        "--extensions-dir=${workspaceFolder}/.debug-extensions"
       ],
       "name": "Launch Extension (Watch Mode)",
       "request": "launch",
@@ -25,7 +25,7 @@
     {
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}",
-        "--disable-extensions"
+        "--extensions-dir=${workspaceFolder}/.debug-extensions"
       ],
       "name": "Launch Extension (Vue WebView)",
       "request": "launch",

@@ -1,6 +1,7 @@
 export * from './config';
 export * from './board';
 export * from './sdk';
+// export * from './serialMonitor'; // 暂时注释掉避免 SerialPort 类型冲突
 
 export type TaskName = 
   | 'SiFli: Build'
@@ -18,4 +19,5 @@ export type CommandId =
   | 'extension.selectChipModule'
   | 'extension.selectDownloadPort'
   | 'extension.manageSiFliSdk'
-  | 'extension.switchSdkVersion';
+  | 'extension.switchSdkVersion'
+  | 'extension.openDeviceMonitor';

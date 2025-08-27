@@ -2,11 +2,13 @@ import * as vscode from 'vscode';
 import { CMD_PREFIX } from '../constants';
 import { ConfigService } from '../services/configService';
 import { SerialPortService } from '../services/serialPortService';
+import { SerialMonitorService } from '../services/serialMonitorService';
 
 export class StatusBarProvider {
   private static instance: StatusBarProvider;
   private configService: ConfigService;
   private serialPortService: SerialPortService;
+  private serialMonitorService: SerialMonitorService;
   
   // 状态栏按钮
   private compileBtn?: vscode.StatusBarItem;
@@ -18,10 +20,12 @@ export class StatusBarProvider {
   private sdkManageBtn?: vscode.StatusBarItem;
   private currentSerialPortStatusItem?: vscode.StatusBarItem;
   private currentSdkVersionStatusItem?: vscode.StatusBarItem;
+  private deviceMonitorBtn?: vscode.StatusBarItem;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
     this.serialPortService = SerialPortService.getInstance();
+    this.serialMonitorService = SerialMonitorService.getInstance();
   }
 
   public static getInstance(): StatusBarProvider {
@@ -127,6 +131,16 @@ export class StatusBarProvider {
     this.menuconfigBtn.show();
     context.subscriptions.push(this.menuconfigBtn);
 
+    // 设备监视按钮
+    this.deviceMonitorBtn = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      93
+    );
+    this.deviceMonitorBtn.text = '$(device-desktop)';
+    this.deviceMonitorBtn.command = CMD_PREFIX + 'openDeviceMonitor';
+    this.deviceMonitorBtn.show();
+    context.subscriptions.push(this.deviceMonitorBtn);
+
     this.updateStatusBarItems();
   }
 
@@ -159,6 +173,10 @@ export class StatusBarProvider {
       this.menuconfigBtn.tooltip = '打开 SiFli Menuconfig';
     }
 
+    if (this.deviceMonitorBtn) {
+      this.deviceMonitorBtn.tooltip = '监视设备 - 打开串口监听器';
+    }
+
     if (this.currentBoardStatusItem) {
       this.currentBoardStatusItem.text = `$(circuit-board) SiFli Board: ${selectedBoardName || 'N/A'} (J${numThreads})`;
       this.currentBoardStatusItem.tooltip = `当前 SiFli 芯片模组: ${selectedBoardName || '未选择'}\\n编译线程数: J${numThreads}\\n点击切换芯片模组或修改线程数`;
@@ -186,6 +204,83 @@ export class StatusBarProvider {
   }
 
   /**
+   * 打开设备监视器
+   */
+  public async openDeviceMonitor(): Promise<void> {
+    try {
+      // 初始化串口监视器服务
+      await this.serialMonitorService.initialize();
+      
+      // 获取当前选择的串口
+      const selectedSerialPort = this.serialPortService.selectedSerialPort;
+      
+      // 打开串口监听器
+      const success = await this.serialMonitorService.openSerialMonitor(
+        selectedSerialPort || undefined
+      );
+      
+      if (success) {
+        vscode.window.showInformationMessage('设备监视器已启动');
+      } else {
+        vscode.window.showWarningMessage('设备监视器启动失败或已取消');
+      }
+    } catch (error) {
+      console.error('打开设备监视器失败:', error);
+      vscode.window.showErrorMessage(`打开设备监视器失败: ${error}`);
+    }
+  }
+
+  /**
+   * 在下载操作前处理串口监视器
+   */
+  public async handlePreDownloadOperation(): Promise<boolean> {
+    try {
+      if (this.serialMonitorService.hasActiveMonitor()) {
+        console.log('检测到活动的串口监视器，正在关闭...');
+        const closed = await this.serialMonitorService.closeSerialMonitor();
+        if (closed) {
+          console.log('串口监视器已关闭，可以开始下载操作');
+          return true;
+        } else {
+          console.warn('关闭串口监视器失败，但继续下载操作');
+          return true;
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('处理下载前操作失败:', error);
+      return true; // 即使失败也继续下载操作
+    }
+  }
+
+  /**
+   * 在下载操作后恢复串口监视器
+   */
+  public async handlePostDownloadOperation(): Promise<void> {
+    try {
+      // 检查是否可以恢复（有之前的配置且当前没有活动监视器）
+      if (this.serialMonitorService.canResume()) {
+        console.log('下载操作完成，正在恢复串口监视器...');
+        const resumed = await this.serialMonitorService.resumeSerialMonitor();
+        if (resumed) {
+          console.log('串口监视器已恢复');
+          vscode.window.showInformationMessage('下载完成，串口监视器已自动重新打开');
+        } else {
+          console.warn('自动恢复串口监视器失败');
+          vscode.window.showWarningMessage(
+            '下载完成，但自动恢复串口监视器失败。您可以手动点击监视器按钮重新打开。'
+          );
+        }
+      }
+    } catch (error) {
+      console.error('处理下载后操作失败:', error);
+      vscode.window.showWarningMessage(
+        '下载完成，但恢复串口监视器时出现错误。您可以手动点击监视器按钮重新打开。'
+      );
+    }
+  }
+
+  /**
    * 清理所有状态栏按钮
    */
   public dispose(): void {
@@ -194,6 +289,7 @@ export class StatusBarProvider {
     this.cleanBtn?.dispose();
     this.downloadBtn?.dispose();
     this.menuconfigBtn?.dispose();
+    this.deviceMonitorBtn?.dispose();
     this.currentSdkVersionStatusItem?.dispose();
     this.currentBoardStatusItem?.dispose();
     this.currentSerialPortStatusItem?.dispose();

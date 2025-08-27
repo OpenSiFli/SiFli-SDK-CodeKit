@@ -48,6 +48,10 @@
       {
         "command": "extension.selectDownloadPort",
         "title": "选择下载串口"
+      },
+      {
+        "command": "extension.openDeviceMonitor",
+        "title": "监视设备"
       }
     ],
     "configuration": {

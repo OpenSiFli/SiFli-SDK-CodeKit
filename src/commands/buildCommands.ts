@@ -6,6 +6,7 @@ import { ConfigService } from '../services/configService';
 import { BoardService } from '../services/boardService';
 import { SerialPortService } from '../services/serialPortService';
 import { TerminalService } from '../services/terminalService';
+import { StatusBarProvider } from '../providers/statusBarProvider';
 
 export class BuildCommands {
   private static instance: BuildCommands;
@@ -13,12 +14,14 @@ export class BuildCommands {
   private boardService: BoardService;
   private serialPortService: SerialPortService;
   private terminalService: TerminalService;
+  private statusBarProvider: StatusBarProvider;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
     this.boardService = BoardService.getInstance();
     this.serialPortService = SerialPortService.getInstance();
     this.terminalService = TerminalService.getInstance();
+    this.statusBarProvider = StatusBarProvider.getInstance();
   }
 
   public static getInstance(): BuildCommands {
@@ -162,6 +165,9 @@ export class BuildCommands {
         }
       }
 
+      // 在下载操作前处理串口监视器
+      await this.statusBarProvider.handlePreDownloadOperation();
+
       const downloadCommand = await this.boardService.getSftoolDownloadCommand(
         selectedBoardName, 
         selectedSerialPort
@@ -171,9 +177,15 @@ export class BuildCommands {
         downloadCommand, 
         TASK_NAMES.DOWNLOAD
       );
+    
     } catch (error) {
       console.error('[BuildCommands] Error in executeDownloadTask:', error);
       vscode.window.showErrorMessage(`下载失败: ${error}`);
+      
+      // 即使发生错误也尝试恢复串口监视器
+      setTimeout(async () => {
+        await this.statusBarProvider.handlePostDownloadOperation();
+      }, 1000);
     }
   }
 
