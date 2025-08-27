@@ -46,8 +46,8 @@
         "title": "切换 SiFli SDK 版本"
       },
       {
-        "command": "extension.selectDownloadPort",
-        "title": "选择下载串口"
+        "command": "extension.selectPort",
+        "title": "选择串口配置"
       },
       {
         "command": "extension.openDeviceMonitor",

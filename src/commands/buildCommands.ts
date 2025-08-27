@@ -170,7 +170,8 @@ export class BuildCommands {
 
       const downloadCommand = await this.boardService.getSftoolDownloadCommand(
         selectedBoardName, 
-        selectedSerialPort
+        selectedSerialPort,
+        this.serialPortService.downloadBaudRate
       );
       
       await this.terminalService.executeShellCommandInSiFliTerminal(

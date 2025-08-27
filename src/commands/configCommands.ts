@@ -107,11 +107,11 @@ export class ConfigCommands {
   }
 
   /**
-   * 选择下载串口
+   * 选择端口配置（包括串口、下载波特率、监视波特率）
    */
-  public async selectDownloadPort(): Promise<void> {
-    const selectedPort = await this.serialPortService.selectSerialPort();
-    if (selectedPort) {
+  public async selectPort(): Promise<void> {
+    const result = await this.serialPortService.selectPort();
+    if (result) {
       // 更新状态栏显示
       this.statusBarProvider.updateStatusBarItems();
     }

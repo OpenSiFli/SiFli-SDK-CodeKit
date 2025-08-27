@@ -127,8 +127,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.commands.registerCommand(CMD_PREFIX + 'selectChipModule', () => 
         configCommands.selectChipModule()
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'selectDownloadPort', () => 
-        configCommands.selectDownloadPort()
+      vscode.commands.registerCommand(CMD_PREFIX + 'selectPort', () => 
+        configCommands.selectPort()
       ),
       vscode.commands.registerCommand(CMD_PREFIX + 'manageSiFliSdk', () => 
         vueWebviewProvider.createSdkManagementWebview(context)

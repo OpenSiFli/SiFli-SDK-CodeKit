@@ -8,8 +8,13 @@ import { LogService } from './logService';
 export class SerialPortService {
   private static instance: SerialPortService;
   private _selectedSerialPort: string | null = null;
+  private _downloadBaudRate: number = 1000000; // 默认下载波特率
+  private _monitorBaudRate: number = 1000000; // 默认监视波特率
   private configService: ConfigService;
   private logService: LogService;
+
+  // 可选的波特率
+  private static readonly BAUD_RATES = [115200, 1000000, 1500000, 2000000, 3000000, 6000000];
 
   private constructor() {
     this.configService = ConfigService.getInstance();
@@ -25,6 +30,22 @@ export class SerialPortService {
 
   public get selectedSerialPort(): string | null {
     return this._selectedSerialPort;
+  }
+
+  public get downloadBaudRate(): number {
+    return this._downloadBaudRate;
+  }
+
+  public get monitorBaudRate(): number {
+    return this._monitorBaudRate;
+  }
+
+  public set downloadBaudRate(baudRate: number) {
+    this._downloadBaudRate = baudRate;
+  }
+
+  public set monitorBaudRate(baudRate: number) {
+    this._monitorBaudRate = baudRate;
   }
 
   /**
@@ -81,10 +102,11 @@ export class SerialPortService {
   }
 
   /**
-   * 显示串口选择对话框
+   * 显示串口选择对话框，包括串口、下载波特率和监视波特率的选择
    */
-  public async selectSerialPort(): Promise<string | undefined> {
+  public async selectPort(): Promise<{ port?: string; downloadBaud?: number; monitorBaud?: number } | undefined> {
     try {
+      // 第一步：选择串口
       const ports = await this.getSerialPorts();
       
       if (ports.length === 0) {
@@ -103,21 +125,84 @@ export class SerialPortService {
         canPickMany: false
       });
 
-      if (selectedPort) {
-        this._selectedSerialPort = selectedPort.label;
-        // 保存选择的串口到配置
-        await this.configService.updateConfigValue('selectedSerialPort', selectedPort.label);
-        this.logService.info(`Serial port selected and saved: ${selectedPort.label}`);
-        vscode.window.showInformationMessage(`已选择串口: ${selectedPort.label}`);
-        return selectedPort.label;
+      if (!selectedPort) {
+        return undefined;
       }
 
-      return undefined;
+      // 第二步：选择下载波特率
+      const downloadBaudItems = SerialPortService.BAUD_RATES.map(baud => ({
+        label: baud.toString(),
+        description: baud === this._downloadBaudRate ? '(当前)' : '',
+        detail: `下载波特率: ${baud}`
+      }));
+
+      const selectedDownloadBaud = await vscode.window.showQuickPick(downloadBaudItems, {
+        placeHolder: `选择下载波特率 (当前: ${this._downloadBaudRate})`,
+        canPickMany: false
+      });
+
+      if (!selectedDownloadBaud) {
+        return undefined;
+      }
+
+      // 第三步：选择监视波特率
+      const monitorBaudItems = SerialPortService.BAUD_RATES.map(baud => ({
+        label: baud.toString(),
+        description: baud === this._monitorBaudRate ? '(当前)' : '',
+        detail: `监视波特率: ${baud}`
+      }));
+
+      const selectedMonitorBaud = await vscode.window.showQuickPick(monitorBaudItems, {
+        placeHolder: `选择监视波特率 (当前: ${this._monitorBaudRate})`,
+        canPickMany: false
+      });
+
+      if (!selectedMonitorBaud) {
+        return undefined;
+      }
+
+      // 应用选择的配置
+      const port = selectedPort.label;
+      const downloadBaud = parseInt(selectedDownloadBaud.label);
+      const monitorBaud = parseInt(selectedMonitorBaud.label);
+
+      this._selectedSerialPort = port;
+      this._downloadBaudRate = downloadBaud;
+      this._monitorBaudRate = monitorBaud;
+
+      // 保存配置
+      await this.configService.updateConfigValue('selectedSerialPort', port);
+      
+      this.logService.info(`Port configuration updated: ${port}, download: ${downloadBaud}, monitor: ${monitorBaud}`);
+      vscode.window.showInformationMessage(
+        `已配置串口: ${port}\n下载波特率: ${downloadBaud}\n监视波特率: ${monitorBaud}`
+      );
+
+      return {
+        port,
+        downloadBaud,
+        monitorBaud
+      };
     } catch (error) {
-      console.error('[SerialPortService] Error in selectSerialPort:', error);
-      vscode.window.showErrorMessage(`选择串口时发生错误: ${error}`);
+      console.error('[SerialPortService] Error in selectPort:', error);
+      vscode.window.showErrorMessage(`选择串口配置时发生错误: ${error}`);
       return undefined;
     }
+  }
+
+  /**
+   * 保持兼容性的串口选择方法（仅选择串口）
+   */
+  public async selectSerialPort(): Promise<string | undefined> {
+    const result = await this.selectPort();
+    return result?.port;
+  }
+
+  /**
+   * 获取可用的波特率列表
+   */
+  public static getBaudRates(): number[] {
+    return [...SerialPortService.BAUD_RATES];
   }
 
   /**

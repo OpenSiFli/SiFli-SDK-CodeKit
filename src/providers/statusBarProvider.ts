@@ -77,7 +77,7 @@ export class StatusBarProvider {
       99
     );
     this.currentSerialPortStatusItem.text = '$(plug) COM: N/A';
-    this.currentSerialPortStatusItem.command = CMD_PREFIX + 'selectDownloadPort';
+    this.currentSerialPortStatusItem.command = CMD_PREFIX + 'selectPort';
     this.currentSerialPortStatusItem.show();
     context.subscriptions.push(this.currentSerialPortStatusItem);
 
@@ -189,7 +189,7 @@ export class StatusBarProvider {
         : 'N/A';
       
       this.currentSerialPortStatusItem.text = `$(plug) COM: ${displayPortName}`;
-      this.currentSerialPortStatusItem.tooltip = `当前下载串口: ${selectedSerialPort || '未选择'}\\n点击选择串口`;
+      this.currentSerialPortStatusItem.tooltip = `当前串口配置: ${selectedSerialPort || '未选择'}\\n下载波特率: ${this.serialPortService.downloadBaudRate}\\n监视波特率: ${this.serialPortService.monitorBaudRate}\\n点击配置串口`;
     }
 
     if (this.sdkManageBtn) {
@@ -216,7 +216,8 @@ export class StatusBarProvider {
       
       // 打开串口监听器
       const success = await this.serialMonitorService.openSerialMonitor(
-        selectedSerialPort || undefined
+        selectedSerialPort || undefined,
+        this.serialPortService.monitorBaudRate
       );
       
       if (success) {

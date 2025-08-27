@@ -202,7 +202,7 @@ export class BoardService {
   /**
    * 生成下载命令
    */
-  public async getSftoolDownloadCommand(boardName: string, serialPortNum: string): Promise<string> {
+  public async getSftoolDownloadCommand(boardName: string, serialPortNum: string, baudRate?: number): Promise<string> {
     const sftoolParam = await this.readSftoolParamJson(boardName);
 
     if (!sftoolParam) {
@@ -219,6 +219,11 @@ export class BoardService {
 
     // 构建基础命令
     let command = `sftool -p ${serialPortNum} -c ${sftoolParam.chip}`;
+
+    // 添加波特率参数
+    if (baudRate) {
+      command += ` -b ${baudRate}`;
+    }
 
     if (sftoolParam.memory) {
       command += ` -m ${sftoolParam.memory.toLowerCase()}`;
