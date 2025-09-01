@@ -3,6 +3,7 @@ import { CMD_PREFIX } from '../constants';
 import { ConfigService } from '../services/configService';
 import { SerialPortService } from '../services/serialPortService';
 import { SerialMonitorService } from '../services/serialMonitorService';
+import { SifliSidebarManager } from './sifliSidebarProvider';
 
 export class StatusBarProvider {
   private static instance: StatusBarProvider;
@@ -200,6 +201,14 @@ export class StatusBarProvider {
       const sdkVersionText = currentSdk ? currentSdk.version : 'N/A';
       this.currentSdkVersionStatusItem.text = `SDK: ${sdkVersionText}`;
       this.currentSdkVersionStatusItem.tooltip = `当前 SiFli SDK 版本: ${sdkVersionText}\\n点击切换 SDK 版本`;
+    }
+
+    // 同时更新侧边栏
+    try {
+      const sidebarManager = SifliSidebarManager.getInstance();
+      sidebarManager.refresh();
+    } catch (error) {
+      // 忽略错误，可能侧边栏还未初始化
     }
   }
 
