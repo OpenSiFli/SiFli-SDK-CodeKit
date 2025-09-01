@@ -11,6 +11,7 @@ import { ConfigCommands } from './commands/configCommands';
 import { SdkCommands } from './commands/sdkCommands';
 import { StatusBarProvider } from './providers/statusBarProvider';
 import { VueWebviewProvider } from './providers/vueWebviewProvider';
+import { SifliSidebarManager } from './providers/sifliSidebarProvider';
 import { isSiFliProject } from './utils/projectUtils';
 
 /**
@@ -45,6 +46,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   
   // 初始化 Vue WebView 提供者
   const vueWebviewProvider = VueWebviewProvider.getInstance();
+
+  // 初始化侧边栏管理器
+  const sidebarManager = SifliSidebarManager.getInstance();
 
   // 注册输出通道和 Git 输出通道到订阅列表
   context.subscriptions.push(
@@ -82,6 +86,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // 初始化状态栏
     statusBarProvider.initializeStatusBarItems(context);
+
+    // 注册侧边栏
+    sidebarManager.register(context);
 
     // 延迟执行初始设置
     setTimeout(async () => {
@@ -151,6 +158,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   } else {
     logService.info('Not a SiFli project. Extension features will not be activated.');
+    // 即使不是 SiFli 项目，也注册侧边栏，允许用户管理 SDK
+    sidebarManager.register(context);
   }
 }
 
@@ -164,6 +173,10 @@ export function deactivate(): void {
   // 清理状态栏
   const statusBarProvider = StatusBarProvider.getInstance();
   statusBarProvider.dispose();
+  
+  // 清理侧边栏
+  const sidebarManager = SifliSidebarManager.getInstance();
+  sidebarManager.dispose();
   
   // 清理终端
   const terminalService = TerminalService.getInstance();

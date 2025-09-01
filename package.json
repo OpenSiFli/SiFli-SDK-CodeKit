@@ -52,8 +52,41 @@
       {
         "command": "extension.openDeviceMonitor",
         "title": "监视设备"
+      },
+      {
+        "command": "sifliSidebar.refresh",
+        "title": "刷新",
+        "icon": "$(refresh)"
       }
     ],
+    "views": {
+      "sifli-sidebar": [
+        {
+          "id": "sifliSdkManager",
+          "name": "SDK 管理",
+          "when": "workspaceFolderCount > 0",
+          "icon": "$(cloud-download)"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sifli-sidebar",
+          "title": "SiFli SDK",
+          "icon": "public/SiFli.svg"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "sifliSidebar.refresh",
+          "when": "view == sifliSdkManager",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "SiFli Extension Configuration",
       "properties": {
