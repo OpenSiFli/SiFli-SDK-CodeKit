@@ -1,24 +1,21 @@
 import * as vscode from 'vscode';
-import { 
-  SerialMonitorExtension, 
-  SerialMonitorApiV1, 
-  SerialFilter, 
-  SerialOptions 
-} from '../types/serialMonitor';
+import { BuiltinSerialMonitorService } from './builtinSerialMonitorService';
 
 /**
  * 串口监听器服务
- * 负责管理 eclipse-cdt.serial-monitor 扩展的串口监听功能
+ * 使用内置串口监视器实现，提供统一的串口监视功能
  */
 export class SerialMonitorService {
   private static instance: SerialMonitorService;
-  private serialMonitorApi: SerialMonitorApiV1 | undefined;
-  private currentSerialHandle: string | undefined;
+  private builtinService: BuiltinSerialMonitorService;
+  private currentConnectionId: string | undefined;
   private defaultBaudRate = 1000000;
-  private lastUsedSerialPort: string | undefined; // 记住上次使用的串口
-  private lastUsedBaudRate: number | undefined; // 记住上次使用的波特率
+  private lastUsedSerialPort: string | undefined;
+  private lastUsedBaudRate: number | undefined;
 
-  private constructor() {}
+  private constructor() {
+    this.builtinService = BuiltinSerialMonitorService.getInstance();
+  }
 
   public static getInstance(): SerialMonitorService {
     if (!SerialMonitorService.instance) {
@@ -32,26 +29,7 @@ export class SerialMonitorService {
    */
   public async initialize(): Promise<void> {
     try {
-      // 获取 eclipse-cdt.serial-monitor 扩展
-      const extension = vscode.extensions.getExtension('eclipse-cdt.serial-monitor');
-      
-      if (!extension) {
-        vscode.window.showErrorMessage('Serial Monitor 扩展未安装');
-        return;
-      }
-
-      if (!extension.isActive) {
-        // 激活扩展
-        const activated = await extension.activate() as SerialMonitorExtension;
-        this.serialMonitorApi = activated.getApi(1);
-      } else {
-        const activated = extension.exports as SerialMonitorExtension;
-        this.serialMonitorApi = activated.getApi(1);
-      }
-
-      if (!this.serialMonitorApi) {
-        vscode.window.showErrorMessage('无法获取 Serial Monitor API');
-      }
+      console.log('串口监听器服务已初始化（使用内置实现）');
     } catch (error) {
       console.error('初始化串口监听器服务失败:', error);
       vscode.window.showErrorMessage(`初始化串口监听器失败: ${error}`);
@@ -65,34 +43,19 @@ export class SerialMonitorService {
    */
   public async openSerialMonitor(serialPort?: string, baudRate?: number): Promise<boolean> {
     try {
-      if (!this.serialMonitorApi) {
-        await this.initialize();
-      }
-
-      if (!this.serialMonitorApi) {
-        return false;
-      }
-
-      // 构建选项
-      const options: SerialOptions = {
-        baudRate: baudRate || this.defaultBaudRate
-      };
-
-      // 构建过滤器（如果提供了串口路径）
-      const filter: SerialFilter | undefined = serialPort ? { path: serialPort } : undefined;
-
-      // 打开串口监听器
-      this.currentSerialHandle = await this.serialMonitorApi.openSerial(
-        filter,
-        options,
+      const actualBaudRate = baudRate || this.defaultBaudRate;
+      
+      this.currentConnectionId = await this.builtinService.openSerialMonitor(
+        serialPort,
+        actualBaudRate,
         'SiFli Device Monitor'
       );
 
-      if (this.currentSerialHandle) {
-        console.log(`串口监听器已打开: ${this.currentSerialHandle}`);
+      if (this.currentConnectionId) {
+        console.log(`串口监听器已打开: ${this.currentConnectionId}`);
         // 记住当前使用的配置
         this.lastUsedSerialPort = serialPort;
-        this.lastUsedBaudRate = baudRate || this.defaultBaudRate;
+        this.lastUsedBaudRate = actualBaudRate;
         return true;
       } else {
         console.log('用户取消了串口选择或打开失败');
@@ -107,54 +70,27 @@ export class SerialMonitorService {
 
   /**
    * 关闭当前串口监听器
-   * 通过查找并关闭相关的终端来释放串口资源
    */
   public async closeSerialMonitor(): Promise<boolean> {
     try {
-      if (!this.currentSerialHandle || !this.serialMonitorApi) {
+      if (!this.currentConnectionId) {
         return true;
       }
 
-      // 查找并关闭相关的终端
-      const terminals = vscode.window.terminals;
-      let closedAny = false;
+      const success = await this.builtinService.closeSerialMonitor(this.currentConnectionId);
       
-      for (const terminal of terminals) {
-        // 检查终端名称是否包含串口监视器相关的关键词
-        if (this.isSerialMonitorTerminal(terminal)) {
-          console.log(`正在关闭串口监视器终端: ${terminal.name}`);
-          terminal.dispose();
-          closedAny = true;
-        }
+      if (success) {
+        console.log('串口监听器已关闭');
+        this.currentConnectionId = undefined;
       }
-
-      if (closedAny) {
-        console.log('已关闭串口监视器相关终端');
-        // 给一点时间让资源释放
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
-      // 清除当前句柄，标记为已关闭
-      this.currentSerialHandle = undefined;
-      console.log('串口监听器已关闭');
       
-      return true;
+      return success;
     } catch (error) {
       console.error('关闭串口监听器失败:', error);
-      // 即使出错也清除句柄
-      this.currentSerialHandle = undefined;
+      // 即使出错也清除连接ID
+      this.currentConnectionId = undefined;
       return false;
     }
-  }
-
-  /**
-   * 判断终端是否是串口监视器相关的终端
-   */
-  private isSerialMonitorTerminal(terminal: vscode.Terminal): boolean {
-    const terminalName = terminal.name;
-    
-    // 检查终端名称中是否包含我们的串口监视器标识
-    return terminalName.includes('SiFli Device Monitor');
   }
 
   /**
@@ -179,10 +115,6 @@ export class SerialMonitorService {
       
       if (success) {
         console.log('串口监听器已重新打开');
-        // 尝试显示面板
-        setTimeout(async () => {
-          await this.revealSerialMonitor();
-        }, 500);
       } else {
         console.log('重新打开串口监听器失败');
       }
@@ -199,11 +131,13 @@ export class SerialMonitorService {
    */
   public async revealSerialMonitor(): Promise<boolean> {
     try {
-      if (!this.currentSerialHandle || !this.serialMonitorApi) {
+      if (!this.currentConnectionId) {
         return false;
       }
 
-      return await this.serialMonitorApi.revealSerial(this.currentSerialHandle);
+      // 对于内置实现，终端会自动显示，这里返回 true
+      console.log('串口监听器面板已显示');
+      return true;
     } catch (error) {
       console.error('显示串口监听器面板失败:', error);
       return false;
@@ -214,14 +148,14 @@ export class SerialMonitorService {
    * 检查是否有活动的串口监听器
    */
   public hasActiveMonitor(): boolean {
-    return !!this.currentSerialHandle;
+    return !!this.currentConnectionId;
   }
 
   /**
    * 获取当前串口句柄
    */
   public getCurrentHandle(): string | undefined {
-    return this.currentSerialHandle;
+    return this.currentConnectionId;
   }
 
   /**
@@ -229,6 +163,7 @@ export class SerialMonitorService {
    */
   public setDefaultBaudRate(baudRate: number): void {
     this.defaultBaudRate = baudRate;
+    this.builtinService.setDefaultBaudRate(baudRate);
   }
 
   /**
@@ -252,7 +187,7 @@ export class SerialMonitorService {
    * 重置配置（清除记录的串口信息）
    */
   public resetConfig(): void {
-    this.currentSerialHandle = undefined;
+    this.currentConnectionId = undefined;
     this.lastUsedSerialPort = undefined;
     this.lastUsedBaudRate = undefined;
     console.log('串口监听器配置已重置');
@@ -262,6 +197,28 @@ export class SerialMonitorService {
    * 检查是否有上次使用的配置可以恢复
    */
   public canResume(): boolean {
-    return !!(this.lastUsedSerialPort || this.lastUsedBaudRate) && !this.currentSerialHandle;
+    return !!(this.lastUsedSerialPort || this.lastUsedBaudRate) && !this.currentConnectionId;
+  }
+
+  /**
+   * 列出可用的串口
+   */
+  public async listSerialPorts(): Promise<{ path: string; manufacturer?: string; serialNumber?: string }[]> {
+    return await this.builtinService.listSerialPorts();
+  }
+
+  /**
+   * 关闭所有串口监视器
+   */
+  public async closeAllSerialMonitors(): Promise<void> {
+    await this.builtinService.closeAllSerialMonitors();
+    this.currentConnectionId = undefined;
+  }
+
+  /**
+   * 获取活动连接数量
+   */
+  public getActiveConnectionCount(): number {
+    return this.builtinService.getActiveConnectionCount();
   }
 }

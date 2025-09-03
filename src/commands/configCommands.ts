@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ConfigService } from '../services/configService';
 import { BoardService } from '../services/boardService';
 import { SerialPortService } from '../services/serialPortService';
+import { SerialMonitorService } from '../services/serialMonitorService';
 import { SdkService } from '../services/sdkService';
 import { StatusBarProvider } from '../providers/statusBarProvider';
 import { HAS_RUN_INITIAL_SETUP_KEY } from '../constants';
@@ -11,6 +12,7 @@ export class ConfigCommands {
   private configService: ConfigService;
   private boardService: BoardService;
   private serialPortService: SerialPortService;
+  private serialMonitorService: SerialMonitorService;
   private sdkService: SdkService;
   private statusBarProvider: StatusBarProvider;
 
@@ -18,6 +20,7 @@ export class ConfigCommands {
     this.configService = ConfigService.getInstance();
     this.boardService = BoardService.getInstance();
     this.serialPortService = SerialPortService.getInstance();
+    this.serialMonitorService = SerialMonitorService.getInstance();
     this.sdkService = SdkService.getInstance();
     this.statusBarProvider = StatusBarProvider.getInstance();
   }
@@ -155,6 +158,38 @@ export class ConfigCommands {
       }
     } catch (error) {
       console.error('[ConfigCommands] Error in promptForInitialBoardSelection:', error);
+    }
+  }
+
+  /**
+   * 列出可用的串口
+   */
+  public async listSerialPorts(): Promise<void> {
+    try {
+      const ports = await this.serialMonitorService.listSerialPorts();
+      
+      if (ports.length === 0) {
+        vscode.window.showInformationMessage('没有找到可用的串口设备');
+        return;
+      }
+
+      const items = ports.map(port => ({
+        label: port.path,
+        description: port.manufacturer || '未知制造商',
+        detail: port.serialNumber ? `序列号: ${port.serialNumber}` : '无序列号信息'
+      }));
+
+      const selected = await vscode.window.showQuickPick(items, {
+        placeHolder: '可用的串口设备',
+        title: `发现 ${ports.length} 个串口设备`
+      });
+
+      if (selected) {
+        vscode.window.showInformationMessage(`已选择串口: ${selected.label}`);
+      }
+    } catch (error) {
+      console.error('列出串口失败:', error);
+      vscode.window.showErrorMessage(`获取串口列表失败: ${error}`);
     }
   }
 }

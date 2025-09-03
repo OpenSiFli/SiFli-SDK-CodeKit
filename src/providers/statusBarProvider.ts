@@ -241,6 +241,24 @@ export class StatusBarProvider {
   }
 
   /**
+   * 关闭设备监视器
+   */
+  public async closeDeviceMonitor(): Promise<void> {
+    try {
+      const success = await this.serialMonitorService.closeSerialMonitor();
+      
+      if (success) {
+        vscode.window.showInformationMessage('设备监视器已关闭');
+      } else {
+        vscode.window.showWarningMessage('关闭设备监视器失败');
+      }
+    } catch (error) {
+      console.error('关闭设备监视器失败:', error);
+      vscode.window.showErrorMessage(`关闭设备监视器失败: ${error}`);
+    }
+  }
+
+  /**
    * 在下载操作前处理串口监视器
    */
   public async handlePreDownloadOperation(): Promise<boolean> {

@@ -54,6 +54,14 @@
         "title": "监视设备"
       },
       {
+        "command": "extension.closeDeviceMonitor",
+        "title": "关闭设备监视器"
+      },
+      {
+        "command": "extension.listSerialPorts",
+        "title": "列出可用串口"
+      },
+      {
         "command": "sifliSidebar.refresh",
         "title": "刷新",
         "icon": "$(refresh)"
@@ -180,8 +188,5 @@
   "dependencies": {
     "axios": "^1.10.0",
     "serialport": "^13.0.0"
-  },
-  "extensionPack": [
-    "eclipse-cdt.serial-monitor"
-  ]
+  }
 }
