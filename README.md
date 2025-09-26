@@ -16,6 +16,12 @@
 
 ## 🚀 插件版本更新日志
 
+### v1.1.3
+
+- 新增串口监视器，根据串口设置简单配置调试助手，调试信息查看更方便。
+- 增加插件侧边栏，环境搭建更便捷，一站式开发。
+- 增加对自定义板子的支持。
+
 ### v1.1.0
 
 - 新增SDK管理器，提供多种不同版本SDK及其相关工具链下载功能，一键式安装。
@@ -38,11 +44,20 @@
 ### v1.0.3
 
 - 新增支持多款 SiFli 芯片模组，包括：
-  - sf32lb52 系列：lcd_52d、lcd_base、lcd_n16r8、lchspi-ulp、lchspi-ulp_base、nano_52b、nano_52j、nano_base
-  - sf32lb56 系列：lcd_a128r12n1、lcd_base、lcd_n16r12n1
-  - sf32lb58 系列：lcd_a128r32n1_dsi、lcd_base、lcd_n16r32n1_dpi、lcd_n16r32n1_dsi、lcd_n16r64n4
+  - ec 系列：
+    - lb551xxx、lb555xxx、lb557xxx、lb561xxx、lb563xxx、lb567、lb583、lb585、lb587、lb587_a2
+  - eh 系列：
+    - lb52xu、lb56xu、lb520、lb520s、lb523、lb523_dual、lb525、lb551、lb555、lb561、lb563、ss6500、ss6700
+  - sf32lb52 系列：
+    - core:core_52j_e8、core_52j_n16、core_base、core_e8r16、core_n16r16
+    - lcd :lcd_52d、lcd_a128r16、lcd_base、lcd_n16r8、lcd_n16r8_jdi、lcd_lchspi-ulp、lcd_lchspi-ulp_base
+    - nano:nano_52b、nano_52j、nano_52j_a128、nano_a128r16、nano_base、nano_n4、nano_n16r16
+  - sf32lb56 系列：
+    - lcd :lcd_a128r12n1、lcd_base、lcd_n16r12n1
+  - sf32lb58 系列：
+    - lcd :lcd_a128r32n1_dsi、lcd_base、lcd_n16r32n1_dpi、lcd_n16r32n1_dsi、lcd_n16r64n4
 
-- 首次激活插件时引导选择芯片模组，默认选择为 `sf32lb52-lchspi-ulp（黄山派）`。
+- 首次激活插件时引导选择芯片模组，注意黄山派模组为 `sf32lb52-lchspi-ulp`。
 
 ### v1.0.2
 
@@ -105,6 +120,7 @@
   - 清理构建产物
   - 烧录下载
   - 进入menuconfig设置界面
+  - 串口监视器
 
 - **串口自动识别机制**
   - 自动检测串口设备
@@ -112,13 +128,13 @@
   - 多设备弹窗选择
   - 无设备提示用户
 
-- **自动保存机制**
-  - 所有任务执行前会保存所有文件，避免旧代码编译
-
 - **SDK管理器**
   - 新增SDK管理器，实现SDK和工具链的一键下载，通过SDK管理器下载的SDK无需额外配置终端地址和SDK脚本路径
   - 增加SDK版本切换功能，点击即可迅速完成不同SDK版本之间的切换
 
+- **对自定义板子的指令支持**
+  - 在与project同级目录下创建boards存放板子，插件可自动识别，点击SiFli Board即可切换
+  - 对于在其他路径(非SDK\customer\boards，非project同级目录下的boards)，在设备中搜索`Sifli-sdk-codekit: Custom Board Search Path`填入板子路径即可完成
 ---
 
 ## 使用指南
@@ -130,6 +146,28 @@
 3. 搜索 `sifli-sdk-codekit` 并安装。
 4. 安装示意图如下：
    ![安装](images\readme\sifli-sdk-codekit_install.png)
+
+### SDK管理器使用
+
+- **打开SDK管理器(通过插件侧边栏打开或者点击状态栏按钮)**
+  ![打开插件侧边栏](images\readme\sidebar.png)
+
+- **选择安装方式**
+  ![选择SDK安装方式](images\readme\select_installation_method.png)
+
+- **选择SDK下载版本**
+  ![选择SDK下载版本](images\readme\select_the_SDK_download_version.png)
+  - 注意当不指定工具链目录路径时，默认的工具链安装路径为`C:\Users\name\.sifli`
+  - 指定工具路径下载时，插件会在使用过程中，导出环境变量`SIFLI_SDK_TOOLS_PATH`
+
+- **SDK安装日志**
+  ![SDK安装日志](images\readme\SDK_installation_log.png)
+
+- **SDK安装完成**
+  ![SDK安装完成](images\readme\SDK_installation_complete.png)
+
+- **对自定义安装工具链用户的支持**
+  ![导出环境变量](images\readme\export_environment_variables.png)
 
 ### 插件配置
 
@@ -145,27 +183,17 @@
 - **选择切换串口设备**
   ![切换串口设备](images/readme/select_serial_device.png)
 
----
+### 对自定义板子的指令支持
 
-### SDK管理器使用
+- **对project同级目录下的boards**
+  ![本地boards](images/readme/boards_local.png)
 
-- **选择安装方式**
-  ![选择安装方式](images\readme\select_installation_method.png)
-
-- **选择SDK下载版本**
-  ![选择SDK下载版本](images\readme\select_the_SDK_download_version.png)
-  - 注意当不指定工具链目录路径时，默认的工具链安装路径为`C:\Users\name\.sifli`
-  - 指定工具路径下载时，插件会在使用过程中，导出环境变量`SIFLI_SDK_TOOLS_PATH`
-
-- **SDK安装日志**
-  ![SDK安装日志](images\readme\SDK_installation_log.png)
-
-- **SDK安装完成**
-  ![SDK安装完成](images\readme\SDK_installation_complete.png)
-
-- **对自定义安装工具链用户的支持**
-  ![导出环境变量](images\readme\export_environment_variables.png)
+- **对于自定义路径下的boards**
+  - 在设置中配置自定义的板子路径
+  ![填写自定义板子路径](images/readme/custom_path_boards.png)
   
+  - 填写完毕后即可在插件中查看到板子
+  ![自定义boards](images/readme/costom_boards.png)
 ---
 
 ## ❓ 常见问题（FAQ）
