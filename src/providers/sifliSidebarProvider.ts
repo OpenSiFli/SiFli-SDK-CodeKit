@@ -3,6 +3,7 @@ import { ConfigService } from '../services/configService';
 import { SdkService } from '../services/sdkService';
 import { VueWebviewProvider } from './vueWebviewProvider';
 import { SerialPortService } from '../services/serialPortService';
+import { isSiFliProject } from '../utils/projectUtils';
 
 export class SifliSidebarItem extends vscode.TreeItem {
   constructor(
@@ -74,15 +75,17 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
       'sdkManager'
     ));
 
-    // 当前配置状态分组
-    items.push(new SifliSidebarItem(
-      '项目配置',
-      vscode.TreeItemCollapsibleState.Expanded,
-      undefined,
-      new vscode.ThemeIcon('settings-gear'),
-      '查看和修改当前项目配置',
-      'configGroup'
-    ));
+    // 只有在 SiFli 项目中才显示项目配置
+    if (isSiFliProject()) {
+      items.push(new SifliSidebarItem(
+        '项目配置',
+        vscode.TreeItemCollapsibleState.Expanded,
+        undefined,
+        new vscode.ThemeIcon('settings-gear'),
+        '查看和修改当前项目配置',
+        'configGroup'
+      ));
+    }
 
     return items;
   }
