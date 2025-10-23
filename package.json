@@ -7,6 +7,9 @@
     "vscode": "^1.102.0"
   },
   "main": "./out/extension.js",
+  "extensionPack": [
+    "llvm-vs-code-extensions.vscode-clangd"
+  ],
   "activationEvents": [
     "onStartupFinished"
   ],
