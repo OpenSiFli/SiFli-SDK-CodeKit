@@ -17,10 +17,13 @@ jobs:
     
     outputs:
       version: ${{ steps.get-version.outputs.version }}
+      is_prerelease: ${{ steps.get-version.outputs.is_prerelease }}
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for commit counting
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -28,11 +31,50 @@ jobs:
           node-version: '20'
           cache: 'yarn'
           
-      - name: Get version and tag info
+      - name: Calculate version
         id: get-version
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          # Check if this is a tag push
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            # This is a release tag
+            TAG_VERSION=${GITHUB_REF#refs/tags/v}
+            echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "🚀 Release version from tag: $TAG_VERSION"
+            
+            # Update package.json with tag version
+            npm version $TAG_VERSION --no-git-tag-version --allow-same-version
+          else
+            # This is a commit to main - calculate pre-release version
+            # Find the latest release tag (format: v1.2.3)
+            LATEST_TAG=$(git describe --tags --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || echo "v1.1.5")
+            echo "📍 Latest release tag: $LATEST_TAG"
+            
+            # Extract version numbers
+            BASE_VERSION=${LATEST_TAG#v}
+            MAJOR=$(echo $BASE_VERSION | cut -d. -f1)
+            MINOR=$(echo $BASE_VERSION | cut -d. -f2)
+            PATCH=$(echo $BASE_VERSION | cut -d. -f3)
+            
+            # Count commits since the latest tag
+            COMMIT_COUNT=$(git rev-list ${LATEST_TAG}..HEAD --count)
+            echo "📊 Commits since $LATEST_TAG: $COMMIT_COUNT"
+            
+            # Generate pre-release version: major.minor.99{patch:02d}{commit_count:02d}
+            # Format: 1.1.990503 (99 + 05 + 03)
+            # Example: v1.1.5 + 3 commits = 1.1.990503
+            #          v1.1.6 + 10 commits = 1.1.990610
+            #          v1.2.0 + 1 commit = 1.2.990001
+            PRE_PATCH=$(printf "99%02d%02d" $PATCH $COMMIT_COUNT)
+            PRE_VERSION="${MAJOR}.${MINOR}.${PRE_PATCH}"
+            
+            echo "version=$PRE_VERSION" >> $GITHUB_OUTPUT
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "✨ Pre-release version: $PRE_VERSION (99 + $(printf "%02d" $PATCH) + $(printf "%02d" $COMMIT_COUNT))"
+            
+            # Update package.json with pre-release version
+            npm version $PRE_VERSION --no-git-tag-version --allow-same-version
+          fi
           
       - name: Install dependencies
         run: yarn install --frozen-lockfile
@@ -52,7 +94,16 @@ jobs:
         run: yarn run copy-templates
         
       - name: Package extension
-        run: yarn run package
+        id: package
+        run: |
+          # Check if this is a pre-release
+          if [[ "${{ steps.get-version.outputs.is_prerelease }}" == "true" ]]; then
+            echo "📦 Packaging as pre-release..."
+            yarn run package:pre-release
+          else
+            echo "📦 Packaging as release..."
+            yarn run package
+          fi
         
       - name: List generated files
         run: ls -la *.vsix
@@ -88,16 +139,26 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           generateReleaseNotes: true
           draft: false
+          prerelease: false
           allowUpdates: true
           
   publish-marketplace:
     runs-on: ubuntu-latest
-    needs: [build, release]
-    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    needs: build
+    # Publish on every push to main (pre-release) or tag (release)
+    if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
         
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -108,5 +169,10 @@ jobs:
         env:
           VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
         run: |
-          # Publish the pre-built VSIX to marketplace
-          npx vsce publish --packagePath *.vsix --pat $VSCE_PAT
+          if [[ "${{ needs.build.outputs.is_prerelease }}" == "true" ]]; then
+            echo "✨ Publishing pre-release version ${{ needs.build.outputs.version }}"
+            npx vsce publish --pre-release --packagePath *.vsix --pat $VSCE_PAT
+          else
+            echo "🚀 Publishing release version ${{ needs.build.outputs.version }}"
+            npx vsce publish --packagePath *.vsix --pat $VSCE_PAT
+          fi
