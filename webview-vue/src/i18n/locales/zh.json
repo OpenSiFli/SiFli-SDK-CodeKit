@@ -120,12 +120,8 @@
     }
   },
   "existing": {
-    "title": "使用现有安装",
-    "subtitle": "浏览到您现有的 SiFli SDK 安装",
-    "comingSoon": {
-      "title": "即将推出",
-      "description": "此功能将在未来的更新中提供。"
-    }
+    "title": "使用现有 SDK",
+    "subtitle": "配置您现有的 SiFli SDK 安装"
   },
   "success": {
     "title": "安装完成！",

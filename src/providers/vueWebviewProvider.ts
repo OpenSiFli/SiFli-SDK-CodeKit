@@ -567,6 +567,33 @@ export class VueWebviewProvider {
         }
         break;
 
+      case 'validateExistingSdk':
+        try {
+          const { path: sdkPath } = message;
+          await this.validateExistingSdk(sdkPath, webview);
+        } catch (error) {
+          console.error('[VueWebviewProvider] Error validating SDK:', error);
+          webview.postMessage({
+            command: 'sdkValidationResult',
+            valid: false,
+            message: '验证 SDK 时发生错误: ' + (error instanceof Error ? error.message : String(error))
+          });
+        }
+        break;
+
+      case 'installExistingSdk':
+        try {
+          const { data } = message;
+          await this.installExistingSdk(data.sdkPath, data.toolchainSource, data.toolsPath || '', webview);
+        } catch (error) {
+          console.error('[VueWebviewProvider] Error installing existing SDK:', error);
+          webview.postMessage({
+            command: 'installationFailed',
+            message: '安装 SDK 失败: ' + (error instanceof Error ? error.message : String(error))
+          });
+        }
+        break;
+
       default:
         console.warn('[VueWebviewProvider] Unknown command:', message.command);
     }
@@ -858,5 +885,168 @@ export class VueWebviewProvider {
         }
       }, 10 * 60 * 1000); // 10分钟超时
     });
+  }
+
+  /**
+   * 验证已存在的 SDK 路径
+   */
+  private async validateExistingSdk(sdkPath: string, webview: vscode.Webview): Promise<void> {
+    try {
+      console.log('[VueWebviewProvider] Validating SDK path:', sdkPath);
+
+      if (!fs.existsSync(sdkPath)) {
+        webview.postMessage({
+          command: 'sdkValidationResult',
+          valid: false,
+          message: 'SDK 路径不存在'
+        });
+        return;
+      }
+
+      // 检查必要的文件
+      const requiredFiles = [
+        { path: 'tools/sdk.py', name: 'SDK 工具脚本' },
+        { path: 'version.txt', name: '版本文件' },
+        { path: 'install.sh', name: '安装脚本' },
+        { path: 'export.sh', name: '环境变量脚本' }
+      ];
+
+      const missingFiles: string[] = [];
+      for (const file of requiredFiles) {
+        const filePath = path.join(sdkPath, file.path);
+        if (!fs.existsSync(filePath)) {
+          missingFiles.push(file.name);
+        }
+      }
+
+      if (missingFiles.length > 0) {
+        webview.postMessage({
+          command: 'sdkValidationResult',
+          valid: false,
+          message: `缺少必要文件: ${missingFiles.join(', ')}`
+        });
+        return;
+      }
+
+      // 从 Git 获取版本信息
+      let version = 'Unknown';
+      try {
+        const { GitService } = await import('../services/gitService');
+        const gitService = GitService.getInstance();
+        
+        const isRepo = await gitService.isRepository(sdkPath);
+        if (isRepo) {
+          version = await gitService.getCurrentBranch(sdkPath);
+          console.log('[VueWebviewProvider] SDK version from git:', version);
+        } else {
+          // 如果不是 git 仓库，尝试从 version.txt 读取
+          const versionFilePath = path.join(sdkPath, 'version.txt');
+          if (fs.existsSync(versionFilePath)) {
+            version = fs.readFileSync(versionFilePath, 'utf8').trim();
+          }
+        }
+      } catch (error) {
+        console.error('[VueWebviewProvider] Error getting SDK version:', error);
+      }
+
+      webview.postMessage({
+        command: 'sdkValidationResult',
+        valid: true,
+        message: 'SDK 验证成功',
+        version
+      });
+
+    } catch (error) {
+      console.error('[VueWebviewProvider] Error validating SDK:', error);
+      webview.postMessage({
+        command: 'sdkValidationResult',
+        valid: false,
+        message: '验证过程出错: ' + (error instanceof Error ? error.message : String(error))
+      });
+    }
+  }
+
+  /**
+   * 安装已存在的 SDK
+   */
+  private async installExistingSdk(
+    sdkPath: string, 
+    toolchainSource: string, 
+    toolsPath: string, 
+    webview: vscode.Webview
+  ): Promise<void> {
+    try {
+      console.log('[VueWebviewProvider] Installing existing SDK:', sdkPath);
+      
+      const installationLogs: string[] = [];
+      
+      const sendLog = (log: string) => {
+        installationLogs.push(log);
+        webview.postMessage({
+          command: 'installationLog',
+          log: log
+        });
+      };
+
+      webview.postMessage({
+        command: 'installationStarted',
+        message: '开始配置 SDK...'
+      });
+
+      sendLog(`📂 SDK 路径: ${sdkPath}`);
+      
+      if (toolsPath && toolsPath.trim() !== '') {
+        sendLog(`🔧 工具链路径: ${toolsPath}`);
+      }
+
+      // 获取版本信息
+      let version = 'Unknown';
+      try {
+        const { GitService } = await import('../services/gitService');
+        const gitService = GitService.getInstance();
+        
+        const isRepo = await gitService.isRepository(sdkPath);
+        if (isRepo) {
+          version = await gitService.getCurrentBranch(sdkPath);
+          sendLog(`📌 检测到版本: ${version}`);
+        }
+      } catch (error) {
+        console.error('[VueWebviewProvider] Error getting version:', error);
+      }
+
+      // 执行安装脚本
+      await this.installToolchain(sdkPath, webview, installationLogs, toolsPath || null, toolchainSource);
+
+      // 添加 SDK 到配置
+      const { ConfigService } = await import('../services/configService');
+      const configService = ConfigService.getInstance();
+      
+      await configService.addSdkConfig(sdkPath, toolsPath || undefined);
+      sendLog(`💾 SDK 已添加到配置`);
+
+      // 如果设置了工具链路径，保存到配置中
+      if (toolsPath && toolsPath.trim() !== '') {
+        await configService.setSdkToolsPath(sdkPath, toolsPath);
+        sendLog(`💾 工具链路径已保存`);
+      }
+
+      sendLog(`✅ SDK 安装配置完成！`);
+
+      webview.postMessage({
+        command: 'installationCompleted',
+        message: `SDK 安装配置成功！`,
+        path: sdkPath,
+        version: version,
+        source: 'local',
+        logs: installationLogs
+      });
+
+    } catch (error) {
+      console.error('[VueWebviewProvider] Error installing existing SDK:', error);
+      webview.postMessage({
+        command: 'installationFailed',
+        message: '安装失败: ' + (error instanceof Error ? error.message : String(error))
+      });
+    }
   }
 }
