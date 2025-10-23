@@ -68,6 +68,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   configService.detectedSdkVersions = sdkVersions;
   logService.info(`Discovered ${sdkVersions.length} SDK versions`);
 
+  // 注册 SDK 管理命令（无论是否为 SiFli 项目都需要注册）
+  // 这样用户可以在任何情况下通过侧边栏管理 SDK
+  const manageSdkCommand = vscode.commands.registerCommand(CMD_PREFIX + 'manageSiFliSdk', () => 
+    vueWebviewProvider.createSdkManagementWebview(context)
+  );
+  context.subscriptions.push(manageSdkCommand);
+  logService.info('SDK management command registered');
+
   // 检查是否为 SiFli 项目
   if (isSiFliProject()) {
     logService.info('SiFli project detected. Activating full extension features.');
@@ -114,7 +122,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       })
     );
 
-    // 注册命令
+    // 注册命令（仅限 SiFli 项目）
     const commands = [
       vscode.commands.registerCommand(CMD_PREFIX + 'compile', () => 
         buildCommands.executeCompileTask()
@@ -137,9 +145,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.commands.registerCommand(CMD_PREFIX + 'selectPort', () => 
         configCommands.selectPort()
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'manageSiFliSdk', () => 
-        vueWebviewProvider.createSdkManagementWebview(context)
-      ),
+      // 注意：manageSiFliSdk 已在外部注册，无论是否为 SiFli 项目
       vscode.commands.registerCommand(CMD_PREFIX + 'switchSdkVersion', () => 
         configCommands.switchSdkVersion()
       ),
