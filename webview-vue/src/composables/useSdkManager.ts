@@ -73,14 +73,18 @@ export function useSdkManager() {
 
   // 计算最终的安装路径
   const finalInstallPath = computed(() => {
-    if (!state.value.installPath) return '';
+    if (!state.value.installPath) {
+      return '';
+    }
     
     const basePath = state.value.installPath;
     const selectedName = state.value.downloadType === 'release' 
       ? state.value.selectedVersion 
       : state.value.selectedBranch;
     
-    if (!selectedName) return basePath;
+    if (!selectedName) {
+      return basePath;
+    }
     
     // 处理分支名称，移除 'release/' 前缀用于目录名
     let folderName = selectedName;
@@ -165,14 +169,22 @@ export function useSdkManager() {
         toolsPath: state.value.toolsPath
       });
 
+      // 确保前端也处理 'latest' 到 'main' 的转换
+      // 虽然后端也有这个转换逻辑，但在前端也进行转换可以确保一致性
+      let versionName = selectedVersionInfo.version;
+      if (versionName === 'latest') {
+        versionName = 'main';
+        console.log('[useSdkManager] Corrected version name from "latest" to "main"');
+      }
+
       // 发送安装请求
       postMessage({
         command: 'installSdk',
         data: {
           sdkSource: state.value.sdkSource,
           version: {
-            name: selectedVersionInfo.version,
-            tagName: selectedVersionInfo.version,
+            name: versionName,
+            tagName: versionName,
             type: selectedVersionInfo.type || 'release'
           },
           installPath: state.value.installPath,

@@ -399,9 +399,17 @@ export class VueWebviewProvider {
 
           console.log('[VueWebviewProvider] Starting clone operation...');
 
+          // 确保 'latest' 被转换为 'main' ===
+          let branchName = version.type === 'release' ? version.tagName : version.name;
+          if (branchName === 'latest') {
+            branchName = 'main';
+            console.log('[VueWebviewProvider] Corrected branch name from "latest" to "main"');
+            sendLog(`🔀 分支名称已从 "latest" 修正为 "main"`);
+          }
+
           // 使用 GitService 克隆仓库，包含 --recursive 选项
           await gitService.cloneRepository(repoUrl, fullInstallPath, {
-            branch: version.type === 'release' ? version.tagName : version.name,
+            branch: branchName,
             onProgress: (progress) => {
               console.log('[VueWebviewProvider] Clone progress:', progress);
               // 发送 Git 日志到前端并收集

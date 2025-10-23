@@ -178,6 +178,12 @@ export class BuildCommands {
         downloadCommand, 
         TASK_NAMES.DOWNLOAD
       );
+
+      // 下载成功后也应该恢复串口监视器
+      // 等待一段时间后恢复串口监视器
+      setTimeout(async () => {
+        await this.statusBarProvider.handlePostDownloadOperation();
+      }, 1000);
     
     } catch (error) {
       console.error('[BuildCommands] Error in executeDownloadTask:', error);
