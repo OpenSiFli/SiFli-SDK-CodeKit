@@ -158,6 +158,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.commands.registerCommand(CMD_PREFIX + 'listSerialPorts', () => 
         configCommands.listSerialPorts()
       ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'configureClangd', () => 
+        configCommands.configureClangd()
+      ),
       vscode.commands.registerCommand(CMD_PREFIX + 'showLogs', () => {
         logService.show();
         logService.info('Logs displayed by user request');

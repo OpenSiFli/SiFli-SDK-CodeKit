@@ -148,6 +148,20 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
       portDescription
     ));
 
+    // 配置 clangd
+    items.push(new SifliSidebarItem(
+      '配置 clangd',
+      vscode.TreeItemCollapsibleState.None,
+      {
+        command: 'extension.configureClangd',
+        title: '配置 clangd',
+        arguments: []
+      },
+      new vscode.ThemeIcon('tools'),
+      '配置 clangd 的 compile-commands-dir 路径',
+      'clangdConfig'
+    ));
+
     return items;
   }
 }

@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ConfigService } from '../services/configService';
 import { BoardService } from '../services/boardService';
 import { SerialPortService } from '../services/serialPortService';
@@ -190,6 +192,74 @@ export class ConfigCommands {
     } catch (error) {
       console.error('列出串口失败:', error);
       vscode.window.showErrorMessage(`获取串口列表失败: ${error}`);
+    }
+  }
+
+  /**
+   * 配置 clangd 设置
+   */
+  public async configureClangd(): Promise<void> {
+    try {
+      // 获取当前选择的芯片模组
+      const selectedBoard = this.configService.getSelectedBoardName();
+      
+      if (!selectedBoard || selectedBoard === 'N/A') {
+        vscode.window.showWarningMessage('请先选择芯片模组');
+        return;
+      }
+
+      // 获取工作区文件夹
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        vscode.window.showErrorMessage('未找到工作区文件夹');
+        return;
+      }
+
+      // 构建 .vscode/settings.json 路径
+      const vscodeDir = path.join(workspaceFolder.uri.fsPath, '.vscode');
+      const settingsPath = path.join(vscodeDir, 'settings.json');
+
+      // 确保 .vscode 目录存在
+      if (!fs.existsSync(vscodeDir)) {
+        fs.mkdirSync(vscodeDir, { recursive: true });
+      }
+
+      // 读取现有的 settings.json
+      let settings: any = {};
+      if (fs.existsSync(settingsPath)) {
+        const content = fs.readFileSync(settingsPath, 'utf-8');
+        try {
+          settings = JSON.parse(content);
+        } catch (error) {
+          console.error('[ConfigCommands] Error parsing settings.json:', error);
+          settings = {};
+        }
+      }
+
+      // 构建 compile-commands-dir 路径
+      const compileCommandsDir = `\${workspaceFolder}/project/build_${selectedBoard}_hcpu`;
+
+      // 更新 clangd.arguments
+      settings['clangd.arguments'] = [`--compile-commands-dir=${compileCommandsDir}`];
+
+      // 写入 settings.json
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 4), 'utf-8');
+
+      console.log(`[ConfigCommands] clangd 配置已更新: ${settingsPath}`);
+      
+      // 显示成功消息并提示重启
+      const action = await vscode.window.showInformationMessage(
+        `clangd 配置已完成，已设置为芯片模组 ${selectedBoard}。建议重启 VS Code 以使配置生效。`,
+        '重启 VS Code',
+        '稍后重启'
+      );
+
+      if (action === '重启 VS Code') {
+        vscode.commands.executeCommand('workbench.action.reloadWindow');
+      }
+    } catch (error) {
+      console.error('[ConfigCommands] Error in configureClangd:', error);
+      vscode.window.showErrorMessage(`配置 clangd 失败: ${error}`);
     }
   }
 }
