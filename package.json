@@ -75,7 +75,6 @@
         {
           "id": "sifliSdkManager",
           "name": "SDK 管理",
-          "when": "workspaceFolderCount > 0",
           "icon": "$(cloud-download)"
         }
       ]
