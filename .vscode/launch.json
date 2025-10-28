@@ -3,7 +3,8 @@
     {
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}",
-        "--extensions-dir=${workspaceFolder}/.debug-extensions"
+        "--disable-extensions"
+        // "--extensions-dir=${workspaceFolder}/.debug-extensions"
       ],
       "name": "Launch Extension",
       "request": "launch",

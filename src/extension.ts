@@ -13,6 +13,7 @@ import { StatusBarProvider } from './providers/statusBarProvider';
 import { VueWebviewProvider } from './providers/vueWebviewProvider';
 import { SifliSidebarManager } from './providers/sifliSidebarProvider';
 import { isSiFliProject } from './utils/projectUtils';
+import { registerProbeRsDebugger } from './probe-rs/extension';
 
 /**
  * 扩展激活函数
@@ -23,10 +24,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   
   logService.info('SiFli SDK CodeKit extension is activating...');
 
+  // Register SiFli probe-rs debugger contributions
+  registerProbeRsDebugger(context);
+
   // *** 仅在开发调试时使用：强制重置首次运行标志 ***
   // 这将使得每次"重新运行调试"时,Quick Pick 都会弹出。
   // 在发布生产版本时,请务必删除或注释掉此行！
-  await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false);
+  // await context.globalState.update(HAS_RUN_INITIAL_SETUP_KEY, false);
   // ******************************************************
 
   // 初始化服务
