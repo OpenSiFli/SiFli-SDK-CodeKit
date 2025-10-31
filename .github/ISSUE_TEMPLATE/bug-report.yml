@@ -1,0 +1,73 @@
+name: Bug report
+description: Tell us about issues you encounter while using SiFli SDK CodeKit
+title: "[Bug] Describe the problem"
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a problem. The more detail you share, the faster we can fix it.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Provide a brief description of the bug.
+      placeholder: e.g. Build command fails when switching board profiles
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: List the versions and platforms involved.
+      placeholder: |
+        - Extension version:
+        - VS Code version:
+        - OS version:
+        - Additional tools or SDK versions:
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to Reproduce
+      description: Detail each action needed to trigger the issue.
+      placeholder: |
+        1. Open...
+        2. Run...
+        3. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: Tell us what you expected to happen.
+      placeholder: The command should finish successfully and...
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: Tell us what actually happened. Include error messages if available.
+      placeholder: Instead, the terminal shows...
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or Logs
+      description: Attach screenshots, GIFs, terminal output, or log snippets that illustrate the problem.
+      placeholder: Drag and drop files, or paste code blocks/logs here.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Share any other details that might help us diagnose the issue (workspace setup, network state, related issues, etc.).
+      placeholder: Related issue #123, custom settings.json, etc.
+    validations:
+      required: false

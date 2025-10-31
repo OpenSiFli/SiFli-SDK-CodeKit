@@ -1,0 +1,61 @@
+name: Feature request
+description: Suggest an idea that will make SiFli SDK CodeKit better
+title: "[Feature] Describe your idea"
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping us improve SiFli SDK CodeKit! Please provide as much detail as possible so we can evaluate your idea quickly.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Give a concise overview of the feature and the user value it delivers.
+      placeholder: e.g. Allow configuring multiple toolchains per workspace
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Explain the pain point or opportunity this feature addresses. Who is affected and in what scenarios?
+      placeholder: Developers with multiple projects need to...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe how you imagine the feature working. Feel free to add user flows, pseudo UI, or references.
+      placeholder: A new command palette entry that...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: List any workarounds or alternative solutions you tried, and why they are not ideal.
+      placeholder: I currently do this by...
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Share links, screenshots, related issues, or any background that will help us understand the request.
+      placeholder: Related issue #123, design mockups, logs, etc.
+    validations:
+      required: false
+  - type: checkboxes
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria Checklist
+      description: Check the items that should be true when this feature is considered complete.
+      options:
+        - label: Success metrics or measurable outcomes are defined
+        - label: Edge cases and error handling are covered
+        - label: Documentation or communication updates are identified
+    validations:
+      required: false
