@@ -12,12 +12,24 @@ export class TerminalService {
   private static instance: TerminalService;
   private configService: ConfigService;
   private logService: LogService;
+  private currentTerminal?: vscode.Terminal;
+  private sdkEnvPrepared = false;
+  private lastExportScriptPath?: string;
+  private terminalCloseListener: vscode.Disposable;
   private static readonly EXIT_CODE_TIMEOUT_MS = 10 * 60 * 1000; // 10 分钟超时
   private static readonly EXIT_CODE_POLL_INTERVAL_MS = 500;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
     this.logService = LogService.getInstance();
+    this.terminalCloseListener = vscode.window.onDidCloseTerminal(terminal => {
+      if (terminal.name === TERMINAL_NAME) {
+        if (terminal === this.currentTerminal) {
+          this.currentTerminal = undefined;
+        }
+        this.sdkEnvPrepared = false;
+      }
+    });
   }
 
   public static getInstance(): TerminalService {
@@ -44,12 +56,28 @@ export class TerminalService {
    */
   public async getOrCreateSiFliTerminalAndCdProject(): Promise<vscode.Terminal> {
     let terminal = this.findSiFliTerminal();
-    
+    const configuredScriptPath = this.configService.config.sifliSdkExportScriptPath;
+    const normalizedScriptPath =
+      configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
+    let newlyCreated = false;
+
     if (!terminal) {
       this.logService.info('Creating new SiFli terminal');
       terminal = this.createSiFliTerminal();
+      newlyCreated = true;
     } else {
       this.logService.debug('Reusing existing SiFli terminal');
+    }
+
+    this.currentTerminal = terminal;
+
+    if (normalizedScriptPath !== this.lastExportScriptPath) {
+      this.lastExportScriptPath = normalizedScriptPath;
+      this.sdkEnvPrepared = !normalizedScriptPath;
+    }
+
+    if (newlyCreated) {
+      this.sdkEnvPrepared = normalizedScriptPath ? false : true;
     }
 
     // 切换到项目目录
@@ -101,6 +129,17 @@ export class TerminalService {
   }
 
   /**
+   * 标记当前终端环境已完成 SDK 导出
+   */
+  public markSdkEnvironmentPrepared(): void {
+    const configuredScriptPath = this.configService.config.sifliSdkExportScriptPath;
+    const normalizedScriptPath =
+      configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
+    this.lastExportScriptPath = normalizedScriptPath;
+    this.sdkEnvPrepared = true;
+  }
+
+  /**
    * 在 SiFli 终端中执行命令
    */
   public async executeShellCommandInSiFliTerminal(
@@ -114,8 +153,17 @@ export class TerminalService {
       const terminal = await this.getOrCreateSiFliTerminalAndCdProject();
       terminal.show();
 
+      const configuredScriptPath = this.configService.config.sifliSdkExportScriptPath;
+      const scriptPath =
+        configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
+      const needsEnvSetup = !!scriptPath && !this.sdkEnvPrepared;
+
       if (!options?.waitForExit) {
-        terminal.sendText(commandLine);
+        const commandToSend = this.buildCommandForTerminal(commandLine, scriptPath, needsEnvSetup);
+        terminal.sendText(commandToSend);
+        if (needsEnvSetup || !scriptPath) {
+          this.sdkEnvPrepared = true;
+        }
         this.logService.info(`Successfully forwarded ${taskName} to terminal`);
         return undefined;
       }
@@ -123,7 +171,12 @@ export class TerminalService {
       const exitMarkerPath = this.buildExitMarkerPath(taskName);
       await this.ensureExitMarkerRemoved(exitMarkerPath);
 
-      const commandWithTracking = this.buildCommandWithExitTracking(commandLine, exitMarkerPath);
+      const commandWithTracking = this.buildCommandForTerminal(
+        commandLine,
+        scriptPath,
+        needsEnvSetup,
+        exitMarkerPath
+      );
       terminal.sendText(commandWithTracking);
 
       let exitCode: number | undefined;
@@ -131,6 +184,10 @@ export class TerminalService {
         exitCode = await this.waitForExitCode(exitMarkerPath);
       } finally {
         await this.ensureExitMarkerRemoved(exitMarkerPath);
+      }
+
+      if ((needsEnvSetup && exitCode === 0) || !scriptPath) {
+        this.sdkEnvPrepared = true;
       }
 
       this.logService.info(`${taskName} finished with exit code ${exitCode}`);
@@ -145,14 +202,68 @@ export class TerminalService {
     return path.join(os.tmpdir(), `sifli-${sanitizedName}-${randomUUID()}.code`);
   }
 
-  private buildCommandWithExitTracking(commandLine: string, exitMarkerPath: string): string {
+  private buildCommandForTerminal(
+    commandLine: string,
+    scriptPath: string | undefined,
+    includeEnvSetup: boolean,
+    exitMarkerPath?: string
+  ): string {
+    const effectiveScriptPath = includeEnvSetup ? scriptPath : undefined;
     if (process.platform === 'win32') {
-      const escapedPath = exitMarkerPath.replace(/"/g, '""');
-      return `${commandLine}; $exitCode = $LASTEXITCODE; Set-Content -Path "${escapedPath}" -Value $exitCode -NoNewline`;
+      return this.buildPowerShellCommand(commandLine, effectiveScriptPath, exitMarkerPath);
+    }
+    return this.buildUnixShellCommand(commandLine, effectiveScriptPath, exitMarkerPath);
+  }
+
+  private buildPowerShellCommand(
+    commandLine: string,
+    exportScriptPath?: string,
+    exitMarkerPath?: string
+  ): string {
+    if (exitMarkerPath) {
+      const commands: string[] = [];
+      if (exportScriptPath) {
+        const escapedScript = exportScriptPath.replace(/"/g, '""');
+        commands.push(`& "${escapedScript}"`);
+        commands.push(`$sifli_command_exit = $LASTEXITCODE`);
+        commands.push(`if ($sifli_command_exit -eq 0) { ${commandLine}; $sifli_command_exit = $LASTEXITCODE }`);
+      } else {
+        commands.push(`${commandLine}`);
+        commands.push(`$sifli_command_exit = $LASTEXITCODE`);
+      }
+      const escapedMarker = exitMarkerPath.replace(/"/g, '""');
+      commands.push(`Set-Content -Path "${escapedMarker}" -Value $sifli_command_exit -NoNewline`);
+      return commands.join('; ');
     }
 
-    const escapedPath = exitMarkerPath.replace(/(["\\$`])/g, '\\$1');
-    return `${commandLine}; exit_code=$?; printf "%s" "$exit_code" > "${escapedPath}"`;
+    if (exportScriptPath) {
+      const escapedScript = exportScriptPath.replace(/"/g, '""');
+      return `& "${escapedScript}"; if ($LASTEXITCODE -eq 0) { ${commandLine} }`;
+    }
+
+    return commandLine;
+  }
+
+  private buildUnixShellCommand(
+    commandLine: string,
+    exportScriptPath?: string,
+    exitMarkerPath?: string
+  ): string {
+    if (exitMarkerPath) {
+      const escapedMarker = exitMarkerPath.replace(/(["\\$`])/g, '\\$1');
+      if (exportScriptPath) {
+        const escapedScript = exportScriptPath.replace(/(["\\$`])/g, '\\$1');
+        return `. "${escapedScript}"; sifli_exit=$?; if [ $sifli_exit -eq 0 ]; then ${commandLine}; sifli_exit=$?; fi; printf "%s" "$sifli_exit" > "${escapedMarker}"`;
+      }
+      return `${commandLine}; sifli_exit=$?; printf "%s" "$sifli_exit" > "${escapedMarker}"`;
+    }
+
+    if (exportScriptPath) {
+      const escapedScript = exportScriptPath.replace(/(["\\$`])/g, '\\$1');
+      return `. "${escapedScript}" && ${commandLine}`;
+    }
+
+    return commandLine;
   }
 
   private async waitForExitCode(exitMarkerPath: string): Promise<number | undefined> {
@@ -206,5 +317,14 @@ export class TerminalService {
       this.logService.info(`Disposing ${sifliTerminals.length} SiFli terminal(s)`);
       sifliTerminals.forEach(terminal => terminal.dispose());
     }
+    this.currentTerminal = undefined;
+    this.sdkEnvPrepared = this.lastExportScriptPath ? false : true;
+  }
+
+  /**
+   * Dispose resources created by the terminal service.
+   */
+  public dispose(): void {
+    this.terminalCloseListener.dispose();
   }
 }

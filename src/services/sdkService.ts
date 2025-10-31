@@ -327,6 +327,8 @@ export class SdkService {
       // 发送命令到终端
       terminal.sendText(executeCommand);
 
+      this.terminalService.markSdkEnvironmentPrepared();
+
       this.logService.info(`SDK activation script executed successfully: ${executeCommand}`);
     } catch (error) {
       this.logService.error('Error executing activation script:', error);
