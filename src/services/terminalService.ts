@@ -324,4 +324,11 @@ export class TerminalService {
     this.currentTerminal = undefined;
     this.sdkEnvPrepared = this.lastExportScriptPath ? false : true;
   }
+
+  /**
+   * Dispose resources created by the terminal service.
+   */
+  public dispose(): void {
+    this.terminalCloseListener.dispose();
+  }
 }
