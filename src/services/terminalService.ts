@@ -161,9 +161,7 @@ export class TerminalService {
       if (!options?.waitForExit) {
         const commandToSend = this.buildCommandForTerminal(commandLine, scriptPath, needsEnvSetup);
         terminal.sendText(commandToSend);
-        if (needsEnvSetup) {
-          this.sdkEnvPrepared = true;
-        } else if (!scriptPath) {
+        if (needsEnvSetup || !scriptPath) {
           this.sdkEnvPrepared = true;
         }
         this.logService.info(`Successfully forwarded ${taskName} to terminal`);
@@ -188,9 +186,7 @@ export class TerminalService {
         await this.ensureExitMarkerRemoved(exitMarkerPath);
       }
 
-      if (needsEnvSetup && exitCode === 0) {
-        this.sdkEnvPrepared = true;
-      } else if (!scriptPath) {
+      if ((needsEnvSetup && exitCode === 0) || !scriptPath) {
         this.sdkEnvPrepared = true;
       }
 
