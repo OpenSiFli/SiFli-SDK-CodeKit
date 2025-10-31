@@ -14,7 +14,7 @@
     "onStartupFinished",
     "onDebug:sifli-probe-rs"
   ],
-  "icon": "images/readme/SiFli.png",
+  "icon": "public/CodeKit.png",
   "contributes": {
     "commands": [
       {
