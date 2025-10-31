@@ -24,7 +24,7 @@ export class TerminalService {
     this.logService = LogService.getInstance();
     this.terminalCloseListener = vscode.window.onDidCloseTerminal(terminal => {
       if (terminal.name === TERMINAL_NAME) {
-        if (this.currentTerminal && terminal === this.currentTerminal) {
+        if (terminal === this.currentTerminal) {
           this.currentTerminal = undefined;
         }
         this.sdkEnvPrepared = false;
