@@ -98,22 +98,86 @@ export class TerminalService {
   /**
    * 在 SiFli 终端中执行命令
    */
-  public async executeShellCommandInSiFliTerminal(commandLine: string, taskName: TaskName): Promise<void> {
+  public async executeShellCommandInSiFliTerminal(
+    commandLine: string,
+    taskName: TaskName,
+    options?: { waitForExit?: boolean }
+  ): Promise<number | undefined> {
     try {
       this.logService.info(`Executing ${taskName}: ${commandLine}`);
-      const terminal = await this.getOrCreateSiFliTerminalAndCdProject();
-      
-      // 显示并聚焦终端
-      terminal.show();
-      
-      // 发送命令
-      terminal.sendText(commandLine);
-      
-      this.logService.info(`Successfully executed ${taskName}`);
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders || workspaceFolders.length === 0) {
+        throw new Error('未打开工作区文件夹。');
+      }
+
+      const workspaceRoot = workspaceFolders[0].uri.fsPath;
+      const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
+
+      const shellExecution = this.createShellExecution(commandLine, projectPath);
+      const taskDefinition: vscode.TaskDefinition = { type: 'shell', command: commandLine };
+      const task = new vscode.Task(
+        taskDefinition,
+        vscode.TaskScope.Workspace,
+        taskName,
+        'SiFli SDK',
+        shellExecution
+      );
+      task.presentationOptions = {
+        reveal: vscode.TaskRevealKind.Always,
+        focus: true,
+        panel: vscode.TaskPanelKind.Shared,
+        clear: false
+      };
+
+      const taskExecution = await vscode.tasks.executeTask(task);
+
+      if (!options?.waitForExit) {
+        this.logService.info(`Started ${taskName} without waiting for completion`);
+        return undefined;
+      }
+
+      return await new Promise<number | undefined>((resolve) => {
+        const disposables: vscode.Disposable[] = [];
+        const cleanup = () => {
+          disposables.forEach(disposable => disposable.dispose());
+        };
+
+        disposables.push(
+          vscode.tasks.onDidEndTaskProcess(event => {
+            if (event.execution === taskExecution) {
+              cleanup();
+              this.logService.info(`${taskName} finished with exit code ${event.exitCode}`);
+              resolve(event.exitCode ?? undefined);
+            }
+          })
+        );
+
+        disposables.push(
+          vscode.tasks.onDidEndTask(event => {
+            if (event.execution === taskExecution) {
+              cleanup();
+              this.logService.info(`${taskName} finished without exit code`);
+              resolve(undefined);
+            }
+          })
+        );
+      });
     } catch (error) {
       this.logService.error(`Error executing ${taskName}:`, error);
-      vscode.window.showErrorMessage(`执行 ${taskName} 失败: ${error}`);
+      throw error;
     }
+  }
+
+  /**
+   * 根据平台创建 ShellExecution
+   */
+  private createShellExecution(commandLine: string, cwd: string): vscode.ShellExecution {
+    if (process.platform === 'win32') {
+      const powershellPath = this.getPowerShellPath();
+      return new vscode.ShellExecution(powershellPath, ['-NoLogo', '-Command', commandLine], { cwd });
+    }
+
+    return new vscode.ShellExecution(commandLine, { cwd });
   }
 
   /**

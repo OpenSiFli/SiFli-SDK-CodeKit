@@ -174,25 +174,24 @@ export class BuildCommands {
         this.serialPortService.downloadBaudRate
       );
       
-      await this.terminalService.executeShellCommandInSiFliTerminal(
+      const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(
         downloadCommand, 
-        TASK_NAMES.DOWNLOAD
+        TASK_NAMES.DOWNLOAD,
+        { waitForExit: true }
       );
 
-      // 下载成功后也应该恢复串口监视器
-      // 等待一段时间后恢复串口监视器
-      setTimeout(async () => {
-        await this.statusBarProvider.handlePostDownloadOperation();
-      }, 1000);
+      if (exitCode !== undefined && exitCode !== 0) {
+        throw new Error(`下载命令执行失败，退出码: ${exitCode}`);
+      }
+
+      await this.statusBarProvider.handlePostDownloadOperation();
     
     } catch (error) {
       console.error('[BuildCommands] Error in executeDownloadTask:', error);
-      vscode.window.showErrorMessage(`下载失败: ${error}`);
+      vscode.window.showErrorMessage(`下载失败: ${error instanceof Error ? error.message : error}`);
       
       // 即使发生错误也尝试恢复串口监视器
-      setTimeout(async () => {
-        await this.statusBarProvider.handlePostDownloadOperation();
-      }, 1000);
+      await this.statusBarProvider.handlePostDownloadOperation();
     }
   }
 
