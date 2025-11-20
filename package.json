@@ -112,6 +112,18 @@
             "type": "string",
             "description": "Full path to the SiFli SDK export.ps1 script. (e.g., D:\\OpenSiFli\\SiFli-SDK\\export.ps1)"
           },
+          "sifli-sdk-codekit.embeddedPythonPath": {
+            "type": "string",
+            "description": "Path to the embedded Python directory. If set, the extension will use this Python environment.",
+            "scope": "machine-overridable"
+          },
+          "sifli-sdk-codekit.useEmbeddedPython": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to use the embedded Python environment provided by SiFli (Windows only).",
+            "scope": "machine-overridable",
+            "when": "isWindows"
+          },
           "sifli-sdk-codekit.sdkConfigs": {
             "type": "array",
             "items": {
