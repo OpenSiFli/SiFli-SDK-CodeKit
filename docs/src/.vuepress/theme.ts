@@ -8,7 +8,7 @@ export default hopeTheme({
   logoDark: "/assets/image/logo-dark.svg",
   themeColor: true,
   
-  hostname: "https://docs.sifli.com/projects/SiFli-SDK-CodeKit",
+  hostname: "https://docs.sifli.com/projects/codekit",
 
   author: {
     name: "OpenSiFli",
