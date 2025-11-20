@@ -37,5 +37,5 @@ actions:
 
 
 copyright: 2019 - 2025 思澈科技（南京）有限公司
-footer: MIT Licensed 
+footer: Apache-2.0 license 
 ---

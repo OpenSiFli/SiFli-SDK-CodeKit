@@ -46,7 +46,7 @@ export default hopeTheme({
       // sidebar
       sidebar: zhSidebar,
 
-      footer: "MIT Licensed | 2019 - 2025 思澈科技（南京）有限公司",
+      footer: "Apache-2.0 license | 2019 - 2025 思澈科技（南京）有限公司",
 
       displayFooter: true,
 
@@ -56,7 +56,7 @@ export default hopeTheme({
       },
     },
   },
-  
+
   markdown: {
     align: true,
     attrs: true,
