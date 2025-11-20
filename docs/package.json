@@ -1,0 +1,26 @@
+{
+  "name": "sifli-sdk-codekit-docs",
+  "description": "专为 VS Code 设计的 SiFli-SDK-CodeKit 扩展",
+  "version": "1.1.3",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "docs:build": "vuepress-vite build src",
+    "docs:clean-dev": "vuepress-vite dev src --clean-cache",
+    "docs:dev": "vuepress-vite dev src",
+    "docs:update-package": "pnpm dlx vp-update"
+  },
+  "devDependencies": {
+    "@vuepress/bundler-vite": "2.0.0-rc.23",
+    "mermaid": "^11.7.0",
+    "sass-embedded": "^1.88.0",
+    "vue": "^3.5.13",
+    "vuepress": "2.0.0-rc.23",
+    "vuepress-theme-hope": "2.0.0-rc.88"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
