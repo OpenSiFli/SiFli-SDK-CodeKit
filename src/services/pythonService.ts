@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import axios from 'axios';
+import { spawn } from 'child_process';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
 
@@ -153,6 +154,7 @@ export class PythonService {
         await new Promise<void>((resolve, reject) => {
           writer.on('finish', () => resolve());
           writer.on('error', reject);
+          response.data.on('error', reject);
           response.data.pipe(writer);
         });
 
@@ -207,14 +209,26 @@ export class PythonService {
   private async runPowerShellCommand(command: string): Promise<void> {
     const configuredPath = this.configService.config.powershellPath;
     const powershellPath = configuredPath && configuredPath.trim() !== '' ? configuredPath : 'powershell.exe';
-    const childProcess = require('child_process');
-    
+
     return new Promise((resolve, reject) => {
-      childProcess.exec(`& "${powershellPath}" -Command "${command}"`, { shell: powershellPath }, (error: any, stdout: string, stderr: string) => {
-        if (error) {
-          reject(error);
-        } else {
+      const proc = spawn(
+        powershellPath,
+        ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
+        { windowsHide: true }
+      );
+
+      let stderrOutput = '';
+
+      proc.stderr?.on('data', (data: Buffer) => {
+        stderrOutput += data.toString();
+      });
+
+      proc.on('error', (err: Error) => reject(err));
+      proc.on('close', (code: number) => {
+        if (code === 0) {
           resolve();
+        } else {
+          reject(new Error(`PowerShell exited with code ${code}${stderrOutput ? `: ${stderrOutput.trim()}` : ''}`));
         }
       });
     });
@@ -243,12 +257,12 @@ export class PythonService {
       const writer = fs.createWriteStream(getPipPath);
       writer.on('finish', resolve);
       writer.on('error', reject);
+      response.data.on('error', reject);
       response.data.pipe(writer);
     });
 
     // 使用嵌入式 Python 安装 pip
     this.logService.info('Installing pip using embedded Python...');
-    const { spawn } = require('child_process');
     await new Promise<void>((resolve, reject) => {
       const proc = spawn(pythonExe, [getPipPath, '--no-warn-script-location'], { cwd: installDir });
       let stderrOutput = '';

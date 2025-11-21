@@ -8,13 +8,16 @@ import { TerminalService } from '../services/terminalService';
 import { SdkService } from '../services/sdkService';
 import { GitService } from '../services/gitService';
 import { ConfigService } from '../services/configService';
+import { LogService } from '../services/logService';
 
 export class VueWebviewProvider {
   private static instance: VueWebviewProvider;
   private terminalService: TerminalService;
+  private logService: LogService;
 
   private constructor() {
     this.terminalService = TerminalService.getInstance();
+    this.logService = LogService.getInstance();
   }
 
   public static getInstance(): VueWebviewProvider {
@@ -706,7 +709,7 @@ export class VueWebviewProvider {
         const { PythonService } = await import('../services/pythonService');
         pythonDir = PythonService.getInstance().getPythonDir();
       } catch (e) {
-        console.error('[VueWebviewProvider] Error loading PythonService:', e);
+        this.logService.error('[VueWebviewProvider] Error loading PythonService:', e);
       }
     }
 
