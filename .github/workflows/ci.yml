@@ -90,45 +90,90 @@ jobs:
       - name: Compile TypeScript
         run: yarn run compile
 
-      - name: Generate Release Notes (tag only, otherwise placeholder)
+      - name: Generate Release Notes (aggregate history)
         id: release-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.get-version.outputs.version }}
         run: |
+          set +e
           TAG="v${VERSION}"
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
-            echo "PR build - writing placeholder release notes."
+          NEW_SECTION=""
+          TOKEN="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+
+          if [[ -z "$TOKEN" ]]; then
+            echo "No GitHub token available; writing placeholder release notes."
             {
               echo "# Release $TAG"
               echo ""
-              echo "Preview build for pull request - release notes will be available on tagged release."
+              echo "Release notes unavailable (no token)."
             } > RELEASE_NOTES.md
-          elif [[ ! "${GITHUB_REF}" =~ refs/tags/.* ]]; then
-            echo "Non-tag push - writing placeholder release notes."
-            {
-              echo "# Release $TAG"
-              echo ""
-              echo "This is a non-tag build on ${GITHUB_REF}. Final notes will be generated for tagged releases."
-            } > RELEASE_NOTES.md
-          else
-            echo "Generating release notes for $TAG"
-            if body=$(gh api -X POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" -f tag_name="$TAG" -f target_commitish="${GITHUB_SHA}" --jq .body 2>/dev/null); then
-              {
-                echo "# Release $TAG"
-                echo ""
-                echo "$body"
-              } > RELEASE_NOTES.md
-            else
-              echo "Failed to auto-generate release notes; writing placeholder."
-              {
-                echo "# Release $TAG"
-                echo ""
-                echo "Release notes unavailable (generation failed)."
-              } > RELEASE_NOTES.md
-            fi
+            exit 0
           fi
-          cat RELEASE_NOTES.md
+
+          if ! command -v gh >/dev/null 2>&1; then
+            echo "gh CLI not available; writing placeholder release notes."
+            {
+              echo "# Release $TAG"
+              echo ""
+              echo "Release notes unavailable (gh CLI not installed)."
+            } > RELEASE_NOTES.md
+            exit 0
+          fi
+
+          generate_section_for_tag() {
+            local tag="$1"
+            local body
+            if body=$(gh release view "$tag" --json body --jq .body 2>/dev/null); then
+              echo "# Release $tag"
+              echo ""
+              echo "$body"
+              echo ""
+            fi
+          }
+
+          # If this is a tagged release, generate notes for the current tag first
+          if [[ "${GITHUB_REF}" =~ refs/tags/.* ]]; then
+            echo "Generating release notes for current tag $TAG"
+            if section=$(gh api -X POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" -f tag_name="$TAG" -f target_commitish="${GITHUB_SHA}" --jq .body 2>/dev/null); then
+              NEW_SECTION="# Release $TAG\n\n$section\n\n"
+            else
+              echo "Failed to auto-generate release notes for $TAG; continuing with history only."
+            fi
+          else
+            echo "Non-tag build (event: ${GITHUB_EVENT_NAME}); will aggregate existing release history."
+          fi
+
+          # Aggregate recent releases (including current tag if already published)
+          {
+            # Prepend current tag section if available
+            if [[ -n "$NEW_SECTION" ]]; then
+              printf "%b" "$NEW_SECTION"
+            fi
+
+            echo "Aggregating recent releases..."
+            # Fetch latest 15 non-draft releases and append their bodies
+            gh release list --limit 15 --json tagName,isDraft --jq '.[] | select(.isDraft==false) | .tagName' 2>/dev/null | while read -r reltag; do
+              # Skip if we've already added this tag
+              if [[ "$reltag" == "$TAG" && -n "$NEW_SECTION" ]]; then
+                continue
+              fi
+              generate_section_for_tag "$reltag"
+            done
+          } > RELEASE_NOTES.md
+
+          if [[ ! -s RELEASE_NOTES.md ]]; then
+            echo "Release notes generation failed; writing placeholder."
+            {
+              echo "# Release $TAG"
+              echo ""
+              echo "Release notes unavailable (generation failed)."
+            } > RELEASE_NOTES.md
+          fi
+
+          echo "---- RELEASE_NOTES.md ----"
+          head -n 50 RELEASE_NOTES.md || true
         
       - name: Copy templates
         run: yarn run copy-templates
