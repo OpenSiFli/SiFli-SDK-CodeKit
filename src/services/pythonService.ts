@@ -37,6 +37,28 @@ export class PythonService {
   }
 
   /**
+   * 获取默认的嵌入式 Python 安装目录（全局存储）
+   */
+  private getDefaultInstallDir(): string | undefined {
+    if (!this.context) {
+      return undefined;
+    }
+    return path.join(this.context.globalStorageUri.fsPath, 'python-embed');
+  }
+
+  /**
+   * 检查目标目录是否已安装并可用（存在 python.exe 和 Scripts/pip.exe）
+   */
+  private isEmbeddedPythonReady(dir: string | undefined): boolean {
+    if (!dir) {
+      return false;
+    }
+    const pythonExe = path.join(dir, 'python.exe');
+    const pipExe = path.join(dir, 'Scripts', 'pip.exe');
+    return fs.existsSync(pythonExe) && fs.existsSync(pipExe);
+  }
+
+  /**
    * 获取 Python 可执行文件路径
    * 优先使用配置的嵌入式 Python，其次检查默认安装位置，最后回退到系统 Python
    */
@@ -88,27 +110,39 @@ export class PythonService {
       return;
     }
 
-    const pythonPath = this.getPythonPath();
-    if (pythonPath !== 'python') {
-      this.logService.info(`Using embedded Python at: ${pythonPath}`);
+    const configuredDir = this.configService.config.embeddedPythonPath;
+    const defaultDir = this.getDefaultInstallDir();
+
+    // 如果已有可用的嵌入式 Python，直接返回
+    if (this.isEmbeddedPythonReady(configuredDir)) {
+      this.logService.info(`Using embedded Python at configured path: ${configuredDir}`);
+      return;
+    }
+    if (this.isEmbeddedPythonReady(defaultDir)) {
+      this.logService.info(`Using embedded Python at default path: ${defaultDir}`);
+      return;
+    }
+
+    const targetDir = configuredDir || defaultDir;
+    if (!targetDir) {
+      this.logService.error('Cannot determine embedded Python install directory (missing extension context).');
+      vscode.window.showErrorMessage('无法确定嵌入式 Python 的安装路径，扩展上下文未初始化。');
       return;
     }
 
     // 如果没有找到嵌入式 Python，提示用户并自动安装
     vscode.window.showInformationMessage('检测到未安装 SiFli Python 环境，正在自动下载并安装...');
-    await this.installEmbeddedPython();
+    await this.installEmbeddedPython(targetDir);
   }
 
   /**
    * 下载并安装嵌入式 Python
    */
-  public async installEmbeddedPython(): Promise<void> {
-    if (!this.context) {
-      vscode.window.showErrorMessage('Extension context not initialized.');
+  public async installEmbeddedPython(installDir: string): Promise<void> {
+    if (this.isEmbeddedPythonReady(installDir)) {
+      this.logService.info(`Embedded Python already installed at ${installDir}, skipping.`);
       return;
     }
-
-    const installDir = path.join(this.context.globalStorageUri.fsPath, 'python-embed');
     
     // 确保目录存在
     if (!fs.existsSync(installDir)) {
