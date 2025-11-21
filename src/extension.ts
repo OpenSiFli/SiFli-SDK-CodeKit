@@ -256,8 +256,9 @@ async function showReleaseNotesIfUpdated(context: vscode.ExtensionContext): Prom
   const openReleaseNotes = async () => {
     try {
       if (fs.existsSync(releaseNotesPath)) {
-        const doc = await vscode.workspace.openTextDocument(releaseNotesPath);
-        await vscode.window.showTextDocument(doc, { preview: true });
+        const uri = vscode.Uri.file(releaseNotesPath);
+        // 优先使用 Markdown 预览呈现更友好的界面
+        await vscode.commands.executeCommand('markdown.showPreview', uri);
       } else {
         vscode.window.showWarningMessage('找不到离线 Release Notes 文件。');
       }
