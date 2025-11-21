@@ -28,6 +28,14 @@
       @installation-complete="handleInstallationComplete"
     />
 
+    <!-- Installation Error Page -->
+    <InstallationError
+      v-else-if="currentPage === 'error'"
+      :message="failureInfo.message"
+      :logs="failureInfo.logs"
+      @go-back="currentPage = 'welcome'"
+    />
+
     <!-- Installation Complete Page -->
     <InstallationComplete
       v-else-if="currentPage === 'complete'"
@@ -74,8 +82,9 @@ import ExpressSetup from './ExpressSetup.vue';
 import AdvancedSetup from './AdvancedSetup.vue';
 import ExistingSetup from './ExistingSetup.vue';
 import InstallationComplete from './InstallationComplete.vue';
+import InstallationError from './InstallationError.vue';
 
-type PageType = 'welcome' | 'express' | 'advanced' | 'existing' | 'success' | 'complete';
+type PageType = 'welcome' | 'express' | 'advanced' | 'existing' | 'success' | 'complete' | 'error';
 
 interface InstallationResult {
   sdkVersion: string;
@@ -90,6 +99,10 @@ const installationResult = ref<InstallationResult>({
   sdkVersion: '',
   installPath: '',
   sdkSource: 'github',
+  logs: []
+});
+const failureInfo = ref<{ message: string; logs: string[] }>({
+  message: '',
   logs: []
 });
 
@@ -120,7 +133,17 @@ onMessage('installationCompleted', (data: { message: string; path: string; versi
     sdkSource: (data.source as 'github' | 'gitee') || 'github',
     logs: data.logs || []
   };
+  failureInfo.value = { message: '', logs: [] };
   currentPage.value = 'complete';
+});
+
+// 监听安装失败事件，跳转到错误页并展示日志
+onMessage('installationFailed', (data: { message: string; logs?: string[] }) => {
+  failureInfo.value = {
+    message: data.message || '安装失败',
+    logs: data.logs || []
+  };
+  currentPage.value = 'error';
 });
 
 onMounted(() => {
