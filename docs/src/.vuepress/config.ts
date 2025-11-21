@@ -8,13 +8,13 @@ export default defineUserConfig({
   locales: {
     "/en/": {
       lang: "en-US",
-      title: "sifli-sdk-codekit Application Manual",
-      description: "sifli-sdk-codekit Application Manual",
+      title: "sifli-sdk-codekit",
+      description: "sifli-sdk-codekit",
     },
     "/": {
       lang: "zh-CN",
-      title: "SiFli-SDK-CodeKit应用手册",
-      description: "SiFli-SDK-CodeKit应用手册",
+      title: "SiFli-SDK-CodeKit",
+      description: "SiFli-SDK-CodeKit",
     },
   },
 
