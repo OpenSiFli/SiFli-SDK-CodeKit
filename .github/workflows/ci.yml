@@ -89,6 +89,46 @@ jobs:
         
       - name: Compile TypeScript
         run: yarn run compile
+
+      - name: Generate Release Notes (tag only, otherwise placeholder)
+        id: release-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.get-version.outputs.version }}
+        run: |
+          TAG="v${VERSION}"
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            echo "PR build - writing placeholder release notes."
+            {
+              echo "# Release $TAG"
+              echo ""
+              echo "Preview build for pull request - release notes will be available on tagged release."
+            } > RELEASE_NOTES.md
+          elif [[ ! "${GITHUB_REF}" =~ refs/tags/.* ]]; then
+            echo "Non-tag push - writing placeholder release notes."
+            {
+              echo "# Release $TAG"
+              echo ""
+              echo "This is a non-tag build on ${GITHUB_REF}. Final notes will be generated for tagged releases."
+            } > RELEASE_NOTES.md
+          else
+            echo "Generating release notes for $TAG"
+            if body=$(gh api -X POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" -f tag_name="$TAG" -f target_commitish="${GITHUB_SHA}" --jq .body 2>/dev/null); then
+              {
+                echo "# Release $TAG"
+                echo ""
+                echo "$body"
+              } > RELEASE_NOTES.md
+            else
+              echo "Failed to auto-generate release notes; writing placeholder."
+              {
+                echo "# Release $TAG"
+                echo ""
+                echo "Release notes unavailable (generation failed)."
+              } > RELEASE_NOTES.md
+            fi
+          fi
+          cat RELEASE_NOTES.md
         
       - name: Copy templates
         run: yarn run copy-templates
