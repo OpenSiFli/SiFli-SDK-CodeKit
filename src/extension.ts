@@ -6,6 +6,7 @@ import { GitService } from './services/gitService';
 import { SerialPortService } from './services/serialPortService';
 import { TerminalService } from './services/terminalService';
 import { PythonService } from './services/pythonService';
+import { MinGitService } from './services/minGitService';
 import { LogService } from './services/logService';
 import { RegionService } from './services/regionService';
 import { BuildCommands } from './commands/buildCommands';
@@ -42,8 +43,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const serialPortService = SerialPortService.getInstance();
   const terminalService = TerminalService.getInstance();
   const pythonService = PythonService.getInstance();
+  const minGitService = MinGitService.getInstance();
   const regionService = RegionService.getInstance();
   pythonService.setContext(context);
+  minGitService.setContext(context);
   regionService.prewarm(); // 异步预热区域检测结果
   
   // 初始化命令处理器
@@ -74,6 +77,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 不阻塞激活过程，在后台运行
   pythonService.checkAndInstallPython().catch(err => {
     logService.error('Error checking/installing embedded Python:', err);
+  });
+
+  // 检查并安装 MinGit (仅限 Windows，无阻塞)
+  minGitService.ensureGitAvailable().catch(err => {
+    logService.error('Error ensuring MinGit:', err);
   });
 
   // 初始化串口服务（恢复之前保存的串口选择）
