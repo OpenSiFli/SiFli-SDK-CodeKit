@@ -161,8 +161,8 @@ export class PythonService {
 
     try {
       await vscode.window.withProgress({
-        location: vscode.ProgressLocation.Notification,
-        title: '正在下载嵌入式 Python...',
+        location: vscode.ProgressLocation.Window,
+        title: '正在安装嵌入式 Python...',
         cancellable: false
       }, async (progress) => {
         // 1. 下载
@@ -181,7 +181,8 @@ export class PythonService {
           downloadedLength += chunk.length;
           if (totalLength) {
             const percentage = Math.round((downloadedLength / totalLength) * 100);
-            progress.report({ message: `${percentage}%`, increment: 0 });
+            // 状态栏进度不显示具体进度条，仅简单提示
+            progress.report({ message: `已下载 ${percentage}%` });
           }
         });
 
@@ -193,7 +194,7 @@ export class PythonService {
         });
 
         // 2. 解压
-        progress.report({ message: '正在解压...', increment: 0 });
+        progress.report({ message: '正在解压...' });
         this.logService.info(`Extracting Python to ${installDir}`);
         
         // 使用 PowerShell 解压
