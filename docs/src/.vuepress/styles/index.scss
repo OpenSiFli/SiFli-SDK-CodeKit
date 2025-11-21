@@ -1,7 +1,7 @@
 // place your custom styles here
 :root {
-  --theme-color: #667eea;
-  --theme-color-light: #764ba2;
+  --theme-color: #ffffff;
+  --theme-color-light: #ffffff;
 }
 
 .vp-navbar {
@@ -53,7 +53,7 @@
   }
   
   .vp-hero-title {
-    background: linear-gradient(45deg, var(--theme-color), var(--theme-color-light));
+    background: linear-gradient(45deg, #4ecdc4, #4ecdc4);
     background-size: 200% 200%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -65,6 +65,10 @@
     
   }
   
+  [data-theme="dark"] .vp-hero-title {
+    background: linear-gradient(45deg, #00d4ff, #c6ffff);  // 深色模式
+  }
+
   .vp-hero-description {
     font-size: 1.25rem;
     margin: 1.5rem auto;

@@ -3,6 +3,7 @@ home: true
 icon: house
 title: 主页
 heroFullScreen: true
+heroFullScreenArrow: false
 
 bgImage: /assets/image/bgImage.svg
 bgImageDark: /assets/image/bgImageDark.svg
@@ -11,7 +12,6 @@ bgImageStyle:
   background-size: cover
   background-position: center
   background-repeat: no-repeat
-  opacity: 0.5
 heroText: SiFli-SDK-CodeKit应用手册
 tagline: 简化项目开发，让灵感即刻落地
 heroImage: /assets/image/logo_codekit.svg

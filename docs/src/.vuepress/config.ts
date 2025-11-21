@@ -3,7 +3,7 @@ import { defineUserConfig } from "vuepress";
 import theme from "./theme.js";
 
 export default defineUserConfig({
-  base: "/projects/sifli-sdk-codekit/",
+  base: "/projects/codekit/",
 
   locales: {
     "/en/": {
