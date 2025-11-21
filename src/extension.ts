@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
-import { CMD_PREFIX, HAS_RUN_INITIAL_SETUP_KEY } from './constants';
+import * as path from 'path';
+import * as fs from 'fs';
+import { CMD_PREFIX, HAS_RUN_INITIAL_SETUP_KEY, LAST_VERSION_KEY } from './constants';
 import { ConfigService } from './services/configService';
 import { SdkService } from './services/sdkService';
 import { GitService } from './services/gitService';
@@ -83,6 +85,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   minGitService.ensureGitAvailable().catch(err => {
     logService.error('Error ensuring MinGit:', err);
   });
+
+  // 如版本更新，提示查看 Release Notes
+  await showReleaseNotesIfUpdated(context);
 
   // 初始化串口服务（恢复之前保存的串口选择）
   await serialPortService.initialize();
@@ -228,4 +233,49 @@ export function deactivate(): void {
   // 清理日志服务
   logService.info('SiFli SDK CodeKit extension deactivated');
   logService.dispose();
+}
+
+async function showReleaseNotesIfUpdated(context: vscode.ExtensionContext): Promise<void> {
+  const currentVersion = vscode.extensions.getExtension('SiFli.sifli-sdk-codekit')?.packageJSON.version as string | undefined;
+  if (!currentVersion) {
+    return;
+  }
+
+  const previousVersion = context.globalState.get<string>(LAST_VERSION_KEY);
+
+  // 始次安装或版本未变更
+  if (!previousVersion) {
+    await context.globalState.update(LAST_VERSION_KEY, currentVersion);
+    return;
+  }
+  if (previousVersion === currentVersion) {
+    return;
+  }
+
+  const releaseNotesPath = path.join(context.extensionPath, 'RELEASE_NOTES.md');
+  const openReleaseNotes = async () => {
+    try {
+      if (fs.existsSync(releaseNotesPath)) {
+        const doc = await vscode.workspace.openTextDocument(releaseNotesPath);
+        await vscode.window.showTextDocument(doc, { preview: true });
+      } else {
+        vscode.window.showWarningMessage('找不到离线 Release Notes 文件。');
+      }
+    } catch (err) {
+      const logService = LogService.getInstance();
+      logService.error('Failed to open Release Notes:', err);
+    }
+  };
+
+  const choice = await vscode.window.showInformationMessage(
+    `SiFli SDK CodeKit 已更新至 ${currentVersion}，查看更新内容？`,
+    '查看更新',
+    '稍后'
+  );
+
+  if (choice === '查看更新') {
+    await openReleaseNotes();
+  }
+
+  await context.globalState.update(LAST_VERSION_KEY, currentVersion);
 }

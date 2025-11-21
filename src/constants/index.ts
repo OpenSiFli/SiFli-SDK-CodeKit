@@ -26,6 +26,7 @@ export const CMD_PREFIX = 'extension.';
 
 // 全局状态键
 export const HAS_RUN_INITIAL_SETUP_KEY = 'oneStepForSifli.hasRunInitialSetup';
+export const LAST_VERSION_KEY = 'sifli-sdk-codekit.lastVersion';
 
 // Git 仓库常量
 export const GIT_REPOS = {
