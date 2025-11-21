@@ -1,0 +1,73 @@
+name: Deploy Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # submodules: true # Uncomment if docs rely on git submodules
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: docs/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          cd docs
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Build documentation
+        env:
+          NODE_OPTIONS: --max_old_space_size=8192
+        run: |
+          cd docs
+          pnpm run docs:build
+          > src/.vuepress/dist/.nojekyll
+
+      - name: Install COSCMD
+        run: |
+          pip install coscmd
+
+      - name: Configure COSCMD
+        run: |
+          coscmd config -a ${{ secrets.COS_DOCS_SECRET_ID }} -s ${{ secrets.COS_DOCS_SECRET_KEY }} -b ${{ secrets.COS_DOCS_BUCKET }} -r ${{ secrets.COS_DOCS_REGION }}
+
+      - name: Upload to COS
+        run: |
+          coscmd upload -rs --delete --yes ./docs/src/.vuepress/dist/ /projects/codekit/
+          echo "Uploaded documentation for CodeKit to COS successfully."
+      
+      - name: Install TCCLI
+        run: |
+          pip install tccli
+      
+      - name: Purge CDN cache
+        env:
+          TENCENTCLOUD_SECRET_ID: ${{ secrets.COS_DOCS_SECRET_ID }}
+          TENCENTCLOUD_SECRET_KEY: ${{ secrets.COS_DOCS_SECRET_KEY }}
+          TENCENTCLOUD_REGION: ${{ secrets.COS_DOCS_REGION }}
+        run: |
+          tccli cdn PurgePathCache --cli-unfold-argument --Paths 'https://docs.sifli.com/projects/codekit/' --FlushType flush
