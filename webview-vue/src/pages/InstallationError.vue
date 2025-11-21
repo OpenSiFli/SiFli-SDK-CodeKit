@@ -30,12 +30,6 @@
               >
                 复制日志
               </button>
-              <button
-                @click="$emit('go-back')"
-                class="px-3 py-1 text-sm bg-vscode-button-secondaryBackground text-vscode-button-foreground rounded hover:bg-vscode-button-hoverBackground"
-              >
-                返回首页
-              </button>
             </div>
           </div>
 
@@ -57,6 +51,15 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <div class="mt-6 flex justify-center">
+          <button
+            @click="$emit('go-back')"
+            class="px-6 py-2 text-sm bg-vscode-button-secondaryBackground text-vscode-button-foreground rounded hover:bg-vscode-button-hoverBackground"
+          >
+            返回首页
+          </button>
         </div>
       </div>
     </div>
