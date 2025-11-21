@@ -10,6 +10,8 @@ export interface SdkConfig {
 export interface SiFliConfig {
   powershellPath?: string;
   sifliSdkExportScriptPath?: string;
+  embeddedPythonPath?: string; // 嵌入式 Python 路径
+  useEmbeddedPython: boolean; // 是否使用嵌入式 Python
   defaultChipModule: string;
   numThreads: number;
   customBoardSearchPath?: string;

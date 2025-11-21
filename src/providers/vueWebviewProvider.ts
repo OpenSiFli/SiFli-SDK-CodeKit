@@ -8,13 +8,16 @@ import { TerminalService } from '../services/terminalService';
 import { SdkService } from '../services/sdkService';
 import { GitService } from '../services/gitService';
 import { ConfigService } from '../services/configService';
+import { LogService } from '../services/logService';
 
 export class VueWebviewProvider {
   private static instance: VueWebviewProvider;
   private terminalService: TerminalService;
+  private logService: LogService;
 
   private constructor() {
     this.terminalService = TerminalService.getInstance();
+    this.logService = LogService.getInstance();
   }
 
   public static getInstance(): VueWebviewProvider {
@@ -699,6 +702,17 @@ export class VueWebviewProvider {
    * 执行安装脚本
    */
   private async executeInstallScript(scriptPath: string, workingDir: string, webview: vscode.Webview, installationLogs?: string[], toolsPath?: string | null, toolchainSource?: string): Promise<void> {
+    // 提前获取 PythonService
+    let pythonDir: string | undefined;
+    if (process.platform === 'win32') {
+      try {
+        const { PythonService } = await import('../services/pythonService');
+        pythonDir = PythonService.getInstance().getPythonDir();
+      } catch (e) {
+        this.logService.error('[VueWebviewProvider] Error loading PythonService:', e);
+      }
+    }
+
     return new Promise((resolve, reject) => {
       let command: string;
       let args: string[];
@@ -725,6 +739,22 @@ export class VueWebviewProvider {
 
       // 设置环境变量
       const env = { ...process.env };
+
+      // 注入嵌入式 Python 路径 (仅限 Windows)
+      if (process.platform === 'win32' && pythonDir) {
+        const currentPath = env.PATH || env.Path || '';
+        const pythonScriptsDir = path.join(pythonDir, 'Scripts');
+        env.PATH = `${pythonDir};${pythonScriptsDir};${currentPath}`;
+        const pythonLog = `🐍 注入嵌入式 Python 路径: ${pythonDir}`;
+        if (installationLogs) {
+          installationLogs.push(pythonLog);
+        }
+        webview.postMessage({
+          command: 'installationLog',
+          log: pythonLog
+        });
+      }
+
       if (toolsPath) {
         env.SIFLI_SDK_TOOLS_PATH = toolsPath;
         const envSetLog = `🔧 环境变量已设置: SIFLI_SDK_TOOLS_PATH=${toolsPath}`;

@@ -7,6 +7,7 @@ import { TERMINAL_NAME, PROJECT_SUBFOLDER } from '../constants';
 import { TaskName } from '../types';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
+import { PythonService } from './pythonService';
 
 export class TerminalService {
   private static instance: TerminalService;
@@ -78,6 +79,7 @@ export class TerminalService {
 
     if (newlyCreated) {
       this.sdkEnvPrepared = normalizedScriptPath ? false : true;
+      await this.setupPythonEnvironment(terminal);
     }
 
     // 切换到项目目录
@@ -119,6 +121,24 @@ export class TerminalService {
     }
 
     return vscode.window.createTerminal(terminalOptions);
+  }
+
+  /**
+   * 设置 Python 环境 (仅限 Windows)
+   */
+  private async setupPythonEnvironment(terminal: vscode.Terminal): Promise<void> {
+    if (process.platform !== 'win32') {
+      return;
+    }
+    const pythonService = PythonService.getInstance();
+    const pythonDir = pythonService.getPythonDir();
+    
+    if (pythonDir) {
+      const scriptsPath = path.join(pythonDir, 'Scripts');
+      this.logService.info(`Injecting embedded Python path: ${pythonDir}; Scripts: ${scriptsPath}`);
+      // 将 Python 及 Scripts 路径添加到 PATH 的最前面
+      terminal.sendText(`$env:Path = "${pythonDir};${scriptsPath};" + $env:Path`);
+    }
   }
 
   /**

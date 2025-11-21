@@ -35,6 +35,8 @@ export class ConfigService {
     return {
       powershellPath: config.get<string>('powershellPath'),
       sifliSdkExportScriptPath: config.get<string>('sifliSdkExportScriptPath'),
+      embeddedPythonPath: config.get<string>('embeddedPythonPath'),
+      useEmbeddedPython: config.get<boolean>('useEmbeddedPython') ?? true,
       defaultChipModule: config.get<string>('defaultChipModule') || '',
       numThreads: config.get<number>('numThreads') || 8,
       customBoardSearchPath: config.get<string>('customBoardSearchPath'),

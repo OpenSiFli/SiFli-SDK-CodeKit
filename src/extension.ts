@@ -5,6 +5,7 @@ import { SdkService } from './services/sdkService';
 import { GitService } from './services/gitService';
 import { SerialPortService } from './services/serialPortService';
 import { TerminalService } from './services/terminalService';
+import { PythonService } from './services/pythonService';
 import { LogService } from './services/logService';
 import { BuildCommands } from './commands/buildCommands';
 import { ConfigCommands } from './commands/configCommands';
@@ -39,6 +40,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const gitService = GitService.getInstance();
   const serialPortService = SerialPortService.getInstance();
   const terminalService = TerminalService.getInstance();
+  const pythonService = PythonService.getInstance();
+  pythonService.setContext(context);
   
   // 初始化命令处理器
   const buildCommands = BuildCommands.getInstance();
@@ -64,6 +67,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   await configService.updateConfiguration();
   logService.info('Configuration loaded successfully');
   
+  // 检查并安装嵌入式 Python (仅限 Windows)
+  // 不阻塞激活过程，在后台运行
+  pythonService.checkAndInstallPython().catch(err => {
+    logService.error('Error checking/installing embedded Python:', err);
+  });
+
   // 初始化串口服务（恢复之前保存的串口选择）
   await serialPortService.initialize();
   
