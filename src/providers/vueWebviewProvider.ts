@@ -315,6 +315,8 @@ export class VueWebviewProvider {
         break;
 
       case 'installSdk':
+        // 创建安装日志数组来收集所有日志（需在 try 外声明以便 catch 使用）
+        const installationLogs: string[] = [];
         try {
           console.log('[VueWebviewProvider] Starting SDK installation...');
           const { sdkSource, version, installPath, toolchainSource, toolsPath } = message.data;
@@ -327,9 +329,6 @@ export class VueWebviewProvider {
             toolsPath
           });
 
-          // 创建安装日志数组来收集所有日志
-          const installationLogs: string[] = [];
-          
           // 辅助函数：发送日志并收集
           const sendLog = (log: string) => {
             installationLogs.push(log);
@@ -470,14 +469,17 @@ export class VueWebviewProvider {
           await this.terminateGitProcesses();
           
           // 发送错误日志
+          const errorMessage = `❌ 安装失败: ${error instanceof Error ? error.message : String(error)}`;
+          installationLogs.push(errorMessage);
           webview.postMessage({
             command: 'installationLog',
-            log: `❌ 安装失败: ${error instanceof Error ? error.message : String(error)}`
+            log: errorMessage
           });
           
           webview.postMessage({
             command: 'installationFailed',
-            message: '安装失败: ' + (error instanceof Error ? error.message : String(error))
+            message: '安装失败: ' + (error instanceof Error ? error.message : String(error)),
+            logs: installationLogs
           });
         }
         break;
@@ -489,15 +491,16 @@ export class VueWebviewProvider {
           // 终止所有Git进程
           await this.terminateGitProcesses();
           
-          webview.postMessage({
-            command: 'installationLog',
-            log: '⚠️ 用户取消了安装操作'
-          });
-          
-          webview.postMessage({
-            command: 'installationFailed',
-            message: '安装已取消'
-          });
+      webview.postMessage({
+        command: 'installationLog',
+        log: '⚠️ 用户取消了安装操作'
+      });
+      
+      webview.postMessage({
+        command: 'installationFailed',
+        message: '安装已取消',
+        logs: []
+      });
           
         } catch (error) {
           console.error('[VueWebviewProvider] Error cancelling installation:', error);
@@ -1005,10 +1008,9 @@ export class VueWebviewProvider {
     toolsPath: string, 
     webview: vscode.Webview
   ): Promise<void> {
+    const installationLogs: string[] = [];
     try {
       console.log('[VueWebviewProvider] Installing existing SDK:', sdkPath);
-      
-      const installationLogs: string[] = [];
       
       const sendLog = (log: string) => {
         installationLogs.push(log);
@@ -1071,12 +1073,13 @@ export class VueWebviewProvider {
         logs: installationLogs
       });
 
-    } catch (error) {
-      console.error('[VueWebviewProvider] Error installing existing SDK:', error);
-      webview.postMessage({
-        command: 'installationFailed',
-        message: '安装失败: ' + (error instanceof Error ? error.message : String(error))
-      });
-    }
-  }
+        } catch (error) {
+          console.error('[VueWebviewProvider] Error installing existing SDK:', error);
+          webview.postMessage({
+            command: 'installationFailed',
+            message: '安装失败: ' + (error instanceof Error ? error.message : String(error)),
+            logs: installationLogs
+          });
+        }
+      }
 }
