@@ -284,6 +284,16 @@ export function useSdkManager() {
     };
   });
 
+  // 根据区域设置默认源（由后端传入）
+  onMessage('setDefaultSources', (data: { sdkSource?: 'github' | 'gitee'; toolchainSource?: 'sifli' | 'github' }) => {
+    if (data.sdkSource) {
+      state.value.sdkSource = data.sdkSource;
+    }
+    if (data.toolchainSource) {
+      state.value.toolchainSource = data.toolchainSource;
+    }
+  });
+
   onMessage('error', (data: { message: string }) => {
     state.value.isLoading = false;
     state.value.isInstalling = false;

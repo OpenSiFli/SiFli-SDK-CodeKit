@@ -9,6 +9,7 @@ import { SdkService } from '../services/sdkService';
 import { GitService } from '../services/gitService';
 import { ConfigService } from '../services/configService';
 import { LogService } from '../services/logService';
+import { RegionService } from '../services/regionService';
 
 export class VueWebviewProvider {
   private static instance: VueWebviewProvider;
@@ -58,6 +59,10 @@ export class VueWebviewProvider {
           panel.webview.postMessage({
             command: 'initializeLocale',
             locale: locale
+          });
+          // 发送区域默认源设置（仅在需要时）
+          this.sendRegionDefaults(panel.webview).catch(err => {
+            console.error('[VueWebviewProvider] Failed to send region defaults:', err);
           });
         } else {
           try {
@@ -1082,4 +1087,23 @@ export class VueWebviewProvider {
           });
         }
       }
+  
+  /**
+   * 向 WebView 发送区域默认选项（中国用户默认 Gitee/Sifli 源）
+   */
+  private async sendRegionDefaults(webview: vscode.Webview): Promise<void> {
+    try {
+      const regionService = RegionService.getInstance();
+      const inChina = await regionService.isUserInChina();
+      if (inChina) {
+        webview.postMessage({
+          command: 'setDefaultSources',
+          sdkSource: 'gitee',
+          toolchainSource: 'sifli'
+        });
+      }
+    } catch (error) {
+      console.error('[VueWebviewProvider] Failed to send region defaults:', error);
+    }
+  }
 }
