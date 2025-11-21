@@ -8,6 +8,7 @@ import { TaskName } from '../types';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
 import { PythonService } from './pythonService';
+import { MinGitService } from './minGitService';
 
 export class TerminalService {
   private static instance: TerminalService;
@@ -80,6 +81,7 @@ export class TerminalService {
     if (newlyCreated) {
       this.sdkEnvPrepared = normalizedScriptPath ? false : true;
       await this.setupPythonEnvironment(terminal);
+      await this.setupGitEnvironment(terminal);
     }
 
     // 切换到项目目录
@@ -138,6 +140,21 @@ export class TerminalService {
       this.logService.info(`Injecting embedded Python path: ${pythonDir}; Scripts: ${scriptsPath}`);
       // 将 Python 及 Scripts 路径添加到 PATH 的最前面
       terminal.sendText(`$env:Path = "${pythonDir};${scriptsPath};" + $env:Path`);
+    }
+  }
+
+  /**
+   * 设置 MinGit 环境 (仅限 Windows)
+   */
+  private async setupGitEnvironment(terminal: vscode.Terminal): Promise<void> {
+    if (process.platform !== 'win32') {
+      return;
+    }
+    const minGitService = MinGitService.getInstance();
+    const gitCmdDir = minGitService.getGitCmdDir();
+    if (gitCmdDir) {
+      this.logService.info(`Injecting MinGit path: ${gitCmdDir}`);
+      terminal.sendText(`$env:Path = "${gitCmdDir};" + $env:Path`);
     }
   }
 
