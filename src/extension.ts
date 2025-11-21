@@ -7,6 +7,7 @@ import { SerialPortService } from './services/serialPortService';
 import { TerminalService } from './services/terminalService';
 import { PythonService } from './services/pythonService';
 import { LogService } from './services/logService';
+import { RegionService } from './services/regionService';
 import { BuildCommands } from './commands/buildCommands';
 import { ConfigCommands } from './commands/configCommands';
 import { SdkCommands } from './commands/sdkCommands';
@@ -41,7 +42,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const serialPortService = SerialPortService.getInstance();
   const terminalService = TerminalService.getInstance();
   const pythonService = PythonService.getInstance();
+  const regionService = RegionService.getInstance();
   pythonService.setContext(context);
+  regionService.prewarm(); // 异步预热区域检测结果
   
   // 初始化命令处理器
   const buildCommands = BuildCommands.getInstance();

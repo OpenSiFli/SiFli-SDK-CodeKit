@@ -6,6 +6,7 @@ import axios from 'axios';
 import { spawn } from 'child_process';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
+import { RegionService } from './regionService';
 
 export class PythonService {
   private static instance: PythonService;
@@ -298,8 +299,24 @@ export class PythonService {
 
     // 使用嵌入式 Python 安装 pip
     this.logService.info('Installing pip using embedded Python...');
+    const pipEnv = { ...process.env };
+    try {
+      const regionService = RegionService.getInstance();
+      const inChina = await regionService.isUserInChina();
+      if (inChina) {
+        pipEnv.PIP_INDEX_URL = 'https://mirrors.ustc.edu.cn/pypi/simple';
+        this.logService.info(`Using pip mirror: ${pipEnv.PIP_INDEX_URL}`);
+      }
+    } catch (err) {
+      this.logService.warn('Region detection failed before pip install; using default PyPI.', err);
+    }
+
     await new Promise<void>((resolve, reject) => {
-      const proc = spawn(pythonExe, [getPipPath, '--no-warn-script-location'], { cwd: installDir });
+      const proc = spawn(
+        pythonExe,
+        [getPipPath, '--no-warn-script-location'],
+        { cwd: installDir, env: pipEnv }
+      );
       let stderrOutput = '';
 
       proc.stderr?.on('data', (data: Buffer) => {
@@ -328,4 +345,5 @@ export class PythonService {
 
     this.logService.info('pip installed successfully for embedded Python.');
   }
+
 }
