@@ -17,6 +17,7 @@ export class PythonService {
     arm64: 'https://downloads.sifli.com/dl/sifli-sdk/python-embed/python-3.13.9-embed-arm64.zip',
     ia32: 'https://downloads.sifli.com/dl/sifli-sdk/python-embed/python-3.13.9-embed-win32.zip'
   };
+  private static readonly GET_PIP_URL = 'https://downloads.sifli.com/dl/sifli-sdk/python-embed/get-pip.py';
 
   private constructor() {
     this.configService = ConfigService.getInstance();
@@ -165,13 +166,28 @@ export class PythonService {
 
         // 3. 清理
         fs.unlinkSync(zipPath);
+
+        // 4. 移除 ._pth 文件以允许正常导入 site-packages
+        const pthFile = path.join(installDir, 'python313._pth');
+        if (fs.existsSync(pthFile)) {
+          try {
+            fs.unlinkSync(pthFile);
+            this.logService.info('Removed python313._pth to enable site-packages and dynamic imports.');
+          } catch (err) {
+            this.logService.warn('Failed to remove python313._pth', err);
+          }
+        }
+
+        // 5. 安装 pip (下载 get-pip.py 并执行)，不影响整体流程
+        try {
+          progress.report({ message: '正在安装 pip...', increment: 0 });
+          await this.installPip(installDir);
+        } catch (err) {
+          this.logService.warn('Failed to install pip for embedded Python', err);
+        }
         
-        // 4. 更新配置
+        // 6. 更新配置
         await this.configService.updateConfigValue('embeddedPythonPath', installDir);
-        
-        // 5. 修改 python313._pth 文件以允许导入 site-packages (如果需要)
-        // 嵌入式 Python 默认忽略 site-packages，如果需要安装包，需要修改 .pth 文件
-        // 这里暂时不修改，除非后续有需求安装 pip 包
         
         this.logService.info('Embedded Python installed successfully.');
       });
@@ -202,5 +218,65 @@ export class PythonService {
         }
       });
     });
+  }
+
+  /**
+   * 下载并安装 pip（通过 get-pip.py）
+   */
+  private async installPip(installDir: string): Promise<void> {
+    const getPipPath = path.join(installDir, 'get-pip.py');
+    const pythonExe = path.join(installDir, 'python.exe');
+
+    if (!fs.existsSync(pythonExe)) {
+      throw new Error('Embedded Python executable not found.');
+    }
+
+    // 下载 get-pip.py
+    this.logService.info(`Downloading get-pip.py from ${PythonService.GET_PIP_URL} to ${getPipPath}`);
+    const response = await axios({
+      method: 'GET',
+      url: PythonService.GET_PIP_URL,
+      responseType: 'stream'
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      const writer = fs.createWriteStream(getPipPath);
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+      response.data.pipe(writer);
+    });
+
+    // 使用嵌入式 Python 安装 pip
+    this.logService.info('Installing pip using embedded Python...');
+    const { spawn } = require('child_process');
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn(pythonExe, [getPipPath, '--no-warn-script-location'], { cwd: installDir });
+      let stderrOutput = '';
+
+      proc.stderr?.on('data', (data: Buffer) => {
+        const text = data.toString();
+        stderrOutput += text;
+        this.logService.warn('pip install stderr:', text.trim());
+      });
+
+      proc.on('error', (err: Error) => reject(err));
+      proc.on('close', (code: number) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`pip installation failed with exit code ${code}${stderrOutput ? `: ${stderrOutput}` : ''}`));
+        }
+      });
+    });
+
+    // 清理 get-pip.py
+    try {
+      fs.unlinkSync(getPipPath);
+    } catch {
+      // 忽略清理错误
+      this.logService.warn('Failed to delete get-pip.py after installation.');
+    }
+
+    this.logService.info('pip installed successfully for embedded Python.');
   }
 }

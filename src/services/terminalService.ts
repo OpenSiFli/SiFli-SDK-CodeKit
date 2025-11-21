@@ -134,9 +134,10 @@ export class TerminalService {
     const pythonDir = pythonService.getPythonDir();
     
     if (pythonDir) {
-      this.logService.info(`Injecting embedded Python path: ${pythonDir}`);
-      // 将 Python 路径添加到 PATH 的最前面
-      terminal.sendText(`$env:Path = "${pythonDir};" + $env:Path`);
+      const scriptsPath = path.join(pythonDir, 'Scripts');
+      this.logService.info(`Injecting embedded Python path: ${pythonDir}; Scripts: ${scriptsPath}`);
+      // 将 Python 及 Scripts 路径添加到 PATH 的最前面
+      terminal.sendText(`$env:Path = "${pythonDir};${scriptsPath};" + $env:Path`);
     }
   }
 

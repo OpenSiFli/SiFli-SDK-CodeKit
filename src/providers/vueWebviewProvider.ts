@@ -738,8 +738,10 @@ export class VueWebviewProvider {
       const env = { ...process.env };
 
       // 注入嵌入式 Python 路径 (仅限 Windows)
-      if (pythonDir) {
-        env.Path = `${pythonDir};${env.Path || ''}`;
+      if (process.platform === 'win32' && pythonDir) {
+        const currentPath = env.PATH || env.Path || '';
+        const pythonScriptsDir = path.join(pythonDir, 'Scripts');
+        env.PATH = `${pythonDir};${pythonScriptsDir};${currentPath}`;
         const pythonLog = `🐍 注入嵌入式 Python 路径: ${pythonDir}`;
         if (installationLogs) {
           installationLogs.push(pythonLog);
