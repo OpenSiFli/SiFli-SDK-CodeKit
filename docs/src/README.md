@@ -5,8 +5,8 @@ title: 主页
 heroFullScreen: true
 heroFullScreenArrow: false
 
-bgImage: /assets/image/bgImage.svg
-bgImageDark: /assets/image/bgImageDark.svg
+bgImage: https://theme-hope-assets.vuejs.press/bg/6-light.svg
+bgImageDark: https://theme-hope-assets.vuejs.press/bg/6-dark.svg
 bgImageStyle:
   background-attachment: fixed
   background-size: cover
