@@ -47,27 +47,15 @@ jobs:
           pnpm run docs:build
           > src/.vuepress/dist/.nojekyll
 
-      - name: Install COSCMD
-        run: |
-          pip install coscmd
-
-      - name: Configure COSCMD
-        run: |
-          coscmd config -a ${{ secrets.COS_DOCS_SECRET_ID }} -s ${{ secrets.COS_DOCS_SECRET_KEY }} -b ${{ secrets.COS_DOCS_BUCKET }} -r ${{ secrets.COS_DOCS_REGION }}
-
-      - name: Upload to COS
-        run: |
-          coscmd upload -rs --delete --yes ./docs/src/.vuepress/dist/ /projects/codekit/
-          echo "Uploaded documentation for CodeKit to COS successfully."
-      
-      - name: Install TCCLI
-        run: |
-          pip install tccli
-      
-      - name: Purge CDN cache
-        env:
-          TENCENTCLOUD_SECRET_ID: ${{ secrets.COS_DOCS_SECRET_ID }}
-          TENCENTCLOUD_SECRET_KEY: ${{ secrets.COS_DOCS_SECRET_KEY }}
-          TENCENTCLOUD_REGION: ${{ secrets.COS_DOCS_REGION }}
-        run: |
-          tccli cdn PurgePathCache --cli-unfold-argument --Paths 'https://docs.sifli.com/projects/codekit/' --FlushType flush
+      - name: Sync Mirror
+        uses: OpenSiFli/SiFliMirrorSync@v1
+        with:
+          secret_id: ${{ secrets.COS_DOCS_SECRET_ID }}
+          secret_key: ${{ secrets.COS_DOCS_SECRET_KEY }}
+          bucket: ${{ secrets.COS_DOCS_BUCKET }}
+          region: ${{ secrets.COS_DOCS_REGION }}
+          artifacts: "./**"
+          working_directory: "./docs/src/.vuepress/dist/"
+          prefix: "/projects/codekit/"
+          delete_remote: true
+          flush_url: "https://docs.sifli.com/projects/codekit/"
