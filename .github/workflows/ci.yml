@@ -36,6 +36,11 @@ jobs:
         with:
           node-version: '20'
           cache: 'yarn'
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
           
       - name: Calculate version
         id: get-version
@@ -98,6 +103,9 @@ jobs:
 
       - name: Copy templates
         run: yarn run copy-templates
+
+      - name: Generate release notes
+        run: git cliff -c cliff.toml -o RELEASE_NOTES.md
         
       - name: Package extension
         id: package
@@ -131,6 +139,30 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      - name: Determine tag range
+        id: tag_range
+        shell: bash
+        run: |
+          set -euo pipefail
+          CURRENT="${GITHUB_REF_NAME}"
+          PREV="$(git describe --tags --abbrev=0 "${CURRENT}^" 2>/dev/null || true)"
+          if [ -n "${PREV}" ]; then
+            RANGE="${PREV}..${CURRENT}"
+          else
+            RANGE="${CURRENT}"
+          fi
+          echo "range=${RANGE}" >> "${GITHUB_OUTPUT}"
+
+      - name: Generate release notes
+        run: git cliff "${{ steps.tag_range.outputs.range }}" -c cliff.toml -o RELEASE_NOTES.md
         
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -143,10 +175,10 @@ jobs:
           artifacts: "*.vsix"
           artifactContentType: application/zip
           token: ${{ secrets.GITHUB_TOKEN }}
-          generateReleaseNotes: true
           draft: false
           prerelease: false
           allowUpdates: true
+          bodyFile: RELEASE_NOTES.md
           
   publish-marketplace:
     runs-on: ubuntu-latest
