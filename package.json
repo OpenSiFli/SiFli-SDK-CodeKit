@@ -2,7 +2,7 @@
   "name": "sifli-sdk-codekit",
   "publisher": "SiFli",
   "description": "Develop and debug applications for SiFli chips with SiFli-SDK",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "engines": {
     "vscode": "^1.102.0"
   },
