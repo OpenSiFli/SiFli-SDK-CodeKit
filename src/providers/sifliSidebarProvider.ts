@@ -148,6 +148,20 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
       portDescription
     ));
 
+    // 新建 SiFli 终端
+    items.push(new SifliSidebarItem(
+      '新建 SiFli 终端',
+      vscode.TreeItemCollapsibleState.None,
+      {
+        command: 'extension.createNewSiFliTerminal',
+        title: '新建 SiFli 终端',
+        arguments: []
+      },
+      new vscode.ThemeIcon('terminal'),
+      '创建新的带 SiFli 环境的终端',
+      'newSifliTerminal'
+    ));
+
     // 配置 clangd
     items.push(new SifliSidebarItem(
       '配置 clangd',

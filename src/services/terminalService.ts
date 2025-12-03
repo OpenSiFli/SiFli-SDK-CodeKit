@@ -15,10 +15,10 @@ export class TerminalService {
   private configService: ConfigService;
   private logService: LogService;
   private currentTerminal?: vscode.Terminal;
-  private sdkEnvPrepared = false;
-  private lastExportScriptPath?: string;
   private terminalCloseListener: vscode.Disposable;
   private envInjectedTerminals = new WeakSet<vscode.Terminal>();
+  private exportPrepared = new WeakMap<vscode.Terminal, string | null>();
+  private lastExportScriptPath?: string;
   private static readonly EXIT_CODE_TIMEOUT_MS = 10 * 60 * 1000; // 10 分钟超时
   private static readonly EXIT_CODE_POLL_INTERVAL_MS = 500;
 
@@ -30,7 +30,6 @@ export class TerminalService {
         if (terminal === this.currentTerminal) {
           this.currentTerminal = undefined;
         }
-        this.sdkEnvPrepared = false;
       }
     });
   }
@@ -57,17 +56,17 @@ export class TerminalService {
   /**
    * 获取或创建 SiFli 终端并切换到项目目录
    */
-  public async getOrCreateSiFliTerminalAndCdProject(): Promise<vscode.Terminal> {
-    let terminal = this.findSiFliTerminal();
+  public async getOrCreateSiFliTerminalAndCdProject(
+    forceNew = false,
+    options?: { autoExport?: boolean }
+  ): Promise<vscode.Terminal> {
+    let terminal = forceNew ? undefined : this.findSiFliTerminal();
     const configuredScriptPath = this.configService.config.sifliSdkExportScriptPath;
     const normalizedScriptPath =
       configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
-    let newlyCreated = false;
-
     if (!terminal) {
       this.logService.info('Creating new SiFli terminal');
       terminal = this.createSiFliTerminal();
-      newlyCreated = true;
     } else {
       this.logService.debug('Reusing existing SiFli terminal');
     }
@@ -76,14 +75,14 @@ export class TerminalService {
 
     if (normalizedScriptPath !== this.lastExportScriptPath) {
       this.lastExportScriptPath = normalizedScriptPath;
-      this.sdkEnvPrepared = !normalizedScriptPath;
-    }
-
-    if (newlyCreated) {
-      this.sdkEnvPrepared = normalizedScriptPath ? false : true;
+      // 导出脚本变更时，重置各终端的已准备状态
+      this.exportPrepared = new WeakMap();
     }
 
     await this.ensureEnvInjected(terminal);
+    if (options?.autoExport !== false) {
+      await this.runExportScriptIfNeeded(terminal, normalizedScriptPath);
+    }
 
     // 切换到项目目录
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -136,6 +135,46 @@ export class TerminalService {
     await this.setupPythonEnvironment(terminal);
     await this.setupGitEnvironment(terminal);
     this.envInjectedTerminals.add(terminal);
+  }
+
+  /**
+   * 根据配置执行导出脚本，确保当前终端拥有 SDK 环境
+   */
+  private async runExportScriptIfNeeded(
+    terminal: vscode.Terminal,
+    scriptPath: string | undefined
+  ): Promise<void> {
+    if (!scriptPath) {
+      this.markExportPrepared(terminal, null);
+      return;
+    }
+
+    if (this.isExportPrepared(terminal, scriptPath)) {
+      return;
+    }
+
+    let executeCommand: string;
+    if (process.platform === 'win32') {
+      executeCommand = `& "${scriptPath}"`;
+    } else {
+      executeCommand = `. "${scriptPath}"`;
+    }
+
+    this.logService.info(`Running SDK export script in terminal: ${scriptPath}`);
+    terminal.sendText(executeCommand);
+    this.markExportPrepared(terminal, scriptPath);
+  }
+
+  private isExportPrepared(terminal: vscode.Terminal, scriptPath: string | undefined): boolean {
+    const preparedFor = this.exportPrepared.get(terminal);
+    if (!scriptPath) {
+      return preparedFor === null;
+    }
+    return preparedFor === scriptPath;
+  }
+
+  private markExportPrepared(terminal: vscode.Terminal, scriptPath: string | null): void {
+    this.exportPrepared.set(terminal, scriptPath);
   }
 
   /**
@@ -192,7 +231,9 @@ export class TerminalService {
     const normalizedScriptPath =
       configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
     this.lastExportScriptPath = normalizedScriptPath;
-    this.sdkEnvPrepared = true;
+    if (this.currentTerminal) {
+      this.markExportPrepared(this.currentTerminal, normalizedScriptPath ?? null);
+    }
   }
 
   /**
@@ -212,13 +253,15 @@ export class TerminalService {
       const configuredScriptPath = this.configService.config.sifliSdkExportScriptPath;
       const scriptPath =
         configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
-      const needsEnvSetup = !!scriptPath && !this.sdkEnvPrepared;
+      const needsEnvSetup = !!scriptPath && !this.isExportPrepared(terminal, scriptPath);
 
       if (!options?.waitForExit) {
         const commandToSend = this.buildCommandForTerminal(commandLine, scriptPath, needsEnvSetup);
         terminal.sendText(commandToSend);
-        if (needsEnvSetup || !scriptPath) {
-          this.sdkEnvPrepared = true;
+        if (needsEnvSetup) {
+          this.markExportPrepared(terminal, scriptPath ?? null);
+        } else if (!scriptPath) {
+          this.markExportPrepared(terminal, null);
         }
         this.logService.info(`Successfully forwarded ${taskName} to terminal`);
         return undefined;
@@ -242,8 +285,10 @@ export class TerminalService {
         await this.ensureExitMarkerRemoved(exitMarkerPath);
       }
 
-      if ((needsEnvSetup && exitCode === 0) || !scriptPath) {
-        this.sdkEnvPrepared = true;
+      if (needsEnvSetup && exitCode === 0) {
+        this.markExportPrepared(terminal, scriptPath ?? null);
+      } else if (!scriptPath) {
+        this.markExportPrepared(terminal, null);
       }
 
       this.logService.info(`${taskName} finished with exit code ${exitCode}`);
@@ -374,7 +419,8 @@ export class TerminalService {
       sifliTerminals.forEach(terminal => terminal.dispose());
     }
     this.currentTerminal = undefined;
-    this.sdkEnvPrepared = this.lastExportScriptPath ? false : true;
+    this.exportPrepared = new WeakMap();
+    this.lastExportScriptPath = undefined;
     this.envInjectedTerminals = new WeakSet();
   }
 

@@ -57,16 +57,20 @@
         "command": "extension.openDeviceMonitor",
         "title": "监视设备"
       },
-      {
-        "command": "extension.closeDeviceMonitor",
-        "title": "关闭设备监视器"
-      },
-      {
-        "command": "extension.listSerialPorts",
-        "title": "列出可用串口"
-      },
-      {
-        "command": "sifliSidebar.refresh",
+    {
+      "command": "extension.closeDeviceMonitor",
+      "title": "关闭设备监视器"
+    },
+    {
+      "command": "extension.createNewSiFliTerminal",
+      "title": "新建 SiFli 终端"
+    },
+    {
+      "command": "extension.listSerialPorts",
+      "title": "列出可用串口"
+    },
+    {
+      "command": "sifliSidebar.refresh",
         "title": "刷新",
         "icon": "$(refresh)"
       }

@@ -184,6 +184,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.commands.registerCommand(CMD_PREFIX + 'closeDeviceMonitor', () => 
         statusBarProvider.closeDeviceMonitor()
       ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'createNewSiFliTerminal', async () => {
+        const terminal = await terminalService.getOrCreateSiFliTerminalAndCdProject(true);
+        terminal.show();
+      }),
       vscode.commands.registerCommand(CMD_PREFIX + 'listSerialPorts', () => 
         configCommands.listSerialPorts()
       ),

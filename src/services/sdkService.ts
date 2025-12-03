@@ -298,7 +298,7 @@ export class SdkService {
   private async executeActivationScript(activationScript: { scriptPath: string; configPath: string; command: string }): Promise<void> {
     try {
       this.logService.info(`Executing SDK activation script: ${activationScript.scriptPath}`);
-      const terminal = await this.terminalService.getOrCreateSiFliTerminalAndCdProject();
+      const terminal = await this.terminalService.getOrCreateSiFliTerminalAndCdProject(false, { autoExport: false });
 
       const scriptDir = path.dirname(activationScript.scriptPath);
 
