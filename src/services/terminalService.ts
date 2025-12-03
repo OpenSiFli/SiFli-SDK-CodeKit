@@ -18,6 +18,7 @@ export class TerminalService {
   private sdkEnvPrepared = false;
   private lastExportScriptPath?: string;
   private terminalCloseListener: vscode.Disposable;
+  private envInjectedTerminals = new WeakSet<vscode.Terminal>();
   private static readonly EXIT_CODE_TIMEOUT_MS = 10 * 60 * 1000; // 10 分钟超时
   private static readonly EXIT_CODE_POLL_INTERVAL_MS = 500;
 
@@ -80,9 +81,9 @@ export class TerminalService {
 
     if (newlyCreated) {
       this.sdkEnvPrepared = normalizedScriptPath ? false : true;
-      await this.setupPythonEnvironment(terminal);
-      await this.setupGitEnvironment(terminal);
     }
+
+    await this.ensureEnvInjected(terminal);
 
     // 切换到项目目录
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -126,6 +127,18 @@ export class TerminalService {
   }
 
   /**
+   * 确保当前终端完成环境注入（仅在未注入过时执行）
+   */
+  private async ensureEnvInjected(terminal: vscode.Terminal): Promise<void> {
+    if (this.envInjectedTerminals.has(terminal)) {
+      return;
+    }
+    await this.setupPythonEnvironment(terminal);
+    await this.setupGitEnvironment(terminal);
+    this.envInjectedTerminals.add(terminal);
+  }
+
+  /**
    * 设置 Python 环境 (仅限 Windows)
    */
   private async setupPythonEnvironment(terminal: vscode.Terminal): Promise<void> {
@@ -135,12 +148,15 @@ export class TerminalService {
     const pythonService = PythonService.getInstance();
     const pythonDir = pythonService.getPythonDir();
     
-    if (pythonDir) {
-      const scriptsPath = path.join(pythonDir, 'Scripts');
-      this.logService.info(`Injecting embedded Python path: ${pythonDir}; Scripts: ${scriptsPath}`);
-      // 将 Python 及 Scripts 路径添加到 PATH 的最前面
-      terminal.sendText(`$env:Path = "${pythonDir};${scriptsPath};" + $env:Path`);
+    if (!pythonDir) {
+      this.logService.debug('Embedded Python not available; skipping PATH injection.');
+      return;
     }
+
+    const scriptsPath = path.join(pythonDir, 'Scripts');
+    this.logService.info(`Injecting embedded Python path: ${pythonDir}; Scripts: ${scriptsPath}`);
+    // 将 Python 及 Scripts 路径添加到 PATH 的最前面
+    terminal.sendText(`$env:Path = "${pythonDir};${scriptsPath};" + $env:Path`);
   }
 
   /**
@@ -152,10 +168,13 @@ export class TerminalService {
     }
     const minGitService = MinGitService.getInstance();
     const gitCmdDir = minGitService.getGitCmdDir();
-    if (gitCmdDir) {
-      this.logService.info(`Injecting MinGit path: ${gitCmdDir}`);
-      terminal.sendText(`$env:Path = "${gitCmdDir};" + $env:Path`);
+    if (!gitCmdDir) {
+      this.logService.debug('MinGit path unavailable; skipping PATH injection.');
+      return;
     }
+
+    this.logService.info(`Injecting MinGit path: ${gitCmdDir}`);
+    terminal.sendText(`$env:Path = "${gitCmdDir};" + $env:Path`);
   }
 
   /**
@@ -356,6 +375,7 @@ export class TerminalService {
     }
     this.currentTerminal = undefined;
     this.sdkEnvPrepared = this.lastExportScriptPath ? false : true;
+    this.envInjectedTerminals = new WeakSet();
   }
 
   /**
