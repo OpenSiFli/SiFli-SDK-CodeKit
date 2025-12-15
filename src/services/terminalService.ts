@@ -61,7 +61,7 @@ export class TerminalService {
     options?: { autoExport?: boolean }
   ): Promise<vscode.Terminal> {
     let terminal = forceNew ? undefined : this.findSiFliTerminal();
-    const configuredScriptPath = this.configService.config.sifliSdkExportScriptPath;
+    const configuredScriptPath = this.configService.getSifliSdkExportScriptPath();
     const normalizedScriptPath =
       configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
     if (!terminal) {
@@ -227,7 +227,7 @@ export class TerminalService {
    * 标记当前终端环境已完成 SDK 导出
    */
   public markSdkEnvironmentPrepared(): void {
-    const configuredScriptPath = this.configService.config.sifliSdkExportScriptPath;
+    const configuredScriptPath = this.configService.getSifliSdkExportScriptPath();
     const normalizedScriptPath =
       configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
     this.lastExportScriptPath = normalizedScriptPath;
@@ -250,7 +250,7 @@ export class TerminalService {
       const terminal = await this.getOrCreateSiFliTerminalAndCdProject();
       terminal.show();
 
-      const configuredScriptPath = this.configService.config.sifliSdkExportScriptPath;
+      const configuredScriptPath = this.configService.getSifliSdkExportScriptPath();
       const scriptPath =
         configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
       const needsEnvSetup = !!scriptPath && !this.isExportPrepared(terminal, scriptPath);

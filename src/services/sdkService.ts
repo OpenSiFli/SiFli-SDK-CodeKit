@@ -32,7 +32,7 @@ export class SdkService {
     this.logService.info('Starting SDK discovery...');
     const sdkVersions: SdkVersion[] = [];
     const installedSdkPaths = this.configService.getInstalledSdkPaths();
-    const currentSdkPath = this.configService.config.sifliSdkExportScriptPath;
+    const currentSdkPath = this.configService.getSifliSdkExportScriptPath();
 
     this.logService.debug(`Configured SDK paths: ${installedSdkPaths.join(', ')}`);
     this.logService.debug(`Current SDK export script path: ${currentSdkPath || 'None'}`);
@@ -235,8 +235,9 @@ export class SdkService {
       // 在终端中执行激活命令
       await this.executeActivationScript(activationScript);
 
-      // *** 关键修改: 显式更新配置，这会触发 onDidChangeConfiguration 事件 ***
-      await this.configService.updateConfigValue('sifliSdkExportScriptPath', activationScript.configPath);
+      // *** 关键修改: 显式更新配置到 workspaceState ***
+      await this.configService.setSifliSdkExportScriptPath(activationScript.configPath);
+      await this.configService.setCurrentSdkPath(sdk.path);
 
       const successMessage = `已切换到 SiFli SDK 版本: ${sdk.version}`;
       this.logService.info(successMessage);

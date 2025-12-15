@@ -112,10 +112,6 @@
             "scope": "machine-overridable",
             "when": "isWindows"
           },
-          "sifli-sdk-codekit.sifliSdkExportScriptPath": {
-            "type": "string",
-            "description": "Full path to the SiFli SDK export.ps1 script. (e.g., D:\\OpenSiFli\\SiFli-SDK\\export.ps1)"
-          },
           "sifli-sdk-codekit.embeddedPythonPath": {
             "type": "string",
             "description": "Path to the embedded Python directory. If set, the extension will use this Python environment.",
@@ -147,27 +143,14 @@
               ]
             },
             "default": [],
-            "description": "List of installed SiFli SDK configurations. Each entry contains path and optional tools path."
-          },
-          "sifli-sdk-codekit.defaultChipModule": {
-            "type": "string",
-            "default": "",
-            "description": "Select the default SiFli chip module for development. Automatically updated."
-          },
-          "sifli-sdk-codekit.numThreads": {
-            "type": "integer",
-            "default": 8,
-            "description": "Number of parallel compilation threads for SCons (e.g., 4, 8, 16)."
+            "description": "List of installed SiFli SDK configurations. Each entry contains path and optional tools path.",
+            "scope": "machine-overridable"
           },
           "sifli-sdk-codekit.customBoardSearchPath": {
             "type": "string",
             "description": "Optional: Absolute or relative path to a directory containing custom SiFli board configurations. (e.g., C:\\MyBoards or ../my_boards)",
-            "default": ""
-          },
-          "sifli-sdk-codekit.selectedSerialPort": {
-            "type": "string",
-            "description": "Currently selected serial port for device communication",
-            "default": ""
+            "default": "",
+            "scope": "resource"
           }
         }
       },

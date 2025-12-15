@@ -28,6 +28,24 @@ export const CMD_PREFIX = 'extension.';
 export const HAS_RUN_INITIAL_SETUP_KEY = 'oneStepForSifli.hasRunInitialSetup';
 export const LAST_VERSION_KEY = 'sifli-sdk-codekit.lastVersion';
 
+/**
+ * 配置迁移版本记录
+ * 当需要添加新的配置迁移时，在此添加新的版本号
+ * 迁移逻辑会根据用户上次使用的版本号决定是否执行迁移
+ */
+export const CONFIG_MIGRATION_VERSIONS = {
+  /**
+   * v1.2.2: 将以下配置从 settings.json 迁移到 workspaceState
+   * - defaultChipModule
+   * - selectedSerialPort
+   * - numThreads
+   * - sifliSdkExportScriptPath
+   * - downloadBaudRate (新增)
+   * - monitorBaudRate (新增)
+   */
+  WORKSPACE_STATE_MIGRATION: '1.2.2',
+} as const;
+
 // Git 仓库常量
 export const GIT_REPOS = {
   GITHUB: {

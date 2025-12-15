@@ -11,6 +11,7 @@ import { PythonService } from './services/pythonService';
 import { MinGitService } from './services/minGitService';
 import { LogService } from './services/logService';
 import { RegionService } from './services/regionService';
+import { WorkspaceStateService } from './services/workspaceStateService';
 import { BuildCommands } from './commands/buildCommands';
 import { ConfigCommands } from './commands/configCommands';
 import { SdkCommands } from './commands/sdkCommands';
@@ -32,6 +33,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Register SiFli probe-rs debugger contributions
   registerProbeRsDebugger(context);
 
+  // 初始化 WorkspaceStateService（必须在其他服务之前初始化）
+  const workspaceStateService = WorkspaceStateService.getInstance();
+  workspaceStateService.initialize(context);
+  logService.info('WorkspaceStateService initialized');
+
   // *** 仅在开发调试时使用：强制重置首次运行标志 ***
   // 这将使得每次"重新运行调试"时,Quick Pick 都会弹出。
   // 在发布生产版本时,请务必删除或注释掉此行！
@@ -40,6 +46,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // 初始化服务
   const configService = ConfigService.getInstance();
+  
+  // 执行配置迁移（根据版本号决定是否需要迁移）
+  await configService.runConfigMigrations(context);
+  
   const sdkService = SdkService.getInstance();
   const gitService = GitService.getInstance();
   const serialPortService = SerialPortService.getInstance();

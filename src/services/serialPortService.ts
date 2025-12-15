@@ -4,6 +4,7 @@ import { SerialPort as SerialPortAPI } from 'serialport';
 import { SerialPort } from '../types';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
+import { WorkspaceStateService } from './workspaceStateService';
 
 export class SerialPortService {
   private static instance: SerialPortService;
@@ -12,6 +13,7 @@ export class SerialPortService {
   private _monitorBaudRate: number = 1000000; // 默认监视波特率
   private configService: ConfigService;
   private logService: LogService;
+  private workspaceStateService: WorkspaceStateService;
 
   // 可选的波特率
   private static readonly BAUD_RATES = [1000000, 115200, 1500000, 2000000, 3000000, 6000000];
@@ -19,6 +21,7 @@ export class SerialPortService {
   private constructor() {
     this.configService = ConfigService.getInstance();
     this.logService = LogService.getInstance();
+    this.workspaceStateService = WorkspaceStateService.getInstance();
   }
 
   public static getInstance(): SerialPortService {
@@ -42,20 +45,28 @@ export class SerialPortService {
 
   public set downloadBaudRate(baudRate: number) {
     this._downloadBaudRate = baudRate;
+    // 异步保存到 workspaceState
+    this.workspaceStateService.setDownloadBaudRate(baudRate).catch(err => {
+      this.logService.error(`Failed to save download baud rate: ${err}`);
+    });
   }
 
   public set monitorBaudRate(baudRate: number) {
     this._monitorBaudRate = baudRate;
+    // 异步保存到 workspaceState
+    this.workspaceStateService.setMonitorBaudRate(baudRate).catch(err => {
+      this.logService.error(`Failed to save monitor baud rate: ${err}`);
+    });
   }
 
   /**
-   * 初始化串口服务，检查并恢复之前保存的串口
+   * 初始化串口服务，检查并恢复之前保存的配置
    */
   public async initialize(): Promise<void> {
     this.logService.info('Initializing serial port service...');
     
-    // 从配置中获取上次选择的串口
-    const savedPort = this.configService.config.selectedSerialPort;
+    // 从 workspaceState 中获取上次选择的串口
+    const savedPort = this.workspaceStateService.getSelectedSerialPort();
     if (savedPort) {
       this.logService.debug(`Checking saved serial port: ${savedPort}`);
       
@@ -67,16 +78,25 @@ export class SerialPortService {
       } else {
         this.logService.warn(`Saved serial port ${savedPort} is no longer available, clearing selection`);
         // 清除无效的串口配置
-        await this.configService.updateConfigValue('selectedSerialPort', undefined);
+        await this.workspaceStateService.setSelectedSerialPort('');
         this._selectedSerialPort = null;
       }
     } else {
       this.logService.debug('No saved serial port found');
     }
+
+    // 从 workspaceState 中恢复波特率设置
+    this._downloadBaudRate = this.workspaceStateService.getDownloadBaudRate();
+    this._monitorBaudRate = this.workspaceStateService.getMonitorBaudRate();
+    this.logService.debug(`Restored baud rates: download=${this._downloadBaudRate}, monitor=${this._monitorBaudRate}`);
   }
 
   public set selectedSerialPort(port: string | null) {
     this._selectedSerialPort = port;
+    // 异步保存到 workspaceState
+    this.workspaceStateService.setSelectedSerialPort(port || '').catch(err => {
+      this.logService.error(`Failed to save selected serial port: ${err}`);
+    });
   }
 
   /**
@@ -170,8 +190,10 @@ export class SerialPortService {
       this._downloadBaudRate = downloadBaud;
       this._monitorBaudRate = monitorBaud;
 
-      // 保存配置
-      await this.configService.updateConfigValue('selectedSerialPort', port);
+      // 保存配置到 workspaceState
+      await this.workspaceStateService.setSelectedSerialPort(port);
+      await this.workspaceStateService.setDownloadBaudRate(downloadBaud);
+      await this.workspaceStateService.setMonitorBaudRate(monitorBaud);
       
       this.logService.info(`Port configuration updated: ${port}, download: ${downloadBaud}, monitor: ${monitorBaud}`);
       vscode.window.showInformationMessage(

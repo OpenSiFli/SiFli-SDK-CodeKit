@@ -73,10 +73,7 @@ export class ConfigCommands {
       });
 
       if (selectedQuickPickItem) {
-        await this.configService.updateConfigValue(
-          'defaultChipModule',
-          selectedQuickPickItem.label
-        );
+        await this.configService.setSelectedBoardName(selectedQuickPickItem.label);
         vscode.window.showInformationMessage(
           `SiFli 芯片模组已切换为: ${selectedQuickPickItem.label}`
         );
@@ -100,7 +97,7 @@ export class ConfigCommands {
 
       if (numThreadsInput !== undefined && numThreadsInput !== String(currentThreads)) {
         const newThreads = parseInt(numThreadsInput);
-        await this.configService.updateConfigValue('numThreads', newThreads);
+        await this.configService.setNumThreads(newThreads);
         vscode.window.showInformationMessage(`编译线程数已设置为: J${newThreads}`);
         // 更新状态栏显示
         this.statusBarProvider.updateStatusBarItems();
