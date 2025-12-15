@@ -32,17 +32,17 @@ export class SdkService {
     this.logService.info('Starting SDK discovery...');
     const sdkVersions: SdkVersion[] = [];
     const installedSdkPaths = this.configService.getInstalledSdkPaths();
-    const currentSdkPath = this.configService.getSifliSdkExportScriptPath();
+    const currentSdkPath = this.configService.getCurrentSdkPath();
 
     this.logService.debug(`Configured SDK paths: ${installedSdkPaths.join(', ')}`);
-    this.logService.debug(`Current SDK export script path: ${currentSdkPath || 'None'}`);
+    this.logService.debug(`Current SDK path: ${currentSdkPath || 'None'}`);
 
     // 从配置的 SDK 路径列表中发现 SDK
     for (const sdkPath of installedSdkPaths) {
       try {
         if (fs.existsSync(sdkPath)) {
           const version = this.extractVersionFromPath(sdkPath);
-          const isCurrent = currentSdkPath ? currentSdkPath.startsWith(sdkPath) : false;
+          const isCurrent = currentSdkPath === sdkPath;
           const isValid = this.validateSdkPath(sdkPath);
 
           sdkVersions.push({
@@ -235,8 +235,7 @@ export class SdkService {
       // 在终端中执行激活命令
       await this.executeActivationScript(activationScript);
 
-      // *** 关键修改: 显式更新配置到 workspaceState ***
-      await this.configService.setSifliSdkExportScriptPath(activationScript.configPath);
+      // 保存当前 SDK 路径到 workspaceState
       await this.configService.setCurrentSdkPath(sdk.path);
 
       const successMessage = `已切换到 SiFli SDK 版本: ${sdk.version}`;
@@ -342,6 +341,32 @@ export class SdkService {
    */
   public getCurrentSdk(): SdkVersion | undefined {
     return this.configService.getCurrentSdk();
+  }
+
+  /**
+   * 根据 SDK 路径获取对应平台的 export 脚本路径
+   * @param sdkPath SDK 根目录路径，如果不传则使用当前激活的 SDK
+   * @returns export 脚本的完整路径，如果不存在则返回 undefined
+   */
+  public getExportScriptPath(sdkPath?: string): string | undefined {
+    const targetSdkPath = sdkPath || this.configService.getCurrentSdkPath();
+    if (!targetSdkPath) {
+      return undefined;
+    }
+
+    if (process.platform === 'win32') {
+      const ps1Path = path.join(targetSdkPath, 'export.ps1');
+      if (fs.existsSync(ps1Path)) {
+        return ps1Path;
+      }
+    } else {
+      const shPath = path.join(targetSdkPath, 'export.sh');
+      if (fs.existsSync(shPath)) {
+        return shPath;
+      }
+    }
+
+    return undefined;
   }
 
   /**

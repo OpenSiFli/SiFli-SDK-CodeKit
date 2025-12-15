@@ -15,8 +15,6 @@ export interface WorkspaceState {
   monitorBaudRate?: number;
   // 当前激活的 SDK 路径
   currentSdkPath?: string;
-  // SDK export 脚本路径 (每个工作区可能使用不同的 SDK)
-  sifliSdkExportScriptPath?: string;
   // 编译线程数
   numThreads?: number;
 }
@@ -28,7 +26,6 @@ export const WORKSPACE_STATE_KEYS = {
   DOWNLOAD_BAUD_RATE: 'downloadBaudRate',
   MONITOR_BAUD_RATE: 'monitorBaudRate',
   CURRENT_SDK_PATH: 'currentSdkPath',
-  SIFLI_SDK_EXPORT_SCRIPT_PATH: 'sifliSdkExportScriptPath',
   NUM_THREADS: 'numThreads',
 } as const;
 
@@ -39,7 +36,6 @@ const DEFAULT_VALUES: Required<WorkspaceState> = {
   downloadBaudRate: 1000000,
   monitorBaudRate: 1000000,
   currentSdkPath: '',
-  sifliSdkExportScriptPath: '',
   numThreads: 8,
 };
 
@@ -108,7 +104,6 @@ export class WorkspaceStateService {
       downloadBaudRate: this.get('downloadBaudRate'),
       monitorBaudRate: this.get('monitorBaudRate'),
       currentSdkPath: this.get('currentSdkPath'),
-      sifliSdkExportScriptPath: this.get('sifliSdkExportScriptPath'),
       numThreads: this.get('numThreads'),
     };
   }
@@ -176,15 +171,6 @@ export class WorkspaceStateService {
 
   public async setCurrentSdkPath(value: string): Promise<void> {
     await this.set('currentSdkPath', value);
-  }
-
-  // sifliSdkExportScriptPath
-  public getSifliSdkExportScriptPath(): string {
-    return this.get('sifliSdkExportScriptPath') || '';
-  }
-
-  public async setSifliSdkExportScriptPath(value: string): Promise<void> {
-    await this.set('sifliSdkExportScriptPath', value);
   }
 
   // numThreads

@@ -9,10 +9,12 @@ import { ConfigService } from './configService';
 import { LogService } from './logService';
 import { PythonService } from './pythonService';
 import { MinGitService } from './minGitService';
+import { SdkService } from './sdkService';
 
 export class TerminalService {
   private static instance: TerminalService;
   private configService: ConfigService;
+  private _sdkService: SdkService | null = null;
   private logService: LogService;
   private currentTerminal?: vscode.Terminal;
   private terminalCloseListener: vscode.Disposable;
@@ -24,6 +26,8 @@ export class TerminalService {
 
   private constructor() {
     this.configService = ConfigService.getInstance();
+    // 注意：不能在这里获取 SdkService，因为会导致循环依赖
+    // SdkService 在构造函数中也会获取 TerminalService
     this.logService = LogService.getInstance();
     this.terminalCloseListener = vscode.window.onDidCloseTerminal(terminal => {
       if (terminal.name === TERMINAL_NAME) {
@@ -32,6 +36,16 @@ export class TerminalService {
         }
       }
     });
+  }
+
+  /**
+   * 延迟获取 SdkService，避免循环依赖
+   */
+  private get sdkService(): SdkService {
+    if (!this._sdkService) {
+      this._sdkService = SdkService.getInstance();
+    }
+    return this._sdkService;
   }
 
   public static getInstance(): TerminalService {
@@ -61,7 +75,7 @@ export class TerminalService {
     options?: { autoExport?: boolean }
   ): Promise<vscode.Terminal> {
     let terminal = forceNew ? undefined : this.findSiFliTerminal();
-    const configuredScriptPath = this.configService.getSifliSdkExportScriptPath();
+    const configuredScriptPath = this.sdkService.getExportScriptPath();
     const normalizedScriptPath =
       configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
     if (!terminal) {
@@ -227,7 +241,7 @@ export class TerminalService {
    * 标记当前终端环境已完成 SDK 导出
    */
   public markSdkEnvironmentPrepared(): void {
-    const configuredScriptPath = this.configService.getSifliSdkExportScriptPath();
+    const configuredScriptPath = this.sdkService.getExportScriptPath();
     const normalizedScriptPath =
       configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
     this.lastExportScriptPath = normalizedScriptPath;
@@ -250,7 +264,7 @@ export class TerminalService {
       const terminal = await this.getOrCreateSiFliTerminalAndCdProject();
       terminal.show();
 
-      const configuredScriptPath = this.configService.getSifliSdkExportScriptPath();
+      const configuredScriptPath = this.sdkService.getExportScriptPath();
       const scriptPath =
         configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
       const needsEnvSetup = !!scriptPath && !this.isExportPrepared(terminal, scriptPath);

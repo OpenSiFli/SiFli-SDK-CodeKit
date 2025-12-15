@@ -143,11 +143,14 @@ export class ConfigService {
       }
     }
 
-    // 迁移 sifliSdkExportScriptPath
+    // 迁移 sifliSdkExportScriptPath -> currentSdkPath
+    // 从旧的 export 脚本路径推算 SDK 根路径
     const oldExportScriptPath = config.get<string>('sifliSdkExportScriptPath');
-    if (oldExportScriptPath && !this.workspaceStateService.getSifliSdkExportScriptPath()) {
-      await this.workspaceStateService.setSifliSdkExportScriptPath(oldExportScriptPath);
-      this.logService.debug(`Migrated sifliSdkExportScriptPath: ${oldExportScriptPath}`);
+    if (oldExportScriptPath && !this.workspaceStateService.getCurrentSdkPath()) {
+      // export.ps1 或 export.sh 在 SDK 根目录下，所以取其父目录
+      const sdkRootPath = require('path').dirname(oldExportScriptPath);
+      await this.workspaceStateService.setCurrentSdkPath(sdkRootPath);
+      this.logService.debug(`Migrated sifliSdkExportScriptPath to currentSdkPath: ${sdkRootPath}`);
     }
   }
 
@@ -207,22 +210,6 @@ export class ConfigService {
    */
   public async setNumThreads(numThreads: number): Promise<void> {
     await this.workspaceStateService.setNumThreads(numThreads);
-  }
-
-  /**
-   * 获取 SDK export 脚本路径
-   * 从 workspaceState 读取
-   */
-  public getSifliSdkExportScriptPath(): string {
-    return this.workspaceStateService.getSifliSdkExportScriptPath();
-  }
-
-  /**
-   * 设置 SDK export 脚本路径
-   * 保存到 workspaceState
-   */
-  public async setSifliSdkExportScriptPath(path: string): Promise<void> {
-    await this.workspaceStateService.setSifliSdkExportScriptPath(path);
   }
 
   /**
