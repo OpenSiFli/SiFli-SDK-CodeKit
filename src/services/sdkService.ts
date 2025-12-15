@@ -27,12 +27,14 @@ export class SdkService {
 
   /**
    * 发现所有 SiFli SDK
+   * @param autoRemoveInvalid 是否自动移除不存在的 SDK 路径，默认为 true
    */
-  public async discoverSiFliSdks(): Promise<SdkVersion[]> {
+  public async discoverSiFliSdks(autoRemoveInvalid = true): Promise<SdkVersion[]> {
     this.logService.info('Starting SDK discovery...');
     const sdkVersions: SdkVersion[] = [];
     const installedSdkPaths = this.configService.getInstalledSdkPaths();
     const currentSdkPath = this.configService.getCurrentSdkPath();
+    const invalidPaths: string[] = [];
 
     this.logService.debug(`Configured SDK paths: ${installedSdkPaths.join(', ')}`);
     this.logService.debug(`Current SDK path: ${currentSdkPath || 'None'}`);
@@ -55,9 +57,26 @@ export class SdkService {
           this.logService.debug(`Found SDK: ${version} at ${sdkPath} (valid: ${isValid}, current: ${isCurrent})`);
         } else {
           this.logService.warn(`SDK path does not exist: ${sdkPath}`);
+          invalidPaths.push(sdkPath);
         }
       } catch (error) {
         this.logService.error(`Error checking SDK path ${sdkPath}:`, error);
+        invalidPaths.push(sdkPath);
+      }
+    }
+
+    // 自动移除无效的 SDK 路径
+    if (autoRemoveInvalid && invalidPaths.length > 0) {
+      this.logService.info(`Removing ${invalidPaths.length} invalid SDK path(s) from configuration...`);
+      for (const invalidPath of invalidPaths) {
+        await this.configService.removeSdkConfig(invalidPath);
+        this.logService.debug(`Removed invalid SDK path: ${invalidPath}`);
+      }
+      
+      // 如果当前激活的 SDK 也是无效的，清除它
+      if (currentSdkPath && invalidPaths.includes(currentSdkPath)) {
+        await this.configService.setCurrentSdkPath('');
+        this.logService.info('Cleared invalid current SDK path');
       }
     }
 
