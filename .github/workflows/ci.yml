@@ -220,3 +220,15 @@ jobs:
             echo "🚀 Publishing release version ${{ needs.build.outputs.version }}"
             npx vsce publish --packagePath *.vsix --pat $VSCE_PAT
           fi
+
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OPENVSX_TOKEN }}
+        run: |
+          if [[ "${{ needs.build.outputs.is_prerelease }}" == "true" ]]; then
+            echo "✨ Publishing pre-release version ${{ needs.build.outputs.version }} to Open VSX"
+            npx ovsx publish --pre-release *.vsix --pat $OVSX_PAT
+          else
+            echo "🚀 Publishing release version ${{ needs.build.outputs.version }} to Open VSX"
+            npx ovsx publish *.vsix --pat $OVSX_PAT
+          fi
