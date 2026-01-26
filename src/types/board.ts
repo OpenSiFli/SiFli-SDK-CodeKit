@@ -17,7 +17,7 @@ export interface BoardDiscoveryResult {
 export interface WriteFlashFile {
   /** 文件系统路径 */
   path: string;
-  /** 目标地址（十六进制字符串，如 "0x12000000"） */
+  /** 目标地址（十六进制字符串，如 "0x12000000"；.hex/.elf/.axf 可省略以自动解析） */
   address?: string;
 }
 

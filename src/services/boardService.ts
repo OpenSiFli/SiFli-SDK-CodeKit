@@ -247,10 +247,18 @@ export class BoardService {
       for (const fileInfo of sftoolParam.write_flash.files as any[]) {
         // 兼容新旧版本字段，优先使用新版
         const filePath = fileInfo.path || fileInfo.file;
-        const fileAddress = fileInfo.address || fileInfo.addr;
+        const rawAddress = fileInfo.address ?? fileInfo.addr;
 
-        if (!filePath || !fileAddress) {
-          this.logService.warn('跳过一个不完整的文件配置（缺少路径或地址）');
+        if (!filePath) {
+          this.logService.warn('跳过一个不完整的文件配置（缺少路径）');
+          continue;
+        }
+
+        const shouldAutoAddress = this.isAutoAddressFile(filePath);
+        const fileAddress = this.normalizeFlashAddress(rawAddress);
+
+        if (!fileAddress && !shouldAutoAddress) {
+          this.logService.warn(`跳过文件 ${filePath}（缺少地址）`);
           continue;
         }
 
@@ -259,11 +267,11 @@ export class BoardService {
           ? filePath
           : path.join(workspaceRoot, buildFolder, filePath);
 
-        // 将文件路径和地址组合在一起
-        const fileAndAddress = `${fullFilePath}@${fileAddress}`;
+        // 生成参数：自动地址文件仅使用路径，否则使用 file@address
+        const fileArgument = fileAddress ? `${fullFilePath}@${fileAddress}` : fullFilePath;
 
         // 将组合后的字符串添加到命令中，并用双引号包裹
-        command += ` "${fileAndAddress}"`;
+        command += ` "${fileArgument}"`;
       }
     } else if (sftoolParam.load_file && sftoolParam.load_addr) {
       // 兼容更旧的格式，直接使用 load_file 和 load_addr
@@ -280,5 +288,24 @@ export class BoardService {
       throw new Error('sftool 参数文件中未找到有效的写入文件配置');
     }
     return command;
+  }
+
+  private normalizeFlashAddress(address: unknown): string | null {
+    if (address === undefined || address === null) {
+      return null;
+    }
+    if (typeof address === 'number' && Number.isFinite(address)) {
+      return `0x${address.toString(16)}`;
+    }
+    if (typeof address === 'string') {
+      const trimmed = address.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    return null;
+  }
+
+  private isAutoAddressFile(filePath: string): boolean {
+    const extension = path.extname(filePath).toLowerCase();
+    return extension === '.hex' || extension === '.elf' || extension === '.axf';
   }
 }
