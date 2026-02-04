@@ -130,7 +130,9 @@ export class SerialPortService {
       const ports = await this.getSerialPorts();
       
       if (ports.length === 0) {
-        vscode.window.showWarningMessage('未检测到可用的串口设备。请检查设备连接。');
+        vscode.window.showWarningMessage(
+          vscode.l10n.t('No serial ports detected. Please check your device connection.')
+        );
         return undefined;
       }
 
@@ -141,7 +143,7 @@ export class SerialPortService {
       }));
 
       const selectedPort = await vscode.window.showQuickPick(portItems, {
-        placeHolder: '选择串口设备',
+        placeHolder: vscode.l10n.t('Select a serial port'),
         canPickMany: false
       });
 
@@ -153,11 +155,14 @@ export class SerialPortService {
       const downloadBaudItems = SerialPortService.BAUD_RATES.map(baud => ({
         label: baud.toString(),
         // description: baud === this._downloadBaudRate ? '(当前)' : '',
-        detail: `下载波特率: ${baud}`
+        detail: vscode.l10n.t('Download baud rate: {0}', String(baud))
       }));
 
       const selectedDownloadBaud = await vscode.window.showQuickPick(downloadBaudItems, {
-        placeHolder: `选择下载波特率 (当前: ${this._downloadBaudRate})`,
+        placeHolder: vscode.l10n.t(
+          'Select download baud rate (current: {0})',
+          String(this._downloadBaudRate)
+        ),
         canPickMany: false
       });
 
@@ -169,11 +174,14 @@ export class SerialPortService {
       const monitorBaudItems = SerialPortService.BAUD_RATES.map(baud => ({
         label: baud.toString(),
         // description: baud === this._monitorBaudRate ? '(当前)' : '',
-        detail: `监视波特率: ${baud}`
+        detail: vscode.l10n.t('Monitor baud rate: {0}', String(baud))
       }));
 
       const selectedMonitorBaud = await vscode.window.showQuickPick(monitorBaudItems, {
-        placeHolder: `选择监视波特率 (当前: ${this._monitorBaudRate})`,
+        placeHolder: vscode.l10n.t(
+          'Select monitor baud rate (current: {0})',
+          String(this._monitorBaudRate)
+        ),
         canPickMany: false
       });
 
@@ -197,7 +205,12 @@ export class SerialPortService {
       
       this.logService.info(`Port configuration updated: ${port}, download: ${downloadBaud}, monitor: ${monitorBaud}`);
       vscode.window.showInformationMessage(
-        `已配置串口: ${port}\n下载波特率: ${downloadBaud}\n监视波特率: ${monitorBaud}`
+        vscode.l10n.t(
+          'Serial port configured: {0}\nDownload baud rate: {1}\nMonitor baud rate: {2}',
+          port,
+          String(downloadBaud),
+          String(monitorBaud)
+        )
       );
 
       return {
@@ -207,7 +220,9 @@ export class SerialPortService {
       };
     } catch (error) {
       console.error('[SerialPortService] Error in selectPort:', error);
-      vscode.window.showErrorMessage(`选择串口配置时发生错误: ${error}`);
+      vscode.window.showErrorMessage(
+        vscode.l10n.t('Error selecting serial port configuration: {0}', String(error))
+      );
       return undefined;
     }
   }

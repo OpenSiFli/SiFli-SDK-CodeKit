@@ -32,7 +32,9 @@ export class SerialMonitorService {
       console.log('串口监听器服务已初始化（使用内置实现）');
     } catch (error) {
       console.error('初始化串口监听器服务失败:', error);
-      vscode.window.showErrorMessage(`初始化串口监听器失败: ${error}`);
+      vscode.window.showErrorMessage(
+        vscode.l10n.t('Failed to initialize serial monitor: {0}', String(error))
+      );
     }
   }
 
@@ -48,7 +50,7 @@ export class SerialMonitorService {
       this.currentConnectionId = await this.builtinService.openSerialMonitor(
         serialPort,
         actualBaudRate,
-        'SiFli Device Monitor'
+        vscode.l10n.t('SiFli Device Monitor')
       );
 
       if (this.currentConnectionId) {
@@ -63,7 +65,7 @@ export class SerialMonitorService {
       }
     } catch (error) {
       console.error('打开串口监听器失败:', error);
-      vscode.window.showErrorMessage(`打开串口监听器失败: ${error}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to open serial monitor: {0}', String(error)));
       return false;
     }
   }

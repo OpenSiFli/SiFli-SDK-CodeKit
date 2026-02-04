@@ -46,7 +46,7 @@ export class StatusBarProvider {
       102
     );
     this.sdkManageBtn.text = '$(cloud-download)';
-    this.sdkManageBtn.tooltip = '管理 SiFli SDK 安装';
+    this.sdkManageBtn.tooltip = vscode.l10n.t('Manage SiFli SDK installation');
     this.sdkManageBtn.command = CMD_PREFIX + 'manageSiFliSdk';
     this.sdkManageBtn.show();
     context.subscriptions.push(this.sdkManageBtn);
@@ -56,8 +56,8 @@ export class StatusBarProvider {
       vscode.StatusBarAlignment.Left,
       101
     );
-    this.currentSdkVersionStatusItem.text = 'SDK: N/A';
-    this.currentSdkVersionStatusItem.tooltip = '点击切换 SiFli SDK 版本';
+    this.currentSdkVersionStatusItem.text = vscode.l10n.t('SDK: {0}', vscode.l10n.t('N/A'));
+    this.currentSdkVersionStatusItem.tooltip = vscode.l10n.t('Click to switch SiFli SDK version');
     this.currentSdkVersionStatusItem.command = CMD_PREFIX + 'switchSdkVersion';
     this.currentSdkVersionStatusItem.show();
     context.subscriptions.push(this.currentSdkVersionStatusItem);
@@ -67,7 +67,7 @@ export class StatusBarProvider {
       vscode.StatusBarAlignment.Left,
       100
     );
-    this.currentBoardStatusItem.text = '$(circuit-board) SiFli Board: N/A';
+    this.currentBoardStatusItem.text = vscode.l10n.t('$(circuit-board) SiFli Board: {0}', vscode.l10n.t('N/A'));
     this.currentBoardStatusItem.command = CMD_PREFIX + 'selectChipModule';
     this.currentBoardStatusItem.show();
     context.subscriptions.push(this.currentBoardStatusItem);
@@ -77,7 +77,7 @@ export class StatusBarProvider {
       vscode.StatusBarAlignment.Left,
       99
     );
-    this.currentSerialPortStatusItem.text = '$(plug) COM: N/A';
+    this.currentSerialPortStatusItem.text = vscode.l10n.t('$(plug) COM: {0}', vscode.l10n.t('N/A'));
     this.currentSerialPortStatusItem.command = CMD_PREFIX + 'selectPort';
     this.currentSerialPortStatusItem.show();
     context.subscriptions.push(this.currentSerialPortStatusItem);
@@ -153,54 +153,78 @@ export class StatusBarProvider {
     const numThreads = this.configService.getNumThreads();
     const selectedSerialPort = this.serialPortService.selectedSerialPort;
     const currentSdk = this.configService.getCurrentSdk();
+    const notAvailable = vscode.l10n.t('N/A');
+    const notSelected = vscode.l10n.t('Not selected');
 
     if (this.compileBtn) {
-      this.compileBtn.tooltip = '执行 SiFli 构建';
+      this.compileBtn.tooltip = vscode.l10n.t('Run SiFli build');
     }
 
     if (this.rebuildBtn) {
-      this.rebuildBtn.tooltip = '清理并执行 SiFli 构建';
+      this.rebuildBtn.tooltip = vscode.l10n.t('Clean and run SiFli build');
     }
 
     if (this.cleanBtn) {
-      this.cleanBtn.tooltip = `删除 SiFli 构建缓存 (${selectedBoardName || 'N/A'})`;
+      this.cleanBtn.tooltip = vscode.l10n.t(
+        'Delete SiFli build cache ({0})',
+        selectedBoardName || notAvailable
+      );
     }
 
     if (this.downloadBtn) {
-      this.downloadBtn.tooltip = `执行 SiFli 下载 (当前模组: ${selectedBoardName || '未选择'})`;
+      this.downloadBtn.tooltip = vscode.l10n.t(
+        'Run SiFli download (current board: {0})',
+        selectedBoardName || notSelected
+      );
     }
 
     if (this.menuconfigBtn) {
-      this.menuconfigBtn.tooltip = '打开 SiFli Menuconfig';
+      this.menuconfigBtn.tooltip = vscode.l10n.t('Open SiFli Menuconfig');
     }
 
     if (this.deviceMonitorBtn) {
-      this.deviceMonitorBtn.tooltip = '监视设备 - 打开串口监听器';
+      this.deviceMonitorBtn.tooltip = vscode.l10n.t('Monitor device - open serial monitor');
     }
 
     if (this.currentBoardStatusItem) {
-      this.currentBoardStatusItem.text = `$(circuit-board) SiFli Board: ${selectedBoardName || 'N/A'} (J${numThreads})`;
-      this.currentBoardStatusItem.tooltip = `当前 SiFli 芯片模组: ${selectedBoardName || '未选择'}\\n编译线程数: J${numThreads}\\n点击切换芯片模组或修改线程数`;
+      this.currentBoardStatusItem.text = vscode.l10n.t(
+        '$(circuit-board) SiFli Board: {0} (J{1})',
+        selectedBoardName || notAvailable,
+        String(numThreads)
+      );
+      this.currentBoardStatusItem.tooltip = vscode.l10n.t(
+        'Current SiFli board: {0}\nBuild threads: J{1}\nClick to change board or threads',
+        selectedBoardName || notSelected,
+        String(numThreads)
+      );
     }
 
     if (this.currentSerialPortStatusItem) {
       // 获取用于显示的串口名称
       const displayPortName = selectedSerialPort
         ? SerialPortService.getDisplayPortName(selectedSerialPort)
-        : 'N/A';
+        : notAvailable;
       
-      this.currentSerialPortStatusItem.text = `$(plug) COM: ${displayPortName}`;
-      this.currentSerialPortStatusItem.tooltip = `当前串口配置: ${selectedSerialPort || '未选择'}\\n下载波特率: ${this.serialPortService.downloadBaudRate}\\n监视波特率: ${this.serialPortService.monitorBaudRate}\\n点击配置串口`;
+      this.currentSerialPortStatusItem.text = vscode.l10n.t('$(plug) COM: {0}', displayPortName);
+      this.currentSerialPortStatusItem.tooltip = vscode.l10n.t(
+        'Current serial port: {0}\nDownload baud rate: {1}\nMonitor baud rate: {2}\nClick to configure serial port',
+        selectedSerialPort || notSelected,
+        String(this.serialPortService.downloadBaudRate),
+        String(this.serialPortService.monitorBaudRate)
+      );
     }
 
     if (this.sdkManageBtn) {
-      this.sdkManageBtn.tooltip = '管理 SiFli SDK 安装';
+      this.sdkManageBtn.tooltip = vscode.l10n.t('Manage SiFli SDK installation');
     }
 
     if (this.currentSdkVersionStatusItem) {
-      const sdkVersionText = currentSdk ? currentSdk.version : 'N/A';
-      this.currentSdkVersionStatusItem.text = `SDK: ${sdkVersionText}`;
-      this.currentSdkVersionStatusItem.tooltip = `当前 SiFli SDK 版本: ${sdkVersionText}\\n点击切换 SDK 版本`;
+      const sdkVersionText = currentSdk ? currentSdk.version : notAvailable;
+      this.currentSdkVersionStatusItem.text = vscode.l10n.t('SDK: {0}', sdkVersionText);
+      this.currentSdkVersionStatusItem.tooltip = vscode.l10n.t(
+        'Current SiFli SDK version: {0}\nClick to switch SDK version',
+        sdkVersionText
+      );
     }
 
     // 同时更新侧边栏
@@ -230,13 +254,13 @@ export class StatusBarProvider {
       );
       
       if (success) {
-        vscode.window.showInformationMessage('设备监视器已启动');
+        vscode.window.showInformationMessage(vscode.l10n.t('Device monitor started.'));
       } else {
-        vscode.window.showWarningMessage('设备监视器启动失败或已取消');
+        vscode.window.showWarningMessage(vscode.l10n.t('Device monitor failed to start or was canceled.'));
       }
     } catch (error) {
       console.error('打开设备监视器失败:', error);
-      vscode.window.showErrorMessage(`打开设备监视器失败: ${error}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to open device monitor: {0}', String(error)));
     }
   }
 
@@ -248,13 +272,13 @@ export class StatusBarProvider {
       const success = await this.serialMonitorService.closeSerialMonitor();
       
       if (success) {
-        vscode.window.showInformationMessage('设备监视器已关闭');
+        vscode.window.showInformationMessage(vscode.l10n.t('Device monitor closed.'));
       } else {
-        vscode.window.showWarningMessage('关闭设备监视器失败');
+        vscode.window.showWarningMessage(vscode.l10n.t('Failed to close device monitor.'));
       }
     } catch (error) {
       console.error('关闭设备监视器失败:', error);
-      vscode.window.showErrorMessage(`关闭设备监视器失败: ${error}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to close device monitor: {0}', String(error)));
     }
   }
 
@@ -292,18 +316,24 @@ export class StatusBarProvider {
         const resumed = await this.serialMonitorService.resumeSerialMonitor();
         if (resumed) {
           console.log('串口监视器已恢复');
-          vscode.window.showInformationMessage('下载完成，串口监视器已自动重新打开');
+          vscode.window.showInformationMessage(
+            vscode.l10n.t('Download completed. Serial monitor reopened.')
+          );
         } else {
           console.warn('自动恢复串口监视器失败');
           vscode.window.showWarningMessage(
-            '下载完成，但自动恢复串口监视器失败。您可以手动点击监视器按钮重新打开。'
+            vscode.l10n.t(
+              'Download completed, but failed to auto-restore the serial monitor. You can reopen it from the monitor button.'
+            )
           );
         }
       }
     } catch (error) {
       console.error('处理下载后操作失败:', error);
       vscode.window.showWarningMessage(
-        '下载完成，但恢复串口监视器时出现错误。您可以手动点击监视器按钮重新打开。'
+        vscode.l10n.t(
+          'Download completed, but an error occurred while restoring the serial monitor. You can reopen it from the monitor button.'
+        )
       );
     }
   }

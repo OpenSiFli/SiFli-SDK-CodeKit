@@ -78,7 +78,9 @@ export class MinGitService {
 
     // 未安装则下载
     try {
-      vscode.window.showInformationMessage('未检测到系统 Git，正在下载 MinGit...');
+      vscode.window.showInformationMessage(
+        vscode.l10n.t('System Git not found. Downloading MinGit...')
+      );
       await this.downloadAndExtractMinGit(installDir);
       if (fs.existsSync(gitExe)) {
         this.injectPath(cmdDir);
@@ -89,7 +91,12 @@ export class MinGitService {
       }
     } catch (error) {
       this.logService.error('Failed to install MinGit:', error);
-      vscode.window.showErrorMessage(`安装 MinGit 失败: ${error instanceof Error ? error.message : String(error)}`);
+      vscode.window.showErrorMessage(
+        vscode.l10n.t(
+          'Failed to install MinGit: {0}',
+          error instanceof Error ? error.message : String(error)
+        )
+      );
     }
   }
 

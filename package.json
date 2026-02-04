@@ -1,12 +1,13 @@
 {
   "name": "sifli-sdk-codekit",
   "publisher": "SiFli",
-  "description": "Develop and debug applications for SiFli chips with SiFli-SDK",
+  "description": "%extension.description%",
   "version": "1.2.6",
   "engines": {
     "vscode": "^1.102.0"
   },
   "main": "./out/extension.js",
+  "l10n": "./l10n",
   "extensionPack": [
     "llvm-vs-code-extensions.vscode-clangd"
   ],
@@ -19,59 +20,59 @@
     "commands": [
       {
         "command": "extension.compile",
-        "title": "🛠️ Build"
+        "title": "%command.compile.title%"
       },
       {
         "command": "extension.rebuild",
-        "title": "♻️ Rebuild"
+        "title": "%command.rebuild.title%"
       },
       {
         "command": "extension.download",
-        "title": "💾 Download"
+        "title": "%command.download.title%"
       },
       {
         "command": "extension.clean",
-        "title": "🗑️ Clean"
+        "title": "%command.clean.title%"
       },
       {
         "command": "extension.menuconfig",
-        "title": "⚙️ Menuconfig"
+        "title": "%command.menuconfig.title%"
       },
       {
         "command": "extension.selectChipModule",
-        "title": "切换 SiFli 模组/线程数"
+        "title": "%command.selectChipModule.title%"
       },
       {
         "command": "extension.manageSiFliSdk",
-        "title": "管理 SiFli SDK 安装"
+        "title": "%command.manageSiFliSdk.title%"
       },
       {
         "command": "extension.switchSdkVersion",
-        "title": "切换 SiFli SDK 版本"
+        "title": "%command.switchSdkVersion.title%"
       },
       {
         "command": "extension.selectPort",
-        "title": "选择串口配置"
+        "title": "%command.selectPort.title%"
       },
       {
         "command": "extension.openDeviceMonitor",
-        "title": "监视设备"
+        "title": "%command.openDeviceMonitor.title%"
       },
     {
       "command": "extension.closeDeviceMonitor",
-      "title": "关闭设备监视器"
+      "title": "%command.closeDeviceMonitor.title%"
     },
     {
       "command": "extension.createNewSiFliTerminal",
-      "title": "新建 SiFli 终端"
+      "title": "%command.createNewSiFliTerminal.title%"
     },
     {
       "command": "extension.listSerialPorts",
-      "title": "列出可用串口"
+      "title": "%command.listSerialPorts.title%"
     },
     {
       "command": "sifliSidebar.refresh",
-        "title": "刷新",
+        "title": "%command.sifliSidebar.refresh.title%",
         "icon": "$(refresh)"
       }
     ],
@@ -79,7 +80,7 @@
       "sifli-sidebar": [
         {
           "id": "sifliSdkManager",
-          "name": "SDK 管理",
+          "name": "%view.sifliSdkManager.name%",
           "icon": "$(cloud-download)"
         }
       ]
@@ -88,7 +89,7 @@
       "activitybar": [
         {
           "id": "sifli-sidebar",
-          "title": "SiFli SDK",
+          "title": "%viewsContainer.sifli-sidebar.title%",
           "icon": "public/SiFli.svg"
         }
       ]
@@ -104,23 +105,23 @@
     },
     "configuration": [
       {
-        "title": "SiFli Extension Configuration",
+        "title": "%configuration.sifli.title%",
         "properties": {
           "sifli-sdk-codekit.powershellPath": {
             "type": "string",
-            "description": "Path to PowerShell executable. (e.g., C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe)",
+            "description": "%configuration.sifli.powershellPath.description%",
             "scope": "machine-overridable",
             "when": "isWindows"
           },
           "sifli-sdk-codekit.embeddedPythonPath": {
             "type": "string",
-            "description": "Path to the embedded Python directory. If set, the extension will use this Python environment.",
+            "description": "%configuration.sifli.embeddedPythonPath.description%",
             "scope": "machine-overridable"
           },
           "sifli-sdk-codekit.useEmbeddedPython": {
             "type": "boolean",
             "default": true,
-            "description": "Whether to use the embedded Python environment provided by SiFli (Windows only).",
+            "description": "%configuration.sifli.useEmbeddedPython.description%",
             "scope": "machine-overridable",
             "when": "isWindows"
           },
@@ -131,11 +132,11 @@
               "properties": {
                 "path": {
                   "type": "string",
-                  "description": "SDK installation path"
+                  "description": "%configuration.sifli.sdkConfigs.path.description%"
                 },
                 "toolsPath": {
                   "type": "string",
-                  "description": "Tools chain path for this SDK"
+                  "description": "%configuration.sifli.sdkConfigs.toolsPath.description%"
                 }
               },
               "required": [
@@ -143,23 +144,23 @@
               ]
             },
             "default": [],
-            "description": "List of installed SiFli SDK configurations. Each entry contains path and optional tools path.",
+            "description": "%configuration.sifli.sdkConfigs.description%",
             "scope": "machine-overridable"
           },
           "sifli-sdk-codekit.customBoardSearchPath": {
             "type": "string",
-            "description": "Optional: Absolute or relative path to a directory containing custom SiFli board configurations. (e.g., C:\\MyBoards or ../my_boards)",
+            "description": "%configuration.sifli.customBoardSearchPath.description%",
             "default": "",
             "scope": "resource"
           }
         }
       },
       {
-        "title": "SiFli probe-rs Debugger",
+        "title": "%configuration.probeRs.title%",
         "properties": {
           "sifli-probe-rs.debuggerExecutable": {
             "type": "string",
-            "markdownDescription": "Path to the `probe-rs` executable. If unset, the extension expects `probe-rs` (or `probe-rs.exe`) to be available on the system PATH.\n\nNote: Setting `runtimeExecutable` in 'launch.json' overrides this setting.",
+            "markdownDescription": "%configuration.probeRs.debuggerExecutable.markdownDescription%",
             "scope": "machine-overridable"
           }
         }
@@ -182,7 +183,7 @@
     "debuggers": [
       {
         "type": "sifli-probe-rs",
-        "label": "SiFli probe-rs Debugger",
+        "label": "%debugger.probeRs.label%",
         "languages": [
           "c",
           "cpp",
