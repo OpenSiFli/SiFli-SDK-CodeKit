@@ -543,11 +543,11 @@ export class VueWebviewProvider {
           if (targetPath && fs.existsSync(targetPath)) {
             vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(targetPath));
           } else {
-            vscode.window.showErrorMessage('目标路径不存在');
+            vscode.window.showErrorMessage(vscode.l10n.t('Target path does not exist.'));
           }
         } catch (error) {
           console.error('[VueWebviewProvider] Error opening in explorer:', error);
-          vscode.window.showErrorMessage('打开文件管理器失败');
+          vscode.window.showErrorMessage(vscode.l10n.t('Failed to open file explorer.'));
         }
         break;
 
@@ -556,16 +556,16 @@ export class VueWebviewProvider {
           const { path: targetPath } = message;
           if (targetPath && fs.existsSync(targetPath)) {
             const terminal = vscode.window.createTerminal({
-              name: 'SiFli SDK',
+              name: vscode.l10n.t('SiFli SDK'),
               cwd: targetPath
             });
             terminal.show();
           } else {
-            vscode.window.showErrorMessage('目标路径不存在');
+            vscode.window.showErrorMessage(vscode.l10n.t('Target path does not exist.'));
           }
         } catch (error) {
           console.error('[VueWebviewProvider] Error opening in terminal:', error);
-          vscode.window.showErrorMessage('打开终端失败');
+          vscode.window.showErrorMessage(vscode.l10n.t('Failed to open terminal.'));
         }
         break;
 

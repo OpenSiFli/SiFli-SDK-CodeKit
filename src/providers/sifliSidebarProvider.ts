@@ -63,26 +63,26 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
 
     // SDK 管理
     items.push(new SifliSidebarItem(
-      'SDK 管理',
+      vscode.l10n.t('SDK Manager'),
       vscode.TreeItemCollapsibleState.None,
       {
         command: 'extension.manageSiFliSdk',
-        title: 'SDK 管理',
+        title: vscode.l10n.t('SDK Manager'),
         arguments: []
       },
       new vscode.ThemeIcon('cloud-download'),
-      '打开 SiFli SDK 管理器 - 安装、切换和管理 SDK 版本',
+      vscode.l10n.t('Open SiFli SDK Manager to install, switch, and manage SDK versions'),
       'sdkManager'
     ));
 
     // 只有在 SiFli 项目中才显示项目配置
     if (isSiFliProject()) {
       items.push(new SifliSidebarItem(
-        '项目配置',
+        vscode.l10n.t('Project Configuration'),
         vscode.TreeItemCollapsibleState.Expanded,
         undefined,
         new vscode.ThemeIcon('settings-gear'),
-        '查看和修改当前项目配置',
+        vscode.l10n.t('View and modify the current project configuration'),
         'configGroup'
       ));
     }
@@ -95,18 +95,18 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
 
     // SDK 版本
     const currentSdk = this.configService.getCurrentSdk();
-    const sdkDescription = currentSdk ? currentSdk.version : '未配置';
+    const sdkDescription = currentSdk ? currentSdk.version : vscode.l10n.t('Not configured');
     
     items.push(new SifliSidebarItem(
-      'SDK 版本',
+      vscode.l10n.t('SDK Version'),
       vscode.TreeItemCollapsibleState.None,
       {
         command: 'extension.switchSdkVersion',
-        title: '切换 SDK 版本',
+        title: vscode.l10n.t('Switch SDK Version'),
         arguments: []
       },
       new vscode.ThemeIcon('package'),
-      '点击切换 SiFli SDK 版本',
+      vscode.l10n.t('Click to switch SiFli SDK version'),
       'sdkVersion',
       sdkDescription
     ));
@@ -114,65 +114,69 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
     // 芯片模组
     const selectedBoard = this.configService.getSelectedBoardName();
     const numThreads = this.configService.getNumThreads();
-    const boardDescription = selectedBoard ? `${selectedBoard} (J${numThreads})` : '未选择';
+    const boardDescription = selectedBoard
+      ? `${selectedBoard} (J${numThreads})`
+      : vscode.l10n.t('Not selected');
     
     items.push(new SifliSidebarItem(
-      '芯片模组',
+      vscode.l10n.t('Board'),
       vscode.TreeItemCollapsibleState.None,
       {
         command: 'extension.selectChipModule',
-        title: '切换芯片模组',
+        title: vscode.l10n.t('Switch Board'),
         arguments: []
       },
       new vscode.ThemeIcon('circuit-board'),
-      '点击切换 SiFli 芯片模组和线程数',
+      vscode.l10n.t('Click to switch SiFli board and build threads'),
       'chipModule',
       boardDescription
     ));
 
     // 串口配置
     const selectedPort = this.serialPortService.selectedSerialPort;
-    const portDescription = selectedPort ? SerialPortService.getDisplayPortName(selectedPort) : '未选择';
+    const portDescription = selectedPort
+      ? SerialPortService.getDisplayPortName(selectedPort)
+      : vscode.l10n.t('Not selected');
     
     items.push(new SifliSidebarItem(
-      '串口配置',
+      vscode.l10n.t('Serial Port'),
       vscode.TreeItemCollapsibleState.None,
       {
         command: 'extension.selectPort',
-        title: '选择串口',
+        title: vscode.l10n.t('Select Serial Port'),
         arguments: []
       },
       new vscode.ThemeIcon('plug'),
-      '点击配置串口连接',
+      vscode.l10n.t('Click to configure serial connection'),
       'serialPort',
       portDescription
     ));
 
     // 新建 SiFli 终端
     items.push(new SifliSidebarItem(
-      '新建 SiFli 终端',
+      vscode.l10n.t('New SiFli Terminal'),
       vscode.TreeItemCollapsibleState.None,
       {
         command: 'extension.createNewSiFliTerminal',
-        title: '新建 SiFli 终端',
+        title: vscode.l10n.t('New SiFli Terminal'),
         arguments: []
       },
       new vscode.ThemeIcon('terminal'),
-      '创建新的带 SiFli 环境的终端',
+      vscode.l10n.t('Create a new terminal with SiFli environment'),
       'newSifliTerminal'
     ));
 
     // 配置 clangd
     items.push(new SifliSidebarItem(
-      '配置 clangd',
+      vscode.l10n.t('Configure clangd'),
       vscode.TreeItemCollapsibleState.None,
       {
         command: 'extension.configureClangd',
-        title: '配置 clangd',
+        title: vscode.l10n.t('Configure clangd'),
         arguments: []
       },
       new vscode.ThemeIcon('tools'),
-      '配置 clangd 的 compile-commands-dir 路径',
+      vscode.l10n.t('Configure clangd compile-commands-dir path'),
       'clangdConfig'
     ));
 

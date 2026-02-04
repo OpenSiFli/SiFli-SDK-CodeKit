@@ -127,12 +127,16 @@ export class PythonService {
     const targetDir = configuredDir || defaultDir;
     if (!targetDir) {
       this.logService.error('Cannot determine embedded Python install directory (missing extension context).');
-      vscode.window.showErrorMessage('无法确定嵌入式 Python 的安装路径，扩展上下文未初始化。');
+      vscode.window.showErrorMessage(
+        vscode.l10n.t('Cannot determine embedded Python install path. Extension context is not initialized.')
+      );
       return;
     }
 
     // 如果没有找到嵌入式 Python，提示用户并自动安装
-    vscode.window.showInformationMessage('检测到未安装 SiFli Python 环境，正在自动下载并安装...');
+    vscode.window.showInformationMessage(
+      vscode.l10n.t('SiFli embedded Python is not installed. Downloading and installing...')
+    );
     await this.installEmbeddedPython(targetDir);
   }
 
@@ -163,7 +167,7 @@ export class PythonService {
     try {
       await vscode.window.withProgress({
         location: vscode.ProgressLocation.Window,
-        title: '正在安装嵌入式 Python...',
+        title: vscode.l10n.t('Installing embedded Python...'),
         cancellable: false
       }, async (progress) => {
         // 1. 下载
@@ -183,7 +187,7 @@ export class PythonService {
           if (totalLength) {
             const percentage = Math.round((downloadedLength / totalLength) * 100);
             // 状态栏进度不显示具体进度条，仅简单提示
-            progress.report({ message: `已下载 ${percentage}%` });
+            progress.report({ message: vscode.l10n.t('Downloaded {0}%', String(percentage)) });
           }
         });
 
@@ -195,7 +199,7 @@ export class PythonService {
         });
 
         // 2. 解压
-        progress.report({ message: '正在解压...' });
+        progress.report({ message: vscode.l10n.t('Extracting...') });
         this.logService.info(`Extracting Python to ${installDir}`);
         
         // 使用 PowerShell 解压
@@ -218,7 +222,7 @@ export class PythonService {
 
         // 5. 安装 pip (下载 get-pip.py 并执行)，不影响整体流程
         try {
-          progress.report({ message: '正在安装 pip...', increment: 0 });
+          progress.report({ message: vscode.l10n.t('Installing pip...'), increment: 0 });
           await this.installPip(installDir);
         } catch (err) {
           this.logService.warn('Failed to install pip for embedded Python', err);
@@ -230,11 +234,13 @@ export class PythonService {
         this.logService.info('Embedded Python installed successfully.');
       });
 
-      vscode.window.showInformationMessage('嵌入式 Python 安装成功！');
+      vscode.window.showInformationMessage(vscode.l10n.t('Embedded Python installed successfully.'));
 
     } catch (error) {
       this.logService.error('Error installing embedded Python:', error);
-      vscode.window.showErrorMessage(`安装嵌入式 Python 失败: ${error}`);
+      vscode.window.showErrorMessage(
+        vscode.l10n.t('Failed to install embedded Python: {0}', String(error))
+      );
       // 清理可能残留的文件
       if (fs.existsSync(zipPath)) {
         fs.unlinkSync(zipPath);

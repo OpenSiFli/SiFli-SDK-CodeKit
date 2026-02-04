@@ -39,7 +39,7 @@ export class BuildCommands {
       const selectedBoardName = this.configService.getSelectedBoardName();
       if (!selectedBoardName || selectedBoardName === 'N/A') {
         vscode.window.showWarningMessage(
-          '请先选择 SiFli 芯片模组。点击状态栏中的板卡名称进行选择。'
+          vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
         );
         return;
       }
@@ -53,7 +53,7 @@ export class BuildCommands {
       );
     } catch (error) {
       console.error('[BuildCommands] Error in executeCompileTask:', error);
-      vscode.window.showErrorMessage(`编译失败: ${error}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('Build failed: {0}', String(error)));
     }
   }
 
@@ -71,7 +71,7 @@ export class BuildCommands {
       await this.executeCompileTask();
     } catch (error) {
       console.error('[BuildCommands] Error in executeRebuildTask:', error);
-      vscode.window.showErrorMessage(`重新构建失败: ${error}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('Rebuild failed: {0}', String(error)));
     }
   }
 
@@ -83,14 +83,14 @@ export class BuildCommands {
       const selectedBoardName = this.configService.getSelectedBoardName();
       if (!selectedBoardName || selectedBoardName === 'N/A') {
         vscode.window.showWarningMessage(
-          '请先选择 SiFli 芯片模组。点击状态栏中的板卡名称进行选择。'
+          vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
         );
         return;
       }
 
       const workspaceFolders = vscode.workspace.workspaceFolders;
       if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('未打开工作区文件夹。');
+        vscode.window.showErrorMessage(vscode.l10n.t('No workspace folder is open.'));
         return;
       }
 
@@ -99,21 +99,27 @@ export class BuildCommands {
       const buildPath = path.join(workspaceRoot, buildFolder);
 
       if (!fs.existsSync(buildPath)) {
-        vscode.window.showInformationMessage(`构建目录不存在，无需清理: ${buildFolder}`);
+        vscode.window.showInformationMessage(
+          vscode.l10n.t('Build directory does not exist. No cleanup needed: {0}', buildFolder)
+        );
         return;
       }
 
       try {
         fs.rmSync(buildPath, { recursive: true, force: true });
-        vscode.window.showInformationMessage(`已清理构建目录: ${buildFolder}`);
+        vscode.window.showInformationMessage(
+          vscode.l10n.t('Build directory cleaned: {0}', buildFolder)
+        );
         console.log(`[BuildCommands] Cleaned build directory: ${buildPath}`);
       } catch (error) {
         console.error(`[BuildCommands] Error cleaning build directory:`, error);
-        vscode.window.showErrorMessage(`清理构建目录失败: ${error}`);
+        vscode.window.showErrorMessage(
+          vscode.l10n.t('Failed to clean build directory: {0}', String(error))
+        );
       }
     } catch (error) {
       console.error('[BuildCommands] Error in executeCleanCommand:', error);
-      vscode.window.showErrorMessage(`清理失败: ${error}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('Clean failed: {0}', String(error)));
     }
   }
 
@@ -125,7 +131,7 @@ export class BuildCommands {
       const selectedBoardName = this.configService.getSelectedBoardName();
       if (!selectedBoardName || selectedBoardName === 'N/A') {
         vscode.window.showWarningMessage(
-          '请先选择 SiFli 芯片模组。点击状态栏中的板卡名称进行选择。'
+          vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
         );
         return;
       }
@@ -133,7 +139,7 @@ export class BuildCommands {
       const selectedSerialPort = this.serialPortService.selectedSerialPort;
       if (!selectedSerialPort) {
         vscode.window.showWarningMessage(
-          '请先选择串口。点击状态栏中的 "COM: N/A" 进行选择。'
+          vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.')
         );
         return;
       }
@@ -141,7 +147,7 @@ export class BuildCommands {
       // 验证构建目录是否存在
       const workspaceFolders = vscode.workspace.workspaceFolders;
       if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('未打开工作区文件夹。');
+        vscode.window.showErrorMessage(vscode.l10n.t('No workspace folder is open.'));
         return;
       }
 
@@ -150,13 +156,15 @@ export class BuildCommands {
       const buildPath = path.join(workspaceRoot, buildFolder);
 
       if (!fs.existsSync(buildPath)) {
+        const buildAction = vscode.l10n.t('Build');
+        const cancelAction = vscode.l10n.t('Cancel');
         const response = await vscode.window.showWarningMessage(
-          `构建目录不存在: ${buildFolder}。是否先执行构建？`,
-          '执行构建',
-          '取消'
+          vscode.l10n.t('Build directory does not exist: {0}. Build first?', buildFolder),
+          buildAction,
+          cancelAction
         );
         
-        if (response === '执行构建') {
+        if (response === buildAction) {
           await this.executeCompileTask();
           // 等待构建完成后再继续下载
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -181,14 +189,16 @@ export class BuildCommands {
       );
 
       if (exitCode !== undefined && exitCode !== 0) {
-        throw new Error(`下载命令执行失败，退出码: ${exitCode}`);
+        throw new Error(vscode.l10n.t('Download command failed with exit code: {0}', String(exitCode)));
       }
 
       await this.statusBarProvider.handlePostDownloadOperation();
     
     } catch (error) {
       console.error('[BuildCommands] Error in executeDownloadTask:', error);
-      vscode.window.showErrorMessage(`下载失败: ${error instanceof Error ? error.message : error}`);
+      vscode.window.showErrorMessage(
+        vscode.l10n.t('Download failed: {0}', error instanceof Error ? error.message : String(error))
+      );
       
       // 即使发生错误也尝试恢复串口监视器
       await this.statusBarProvider.handlePostDownloadOperation();
@@ -203,7 +213,7 @@ export class BuildCommands {
       const selectedBoardName = this.configService.getSelectedBoardName();
       if (!selectedBoardName || selectedBoardName === 'N/A') {
         vscode.window.showWarningMessage(
-          '请先选择 SiFli 芯片模组。点击状态栏中的板卡名称进行选择。'
+          vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
         );
         return;
       }
@@ -216,7 +226,7 @@ export class BuildCommands {
       );
     } catch (error) {
       console.error('[BuildCommands] Error in executeMenuconfigTask:', error);
-      vscode.window.showErrorMessage(`打开 Menuconfig 失败: ${error}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to open Menuconfig: {0}', String(error)));
     }
   }
 }

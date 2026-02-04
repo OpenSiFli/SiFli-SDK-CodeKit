@@ -61,7 +61,7 @@ class DesktopSerialDevice extends SerialDevice {
     this.serialPort.on('close', () => this._onEnd.fire());
     this.serialPort.on('data', (data: Buffer) => this.emit(data));
     this.serialPort.on('error', (error) => {
-      this._onData.fire(`Error: ${error.message}`);
+      this._onData.fire(vscode.l10n.t('Error: {0}', error.message));
       this.close();
     });
     this.serialPort.on('open', () => {
@@ -135,8 +135,14 @@ class SerialTerminal implements vscode.Pseudoterminal {
 
     // 打开串口
     await this.serialDevice.open(this.options);
-    this.writeLine(`📡 Connected to ${this.serialDevice.name} @ ${this.options.baudRate} baud`);
-    this.writeLine(`📝 Type data to send to device. Press Ctrl+C to disconnect.`);
+    this.writeLine(
+      vscode.l10n.t(
+        '📡 Connected to {0} @ {1} baud',
+        this.serialDevice.name,
+        String(this.options.baudRate)
+      )
+    );
+    this.writeLine(vscode.l10n.t('📝 Type data to send to device. Press Ctrl+C to disconnect.'));
   }
 
   public close(): void {
@@ -146,7 +152,7 @@ class SerialTerminal implements vscode.Pseudoterminal {
   public handleInput(data: string): void {
     // 处理特殊键
     if (data === '\x03') { // Ctrl+C
-      this.writeLine('🔌 Disconnecting...');
+      this.writeLine(vscode.l10n.t('🔌 Disconnecting...'));
       this.close();
       return;
     }
@@ -221,7 +227,7 @@ export class BuiltinSerialMonitorService {
   public async openSerialMonitor(
     portPath?: string,
     baudRate: number = this.defaultBaudRate,
-    title: string = 'SiFli Serial Monitor'
+    title: string = vscode.l10n.t('SiFli Serial Monitor')
   ): Promise<string | undefined> {
     try {
       let selectedPortInfo;
@@ -233,18 +239,18 @@ export class BuiltinSerialMonitorService {
         // 让用户选择端口
         const ports = await this.listSerialPorts();
         if (ports.length === 0) {
-          vscode.window.showErrorMessage('No serial ports found');
+          vscode.window.showErrorMessage(vscode.l10n.t('No serial ports found'));
           return undefined;
         }
 
         const portItems = ports.map(port => ({
           label: port.path,
-          description: port.manufacturer || 'Unknown',
-          detail: port.serialNumber ? `Serial: ${port.serialNumber}` : ''
+          description: port.manufacturer || vscode.l10n.t('Unknown'),
+          detail: port.serialNumber ? vscode.l10n.t('Serial: {0}', port.serialNumber) : ''
         }));
 
         const selected = await vscode.window.showQuickPick(portItems, {
-          placeHolder: 'Select a serial port to monitor'
+          placeHolder: vscode.l10n.t('Select a serial port to monitor')
         });
 
         if (!selected) {
@@ -287,7 +293,9 @@ export class BuiltinSerialMonitorService {
       return undefined;
     } catch (error) {
       console.error('Failed to open serial monitor:', error);
-      vscode.window.showErrorMessage(`Failed to open serial monitor: ${error}`);
+      vscode.window.showErrorMessage(
+        vscode.l10n.t('Failed to open serial monitor: {0}', String(error))
+      );
       return undefined;
     }
   }
@@ -320,7 +328,11 @@ export class BuiltinSerialMonitorService {
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown Error';
-      vscode.window.showErrorMessage(message);
+      vscode.window.showErrorMessage(
+        error instanceof Error
+          ? message
+          : vscode.l10n.t('Unknown Error')
+      );
       return false;
     }
   }

@@ -274,7 +274,7 @@ async function showReleaseNotesIfUpdated(context: vscode.ExtensionContext): Prom
         // 优先使用 Markdown 预览呈现更友好的界面
         await vscode.commands.executeCommand('markdown.showPreview', uri);
       } else {
-        vscode.window.showWarningMessage('找不到离线 Release Notes 文件。');
+        vscode.window.showWarningMessage(vscode.l10n.t('Offline Release Notes file not found.'));
       }
     } catch (err) {
       const logService = LogService.getInstance();
@@ -282,13 +282,15 @@ async function showReleaseNotesIfUpdated(context: vscode.ExtensionContext): Prom
     }
   };
 
+  const viewNotes = vscode.l10n.t('View release notes');
+  const viewLater = vscode.l10n.t('Later');
   const choice = await vscode.window.showInformationMessage(
-    `SiFli SDK CodeKit 已更新至 ${currentVersion}，查看更新内容？`,
-    '查看更新',
-    '稍后'
+    vscode.l10n.t('SiFli SDK CodeKit updated to {0}. View release notes?', currentVersion),
+    viewNotes,
+    viewLater
   );
 
-  if (choice === '查看更新') {
+  if (choice === viewNotes) {
     await openReleaseNotes();
   }
 

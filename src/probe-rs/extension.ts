@@ -37,12 +37,13 @@ export function registerProbeRsDebugger(context: vscode.ExtensionContext): void 
 
   void (async () => {
     if (!(await probeRsInstalled())) {
+            const installLabel = vscode.l10n.t('Install');
       const resp = await vscode.window.showInformationMessage(
-        "probe-rs doesn't seem to be installed. Do you want to install it automatically now?",
-        'Install'
+                vscode.l10n.t("probe-rs doesn't seem to be installed. Do you want to install it automatically now?"),
+                installLabel
       );
 
-      if (resp === 'Install') {
+            if (resp === installLabel) {
         await installProbeRs();
       }
     }
@@ -66,15 +67,28 @@ var consoleLogLevel = ConsoleLogSources.console;
 
 // Common handler for error/exit codes
 function handleExit(code: number | null, signal: string | null) {
-    var actionHint: string =
-        '\tPlease review all the error messages, including those in the "Debug Console" window.';
+    var actionHint: string = vscode.l10n.t(
+        'Please review all the error messages, including those in the "Debug Console" window.'
+    );
     if (code) {
         vscode.window.showErrorMessage(
-            `${ConsoleLogSources.error}: ${ConsoleLogSources.console} exited with an unexpected code: ${code} ${actionHint}`,
+            vscode.l10n.t(
+                '{0}: {1} exited with an unexpected code: {2} {3}',
+                ConsoleLogSources.error,
+                ConsoleLogSources.console,
+                String(code),
+                actionHint,
+            ),
         );
     } else if (signal) {
         vscode.window.showErrorMessage(
-            `${ConsoleLogSources.error}: ${ConsoleLogSources.console} exited with signal: ${signal} ${actionHint}`,
+            vscode.l10n.t(
+                '{0}: {1} exited with signal: {2} {3}',
+                ConsoleLogSources.error,
+                ConsoleLogSources.console,
+                signal,
+                actionHint,
+            ),
         );
     }
 }
@@ -323,7 +337,10 @@ class ProbeRSDebugAdapterServerDescriptorFactory implements vscode.DebugAdapterD
                 )}`,
             );
             vscode.window.showErrorMessage(
-                `The 'cwd' folder does not exist: ${JSON.stringify(session.configuration.cwd, null, 2)}`,
+                vscode.l10n.t(
+                    "The 'cwd' folder does not exist: {0}",
+                    JSON.stringify(session.configuration.cwd, null, 2),
+                ),
             );
             return undefined;
         }
@@ -341,17 +358,16 @@ class ProbeRSDebugAdapterServerDescriptorFactory implements vscode.DebugAdapterD
             try {
                 var port: number = await getAvailablePort();
                 if (port <= 0) {
-                    throw new Error('No available port found');
+                    throw new Error(vscode.l10n.t('No available port found'));
                 }
                 debugServer = `127.0.0.1:${port}`.split(':', 2);
             } catch (err: any) {
                 logToConsole(`${ConsoleLogSources.error}: ${JSON.stringify(err.message, null, 2)}`);
                 vscode.window.showErrorMessage(
-                    `Searching for available port failed with: ${JSON.stringify(
-                        err.message,
-                        null,
-                        2,
-                    )}`,
+                    vscode.l10n.t(
+                        'Searching for an available port failed: {0}',
+                        JSON.stringify(err.message, null, 2),
+                    ),
                 );
                 return undefined;
             }
@@ -476,11 +492,10 @@ class ProbeRSDebugAdapterServerDescriptorFactory implements vscode.DebugAdapterD
                             `${ConsoleLogSources.error}: ${JSON.stringify(err.message, null, 2)}`,
                         );
                         vscode.window.showErrorMessage(
-                            `Testing probe-rs dap-server port availability failed with: ${JSON.stringify(
-                                err.message,
-                                null,
-                                2,
-                            )}`,
+                            vscode.l10n.t(
+                                'Testing probe-rs dap-server port availability failed: {0}',
+                                JSON.stringify(err.message, null, 2),
+                            ),
                         );
                         return undefined;
                     }
@@ -493,7 +508,7 @@ class ProbeRSDebugAdapterServerDescriptorFactory implements vscode.DebugAdapterD
                         `${ConsoleLogSources.error}: Timeout waiting for probe-rs dap-server to launch`,
                     );
                     vscode.window.showErrorMessage(
-                        'Timeout waiting for probe-rs dap-server to launch',
+                        vscode.l10n.t('Timeout waiting for probe-rs dap-server to launch'),
                     );
                     break;
                 }
@@ -549,7 +564,7 @@ function installProbeRs() {
         {
             location: vscode.ProgressLocation.Window,
             cancellable: false,
-            title: 'Installing probe-rs ...',
+            title: vscode.l10n.t('Installing probe-rs...'),
         },
         async (progress) => {
             progress.report({increment: 0});
@@ -574,8 +589,11 @@ function installProbeRs() {
 
             const errorListener = (error: Error) => {
                 vscode.window.showInformationMessage(
-                    'Installation failed: ${err.message}. Check the logs for more info.',
-                    'Ok',
+                    vscode.l10n.t(
+                        'Installation failed: {0}. Check the logs for more info.',
+                        error.message,
+                    ),
+                    vscode.l10n.t('OK'),
                 );
                 console.error(error);
                 done = true;
@@ -584,15 +602,17 @@ function installProbeRs() {
             const exitListener = (code: number | null, signal: NodeJS.Signals | null) => {
                 let message;
                 if (code === 0) {
-                    message = 'Installation successful.';
+                    message = vscode.l10n.t('Installation successful.');
                 } else if (signal) {
-                    message = 'Installation aborted.';
+                    message = vscode.l10n.t('Installation aborted.');
                 } else {
                     message =
-                        'Installation failed. Go to https://probe.rs to check out the setup and troubleshooting instructions.';
+                        vscode.l10n.t(
+                            'Installation failed. Go to https://probe.rs for setup and troubleshooting instructions.'
+                        );
                 }
                 console.error(message);
-                vscode.window.showInformationMessage(message, 'Ok');
+                vscode.window.showInformationMessage(message, vscode.l10n.t('OK'));
                 done = true;
             };
 

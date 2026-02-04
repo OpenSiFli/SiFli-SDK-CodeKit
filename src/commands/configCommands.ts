@@ -44,7 +44,7 @@ export class ConfigCommands {
 
       if (availableBoards.length === 0) {
         vscode.window.showWarningMessage(
-          '未发现任何 SiFli 芯片模组。请检查您的 SDK 安装或自定义板子路径设置。'
+          vscode.l10n.t('No SiFli boards found. Check your SDK installation or custom board path settings.')
         );
         return;
       }
@@ -53,11 +53,11 @@ export class ConfigCommands {
       const boardPickOptions = availableBoards.map(board => {
         let description = '';
         if (board.type === 'sdk') {
-          description = '来源: SDK 默认';
+          description = vscode.l10n.t('Source: SDK default');
         } else if (board.type === 'project_local') {
-          description = '来源: 项目本地 boards 目录';
+          description = vscode.l10n.t('Source: project local boards');
         } else if (board.type === 'custom') {
-          description = '来源: 自定义路径';
+          description = vscode.l10n.t('Source: custom path');
         }
 
         return {
@@ -68,14 +68,14 @@ export class ConfigCommands {
       });
 
       const selectedQuickPickItem = await vscode.window.showQuickPick(boardPickOptions, {
-        placeHolder: '选择 SiFli 芯片模组',
+        placeHolder: vscode.l10n.t('Select a SiFli board'),
         canPickMany: false
       });
 
       if (selectedQuickPickItem) {
         await this.configService.setSelectedBoardName(selectedQuickPickItem.label);
         vscode.window.showInformationMessage(
-          `SiFli 芯片模组已切换为: ${selectedQuickPickItem.label}`
+          vscode.l10n.t('SiFli board switched to: {0}', selectedQuickPickItem.label)
         );
         // 更新状态栏显示
         this.statusBarProvider.updateStatusBarItems();
@@ -84,12 +84,12 @@ export class ConfigCommands {
       // 允许用户修改线程数
       const currentThreads = this.configService.getNumThreads();
       const numThreadsInput = await vscode.window.showInputBox({
-        prompt: `输入编译线程数 (当前: J${currentThreads})`,
+        prompt: vscode.l10n.t('Enter build threads (current: J{0})', String(currentThreads)),
         value: String(currentThreads),
         validateInput: (value) => {
           const parsed = parseInt(value);
           if (isNaN(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
-            return '请输入一个正整数。';
+            return vscode.l10n.t('Please enter a positive integer.');
           }
           return null;
         }
@@ -98,13 +98,15 @@ export class ConfigCommands {
       if (numThreadsInput !== undefined && numThreadsInput !== String(currentThreads)) {
         const newThreads = parseInt(numThreadsInput);
         await this.configService.setNumThreads(newThreads);
-        vscode.window.showInformationMessage(`编译线程数已设置为: J${newThreads}`);
+        vscode.window.showInformationMessage(
+          vscode.l10n.t('Build threads set to: J{0}', String(newThreads))
+        );
         // 更新状态栏显示
         this.statusBarProvider.updateStatusBarItems();
       }
     } catch (error) {
       console.error('[ConfigCommands] Error in selectChipModule:', error);
-      vscode.window.showErrorMessage(`选择芯片模组失败: ${error}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to select board: {0}', String(error)));
     }
   }
 
@@ -137,18 +139,20 @@ export class ConfigCommands {
         const availableBoards = await this.boardService.discoverBoards();
         
         if (availableBoards.length > 0) {
+          const selectBoard = vscode.l10n.t('Select board');
+          const selectLater = vscode.l10n.t('Later');
           const response = await vscode.window.showInformationMessage(
-            '检测到 SiFli 项目！请选择您要使用的芯片模组以开始开发。',
-            '选择芯片模组',
-            '稍后选择'
+            vscode.l10n.t('SiFli project detected. Select the board to start.'),
+            selectBoard,
+            selectLater
           );
 
-          if (response === '选择芯片模组') {
+          if (response === selectBoard) {
             await this.selectChipModule();
           }
         } else {
           vscode.window.showWarningMessage(
-            '未发现任何 SiFli 芯片模组。请检查 SDK 安装或配置自定义板子路径。'
+            vscode.l10n.t('No SiFli boards found. Check your SDK installation or custom board path configuration.')
           );
         }
 
@@ -168,27 +172,33 @@ export class ConfigCommands {
       const ports = await this.serialMonitorService.listSerialPorts();
       
       if (ports.length === 0) {
-        vscode.window.showInformationMessage('没有找到可用的串口设备');
+        vscode.window.showInformationMessage(vscode.l10n.t('No serial ports found.'));
         return;
       }
 
       const items = ports.map(port => ({
         label: port.path,
-        description: port.manufacturer || '未知制造商',
-        detail: port.serialNumber ? `序列号: ${port.serialNumber}` : '无序列号信息'
+        description: port.manufacturer || vscode.l10n.t('Unknown manufacturer'),
+        detail: port.serialNumber
+          ? vscode.l10n.t('Serial: {0}', port.serialNumber)
+          : vscode.l10n.t('No serial number')
       }));
 
       const selected = await vscode.window.showQuickPick(items, {
-        placeHolder: '可用的串口设备',
-        title: `发现 ${ports.length} 个串口设备`
+        placeHolder: vscode.l10n.t('Available serial ports'),
+        title: vscode.l10n.t('Found {0} serial port(s)', String(ports.length))
       });
 
       if (selected) {
-        vscode.window.showInformationMessage(`已选择串口: ${selected.label}`);
+        vscode.window.showInformationMessage(
+          vscode.l10n.t('Selected serial port: {0}', selected.label)
+        );
       }
     } catch (error) {
       console.error('列出串口失败:', error);
-      vscode.window.showErrorMessage(`获取串口列表失败: ${error}`);
+      vscode.window.showErrorMessage(
+        vscode.l10n.t('Failed to get serial port list: {0}', String(error))
+      );
     }
   }
 
@@ -201,14 +211,14 @@ export class ConfigCommands {
       const selectedBoard = this.configService.getSelectedBoardName();
       
       if (!selectedBoard || selectedBoard === 'N/A') {
-        vscode.window.showWarningMessage('请先选择芯片模组');
+        vscode.window.showWarningMessage(vscode.l10n.t('Select a board first.'));
         return;
       }
 
       // 获取工作区文件夹
       const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
       if (!workspaceFolder) {
-        vscode.window.showErrorMessage('未找到工作区文件夹');
+        vscode.window.showErrorMessage(vscode.l10n.t('No workspace folder found.'));
         return;
       }
 
@@ -245,18 +255,23 @@ export class ConfigCommands {
       console.log(`[ConfigCommands] clangd 配置已更新: ${settingsPath}`);
       
       // 显示成功消息并提示重启
+      const restartAction = vscode.l10n.t('Restart VS Code');
+      const laterAction = vscode.l10n.t('Later');
       const action = await vscode.window.showInformationMessage(
-        `clangd 配置已完成，已设置为芯片模组 ${selectedBoard}。建议重启 VS Code 以使配置生效。`,
-        '重启 VS Code',
-        '稍后重启'
+        vscode.l10n.t(
+          'clangd configuration completed for board {0}. Restart VS Code to apply.',
+          selectedBoard
+        ),
+        restartAction,
+        laterAction
       );
 
-      if (action === '重启 VS Code') {
+      if (action === restartAction) {
         vscode.commands.executeCommand('workbench.action.reloadWindow');
       }
     } catch (error) {
       console.error('[ConfigCommands] Error in configureClangd:', error);
-      vscode.window.showErrorMessage(`配置 clangd 失败: ${error}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to configure clangd: {0}', String(error)));
     }
   }
 }
