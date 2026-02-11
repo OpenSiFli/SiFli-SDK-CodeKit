@@ -8,6 +8,7 @@ import { SerialMonitorService } from '../services/serialMonitorService';
 import { SdkService } from '../services/sdkService';
 import { StatusBarProvider } from '../providers/statusBarProvider';
 import { HAS_RUN_INITIAL_SETUP_KEY } from '../constants';
+import { getProjectInfo } from '../utils/projectUtils';
 
 export class ConfigCommands {
   private static instance: ConfigCommands;
@@ -244,7 +245,9 @@ export class ConfigCommands {
       }
 
       // 构建 compile-commands-dir 路径
-      const compileCommandsDir = `\${workspaceFolder}/project/build_${selectedBoard}_hcpu`;
+      const projectInfo = getProjectInfo();
+      const projectRelativePath = projectInfo?.projectEntryRelativePath || 'project';
+      const compileCommandsDir = `\${workspaceFolder}/${projectRelativePath}/build_${selectedBoard}_hcpu`;
 
       // 更新 clangd.arguments
       settings['clangd.arguments'] = [`--compile-commands-dir=${compileCommandsDir}`];

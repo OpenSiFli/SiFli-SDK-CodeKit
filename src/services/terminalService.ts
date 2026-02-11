@@ -10,6 +10,7 @@ import { LogService } from './logService';
 import { PythonService } from './pythonService';
 import { MinGitService } from './minGitService';
 import { SdkService } from './sdkService';
+import { getProjectInfo } from '../utils/projectUtils';
 
 export class TerminalService {
   private static instance: TerminalService;
@@ -102,7 +103,8 @@ export class TerminalService {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders && workspaceFolders.length > 0) {
       const workspaceRoot = workspaceFolders[0].uri.fsPath;
-      const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
+      const projectInfo = getProjectInfo();
+      const projectPath = projectInfo?.projectEntryPath || path.join(workspaceRoot, PROJECT_SUBFOLDER);
       terminal.sendText(`cd "${projectPath}"`);
       this.logService.debug(`Changed terminal directory to: ${projectPath}`);
     }
