@@ -100,15 +100,17 @@ export class TerminalService {
     }
 
     // 切换到项目目录
-    const projectInfo = getProjectInfo();
-    const projectPath = projectInfo?.projectEntryPath;
-    if (!projectPath) {
-      // 提示一下错误
-      this.logService.error('[terminalService] Project entry path not found');
-      return terminal;
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders && workspaceFolders.length > 0) {
+      const projectInfo = getProjectInfo();
+      const projectPath = projectInfo?.projectEntryPath;
+      if (!projectPath) {
+        this.logService.error('[[terminalService] Project entry path not found');
+        return terminal;
+      }
+      terminal.sendText(`cd "${projectPath}"`);
+      this.logService.debug(`Changed terminal directory to: ${projectPath}`);
     }
-    terminal.sendText(`cd "${projectPath}"`);
-    this.logService.debug(`Changed terminal directory to: ${projectPath}`);
 
     return terminal;
   }

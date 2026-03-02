@@ -313,10 +313,10 @@ export class BuildCommands {
   public async toggleBuildWithSaveCheck(): Promise<void> {
     const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
     const currentValue = config.get<string>('buildWithSaveCheck') ?? 'prompt';
-    
+
     // 定义循环顺序：prompt -> saveAll -> saveCurrent -> doNotSave -> prompt
     let newValue: string;
-    switch(currentValue) {
+    switch (currentValue) {
       case 'prompt':
         newValue = 'saveAll';
         break;
@@ -337,18 +337,26 @@ export class BuildCommands {
     await config.update('buildWithSaveCheck', newValue, vscode.ConfigurationTarget.Global);
 
     let message: string;
-    switch(newValue) {
+    switch (newValue) {
       case 'prompt':
-        message = vscode.l10n.t('Build with save check is now set to "Prompt". You will be asked what to do before building when there are unsaved changes.');
+        message = vscode.l10n.t(
+          'Build with save check is now set to "Prompt". You will be asked what to do before building when there are unsaved changes.'
+        );
         break;
       case 'saveAll':
-        message = vscode.l10n.t('Build with save check is now set to "Always Save All". Changed files will be saved before building.');
+        message = vscode.l10n.t(
+          'Build with save check is now set to "Always Save All". Changed files will be saved before building.'
+        );
         break;
       case 'saveCurrent':
-        message = vscode.l10n.t('Build with save check is now set to "Always Save Current". The current file will be saved before building.');
+        message = vscode.l10n.t(
+          'Build with save check is now set to "Always Save Current". The current file will be saved before building.'
+        );
         break;
       case 'doNotSave':
-        message = vscode.l10n.t('Build with save check is now set to "Don\'t Save". Files will not be saved before building.');
+        message = vscode.l10n.t(
+          'Build with save check is now set to "Don\'t Save". Files will not be saved before building.'
+        );
         break;
       default:
         message = vscode.l10n.t('Build with save check setting updated.');
