@@ -251,7 +251,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // 注册命令（仅限 SiFli 项目）
     const commands = [
-      vscode.commands.registerCommand(CMD_PREFIX + 'compile', () => buildCommands.executeCompileTask()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'compile', () => buildCommands.buildWithSaveCheck()),
       vscode.commands.registerCommand(CMD_PREFIX + 'rebuild', () => buildCommands.executeRebuildTask()),
       vscode.commands.registerCommand(CMD_PREFIX + 'clean', () => buildCommands.executeCleanCommand()),
       vscode.commands.registerCommand(CMD_PREFIX + 'download', () => buildCommands.executeDownloadTask()),
@@ -269,7 +269,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.commands.registerCommand(CMD_PREFIX + 'listSerialPorts', () => configCommands.listSerialPorts()),
       vscode.commands.registerCommand(CMD_PREFIX + 'configureClangd', () => configCommands.configureClangd()),
       vscode.commands.registerCommand(CMD_PREFIX + 'showLogs', () => {
-        logService.show();
         logService.info('Logs displayed by user request');
       }),
       vscode.commands.registerCommand(CMD_PREFIX + 'workflows.manage', () => workflowCommands.openManager()),
