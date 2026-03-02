@@ -60,6 +60,7 @@
   "Build with save check is now set to \"Always Save All\". Changed files will be saved before building.": "Build with save check is now set to \"Always Save All\". Changed files will be saved before building.",
   "Build with save check is now set to \"Always Save Current\". The current file will be saved before building.": "Build with save check is now set to \"Always Save Current\". The current file will be saved before building.",
   "Build with save check is now set to \"Don't Save\". Files will not be saved before building.": "Build with save check is now set to \"Don't Save\". Files will not be saved before building.",
+  "Save Dialog Alert": "There are unsaved changes in your workspace. Save before building?",
   "Build with save check setting updated.": "Build with save check setting updated.",
   "Build directory does not exist: {0}. Build first?": "Build directory does not exist: {0}. Build first?",
   "Download command failed with exit code: {0}": "Download command failed with exit code: {0}",
