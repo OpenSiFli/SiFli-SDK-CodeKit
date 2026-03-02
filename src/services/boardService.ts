@@ -147,8 +147,7 @@ export class BoardService {
    * 生成编译命令
    */
   public async getCompileCommand(boardName: string, threads: number): Promise<string> {
-    const projectInfo = getProjectInfo();
-    const projectPath = projectInfo?.projectEntryPath || '';
+    const projectPath = this.getProjectFolderPath();
 
     let boardSearchArg = '';
     const availableBoards = await this.discoverBoards();
@@ -174,8 +173,7 @@ export class BoardService {
    * 生成 Menuconfig 命令
    */
   public async getMenuconfigCommand(boardName: string): Promise<string> {
-    const projectInfo = getProjectInfo();
-    const projectPath = projectInfo?.projectEntryPath || '';
+    const projectPath = this.getProjectFolderPath();
 
     let boardSearchArg = '';
     const availableBoards = await this.discoverBoards();

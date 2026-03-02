@@ -104,7 +104,11 @@ export class TerminalService {
     if (workspaceFolders && workspaceFolders.length > 0) {
       const workspaceRoot = workspaceFolders[0].uri.fsPath;
       const projectInfo = getProjectInfo();
-      const projectPath = projectInfo?.projectEntryPath || path.join(workspaceRoot, PROJECT_SUBFOLDER);
+      const projectPath = projectInfo?.projectEntryPath;
+      if (!projectPath) {
+        this.logService.error('[[terminalService] Project entry path not found');
+        return terminal;
+      }
       terminal.sendText(`cd "${projectPath}"`);
       this.logService.debug(`Changed terminal directory to: ${projectPath}`);
     }
