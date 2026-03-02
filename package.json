@@ -58,20 +58,24 @@
         "command": "extension.openDeviceMonitor",
         "title": "%command.openDeviceMonitor.title%"
       },
-    {
-      "command": "extension.closeDeviceMonitor",
-      "title": "%command.closeDeviceMonitor.title%"
-    },
-    {
-      "command": "extension.createNewSiFliTerminal",
-      "title": "%command.createNewSiFliTerminal.title%"
-    },
-    {
-      "command": "extension.listSerialPorts",
-      "title": "%command.listSerialPorts.title%"
-    },
-    {
-      "command": "sifliSidebar.refresh",
+      {
+        "command": "extension.closeDeviceMonitor",
+        "title": "%command.closeDeviceMonitor.title%"
+      },
+      {
+        "command": "extension.createNewSiFliTerminal",
+        "title": "%command.createNewSiFliTerminal.title%"
+      },
+      {
+        "command": "extension.listSerialPorts",
+        "title": "%command.listSerialPorts.title%"
+      },
+      {
+        "command": "extension.toggleBuildWithSaveCheck",
+        "title": "%command.toggleBuildWithSaveCheck.title%"
+      },
+      {
+        "command": "sifliSidebar.refresh",
         "title": "%command.sifliSidebar.refresh.title%",
         "icon": "$(refresh)"
       }
@@ -152,6 +156,24 @@
             "description": "%configuration.sifli.customBoardSearchPath.description%",
             "default": "",
             "scope": "resource"
+          },
+          "sifli-sdk-codekit.buildWithSaveCheck": {
+            "type": "string",
+            "enum": [
+              "prompt",
+              "saveAll",
+              "saveCurrent",
+              "doNotSave"
+            ],
+            "enumDescriptions": [
+              "%configuration.sifli.buildWithSaveCheck.enum.prompt%",
+              "%configuration.sifli.buildWithSaveCheck.enum.saveAll%",
+              "%configuration.sifli.buildWithSaveCheck.enum.saveCurrent%",
+              "%configuration.sifli.buildWithSaveCheck.enum.doNotSave%"
+            ],
+            "default": "prompt",
+            "description": "%configuration.sifli.buildWithSaveCheck.description%",
+            "scope": "window"
           }
         }
       },
