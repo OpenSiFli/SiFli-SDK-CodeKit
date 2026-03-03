@@ -1,6 +1,7 @@
 export * from './config';
 export * from './board';
 export * from './sdk';
+export * from './workflow';
 // export * from './serialMonitor'; // 暂时注释掉避免 SerialPort 类型冲突
 
 export type TaskName = 
@@ -8,7 +9,8 @@ export type TaskName =
   | 'SiFli: Download' 
   | 'SiFli: Menuconfig'
   | 'SiFli: Clean'
-  | 'SiFli: Rebuild';
+  | 'SiFli: Rebuild'
+  | 'SiFli: Workflow Shell';
 
 export type CommandId = 
   | 'extension.compile'

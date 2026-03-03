@@ -15,9 +15,11 @@ import { WorkspaceStateService } from './services/workspaceStateService';
 import { BuildCommands } from './commands/buildCommands';
 import { ConfigCommands } from './commands/configCommands';
 import { SdkCommands } from './commands/sdkCommands';
+import { WorkflowCommands } from './commands/workflowCommands';
 import { StatusBarProvider } from './providers/statusBarProvider';
 import { VueWebviewProvider } from './providers/vueWebviewProvider';
 import { SifliSidebarManager } from './providers/sifliSidebarProvider';
+import { WorkflowService } from './services/workflowService';
 import { isSiFliProject } from './utils/projectUtils';
 import { registerProbeRsDebugger } from './probe-rs/extension';
 
@@ -65,6 +67,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const buildCommands = BuildCommands.getInstance();
   const configCommands = ConfigCommands.getInstance();
   const sdkCommands = SdkCommands.getInstance();
+  const workflowCommands = WorkflowCommands.getInstance();
   
   // 初始化状态栏提供者
   const statusBarProvider = StatusBarProvider.getInstance();
@@ -74,6 +77,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // 初始化侧边栏管理器
   const sidebarManager = SifliSidebarManager.getInstance();
+  const workflowService = WorkflowService.getInstance();
 
   // 注册输出通道和 Git 输出通道到订阅列表
   context.subscriptions.push(
@@ -156,6 +160,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           const newSdkVersions = await sdkService.discoverSiFliSdks();
           configService.detectedSdkVersions = newSdkVersions;
           statusBarProvider.updateStatusBarItems();
+          workflowService.reportValidationIssues(false);
           logService.info('Configuration update completed');
         }
       })
@@ -207,10 +212,75 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.commands.registerCommand(CMD_PREFIX + 'showLogs', () => {
         logService.show();
         logService.info('Logs displayed by user request');
+      }),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.manage', () =>
+        workflowCommands.openManager()
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.run', (item?: string | { metadata?: Record<string, string> }) => {
+        const workflowId = typeof item === 'string' ? item : item?.metadata?.workflowId;
+        return workflowCommands.runWorkflow(workflowId);
+      }),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.runDry', (item?: string | { metadata?: Record<string, string> }) => {
+        const workflowId = typeof item === 'string' ? item : item?.metadata?.workflowId;
+        return workflowCommands.runWorkflow(workflowId, true);
+      }),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.create', () =>
+        workflowCommands.createWorkflow()
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.edit', (item?: { metadata?: Record<string, string> } | string) =>
+        workflowCommands.editWorkflow(typeof item === 'string' ? item : item?.metadata?.workflowId)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.copy', (item?: { metadata?: Record<string, string> } | string) =>
+        workflowCommands.copyWorkflow(item)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.delete', (item?: { metadata?: Record<string, string> } | string) =>
+        workflowCommands.deleteWorkflow(item)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.pin', (item?: { metadata?: Record<string, string> } | string) =>
+        workflowCommands.pinWorkflowToStatusBar(typeof item === 'string' ? item : item?.metadata?.workflowId)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.rename', (item?: string | { metadata?: Record<string, string> }) =>
+        workflowCommands.renameWorkflow(item)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.stepAdd', (item?: string | { metadata?: Record<string, string> }) =>
+        workflowCommands.addStep(item)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.stepDelete', (item?: { metadata?: Record<string, string> }) =>
+        workflowCommands.deleteStep(item)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.stepMoveUp', (item?: { metadata?: Record<string, string> }) =>
+        workflowCommands.moveStepUp(item)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.stepMoveDown', (item?: { metadata?: Record<string, string> }) =>
+        workflowCommands.moveStepDown(item)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.showDiagnostics', () =>
+        workflowService.showValidationDiagnostics()
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'statusBarButtons.delete', (item?: string | { metadata?: Record<string, string> }) =>
+        workflowCommands.deleteStatusBarButton(item)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'statusBarButtons.copy', (item?: string | { metadata?: Record<string, string> }) =>
+        workflowCommands.copyStatusBarButton(item)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'statusBarButtons.rename', (item?: string | { metadata?: Record<string, string> }) =>
+        workflowCommands.renameStatusBarButton(item)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'statusBarButtons.overrideDefault', (item?: string | { metadata?: Record<string, string> }) =>
+        workflowCommands.overrideDefaultStatusBarButton(item)
+      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'runStatusBarButton', (item?: string | { metadata?: Record<string, string> }) => {
+        const buttonId = typeof item === 'string' ? item : item?.metadata?.buttonId;
+        if (!buttonId) {
+          return;
+        }
+        return statusBarProvider.executeStatusBarButton(buttonId);
       })
     ];
 
     context.subscriptions.push(...commands);
+
+    workflowService.reportValidationIssues(false);
 
     logService.info('SiFli SDK CodeKit extension activated successfully');
 
