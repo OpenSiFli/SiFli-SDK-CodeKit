@@ -66,11 +66,99 @@
       "command": "extension.createNewSiFliTerminal",
       "title": "%command.createNewSiFliTerminal.title%"
     },
-    {
-      "command": "extension.listSerialPorts",
-      "title": "%command.listSerialPorts.title%"
-    },
-    {
+      {
+        "command": "extension.listSerialPorts",
+        "title": "%command.listSerialPorts.title%"
+      },
+      {
+        "command": "extension.workflows.manage",
+        "title": "%command.workflows.manage.title%"
+      },
+      {
+        "command": "extension.workflows.run",
+        "title": "%command.workflows.run.title%",
+        "icon": "$(play)"
+      },
+      {
+        "command": "extension.workflows.runDry",
+        "title": "%command.workflows.runDry.title%"
+      },
+      {
+        "command": "extension.workflows.create",
+        "title": "%command.workflows.create.title%"
+      },
+      {
+        "command": "extension.workflows.edit",
+        "title": "%command.workflows.edit.title%"
+      },
+      {
+        "command": "extension.workflows.copy",
+        "title": "%command.workflows.copy.title%"
+      },
+      {
+        "command": "extension.workflows.delete",
+        "title": "%command.workflows.delete.title%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "extension.workflows.pin",
+        "title": "%command.workflows.pin.title%",
+        "icon": "$(timeline-unpin)"
+      },
+      {
+        "command": "extension.workflows.rename",
+        "title": "%command.workflows.rename.title%",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "extension.workflows.stepAdd",
+        "title": "%command.workflows.stepAdd.title%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "extension.workflows.stepDelete",
+        "title": "%command.workflows.stepDelete.title%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "extension.workflows.stepMoveUp",
+        "title": "%command.workflows.stepMoveUp.title%",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "extension.workflows.stepMoveDown",
+        "title": "%command.workflows.stepMoveDown.title%",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "extension.workflows.showDiagnostics",
+        "title": "%command.workflows.showDiagnostics.title%"
+      },
+      {
+        "command": "extension.statusBarButtons.rename",
+        "title": "%command.statusBarButtons.rename.title%",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "extension.statusBarButtons.delete",
+        "title": "%command.statusBarButtons.delete.title%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "extension.statusBarButtons.copy",
+        "title": "%command.statusBarButtons.copy.title%",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "extension.statusBarButtons.overrideDefault",
+        "title": "%command.statusBarButtons.overrideDefault.title%",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "extension.runStatusBarButton",
+        "title": "%command.runStatusBarButton.title%"
+      },
+      {
       "command": "sifliSidebar.refresh",
         "title": "%command.sifliSidebar.refresh.title%",
         "icon": "$(refresh)"
@@ -100,6 +188,68 @@
           "command": "sifliSidebar.refresh",
           "when": "view == sifliSdkManager",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "extension.workflows.run",
+          "when": "view == sifliSdkManager && viewItem == workflowItem",
+          "group": "inline@1"
+        },
+        {
+          "command": "extension.workflows.rename",
+          "when": "view == sifliSdkManager && viewItem == workflowItem",
+          "group": "navigation@2"
+        },
+        {
+          "command": "extension.workflows.copy",
+          "when": "view == sifliSdkManager && viewItem == workflowItem",
+          "group": "navigation@1"
+        },
+        {
+          "command": "extension.workflows.pin",
+          "when": "view == sifliSdkManager && viewItem == workflowItem",
+          "group": "inline@2"
+        },
+        {
+          "command": "extension.workflows.delete",
+          "when": "view == sifliSdkManager && viewItem == workflowItem",
+          "group": "inline@3"
+        },
+        {
+          "command": "extension.workflows.stepMoveUp",
+          "when": "view == sifliSdkManager && viewItem == workflowStepItem",
+          "group": "inline@1"
+        },
+        {
+          "command": "extension.workflows.stepMoveDown",
+          "when": "view == sifliSdkManager && viewItem == workflowStepItem",
+          "group": "inline@2"
+        },
+        {
+          "command": "extension.workflows.stepDelete",
+          "when": "view == sifliSdkManager && viewItem == workflowStepItem",
+          "group": "inline@3"
+        },
+        {
+          "command": "extension.statusBarButtons.delete",
+          "when": "view == sifliSdkManager && viewItem == workflowButtonItem",
+          "group": "inline@1"
+        },
+        {
+          "command": "extension.statusBarButtons.copy",
+          "when": "view == sifliSdkManager && viewItem == workflowButtonItem",
+          "group": "navigation@1"
+        },
+        {
+          "command": "extension.statusBarButtons.rename",
+          "when": "view == sifliSdkManager && viewItem == workflowButtonItem",
+          "group": "navigation@2"
+        },
+        {
+          "command": "extension.statusBarButtons.overrideDefault",
+          "when": "view == sifliSdkManager && viewItem == defaultWorkflowButtonItem",
+          "group": "inline@1"
         }
       ]
     },
@@ -152,6 +302,162 @@
             "description": "%configuration.sifli.customBoardSearchPath.description%",
             "default": "",
             "scope": "resource"
+          },
+          "sifli-sdk-codekit.workflows": {
+            "type": "array",
+            "default": [],
+            "description": "%configuration.sifli.workflows.description%",
+            "scope": "resource",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "steps"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "failurePolicy": {
+                  "type": "string",
+                  "enum": [
+                    "stop",
+                    "continue"
+                  ],
+                  "default": "stop"
+                },
+                "inputs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "key",
+                      "prompt"
+                    ],
+                    "properties": {
+                      "key": { "type": "string" },
+                      "prompt": { "type": "string" },
+                      "placeHolder": { "type": "string" },
+                      "defaultValue": { "type": "string" },
+                      "required": { "type": "boolean" },
+                      "password": { "type": "boolean" }
+                    }
+                  }
+                },
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "build.compile",
+                          "build.rebuild",
+                          "build.clean",
+                          "build.download",
+                          "build.menuconfig",
+                          "shell.command",
+                          "monitor.open",
+                          "monitor.close",
+                          "serial.selectPort"
+                        ]
+                      },
+                      "wait": { "type": "boolean" },
+                      "continueOnError": { "type": "boolean" },
+                      "runIf": {
+                        "type": "object",
+                        "properties": {
+                          "boardSelected": { "type": "boolean" },
+                          "serialPortSelected": { "type": "boolean" },
+                          "monitorActive": { "type": "boolean" }
+                        }
+                      },
+                      "args": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "sifli-sdk-codekit.statusBar.buttons": {
+            "type": "array",
+            "default": [],
+            "description": "%configuration.sifli.statusBar.buttons.description%",
+            "scope": "resource",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "text",
+                "action"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "tooltip": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "number"
+                },
+                "alignment": {
+                  "type": "string",
+                  "enum": [
+                    "left",
+                    "right"
+                  ],
+                  "default": "left"
+                },
+                "action": {
+                  "type": "object",
+                  "required": [
+                    "kind"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "workflow",
+                        "command"
+                      ]
+                    },
+                    "workflowId": {
+                      "type": "string"
+                    },
+                    "commandId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },

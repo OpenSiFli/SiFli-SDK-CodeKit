@@ -17,6 +17,8 @@ export interface WorkspaceState {
   currentSdkPath?: string;
   // 编译线程数
   numThreads?: number;
+  // workflow shell step 授权缓存（key: workflowId:stepIndex, value: command template）
+  workflowShellApprovals?: Record<string, string>;
 }
 
 // 工作区状态的 key 常量
@@ -27,6 +29,7 @@ export const WORKSPACE_STATE_KEYS = {
   MONITOR_BAUD_RATE: 'monitorBaudRate',
   CURRENT_SDK_PATH: 'currentSdkPath',
   NUM_THREADS: 'numThreads',
+  WORKFLOW_SHELL_APPROVALS: 'workflowShellApprovals',
 } as const;
 
 // 默认值
@@ -37,6 +40,7 @@ const DEFAULT_VALUES: Required<WorkspaceState> = {
   monitorBaudRate: 1000000,
   currentSdkPath: '',
   numThreads: 8,
+  workflowShellApprovals: {},
 };
 
 /**
@@ -105,6 +109,7 @@ export class WorkspaceStateService {
       monitorBaudRate: this.get('monitorBaudRate'),
       currentSdkPath: this.get('currentSdkPath'),
       numThreads: this.get('numThreads'),
+      workflowShellApprovals: this.get('workflowShellApprovals'),
     };
   }
 
@@ -180,5 +185,25 @@ export class WorkspaceStateService {
 
   public async setNumThreads(value: number): Promise<void> {
     await this.set('numThreads', value);
+  }
+
+  // workflowShellApprovals
+  public getWorkflowShellApprovals(): Record<string, string> {
+    return this.get('workflowShellApprovals') || {};
+  }
+
+  public async setWorkflowShellApprovals(value: Record<string, string>): Promise<void> {
+    await this.set('workflowShellApprovals', value);
+  }
+
+  public isWorkflowShellApproved(approvalKey: string, commandTemplate: string): boolean {
+    const approvals = this.getWorkflowShellApprovals();
+    return approvals[approvalKey] === commandTemplate;
+  }
+
+  public async approveWorkflowShell(approvalKey: string, commandTemplate: string): Promise<void> {
+    const approvals = this.getWorkflowShellApprovals();
+    approvals[approvalKey] = commandTemplate;
+    await this.setWorkflowShellApprovals(approvals);
   }
 }
