@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Board, BoardDiscoveryResult, SftoolParam } from '../types';
+import { Board, SftoolParam } from '../types';
 import { CUSTOMER_BOARDS_SUBFOLDER, HCPU_SUBFOLDER, PTAB_JSON_FILE, SFTOOL_PARAM_JSON_FILE } from '../constants';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
