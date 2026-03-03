@@ -1,21 +1,63 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { SCONSCRIPT_FILE, PROJECT_SUBFOLDER, SRC_SUBFOLDER } from '../constants';
+import {
+  HCPU_SUBFOLDER,
+  LCPU_SUBFOLDER,
+  PROJECT_SUBFOLDER,
+  SCONSCRIPT_FILE,
+  SRC_SUBFOLDER
+} from '../constants';
 import { fileExists, isDirectory } from './fileUtils';
+
+function getWorkspaceRootPath(): string | null {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders || workspaceFolders.length === 0) {
+    return null;
+  }
+  return workspaceFolders[0].uri.fsPath;
+}
+
+function resolveProjectEntry(
+  projectPath: string
+): { projectEntryPath: string; sconscriptPath: string } | null {
+  const projectCandidates = [
+    path.join(projectPath, HCPU_SUBFOLDER),
+    path.join(projectPath, LCPU_SUBFOLDER),
+    projectPath
+  ];
+
+  for (const candidate of projectCandidates) {
+    const sconscriptPath = path.join(candidate, SCONSCRIPT_FILE);
+    if (fileExists(sconscriptPath)) {
+      return {
+        projectEntryPath: candidate,
+        sconscriptPath
+      };
+    }
+  }
+
+  return null;
+}
+
+function getSconscriptCandidatePaths(projectPath: string): string[] {
+  return [
+    path.join(projectPath, SCONSCRIPT_FILE),
+    path.join(projectPath, HCPU_SUBFOLDER, SCONSCRIPT_FILE),
+    path.join(projectPath, LCPU_SUBFOLDER, SCONSCRIPT_FILE)
+  ];
+}
 
 /**
  * 检查当前工作区是否为 SiFli 项目
  */
 export function isSiFliProject(): boolean {
-  const workspaceFolders = vscode.workspace.workspaceFolders;
-  
-  if (!workspaceFolders || workspaceFolders.length === 0) {
+  const workspaceRoot = getWorkspaceRootPath();
+
+  if (!workspaceRoot) {
     console.log('[ProjectUtils] No workspace folders found');
     return false;
   }
 
-  const workspaceRoot = workspaceFolders[0].uri.fsPath;
-  
   // 检查是否存在 project 子文件夹
   const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
   if (!isDirectory(projectPath)) {
@@ -23,10 +65,10 @@ export function isSiFliProject(): boolean {
     return false;
   }
 
-  // 检查 project 目录下是否存在 SConscript 文件
-  const sconscriptPath = path.join(projectPath, SCONSCRIPT_FILE);
-  if (!fileExists(sconscriptPath)) {
-    console.log(`[ProjectUtils] SConscript file not found: ${sconscriptPath}`);
+  const projectEntry = resolveProjectEntry(projectPath);
+  if (!projectEntry) {
+    const candidatePaths = getSconscriptCandidatePaths(projectPath).join(', ');
+    console.log(`[ProjectUtils] SConscript file not found. Checked: ${candidatePaths}`);
     return false;
   }
 
@@ -37,7 +79,8 @@ export function isSiFliProject(): boolean {
     return false;
   }
 
-  console.log('[ProjectUtils] SiFli project detected');
+  const entryType = path.relative(projectPath, projectEntry.projectEntryPath) || 'root';
+  console.log(`[ProjectUtils] SiFli project detected. Entry: ${entryType}`);
   return true;
 }
 
@@ -48,24 +91,33 @@ export function getProjectInfo(): {
   workspaceRoot: string;
   projectPath: string;
   srcPath: string;
+  projectEntryPath: string;
+  projectEntryRelativePath: string;
   sconscriptPath: string;
 } | null {
-  const workspaceFolders = vscode.workspace.workspaceFolders;
-  
-  if (!workspaceFolders || workspaceFolders.length === 0) {
+  const workspaceRoot = getWorkspaceRootPath();
+
+  if (!workspaceRoot) {
     return null;
   }
 
-  const workspaceRoot = workspaceFolders[0].uri.fsPath;
   const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
-  const srcPath = path.join(workspaceRoot, SRC_SUBFOLDER); // src在工作区根目录下
-  const sconscriptPath = path.join(projectPath, SCONSCRIPT_FILE);
+  const srcPath = path.join(workspaceRoot, SRC_SUBFOLDER);
+  const projectEntry = resolveProjectEntry(projectPath);
+
+  if (!projectEntry) {
+    return null;
+  }
+
+  const projectEntryRelativePath = path.relative(workspaceRoot, projectEntry.projectEntryPath);
 
   return {
     workspaceRoot,
     projectPath,
     srcPath,
-    sconscriptPath
+    projectEntryPath: projectEntry.projectEntryPath,
+    projectEntryRelativePath,
+    sconscriptPath: projectEntry.sconscriptPath
   };
 }
 
@@ -77,24 +129,28 @@ export function validateProjectStructure(): {
   missingParts: string[];
 } {
   const missingParts: string[] = [];
-  const projectInfo = getProjectInfo();
+  const workspaceRoot = getWorkspaceRootPath();
 
-  if (!projectInfo) {
+  if (!workspaceRoot) {
     return {
       isValid: false,
       missingParts: ['workspace']
     };
   }
 
-  if (!isDirectory(projectInfo.projectPath)) {
+  const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
+  const srcPath = path.join(workspaceRoot, SRC_SUBFOLDER);
+
+  if (!isDirectory(projectPath)) {
     missingParts.push('project directory');
   }
 
-  if (!fileExists(projectInfo.sconscriptPath)) {
+  const projectEntry = resolveProjectEntry(projectPath);
+  if (!projectEntry) {
     missingParts.push('SConscript file');
   }
 
-  if (!isDirectory(projectInfo.srcPath)) {
+  if (!isDirectory(srcPath)) {
     missingParts.push('src directory');
   }
 

@@ -5,6 +5,7 @@ import { Board, BoardDiscoveryResult, SftoolParam } from '../types';
 import { CUSTOMER_BOARDS_SUBFOLDER, HCPU_SUBFOLDER, PTAB_JSON_FILE, SFTOOL_PARAM_JSON_FILE } from '../constants';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
+import { getProjectInfo } from '../utils/projectUtils';
 
 export class BoardService {
   private static instance: BoardService;
@@ -104,7 +105,8 @@ export class BoardService {
   }
 
   public getProjectFolderPath(): string {
-    return 'project';
+    const projectInfo = getProjectInfo();
+    return projectInfo?.projectEntryRelativePath || 'project';
   }
 
   /**
@@ -145,11 +147,7 @@ export class BoardService {
    * 生成编译命令
    */
   public async getCompileCommand(boardName: string, threads: number): Promise<string> {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    const workspaceRoot = workspaceFolders && workspaceFolders.length > 0
-      ? workspaceFolders[0].uri.fsPath
-      : '';
-    const projectPath = path.join(workspaceRoot, 'project');
+    const projectPath = this.getProjectFolderPath();
 
     let boardSearchArg = '';
     const availableBoards = await this.discoverBoards();
@@ -175,11 +173,7 @@ export class BoardService {
    * 生成 Menuconfig 命令
    */
   public async getMenuconfigCommand(boardName: string): Promise<string> {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    const workspaceRoot = workspaceFolders && workspaceFolders.length > 0
-      ? workspaceFolders[0].uri.fsPath
-      : '';
-    const projectPath = path.join(workspaceRoot, 'project');
+    const projectPath = this.getProjectFolderPath();
 
     let boardSearchArg = '';
     const availableBoards = await this.discoverBoards();

@@ -7,6 +7,7 @@ export const SCONSCRIPT_FILE = 'SConscript';
 // 板子发现相关常量
 export const CUSTOMER_BOARDS_SUBFOLDER = 'customer/boards';
 export const HCPU_SUBFOLDER = 'hcpu';
+export const LCPU_SUBFOLDER = 'lcpu';
 export const PTAB_JSON_FILE = 'ptab.json';
 
 // sftool 参数文件常量
