@@ -118,9 +118,10 @@ export class WorkflowCommands {
 
     const name = await vscode.window.showInputBox({
       prompt: vscode.l10n.t('Workflow name'),
-      value: id
+      value: id,
+      validateInput: value => (!value.trim() ? vscode.l10n.t('Workflow name is required.') : null)
     });
-    if (!name) {
+    if (!name || !name.trim()) {
       return;
     }
 

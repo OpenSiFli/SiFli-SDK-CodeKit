@@ -94,26 +94,58 @@ export class WorkflowService {
 
   public validateConfiguration(): WorkflowValidationIssue[] {
     const issues: WorkflowValidationIssue[] = [];
-    const workflows = this.getResolvedWorkflows();
-    const workflowIds = new Set<string>();
     const allowedSteps = new Set(this.getBuiltInStepTypes());
+    const workspaceWorkflows = this.getWorkspaceWorkflows();
+    const userWorkflows = this.getUserWorkflows();
 
+    this.validateWorkflowList(workspaceWorkflows, 'workspace', allowedSteps, issues);
+    this.validateWorkflowList(userWorkflows, 'user', allowedSteps, issues);
+
+    const resolvedWorkflowIds = new Set(
+      this.getResolvedWorkflows()
+        .map(workflow => workflow.id?.trim())
+        .filter((id): id is string => !!id)
+    );
+    this.validateStatusBarButtonList(
+      this.getWorkspaceStatusBarButtons(),
+      'workspace',
+      resolvedWorkflowIds,
+      issues
+    );
+    this.validateStatusBarButtonList(
+      this.getUserStatusBarButtons(),
+      'user',
+      resolvedWorkflowIds,
+      issues
+    );
+
+    return issues;
+  }
+
+  private validateWorkflowList(
+    workflows: WorkflowDefinition[],
+    scope: 'workspace' | 'user',
+    allowedSteps: Set<WorkflowStepType>,
+    issues: WorkflowValidationIssue[]
+  ): void {
+    const workflowIds = new Set<string>();
     workflows.forEach((workflow, index) => {
-      const basePath = `workflows[${index}]`;
-      if (!workflow.id || !workflow.id.trim()) {
+      const basePath = `${scope}.workflows[${index}]`;
+      const workflowId = workflow.id?.trim();
+      if (!workflowId) {
         issues.push({
           code: 'workflow.id.empty',
           path: `${basePath}.id`,
           message: 'Workflow id must be a non-empty string.'
         });
-      } else if (workflowIds.has(workflow.id)) {
+      } else if (workflowIds.has(workflowId)) {
         issues.push({
           code: 'workflow.id.duplicate',
           path: `${basePath}.id`,
-          message: `Duplicate workflow id "${workflow.id}".`
+          message: `Duplicate workflow id "${workflowId}".`
         });
       } else {
-        workflowIds.add(workflow.id);
+        workflowIds.add(workflowId);
       }
 
       if (!workflow.name || !workflow.name.trim()) {
@@ -130,47 +162,55 @@ export class WorkflowService {
           path: `${basePath}.steps`,
           message: 'Workflow must contain at least one step.'
         });
-      } else {
-        workflow.steps.forEach((step, stepIndex) => {
-          if (!allowedSteps.has(step.type)) {
+        return;
+      }
+
+      workflow.steps.forEach((step, stepIndex) => {
+        if (!allowedSteps.has(step.type)) {
+          issues.push({
+            code: 'workflow.step.unsupported',
+            path: `${basePath}.steps[${stepIndex}].type`,
+            message: `Unsupported step type "${step.type}".`
+          });
+        }
+        if (step.type === 'shell.command') {
+          const command = typeof step.args?.command === 'string' ? step.args.command.trim() : '';
+          if (!command) {
             issues.push({
-              code: 'workflow.step.unsupported',
-              path: `${basePath}.steps[${stepIndex}].type`,
-              message: `Unsupported step type "${step.type}".`
+              code: 'workflow.step.shell.command.empty',
+              path: `${basePath}.steps[${stepIndex}].args.command`,
+              message: 'shell.command step requires args.command.'
             });
           }
-          if (step.type === 'shell.command') {
-            const command = typeof step.args?.command === 'string' ? step.args.command.trim() : '';
-            if (!command) {
-              issues.push({
-                code: 'workflow.step.shell.command.empty',
-                path: `${basePath}.steps[${stepIndex}].args.command`,
-                message: 'shell.command step requires args.command.'
-              });
-            }
-          }
-        });
-      }
+        }
+      });
     });
+  }
 
-    const buttons = this.getResolvedStatusBarButtons();
+  private validateStatusBarButtonList(
+    buttons: WorkflowStatusBarButton[],
+    scope: 'workspace' | 'user',
+    resolvedWorkflowIds: Set<string>,
+    issues: WorkflowValidationIssue[]
+  ): void {
     const buttonIds = new Set<string>();
     buttons.forEach((button, index) => {
-      const basePath = `statusBar.buttons[${index}]`;
-      if (!button.id || !button.id.trim()) {
+      const basePath = `${scope}.statusBar.buttons[${index}]`;
+      const buttonId = button.id?.trim();
+      if (!buttonId) {
         issues.push({
           code: 'statusbar.id.empty',
           path: `${basePath}.id`,
           message: 'Status bar button id must be a non-empty string.'
         });
-      } else if (buttonIds.has(button.id)) {
+      } else if (buttonIds.has(buttonId)) {
         issues.push({
           code: 'statusbar.id.duplicate',
           path: `${basePath}.id`,
-          message: `Duplicate status bar button id "${button.id}".`
+          message: `Duplicate status bar button id "${buttonId}".`
         });
       } else {
-        buttonIds.add(button.id);
+        buttonIds.add(buttonId);
       }
 
       if (!button.action || (button.action.kind !== 'workflow' && button.action.kind !== 'command')) {
@@ -189,7 +229,7 @@ export class WorkflowService {
             path: `${basePath}.action.workflowId`,
             message: 'workflow action requires workflowId.'
           });
-        } else if (!workflowIds.has(button.action.workflowId)) {
+        } else if (!resolvedWorkflowIds.has(button.action.workflowId)) {
           issues.push({
             code: 'statusbar.action.workflowId.notFound',
             path: `${basePath}.action.workflowId`,
@@ -206,8 +246,6 @@ export class WorkflowService {
         });
       }
     });
-
-    return issues;
   }
 
   public reportValidationIssues(showNotification = true): WorkflowValidationIssue[] {
