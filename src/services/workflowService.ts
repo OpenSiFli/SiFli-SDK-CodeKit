@@ -1,5 +1,3 @@
-import * as path from 'path';
-import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { TASK_NAMES } from '../constants';
 import {
@@ -10,7 +8,6 @@ import {
   WorkflowStep,
   WorkflowStepType
 } from '../types';
-import { BoardService } from './boardService';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
 import { SerialMonitorService } from './serialMonitorService';
@@ -18,25 +15,26 @@ import { SerialPortService } from './serialPortService';
 import { TerminalService } from './terminalService';
 import { WorkspaceStateService } from './workspaceStateService';
 import { getWorkflowStepDisplayLabel } from '../utils/workflowStepLabel';
+import { BuildExecutionService } from './buildExecutionService';
 
 export class WorkflowService {
   private static instance: WorkflowService;
   private configService: ConfigService;
-  private boardService: BoardService;
   private serialPortService: SerialPortService;
   private serialMonitorService: SerialMonitorService;
   private terminalService: TerminalService;
   private logService: LogService;
   private workspaceStateService: WorkspaceStateService;
+  private buildExecutionService: BuildExecutionService;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
-    this.boardService = BoardService.getInstance();
     this.serialPortService = SerialPortService.getInstance();
     this.serialMonitorService = SerialMonitorService.getInstance();
     this.terminalService = TerminalService.getInstance();
     this.logService = LogService.getInstance();
     this.workspaceStateService = WorkspaceStateService.getInstance();
+    this.buildExecutionService = BuildExecutionService.getInstance();
   }
 
   public static getInstance(): WorkflowService {
@@ -440,19 +438,10 @@ export class WorkflowService {
   }
 
   private async runCompileStep(step: WorkflowStep, inputs: Record<string, string>): Promise<boolean> {
-    const selectedBoardName = this.configService.getSelectedBoardName();
-    if (!selectedBoardName || selectedBoardName === 'N/A') {
-      vscode.window.showWarningMessage(vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'));
-      return false;
-    }
-    const wait = step.wait ?? true;
-    const numThreads = this.configService.getNumThreads();
-    let compileCommand = await this.boardService.getCompileCommand(selectedBoardName, numThreads);
-    compileCommand = this.resolveTemplate(compileCommand, inputs);
-    const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(compileCommand, TASK_NAMES.BUILD, {
-      waitForExit: wait
+    return this.buildExecutionService.executeCompile({
+      templateValues: inputs,
+      waitForExit: step.wait ?? true
     });
-    return exitCode === undefined || exitCode === 0;
   }
 
   private async runRebuildStep(step: WorkflowStep, inputs: Record<string, string>): Promise<boolean> {
@@ -464,42 +453,10 @@ export class WorkflowService {
   }
 
   private runCleanStep(): boolean {
-    const selectedBoardName = this.configService.getSelectedBoardName();
-    if (!selectedBoardName || selectedBoardName === 'N/A') {
-      vscode.window.showWarningMessage(vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'));
-      return false;
-    }
-
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      vscode.window.showErrorMessage(vscode.l10n.t('No workspace folder is open.'));
-      return false;
-    }
-
-    const buildFolder = this.boardService.getBuildTargetFolder(selectedBoardName);
-    const buildPath = path.join(workspaceFolder.uri.fsPath, buildFolder);
-    if (!fs.existsSync(buildPath)) {
-      vscode.window.showInformationMessage(vscode.l10n.t('Build directory does not exist. No cleanup needed: {0}', buildFolder));
-      return true;
-    }
-
-    fs.rmSync(buildPath, { recursive: true, force: true });
-    vscode.window.showInformationMessage(vscode.l10n.t('Build directory cleaned: {0}', buildFolder));
-    return true;
+    return this.buildExecutionService.executeClean();
   }
 
   private async runDownloadStep(step: WorkflowStep, inputs: Record<string, string>): Promise<boolean> {
-    const selectedBoardName = this.configService.getSelectedBoardName();
-    if (!selectedBoardName || selectedBoardName === 'N/A') {
-      vscode.window.showWarningMessage(vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'));
-      return false;
-    }
-    const selectedSerialPort = this.serialPortService.selectedSerialPort;
-    if (!selectedSerialPort) {
-      vscode.window.showWarningMessage(vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'));
-      return false;
-    }
-
     const closedMonitor = this.serialMonitorService.hasActiveMonitor()
       ? await this.serialMonitorService.closeSerialMonitor()
       : true;
@@ -507,36 +464,22 @@ export class WorkflowService {
       this.logService.warn('Failed to close active serial monitor before download.');
     }
 
-    let command = await this.boardService.getSftoolDownloadCommand(
-      selectedBoardName,
-      selectedSerialPort,
-      this.serialPortService.downloadBaudRate
-    );
-    command = this.resolveTemplate(command, inputs);
-    const wait = step.wait ?? true;
-    const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(command, TASK_NAMES.DOWNLOAD, {
-      waitForExit: wait
+    const ok = await this.buildExecutionService.executeDownload({
+      templateValues: inputs,
+      waitForExit: step.wait ?? true,
+      ensureBuildDirectory: false
     });
-
     if (this.serialMonitorService.canResume()) {
       await this.serialMonitorService.resumeSerialMonitor();
     }
-    return exitCode === undefined || exitCode === 0;
+    return ok;
   }
 
   private async runMenuconfigStep(step: WorkflowStep, inputs: Record<string, string>): Promise<boolean> {
-    const selectedBoardName = this.configService.getSelectedBoardName();
-    if (!selectedBoardName || selectedBoardName === 'N/A') {
-      vscode.window.showWarningMessage(vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'));
-      return false;
-    }
-    let command = await this.boardService.getMenuconfigCommand(selectedBoardName);
-    command = this.resolveTemplate(command, inputs);
-    const wait = step.wait ?? false;
-    const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(command, TASK_NAMES.MENUCONFIG, {
-      waitForExit: wait
+    return this.buildExecutionService.executeMenuconfig({
+      templateValues: inputs,
+      waitForExit: step.wait ?? false
     });
-    return exitCode === undefined || exitCode === 0;
   }
 
   private async runShellCommandStep(

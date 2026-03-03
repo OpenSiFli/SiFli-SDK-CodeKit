@@ -222,12 +222,11 @@ export class StatusBarProvider {
   public async handlePreDownloadOperation(): Promise<boolean> {
     try {
       if (this.serialMonitorService.hasActiveMonitor()) {
-        const closed = await this.serialMonitorService.closeSerialMonitor();
-        return closed || true;
+        return await this.serialMonitorService.closeSerialMonitor();
       }
       return true;
     } catch {
-      return true;
+      return false;
     }
   }
 

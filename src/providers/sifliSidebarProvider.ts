@@ -327,11 +327,14 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
         ? `workflow: ${button.action.workflowId || 'N/A'}`
         : `command: ${button.action.commandId || 'N/A'}`;
       const parsed = this.parseStatusButtonText(button.text);
+      const label = this.isIconOnlyStatusButtonText(button.text)
+        ? this.getDefaultStatusButtonLabel(button.id)
+        : parsed.label;
       const description = workspaceOverrides.has(button.id)
         ? vscode.l10n.t('Overridden in workspace settings')
         : actionDescription;
       items.push(new SifliSidebarItem(
-        parsed.label,
+        label,
         vscode.TreeItemCollapsibleState.None,
         undefined,
         new vscode.ThemeIcon(parsed.icon || 'rocket'),
@@ -347,9 +350,11 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
 
   private async getStatusBarButtonItemsByScope(scope: 'workspace' | 'user'): Promise<SifliSidebarItem[]> {
     const items: SifliSidebarItem[] = [];
-    const buttons = scope === 'workspace'
+    const sourceButtons = scope === 'workspace'
       ? this.workflowService.getWorkspaceStatusBarButtons()
       : this.workflowService.getUserStatusBarButtons();
+    const defaultButtonIds = new Set(this.statusBarProvider.getDefaultWorkflowButtons().map(button => button.id));
+    const buttons = sourceButtons.filter(button => !defaultButtonIds.has(button.id));
     const workflowNameById = new Map(
       this.workflowService.getResolvedWorkflows().map(workflow => [workflow.id, workflow.name])
     );
@@ -391,6 +396,29 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
     };
   }
 
+  private isIconOnlyStatusButtonText(text: string): boolean {
+    return /^\s*\$\([^)]+\)\s*$/.test(text || '');
+  }
+
+  private getDefaultStatusButtonLabel(buttonId: string): string {
+    switch (buttonId) {
+      case 'compile':
+        return vscode.l10n.t('Build (Compile)');
+      case 'rebuild':
+        return vscode.l10n.t('Rebuild');
+      case 'clean':
+        return vscode.l10n.t('Clean');
+      case 'download':
+        return vscode.l10n.t('Download');
+      case 'menuconfig':
+        return vscode.l10n.t('Menuconfig');
+      case 'deviceMonitor':
+        return vscode.l10n.t('Open Serial Monitor');
+      default:
+        return buttonId;
+    }
+  }
+
   private async getWorkflowStepItems(workflowItem: SifliSidebarItem): Promise<SifliSidebarItem[]> {
     const workflowId = workflowItem.metadata?.workflowId;
     const workflowScope = workflowItem.metadata?.workflowScope as 'workspace' | 'user' | undefined;
@@ -408,7 +436,10 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
     if (!workflow) {
       return [];
     }
-    const workflowScopeValue = workflowScope ?? '';
+    const workflowMetadata: Record<string, string> = { workflowId };
+    if (workflowScope) {
+      workflowMetadata.workflowScope = workflowScope;
+    }
 
     const items: SifliSidebarItem[] = [
       new SifliSidebarItem(
@@ -417,13 +448,13 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
         {
           command: 'extension.workflows.stepAdd',
           title: vscode.l10n.t('Add step'),
-          arguments: [{ metadata: { workflowId, workflowScope: workflowScopeValue } }]
+          arguments: [{ metadata: workflowMetadata }]
         },
         new vscode.ThemeIcon('add'),
         vscode.l10n.t('Add step to workflow'),
         'workflowStepAddItem',
         undefined,
-        { workflowId, workflowScope: workflowScopeValue }
+        workflowMetadata
       )
     ];
 
@@ -441,7 +472,7 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
         stepTooltip,
         'workflowStepItem',
         undefined,
-        { workflowId, workflowScope: workflowScopeValue, stepIndex: String(index) }
+        { ...workflowMetadata, stepIndex: String(index) }
       ));
     });
 

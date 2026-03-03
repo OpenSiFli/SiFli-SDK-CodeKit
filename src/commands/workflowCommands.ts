@@ -817,53 +817,10 @@ export class WorkflowCommands {
     workflowId: string,
     scope?: 'workspace' | 'user'
   ): { target: vscode.ConfigurationTarget; workflows: WorkflowDefinition[]; workflow: WorkflowDefinition } | undefined {
-    if (scope === 'workspace') {
-      const workspaceWorkflows = this.getEditableWorkflows(vscode.ConfigurationTarget.Workspace);
-      const workspaceWorkflow = workspaceWorkflows.find(item => item.id === workflowId);
-      if (workspaceWorkflow) {
-        return {
-          target: vscode.ConfigurationTarget.Workspace,
-          workflows: workspaceWorkflows,
-          workflow: workspaceWorkflow
-        };
-      }
-      return undefined;
-    }
-
-    if (scope === 'user') {
-      const globalWorkflows = this.getEditableWorkflows(vscode.ConfigurationTarget.Global);
-      const globalWorkflow = globalWorkflows.find(item => item.id === workflowId);
-      if (globalWorkflow) {
-        return {
-          target: vscode.ConfigurationTarget.Global,
-          workflows: globalWorkflows,
-          workflow: globalWorkflow
-        };
-      }
-      return undefined;
-    }
-
-    const workspaceWorkflows = this.getEditableWorkflows(vscode.ConfigurationTarget.Workspace);
-    const workspaceWorkflow = workspaceWorkflows.find(item => item.id === workflowId);
-    if (workspaceWorkflow) {
-      return {
-        target: vscode.ConfigurationTarget.Workspace,
-        workflows: workspaceWorkflows,
-        workflow: workspaceWorkflow
-      };
-    }
-
-    const globalWorkflows = this.getEditableWorkflows(vscode.ConfigurationTarget.Global);
-    const globalWorkflow = globalWorkflows.find(item => item.id === workflowId);
-    if (globalWorkflow) {
-      return {
-        target: vscode.ConfigurationTarget.Global,
-        workflows: globalWorkflows,
-        workflow: globalWorkflow
-      };
-    }
-
-    return undefined;
+    const located = this.findEditableById(workflowId, scope, target => this.getEditableWorkflows(target));
+    return located
+      ? { target: located.target, workflows: located.items, workflow: located.item }
+      : undefined;
   }
 
   private parseWorkflowContext(
@@ -904,31 +861,10 @@ export class WorkflowCommands {
     buttons: WorkflowStatusBarButton[];
     button: WorkflowStatusBarButton;
   } | undefined {
-    if (!buttonId) {
-      return undefined;
-    }
-    if (scope === 'workspace') {
-      const buttons = this.getEditableButtons(vscode.ConfigurationTarget.Workspace);
-      const button = buttons.find(item => item.id === buttonId);
-      return button ? { target: vscode.ConfigurationTarget.Workspace, buttons, button } : undefined;
-    }
-    if (scope === 'user') {
-      const buttons = this.getEditableButtons(vscode.ConfigurationTarget.Global);
-      const button = buttons.find(item => item.id === buttonId);
-      return button ? { target: vscode.ConfigurationTarget.Global, buttons, button } : undefined;
-    }
-
-    const workspaceButtons = this.getEditableButtons(vscode.ConfigurationTarget.Workspace);
-    const workspaceButton = workspaceButtons.find(item => item.id === buttonId);
-    if (workspaceButton) {
-      return { target: vscode.ConfigurationTarget.Workspace, buttons: workspaceButtons, button: workspaceButton };
-    }
-    const userButtons = this.getEditableButtons(vscode.ConfigurationTarget.Global);
-    const userButton = userButtons.find(item => item.id === buttonId);
-    if (userButton) {
-      return { target: vscode.ConfigurationTarget.Global, buttons: userButtons, button: userButton };
-    }
-    return undefined;
+    const located = this.findEditableById(buttonId, scope, target => this.getEditableButtons(target));
+    return located
+      ? { target: located.target, buttons: located.items, button: located.item }
+      : undefined;
   }
 
   private findStatusBarButton(buttonId?: string): WorkflowStatusBarButton | undefined {
@@ -1052,9 +988,22 @@ export class WorkflowCommands {
   }
 
   private generateWorkflowId(existingIds: string[], target: vscode.ConfigurationTarget): string {
+    return this.generateScopedId(existingIds, target, 'wswf', 'uswf');
+  }
+
+  private generateStatusBarButtonId(existingIds: string[], target: vscode.ConfigurationTarget): string {
+    return this.generateScopedId(existingIds, target, 'wsb', 'usrb');
+  }
+
+  private generateScopedId(
+    existingIds: string[],
+    target: vscode.ConfigurationTarget,
+    workspacePrefix: string,
+    userPrefix: string
+  ): string {
     const pad = (num: number): string => String(num).padStart(2, '0');
     const now = new Date();
-    const prefix = target === vscode.ConfigurationTarget.Workspace ? 'wswf' : 'uswf';
+    const prefix = target === vscode.ConfigurationTarget.Workspace ? workspacePrefix : userPrefix;
     const base = `${prefix}_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
     const existing = new Set(existingIds);
     if (!existing.has(base)) {
@@ -1068,20 +1017,29 @@ export class WorkflowCommands {
     return `${base}_${index}`;
   }
 
-  private generateStatusBarButtonId(existingIds: string[], target: vscode.ConfigurationTarget): string {
-    const pad = (num: number): string => String(num).padStart(2, '0');
-    const now = new Date();
-    const prefix = target === vscode.ConfigurationTarget.Workspace ? 'wsb' : 'usrb';
-    const base = `${prefix}_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-    const existing = new Set(existingIds);
-    if (!existing.has(base)) {
-      return base;
+  private findEditableById<T extends { id: string }>(
+    id: string | undefined,
+    scope: 'workspace' | 'user' | undefined,
+    readItems: (target: vscode.ConfigurationTarget) => T[]
+  ): { target: vscode.ConfigurationTarget; items: T[]; item: T } | undefined {
+    if (!id) {
+      return undefined;
     }
 
-    let index = 1;
-    while (existing.has(`${base}_${index}`)) {
-      index++;
+    const targets =
+      scope === 'workspace'
+        ? [vscode.ConfigurationTarget.Workspace]
+        : scope === 'user'
+          ? [vscode.ConfigurationTarget.Global]
+          : [vscode.ConfigurationTarget.Workspace, vscode.ConfigurationTarget.Global];
+
+    for (const target of targets) {
+      const items = readItems(target);
+      const item = items.find(entry => entry.id === id);
+      if (item) {
+        return { target, items, item };
+      }
     }
-    return `${base}_${index}`;
+    return undefined;
   }
 }
