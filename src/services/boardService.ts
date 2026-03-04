@@ -113,7 +113,11 @@ export class BoardService {
 
   public getProjectFolderPath(): string {
     const projectInfo = getProjectInfo();
-    return projectInfo?.projectEntryRelativePath || 'project';
+    if (!projectInfo) {
+      return 'project';
+    }
+    // 返回绝对路径，避免 path.relative() 混合相对/绝对路径的问题
+    return path.join(projectInfo.workspaceRoot, projectInfo.projectEntryRelativePath);
   }
 
   /**

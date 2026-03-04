@@ -96,7 +96,19 @@ export class BuildCommands {
         // 保存当前文件
         const activeEditor = vscode.window.activeTextEditor;
         if (activeEditor && activeEditor.document.isDirty) {
-          await activeEditor.document.save();
+          const saved = await activeEditor.document.save();
+          if (!saved) {
+            // 如果有文件保存失败（例如用户取消了"另存为"对话框）
+            const proceed = await vscode.window.showWarningMessage(
+              vscode.l10n.t('Current file could not be saved. Continue building anyway?'),
+              vscode.l10n.t('Continue'),
+              vscode.l10n.t('Cancel')
+            );
+
+            if (proceed !== vscode.l10n.t('Continue')) {
+              return; // 取消编译
+            }
+          }
         }
       } else if (action === 'doNotSave') {
         // 不保存，直接继续编译
