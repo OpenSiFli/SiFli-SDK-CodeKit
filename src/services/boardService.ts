@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Board, BoardDiscoveryResult, SftoolParam } from '../types';
+import { Board, SftoolParam } from '../types';
 import { CUSTOMER_BOARDS_SUBFOLDER, HCPU_SUBFOLDER, PTAB_JSON_FILE, SFTOOL_PARAM_JSON_FILE } from '../constants';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
@@ -80,11 +80,14 @@ export class BoardService {
             const boardName = entry.name;
 
             // 避免重复添加（优先级：project_local > custom > sdk）
-            if (!boardMap.has(boardName) || this.getBoardTypePriority(sourceType) > this.getBoardTypePriority(boardMap.get(boardName)!.type)) {
+            if (
+              !boardMap.has(boardName) ||
+              this.getBoardTypePriority(sourceType) > this.getBoardTypePriority(boardMap.get(boardName)!.type)
+            ) {
               boardMap.set(boardName, {
                 name: boardName,
                 path: boardPath,
-                type: sourceType
+                type: sourceType,
               });
             }
           }
@@ -97,16 +100,24 @@ export class BoardService {
 
   private getBoardTypePriority(type: Board['type']): number {
     switch (type) {
-      case 'project_local': return 3;
-      case 'custom': return 2;
-      case 'sdk': return 1;
-      default: return 0;
+      case 'project_local':
+        return 3;
+      case 'custom':
+        return 2;
+      case 'sdk':
+        return 1;
+      default:
+        return 0;
     }
   }
 
   public getProjectFolderPath(): string {
     const projectInfo = getProjectInfo();
-    return projectInfo?.projectEntryRelativePath || 'project';
+    if (!projectInfo) {
+      return 'project';
+    }
+    // 返回绝对路径，避免 path.relative() 混合相对/绝对路径的问题
+    return path.join(projectInfo.workspaceRoot, projectInfo.projectEntryRelativePath);
   }
 
   /**
@@ -148,7 +159,6 @@ export class BoardService {
    */
   public async getCompileCommand(boardName: string, threads: number): Promise<string> {
     const projectPath = this.getProjectFolderPath();
-
     let boardSearchArg = '';
     const availableBoards = await this.discoverBoards();
     const currentBoard = availableBoards.find(b => b.name === boardName);
@@ -174,7 +184,6 @@ export class BoardService {
    */
   public async getMenuconfigCommand(boardName: string): Promise<string> {
     const projectPath = this.getProjectFolderPath();
-
     let boardSearchArg = '';
     const availableBoards = await this.discoverBoards();
     const currentBoard = availableBoards.find(b => b.name === boardName);
@@ -257,9 +266,7 @@ export class BoardService {
         }
 
         // 构建完整文件路径
-        const fullFilePath = path.isAbsolute(filePath)
-          ? filePath
-          : path.join(workspaceRoot, buildFolder, filePath);
+        const fullFilePath = path.isAbsolute(filePath) ? filePath : path.join(workspaceRoot, buildFolder, filePath);
 
         // 生成参数：自动地址文件仅使用路径，否则使用 file@address
         const fileArgument = fileAddress ? `${fullFilePath}@${fileAddress}` : fullFilePath;

@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { randomUUID } from 'crypto';
-import { TERMINAL_NAME, PROJECT_SUBFOLDER } from '../constants';
+import { TERMINAL_NAME } from '../constants';
 import { TaskName } from '../types';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
@@ -63,7 +63,7 @@ export class TerminalService {
     if (process.platform !== 'win32') {
       return 'powershell.exe'; // 非 Windows 平台返回默认值（实际不会使用）
     }
-    
+
     const configuredPath = this.configService.config.powershellPath;
     return configuredPath && configuredPath.trim() !== '' ? configuredPath : 'powershell.exe';
   }
@@ -102,7 +102,6 @@ export class TerminalService {
     // 切换到项目目录
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders && workspaceFolders.length > 0) {
-      const workspaceRoot = workspaceFolders[0].uri.fsPath;
       const projectInfo = getProjectInfo();
       const projectPath = projectInfo?.projectEntryPath;
       if (!projectPath) {
@@ -129,7 +128,7 @@ export class TerminalService {
   private createSiFliTerminal(): vscode.Terminal {
     // 根据平台设置终端配置
     const terminalOptions: vscode.TerminalOptions = {
-      name: TERMINAL_NAME
+      name: TERMINAL_NAME,
     };
 
     // 在 Windows 平台强制使用 PowerShell
@@ -160,10 +159,7 @@ export class TerminalService {
   /**
    * 根据配置执行导出脚本，确保当前终端拥有 SDK 环境
    */
-  private async runExportScriptIfNeeded(
-    terminal: vscode.Terminal,
-    scriptPath: string | undefined
-  ): Promise<void> {
+  private async runExportScriptIfNeeded(terminal: vscode.Terminal, scriptPath: string | undefined): Promise<void> {
     if (!scriptPath) {
       this.markExportPrepared(terminal, null);
       return;
@@ -206,7 +202,7 @@ export class TerminalService {
     }
     const pythonService = PythonService.getInstance();
     const pythonDir = pythonService.getPythonDir();
-    
+
     if (!pythonDir) {
       this.logService.debug('Embedded Python not available; skipping PATH injection.');
       return;
@@ -290,12 +286,7 @@ export class TerminalService {
       const exitMarkerPath = this.buildExitMarkerPath(taskName);
       await this.ensureExitMarkerRemoved(exitMarkerPath);
 
-      const commandWithTracking = this.buildCommandForTerminal(
-        commandLine,
-        scriptPath,
-        needsEnvSetup,
-        exitMarkerPath
-      );
+      const commandWithTracking = this.buildCommandForTerminal(commandLine, scriptPath, needsEnvSetup, exitMarkerPath);
       terminal.sendText(commandWithTracking);
 
       let exitCode: number | undefined;
@@ -336,11 +327,7 @@ export class TerminalService {
     return this.buildUnixShellCommand(commandLine, effectiveScriptPath, exitMarkerPath);
   }
 
-  private buildPowerShellCommand(
-    commandLine: string,
-    exportScriptPath?: string,
-    exitMarkerPath?: string
-  ): string {
+  private buildPowerShellCommand(commandLine: string, exportScriptPath?: string, exitMarkerPath?: string): string {
     if (exitMarkerPath) {
       const commands: string[] = [];
       if (exportScriptPath) {
@@ -365,11 +352,7 @@ export class TerminalService {
     return commandLine;
   }
 
-  private buildUnixShellCommand(
-    commandLine: string,
-    exportScriptPath?: string,
-    exitMarkerPath?: string
-  ): string {
+  private buildUnixShellCommand(commandLine: string, exportScriptPath?: string, exitMarkerPath?: string): string {
     if (exitMarkerPath) {
       const escapedMarker = exitMarkerPath.replace(/(["\\$`])/g, '\\$1');
       if (exportScriptPath) {
