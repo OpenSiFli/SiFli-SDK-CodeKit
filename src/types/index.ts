@@ -19,5 +19,6 @@ export type CommandId =
   | 'extension.selectChipModule'
   | 'extension.selectDownloadPort'
   | 'extension.manageSiFliSdk'
+  | 'extension.createNewSiFliProject'
   | 'extension.switchSdkVersion'
   | 'extension.openDeviceMonitor';

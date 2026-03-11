@@ -9,6 +9,15 @@ import {
 } from '../constants';
 import { fileExists, isDirectory } from './fileUtils';
 
+export interface SiFliProjectInfo {
+  workspaceRoot: string;
+  projectPath: string;
+  srcPath: string;
+  projectEntryPath: string;
+  projectEntryRelativePath: string;
+  sconscriptPath: string;
+}
+
 function getWorkspaceRootPath(): string | null {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -47,6 +56,31 @@ function getSconscriptCandidatePaths(projectPath: string): string[] {
   ];
 }
 
+export function getSiFliProjectInfo(rootPath: string): SiFliProjectInfo | null {
+  const projectPath = path.join(rootPath, PROJECT_SUBFOLDER);
+  const srcPath = path.join(rootPath, SRC_SUBFOLDER);
+  const projectEntry = resolveProjectEntry(projectPath);
+
+  if (!isDirectory(projectPath) || !isDirectory(srcPath) || !projectEntry) {
+    return null;
+  }
+
+  const projectEntryRelativePath = path.relative(rootPath, projectEntry.projectEntryPath);
+
+  return {
+    workspaceRoot: rootPath,
+    projectPath,
+    srcPath,
+    projectEntryPath: projectEntry.projectEntryPath,
+    projectEntryRelativePath,
+    sconscriptPath: projectEntry.sconscriptPath
+  };
+}
+
+export function isSiFliProjectPath(rootPath: string): boolean {
+  return getSiFliProjectInfo(rootPath) !== null;
+}
+
 /**
  * 检查当前工作区是否为 SiFli 项目
  */
@@ -58,10 +92,15 @@ export function isSiFliProject(): boolean {
     return false;
   }
 
-  // 检查是否存在 project 子文件夹
   const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
   if (!isDirectory(projectPath)) {
     console.log(`[ProjectUtils] Project directory not found: ${projectPath}`);
+    return false;
+  }
+
+  const srcPath = path.join(workspaceRoot, SRC_SUBFOLDER);
+  if (!isDirectory(srcPath)) {
+    console.log(`[ProjectUtils] Source directory not found: ${srcPath}`);
     return false;
   }
 
@@ -69,13 +108,6 @@ export function isSiFliProject(): boolean {
   if (!projectEntry) {
     const candidatePaths = getSconscriptCandidatePaths(projectPath).join(', ');
     console.log(`[ProjectUtils] SConscript file not found. Checked: ${candidatePaths}`);
-    return false;
-  }
-
-  // 检查是否存在 src 子文件夹（在工作区根目录下）
-  const srcPath = path.join(workspaceRoot, SRC_SUBFOLDER);
-  if (!isDirectory(srcPath)) {
-    console.log(`[ProjectUtils] Source directory not found: ${srcPath}`);
     return false;
   }
 
@@ -87,38 +119,14 @@ export function isSiFliProject(): boolean {
 /**
  * 获取项目信息
  */
-export function getProjectInfo(): {
-  workspaceRoot: string;
-  projectPath: string;
-  srcPath: string;
-  projectEntryPath: string;
-  projectEntryRelativePath: string;
-  sconscriptPath: string;
-} | null {
+export function getProjectInfo(): SiFliProjectInfo | null {
   const workspaceRoot = getWorkspaceRootPath();
 
   if (!workspaceRoot) {
     return null;
   }
 
-  const projectPath = path.join(workspaceRoot, PROJECT_SUBFOLDER);
-  const srcPath = path.join(workspaceRoot, SRC_SUBFOLDER);
-  const projectEntry = resolveProjectEntry(projectPath);
-
-  if (!projectEntry) {
-    return null;
-  }
-
-  const projectEntryRelativePath = path.relative(workspaceRoot, projectEntry.projectEntryPath);
-
-  return {
-    workspaceRoot,
-    projectPath,
-    srcPath,
-    projectEntryPath: projectEntry.projectEntryPath,
-    projectEntryRelativePath,
-    sconscriptPath: projectEntry.sconscriptPath
-  };
+  return getSiFliProjectInfo(workspaceRoot);
 }
 
 /**
