@@ -61,6 +61,19 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
   private async getRootItems(): Promise<SifliSidebarItem[]> {
     const items: SifliSidebarItem[] = [];
 
+    items.push(new SifliSidebarItem(
+      vscode.l10n.t('Create New Project'),
+      vscode.TreeItemCollapsibleState.None,
+      {
+        command: 'extension.createNewSiFliProject',
+        title: vscode.l10n.t('Create New Project'),
+        arguments: []
+      },
+      new vscode.ThemeIcon('new-folder'),
+      vscode.l10n.t('Create a new SiFli project from an SDK example'),
+      'createProject'
+    ));
+
     // SDK 管理
     items.push(new SifliSidebarItem(
       vscode.l10n.t('SDK Manager'),

@@ -14,6 +14,7 @@ import { RegionService } from './services/regionService';
 import { WorkspaceStateService } from './services/workspaceStateService';
 import { BuildCommands } from './commands/buildCommands';
 import { ConfigCommands } from './commands/configCommands';
+import { ProjectCommands } from './commands/projectCommands';
 import { SdkCommands } from './commands/sdkCommands';
 import { StatusBarProvider } from './providers/statusBarProvider';
 import { VueWebviewProvider } from './providers/vueWebviewProvider';
@@ -64,6 +65,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 初始化命令处理器
   const buildCommands = BuildCommands.getInstance();
   const configCommands = ConfigCommands.getInstance();
+  const projectCommands = ProjectCommands.getInstance();
   const sdkCommands = SdkCommands.getInstance();
   
   // 初始化状态栏提供者
@@ -112,7 +114,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const manageSdkCommand = vscode.commands.registerCommand(CMD_PREFIX + 'manageSiFliSdk', () => 
     vueWebviewProvider.createSdkManagementWebview(context)
   );
+  const createProjectCommand = vscode.commands.registerCommand(CMD_PREFIX + 'createNewSiFliProject', () =>
+    projectCommands.createNewSiFliProject()
+  );
   context.subscriptions.push(manageSdkCommand);
+  context.subscriptions.push(createProjectCommand);
   logService.info('SDK management command registered');
 
   // 检查是否为 SiFli 项目

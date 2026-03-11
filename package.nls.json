@@ -7,6 +7,7 @@
   "command.menuconfig.title": "⚙️ Menuconfig",
   "command.selectChipModule.title": "Switch SiFli board / build threads",
   "command.manageSiFliSdk.title": "Manage SiFli SDK installation",
+  "command.createNewSiFliProject.title": "Create new SiFli project",
   "command.switchSdkVersion.title": "Switch SiFli SDK version",
   "command.selectPort.title": "Select serial port configuration",
   "command.openDeviceMonitor.title": "Monitor device",

@@ -47,6 +47,10 @@
         "title": "%command.manageSiFliSdk.title%"
       },
       {
+        "command": "extension.createNewSiFliProject",
+        "title": "%command.createNewSiFliProject.title%"
+      },
+      {
         "command": "extension.switchSdkVersion",
         "title": "%command.switchSdkVersion.title%"
       },

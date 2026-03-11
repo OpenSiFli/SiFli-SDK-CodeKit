@@ -7,6 +7,7 @@
   "command.menuconfig.title": "⚙️ Menuconfig",
   "command.selectChipModule.title": "切换 SiFli 模组/线程数",
   "command.manageSiFliSdk.title": "管理 SiFli SDK 安装",
+  "command.createNewSiFliProject.title": "新建 SiFli 工程",
   "command.switchSdkVersion.title": "切换 SiFli SDK 版本",
   "command.selectPort.title": "选择串口配置",
   "command.openDeviceMonitor.title": "监视设备",
