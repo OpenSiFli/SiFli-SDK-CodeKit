@@ -155,6 +155,8 @@
   "Project name is required.": "工程名不能为空。",
   "Project name cannot be \".\" or \"..\".": "工程名不能是“.”或“..”。",
   "Project name cannot contain path separators.": "工程名不能包含路径分隔符。",
+  "Target folder cannot be the selected template directory or one of its subdirectories.": "目标目录不能是所选模板目录本身或其子目录。",
+  "Target folder cannot contain the selected template directory.": "目标目录不能包含所选模板目录。",
   "Target folder already exists.": "目标目录已存在。",
   "Initialize Git": "初始化 Git",
   "Initialize a Git repository and create a default .gitignore file?": "是否初始化 Git 仓库并创建默认的 .gitignore 文件？",

@@ -155,6 +155,8 @@
   "Project name is required.": "Project name is required.",
   "Project name cannot be \".\" or \"..\".": "Project name cannot be \".\" or \"..\".",
   "Project name cannot contain path separators.": "Project name cannot contain path separators.",
+  "Target folder cannot be the selected template directory or one of its subdirectories.": "Target folder cannot be the selected template directory or one of its subdirectories.",
+  "Target folder cannot contain the selected template directory.": "Target folder cannot contain the selected template directory.",
   "Target folder already exists.": "Target folder already exists.",
   "Initialize Git": "Initialize Git",
   "Initialize a Git repository and create a default .gitignore file?": "Initialize a Git repository and create a default .gitignore file?",

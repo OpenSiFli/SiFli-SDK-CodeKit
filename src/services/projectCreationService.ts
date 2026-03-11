@@ -273,7 +273,7 @@ export class ProjectCreationService {
       prompt: vscode.l10n.t('Enter the new project folder name'),
       placeHolder: defaultName,
       value: defaultName,
-      validateInput: (value) => this.validateProjectName(parentPath, value)
+      validateInput: (value) => this.validateProjectName(parentPath, value, template.templateRootPath)
     });
 
     if (projectName === undefined) {
@@ -394,7 +394,7 @@ export class ProjectCreationService {
     );
   }
 
-  private validateProjectName(parentPath: string, value: string): string | null {
+  private validateProjectName(parentPath: string, value: string, templateRootPath: string): string | null {
     const trimmed = value.trim();
 
     if (!trimmed) {
@@ -409,7 +409,13 @@ export class ProjectCreationService {
       return vscode.l10n.t('Project name cannot contain path separators.');
     }
 
-    if (fs.existsSync(path.join(parentPath, trimmed))) {
+    const targetPath = path.join(parentPath, trimmed);
+    const pathValidationError = this.validateTargetPath(templateRootPath, targetPath);
+    if (pathValidationError) {
+      return pathValidationError;
+    }
+
+    if (fs.existsSync(targetPath)) {
       return vscode.l10n.t('Target folder already exists.');
     }
 
@@ -417,6 +423,11 @@ export class ProjectCreationService {
   }
 
   private copyTemplate(sourceRoot: string, targetRoot: string): void {
+    const pathValidationError = this.validateTargetPath(sourceRoot, targetRoot);
+    if (pathValidationError) {
+      throw new Error(pathValidationError);
+    }
+
     const parentRoot = path.dirname(targetRoot);
     const stagingContainer = fs.mkdtempSync(path.join(parentRoot, '.sifli-create-'));
     const stagingTarget = path.join(stagingContainer, path.basename(targetRoot));
@@ -535,6 +546,63 @@ export class ProjectCreationService {
 
     const errorCode = (error as NodeJS.ErrnoException).code;
     return errorCode === 'EEXIST' || errorCode === 'ENOTEMPTY';
+  }
+
+  private validateTargetPath(templateRootPath: string, targetPath: string): string | null {
+    try {
+      const normalizedTemplatePath = this.getComparablePath(templateRootPath);
+      const normalizedTargetPath = this.getComparablePath(targetPath);
+
+      if (this.isSameOrSubPath(normalizedTargetPath, normalizedTemplatePath)) {
+        return vscode.l10n.t('Target folder cannot be the selected template directory or one of its subdirectories.');
+      }
+
+      if (this.isSameOrSubPath(normalizedTemplatePath, normalizedTargetPath)) {
+        return vscode.l10n.t('Target folder cannot contain the selected template directory.');
+      }
+    } catch (error) {
+      this.logService.warn(`Failed to validate project target path: ${targetPath}`, error);
+    }
+
+    return null;
+  }
+
+  private getComparablePath(targetPath: string): string {
+    const resolvedPath = path.resolve(targetPath);
+    const existingAncestorPath = this.findExistingAncestorPath(resolvedPath);
+    const realAncestorPath = fs.realpathSync.native(existingAncestorPath);
+    const relativeSuffix = path.relative(existingAncestorPath, resolvedPath);
+    const comparablePath = relativeSuffix
+      ? path.join(realAncestorPath, relativeSuffix)
+      : realAncestorPath;
+
+    return this.normalizePathForComparison(comparablePath);
+  }
+
+  private findExistingAncestorPath(targetPath: string): string {
+    let currentPath = targetPath;
+
+    while (!fs.existsSync(currentPath)) {
+      const parentPath = path.dirname(currentPath);
+      if (parentPath === currentPath) {
+        throw new Error(`No existing ancestor found for path: ${targetPath}`);
+      }
+      currentPath = parentPath;
+    }
+
+    return currentPath;
+  }
+
+  private isSameOrSubPath(targetPath: string, basePath: string): boolean {
+    const relativePath = path.relative(basePath, targetPath);
+    return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
+  }
+
+  private normalizePathForComparison(targetPath: string): string {
+    const normalizedPath = path.normalize(targetPath);
+    return process.platform === 'win32'
+      ? normalizedPath.toLowerCase()
+      : normalizedPath;
   }
 
   private getErrorMessage(error: unknown): string {
