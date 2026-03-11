@@ -19,7 +19,8 @@ export const TASK_NAMES = {
   DOWNLOAD: 'SiFli: Download',
   MENUCONFIG: 'SiFli: Menuconfig',
   CLEAN: 'SiFli: Clean',
-  REBUILD: 'SiFli: Rebuild'
+  REBUILD: 'SiFli: Rebuild',
+  WORKFLOW_SHELL: 'SiFli: Workflow Shell'
 } as const;
 
 // 命令前缀
