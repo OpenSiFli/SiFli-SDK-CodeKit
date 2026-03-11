@@ -62,14 +62,14 @@
         "command": "extension.openDeviceMonitor",
         "title": "%command.openDeviceMonitor.title%"
       },
-    {
-      "command": "extension.closeDeviceMonitor",
-      "title": "%command.closeDeviceMonitor.title%"
-    },
-    {
-      "command": "extension.createNewSiFliTerminal",
-      "title": "%command.createNewSiFliTerminal.title%"
-    },
+      {
+        "command": "extension.closeDeviceMonitor",
+        "title": "%command.closeDeviceMonitor.title%"
+      },
+      {
+        "command": "extension.createNewSiFliTerminal",
+        "title": "%command.createNewSiFliTerminal.title%"
+      },
       {
         "command": "extension.listSerialPorts",
         "title": "%command.listSerialPorts.title%"
@@ -163,7 +163,7 @@
         "title": "%command.runStatusBarButton.title%"
       },
       {
-      "command": "sifliSidebar.refresh",
+        "command": "sifliSidebar.refresh",
         "title": "%command.sifliSidebar.refresh.title%",
         "icon": "$(refresh)"
       }
@@ -174,7 +174,11 @@
         "toolReferenceName": "getProjectState",
         "displayName": "%lmTool.getProjectState.displayName%",
         "modelDescription": "%lmTool.getProjectState.modelDescription%",
-        "tags": ["sifli", "project", "state"],
+        "tags": [
+          "sifli",
+          "project",
+          "state"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -187,7 +191,10 @@
         "toolReferenceName": "listWorkflows",
         "displayName": "%lmTool.listWorkflows.displayName%",
         "modelDescription": "%lmTool.listWorkflows.modelDescription%",
-        "tags": ["sifli", "workflow"],
+        "tags": [
+          "sifli",
+          "workflow"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -195,7 +202,11 @@
           "properties": {
             "scope": {
               "type": "string",
-              "enum": ["workspace", "user", "all"],
+              "enum": [
+                "workspace",
+                "user",
+                "all"
+              ],
               "description": "%lmTool.listWorkflows.scope.description%"
             }
           }
@@ -206,7 +217,10 @@
         "toolReferenceName": "listBoards",
         "displayName": "%lmTool.listBoards.displayName%",
         "modelDescription": "%lmTool.listBoards.modelDescription%",
-        "tags": ["sifli", "board"],
+        "tags": [
+          "sifli",
+          "board"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -219,7 +233,11 @@
         "toolReferenceName": "listSerialPorts",
         "displayName": "%lmTool.listSerialPorts.displayName%",
         "modelDescription": "%lmTool.listSerialPorts.modelDescription%",
-        "tags": ["sifli", "serial", "device"],
+        "tags": [
+          "sifli",
+          "serial",
+          "device"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -232,7 +250,11 @@
         "toolReferenceName": "runWorkflow",
         "displayName": "%lmTool.runWorkflow.displayName%",
         "modelDescription": "%lmTool.runWorkflow.modelDescription%",
-        "tags": ["sifli", "workflow", "automation"],
+        "tags": [
+          "sifli",
+          "workflow",
+          "automation"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -250,7 +272,9 @@
               }
             }
           },
-          "required": ["workflowRef"]
+          "required": [
+            "workflowRef"
+          ]
         }
       },
       {
@@ -258,7 +282,11 @@
         "toolReferenceName": "compile",
         "displayName": "%lmTool.compile.displayName%",
         "modelDescription": "%lmTool.compile.modelDescription%",
-        "tags": ["sifli", "build", "compile"],
+        "tags": [
+          "sifli",
+          "build",
+          "compile"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -271,7 +299,11 @@
         "toolReferenceName": "rebuild",
         "displayName": "%lmTool.rebuild.displayName%",
         "modelDescription": "%lmTool.rebuild.modelDescription%",
-        "tags": ["sifli", "build", "rebuild"],
+        "tags": [
+          "sifli",
+          "build",
+          "rebuild"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -284,7 +316,11 @@
         "toolReferenceName": "clean",
         "displayName": "%lmTool.clean.displayName%",
         "modelDescription": "%lmTool.clean.modelDescription%",
-        "tags": ["sifli", "build", "clean"],
+        "tags": [
+          "sifli",
+          "build",
+          "clean"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -297,7 +333,11 @@
         "toolReferenceName": "download",
         "displayName": "%lmTool.download.displayName%",
         "modelDescription": "%lmTool.download.modelDescription%",
-        "tags": ["sifli", "flash", "download"],
+        "tags": [
+          "sifli",
+          "flash",
+          "download"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -310,7 +350,11 @@
         "toolReferenceName": "selectBoard",
         "displayName": "%lmTool.selectBoard.displayName%",
         "modelDescription": "%lmTool.selectBoard.modelDescription%",
-        "tags": ["sifli", "board", "configuration"],
+        "tags": [
+          "sifli",
+          "board",
+          "configuration"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -325,7 +369,9 @@
               "description": "%lmTool.selectBoard.numThreads.description%"
             }
           },
-          "required": ["boardName"]
+          "required": [
+            "boardName"
+          ]
         }
       },
       {
@@ -333,7 +379,11 @@
         "toolReferenceName": "selectSerialPort",
         "displayName": "%lmTool.selectSerialPort.displayName%",
         "modelDescription": "%lmTool.selectSerialPort.modelDescription%",
-        "tags": ["sifli", "serial", "configuration"],
+        "tags": [
+          "sifli",
+          "serial",
+          "configuration"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -352,7 +402,9 @@
               "description": "%lmTool.selectSerialPort.monitorBaud.description%"
             }
           },
-          "required": ["port"]
+          "required": [
+            "port"
+          ]
         }
       },
       {
@@ -360,7 +412,11 @@
         "toolReferenceName": "openMonitor",
         "displayName": "%lmTool.openMonitor.displayName%",
         "modelDescription": "%lmTool.openMonitor.modelDescription%",
-        "tags": ["sifli", "serial", "monitor"],
+        "tags": [
+          "sifli",
+          "serial",
+          "monitor"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -373,7 +429,11 @@
         "toolReferenceName": "closeMonitor",
         "displayName": "%lmTool.closeMonitor.displayName%",
         "modelDescription": "%lmTool.closeMonitor.modelDescription%",
-        "tags": ["sifli", "serial", "monitor"],
+        "tags": [
+          "sifli",
+          "serial",
+          "monitor"
+        ],
         "canBeReferencedInPrompt": true,
         "when": "sifli.isProject",
         "inputSchema": {
@@ -560,12 +620,24 @@
                       "prompt"
                     ],
                     "properties": {
-                      "key": { "type": "string" },
-                      "prompt": { "type": "string" },
-                      "placeHolder": { "type": "string" },
-                      "defaultValue": { "type": "string" },
-                      "required": { "type": "boolean" },
-                      "password": { "type": "boolean" }
+                      "key": {
+                        "type": "string"
+                      },
+                      "prompt": {
+                        "type": "string"
+                      },
+                      "placeHolder": {
+                        "type": "string"
+                      },
+                      "defaultValue": {
+                        "type": "string"
+                      },
+                      "required": {
+                        "type": "boolean"
+                      },
+                      "password": {
+                        "type": "boolean"
+                      }
                     }
                   }
                 },
@@ -594,14 +666,24 @@
                           "serial.selectPort"
                         ]
                       },
-                      "wait": { "type": "boolean" },
-                      "continueOnError": { "type": "boolean" },
+                      "wait": {
+                        "type": "boolean"
+                      },
+                      "continueOnError": {
+                        "type": "boolean"
+                      },
                       "runIf": {
                         "type": "object",
                         "properties": {
-                          "boardSelected": { "type": "boolean" },
-                          "serialPortSelected": { "type": "boolean" },
-                          "monitorActive": { "type": "boolean" }
+                          "boardSelected": {
+                            "type": "boolean"
+                          },
+                          "serialPortSelected": {
+                            "type": "boolean"
+                          },
+                          "monitorActive": {
+                            "type": "boolean"
+                          }
                         }
                       },
                       "args": {
@@ -1253,6 +1335,7 @@
     "url": "https://github.com/OpenSiFli/SiFli-SDK-CodeKit"
   },
   "scripts": {
+    "prepare": "lefthook install",
     "vscode:prepublish": "yarn run build:webview && yarn run compile && yarn run copy-templates",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
@@ -1277,6 +1360,7 @@
     "@typescript-eslint/parser": "^6.21.0",
     "@vscode/vsce": "^3.6.0",
     "eslint": "^8.57.0",
+    "lefthook": "^1.13.6",
     "prettier": "^3.3.2",
     "typescript": "^5.8.3"
   },

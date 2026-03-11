@@ -1,0 +1,14 @@
+.DS_Store
+.debug-extensions/
+.history/
+.vscode/
+node_modules/
+webview-vue/node_modules/
+docs/node_modules/
+out/
+dist/
+webview-vue/dist/
+docs/src/.vuepress/.cache/
+docs/src/.vuepress/.temp/
+docs/src/.vuepress/dist/
+*.vsix
