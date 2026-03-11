@@ -188,7 +188,7 @@
   "Do not wait": "Do not wait",
   "Download": "Download",
   "Done": "Done",
-  "Dry Run: {0}\\n{1}": "Dry Run: {0}\\n{1}",
+  "Dry Run: {0}\n{1}": "Dry Run: {0}\n{1}",
   "Dry run workflow": "Dry run workflow",
   "Edit workflow": "Edit workflow",
   "Edit workflow: {0}": "Edit workflow: {0}",

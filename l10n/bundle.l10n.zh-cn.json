@@ -188,7 +188,7 @@
   "Do not wait": "不等待",
   "Download": "下载",
   "Done": "完成",
-  "Dry Run: {0}\\n{1}": "演练运行：{0}\\n{1}",
+  "Dry Run: {0}\n{1}": "演练运行：{0}\n{1}",
   "Dry run workflow": "演练运行工作流",
   "Edit workflow": "编辑工作流",
   "Edit workflow: {0}": "编辑工作流：{0}",
