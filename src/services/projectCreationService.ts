@@ -35,16 +35,7 @@ const GITIGNORE_LINES = [
   'Kconfig.tmp'
 ];
 
-const SCAN_SKIP_DIRECTORIES = new Set([
-  '.git',
-  '.svn',
-  '.idea',
-  '__pycache__',
-  'build',
-  'node_modules'
-]);
-
-const COPY_SKIP_DIRECTORIES = new Set([
+const SKIP_DIRECTORIES = new Set([
   '.git',
   '.svn',
   '.idea',
@@ -397,7 +388,7 @@ export class ProjectCreationService {
 
   private shouldSkipScanDirectory(name: string): boolean {
     return (
-      SCAN_SKIP_DIRECTORIES.has(name) ||
+      SKIP_DIRECTORIES.has(name) ||
       name.startsWith('build_') ||
       name.startsWith('.')
     );
@@ -461,7 +452,7 @@ export class ProjectCreationService {
     const isDirectory = fs.statSync(sourcePath).isDirectory();
     const directorySegments = isDirectory ? pathSegments : pathSegments.slice(0, -1);
 
-    if (directorySegments.some(segment => COPY_SKIP_DIRECTORIES.has(segment) || segment.startsWith('build_'))) {
+    if (directorySegments.some(segment => SKIP_DIRECTORIES.has(segment) || segment.startsWith('build_'))) {
       return false;
     }
 
