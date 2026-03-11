@@ -29,12 +29,12 @@ const emit = defineEmits<{
 
 const selectedType = computed({
   get: () => props.modelValue,
-  set: (value: DownloadType) => emit('update:modelValue', value)
+  set: (value: DownloadType) => emit('update:modelValue', value),
 });
 
 const downloadTypeOptions = computed(() => [
   { value: 'release', label: '发布版本 (Release)' },
-  { value: 'branch', label: '开发分支 (Branch)' }
+  { value: 'branch', label: '开发分支 (Branch)' },
 ]);
 
 const handleTypeUpdate = (value: string) => {

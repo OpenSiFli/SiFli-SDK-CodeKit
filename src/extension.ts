@@ -31,7 +31,7 @@ import { registerProbeRsDebugger } from './probe-rs/extension';
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // 初始化日志服务
   const logService = LogService.getInstance();
-  
+
   logService.info('SiFli SDK CodeKit extension is activating...');
 
   // Register SiFli probe-rs debugger contributions
@@ -50,10 +50,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // 初始化服务
   const configService = ConfigService.getInstance();
-  
+
   // 执行配置迁移（根据版本号决定是否需要迁移）
   await configService.runConfigMigrations(context);
-  
+
   const sdkService = SdkService.getInstance();
   const gitService = GitService.getInstance();
   const serialPortService = SerialPortService.getInstance();
@@ -64,17 +64,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   pythonService.setContext(context);
   minGitService.setContext(context);
   regionService.prewarm(); // 异步预热区域检测结果
-  
+
   // 初始化命令处理器
   const buildCommands = BuildCommands.getInstance();
   const configCommands = ConfigCommands.getInstance();
   const projectCommands = ProjectCommands.getInstance();
   const sdkCommands = SdkCommands.getInstance();
   const workflowCommands = WorkflowCommands.getInstance();
-  
+
   // 初始化状态栏提供者
   const statusBarProvider = StatusBarProvider.getInstance();
-  
+
   // 初始化 Vue WebView 提供者
   const vueWebviewProvider = VueWebviewProvider.getInstance();
 
@@ -84,10 +84,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const languageModelToolService = LanguageModelToolService.getInstance();
 
   // 注册输出通道和 Git 输出通道到订阅列表
-  context.subscriptions.push(
-    logService.getOutputChannel(),
-    gitService.getOutputChannel()
-  );
+  context.subscriptions.push(logService.getOutputChannel(), gitService.getOutputChannel());
 
   // 在插件激活时立即读取配置
   await configService.updateConfiguration();
@@ -103,7 +100,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       void refreshProjectContext();
     })
   );
-  
+
   // 检查并安装嵌入式 Python (仅限 Windows)
   // 不阻塞激活过程，在后台运行
   pythonService.checkAndInstallPython().catch(err => {
@@ -120,7 +117,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // 初始化串口服务（恢复之前保存的串口选择）
   await serialPortService.initialize();
-  
+
   // 发现 SDK 版本
   const sdkVersions = await sdkService.discoverSiFliSdks();
   configService.detectedSdkVersions = sdkVersions;
@@ -128,7 +125,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // 注册 SDK 管理命令（无论是否为 SiFli 项目都需要注册）
   // 这样用户可以在任何情况下通过侧边栏管理 SDK
-  const manageSdkCommand = vscode.commands.registerCommand(CMD_PREFIX + 'manageSiFliSdk', () => 
+  const manageSdkCommand = vscode.commands.registerCommand(CMD_PREFIX + 'manageSiFliSdk', () =>
     vueWebviewProvider.createSdkManagementWebview(context)
   );
   const createProjectCommand = vscode.commands.registerCommand(CMD_PREFIX + 'createNewSiFliProject', () =>
@@ -172,7 +169,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // 监听配置变化
     context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration(async (e) => {
+      vscode.workspace.onDidChangeConfiguration(async e => {
         if (e.affectsConfiguration('sifli-sdk-codekit')) {
           logService.info('Configuration changed, updating...');
           await configService.updateConfiguration();
@@ -188,114 +185,110 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // 注册命令（仅限 SiFli 项目）
     const commands = [
-      vscode.commands.registerCommand(CMD_PREFIX + 'compile', () => 
-        buildCommands.executeCompileTask()
-      ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'rebuild', () => 
-        buildCommands.executeRebuildTask()
-      ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'clean', () => 
-        buildCommands.executeCleanCommand()
-      ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'download', () => 
-        buildCommands.executeDownloadTask()
-      ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => 
-        buildCommands.executeMenuconfigTask()
-      ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'selectChipModule', () => 
-        configCommands.selectChipModule()
-      ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'selectPort', () => 
-        configCommands.selectPort()
-      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'compile', () => buildCommands.executeCompileTask()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'rebuild', () => buildCommands.executeRebuildTask()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'clean', () => buildCommands.executeCleanCommand()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'download', () => buildCommands.executeDownloadTask()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => buildCommands.executeMenuconfigTask()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'selectChipModule', () => configCommands.selectChipModule()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'selectPort', () => configCommands.selectPort()),
       // 注意：manageSiFliSdk 已在外部注册，无论是否为 SiFli 项目
-      vscode.commands.registerCommand(CMD_PREFIX + 'switchSdkVersion', () => 
-        configCommands.switchSdkVersion()
-      ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'openDeviceMonitor', () => 
-        statusBarProvider.openDeviceMonitor()
-      ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'closeDeviceMonitor', () => 
-        statusBarProvider.closeDeviceMonitor()
-      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'switchSdkVersion', () => configCommands.switchSdkVersion()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'openDeviceMonitor', () => statusBarProvider.openDeviceMonitor()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'closeDeviceMonitor', () => statusBarProvider.closeDeviceMonitor()),
       vscode.commands.registerCommand(CMD_PREFIX + 'createNewSiFliTerminal', async () => {
         const terminal = await terminalService.getOrCreateSiFliTerminalAndCdProject(true);
         terminal.show();
       }),
-      vscode.commands.registerCommand(CMD_PREFIX + 'listSerialPorts', () => 
-        configCommands.listSerialPorts()
-      ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'configureClangd', () => 
-        configCommands.configureClangd()
-      ),
+      vscode.commands.registerCommand(CMD_PREFIX + 'listSerialPorts', () => configCommands.listSerialPorts()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'configureClangd', () => configCommands.configureClangd()),
       vscode.commands.registerCommand(CMD_PREFIX + 'showLogs', () => {
         logService.show();
         logService.info('Logs displayed by user request');
       }),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.manage', () =>
-        workflowCommands.openManager()
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.manage', () => workflowCommands.openManager()),
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'workflows.run',
+        (item?: string | { metadata?: Record<string, string> }) => {
+          const workflowId = typeof item === 'string' ? item : item?.metadata?.workflowId;
+          return workflowCommands.runWorkflow(workflowId);
+        }
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.run', (item?: string | { metadata?: Record<string, string> }) => {
-        const workflowId = typeof item === 'string' ? item : item?.metadata?.workflowId;
-        return workflowCommands.runWorkflow(workflowId);
-      }),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.runDry', (item?: string | { metadata?: Record<string, string> }) => {
-        const workflowId = typeof item === 'string' ? item : item?.metadata?.workflowId;
-        return workflowCommands.runWorkflow(workflowId, true);
-      }),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.create', () =>
-        workflowCommands.createWorkflow()
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'workflows.runDry',
+        (item?: string | { metadata?: Record<string, string> }) => {
+          const workflowId = typeof item === 'string' ? item : item?.metadata?.workflowId;
+          return workflowCommands.runWorkflow(workflowId, true);
+        }
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.edit', (item?: { metadata?: Record<string, string> } | string) =>
-        workflowCommands.editWorkflow(typeof item === 'string' ? item : item?.metadata?.workflowId)
+      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.create', () => workflowCommands.createWorkflow()),
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'workflows.edit',
+        (item?: { metadata?: Record<string, string> } | string) =>
+          workflowCommands.editWorkflow(typeof item === 'string' ? item : item?.metadata?.workflowId)
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.copy', (item?: { metadata?: Record<string, string> } | string) =>
-        workflowCommands.copyWorkflow(item)
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'workflows.copy',
+        (item?: { metadata?: Record<string, string> } | string) => workflowCommands.copyWorkflow(item)
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.delete', (item?: { metadata?: Record<string, string> } | string) =>
-        workflowCommands.deleteWorkflow(item)
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'workflows.delete',
+        (item?: { metadata?: Record<string, string> } | string) => workflowCommands.deleteWorkflow(item)
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.pin', (item?: { metadata?: Record<string, string> } | string) =>
-        workflowCommands.pinWorkflowToStatusBar(typeof item === 'string' ? item : item?.metadata?.workflowId)
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'workflows.pin',
+        (item?: { metadata?: Record<string, string> } | string) =>
+          workflowCommands.pinWorkflowToStatusBar(typeof item === 'string' ? item : item?.metadata?.workflowId)
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.rename', (item?: string | { metadata?: Record<string, string> }) =>
-        workflowCommands.renameWorkflow(item)
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'workflows.rename',
+        (item?: string | { metadata?: Record<string, string> }) => workflowCommands.renameWorkflow(item)
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.stepAdd', (item?: string | { metadata?: Record<string, string> }) =>
-        workflowCommands.addStep(item)
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'workflows.stepAdd',
+        (item?: string | { metadata?: Record<string, string> }) => workflowCommands.addStep(item)
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.stepDelete', (item?: { metadata?: Record<string, string> }) =>
-        workflowCommands.deleteStep(item)
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'workflows.stepDelete',
+        (item?: { metadata?: Record<string, string> }) => workflowCommands.deleteStep(item)
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.stepMoveUp', (item?: { metadata?: Record<string, string> }) =>
-        workflowCommands.moveStepUp(item)
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'workflows.stepMoveUp',
+        (item?: { metadata?: Record<string, string> }) => workflowCommands.moveStepUp(item)
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'workflows.stepMoveDown', (item?: { metadata?: Record<string, string> }) =>
-        workflowCommands.moveStepDown(item)
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'workflows.stepMoveDown',
+        (item?: { metadata?: Record<string, string> }) => workflowCommands.moveStepDown(item)
       ),
       vscode.commands.registerCommand(CMD_PREFIX + 'workflows.showDiagnostics', () =>
         workflowService.showValidationDiagnostics()
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'statusBarButtons.delete', (item?: string | { metadata?: Record<string, string> }) =>
-        workflowCommands.deleteStatusBarButton(item)
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'statusBarButtons.delete',
+        (item?: string | { metadata?: Record<string, string> }) => workflowCommands.deleteStatusBarButton(item)
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'statusBarButtons.copy', (item?: string | { metadata?: Record<string, string> }) =>
-        workflowCommands.copyStatusBarButton(item)
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'statusBarButtons.copy',
+        (item?: string | { metadata?: Record<string, string> }) => workflowCommands.copyStatusBarButton(item)
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'statusBarButtons.rename', (item?: string | { metadata?: Record<string, string> }) =>
-        workflowCommands.renameStatusBarButton(item)
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'statusBarButtons.rename',
+        (item?: string | { metadata?: Record<string, string> }) => workflowCommands.renameStatusBarButton(item)
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'statusBarButtons.overrideDefault', (item?: string | { metadata?: Record<string, string> }) =>
-        workflowCommands.overrideDefaultStatusBarButton(item)
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'statusBarButtons.overrideDefault',
+        (item?: string | { metadata?: Record<string, string> }) => workflowCommands.overrideDefaultStatusBarButton(item)
       ),
-      vscode.commands.registerCommand(CMD_PREFIX + 'runStatusBarButton', (item?: string | { metadata?: Record<string, string> }) => {
-        const buttonId = typeof item === 'string' ? item : item?.metadata?.buttonId;
-        if (!buttonId) {
-          return;
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'runStatusBarButton',
+        (item?: string | { metadata?: Record<string, string> }) => {
+          const buttonId = typeof item === 'string' ? item : item?.metadata?.buttonId;
+          if (!buttonId) {
+            return;
+          }
+          return statusBarProvider.executeStatusBarButton(buttonId);
         }
-        return statusBarProvider.executeStatusBarButton(buttonId);
-      })
+      ),
     ];
 
     context.subscriptions.push(...commands);
@@ -303,7 +296,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workflowService.reportValidationIssues(false);
 
     logService.info('SiFli SDK CodeKit extension activated successfully');
-
   } else {
     logService.info('Not a SiFli project. Extension features will not be activated.');
     // 即使不是 SiFli 项目，也注册侧边栏，允许用户管理 SDK
@@ -317,30 +309,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 export function deactivate(): void {
   const logService = LogService.getInstance();
   logService.info('SiFli SDK CodeKit extension is deactivating...');
-  
+
   // 清理状态栏
   const statusBarProvider = StatusBarProvider.getInstance();
   statusBarProvider.dispose();
-  
+
   // 清理侧边栏
   const sidebarManager = SifliSidebarManager.getInstance();
   sidebarManager.dispose();
-  
+
   // 清理终端
   const terminalService = TerminalService.getInstance();
   terminalService.disposeSiFliTerminals();
-  
+
   // 清理 Git 服务
   const gitService = GitService.getInstance();
   gitService.dispose();
-  
+
   // 清理日志服务
   logService.info('SiFli SDK CodeKit extension deactivated');
   logService.dispose();
 }
 
 async function showReleaseNotesIfUpdated(context: vscode.ExtensionContext): Promise<void> {
-  const currentVersion = vscode.extensions.getExtension('SiFli.sifli-sdk-codekit')?.packageJSON.version as string | undefined;
+  const currentVersion = vscode.extensions.getExtension('SiFli.sifli-sdk-codekit')?.packageJSON.version as
+    | string
+    | undefined;
   if (!currentVersion) {
     return;
   }

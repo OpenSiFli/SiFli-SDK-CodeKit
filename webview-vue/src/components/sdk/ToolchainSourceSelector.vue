@@ -3,11 +3,7 @@
     <label class="block text-sm font-medium text-vscode-foreground mb-3 transition-colors duration-200">
       {{ $t('sdk.toolchainSource.label') }}
     </label>
-    <BaseSelect
-      v-model="toolchainSource"
-      :options="toolchainSourceOptions"
-      class="w-full"
-    />
+    <BaseSelect v-model="toolchainSource" :options="toolchainSourceOptions" class="w-full" />
   </div>
 </template>
 
@@ -35,29 +31,40 @@ const toolchainSource = ref<'sifli' | 'github'>(props.modelValue || 'sifli');
 // 工具链下载源选项
 const toolchainSourceOptions = computed(() => [
   { value: 'sifli', label: t('sdk.toolchainSource.sifli') },
-  { value: 'github', label: t('sdk.toolchainSource.github') }
+  { value: 'github', label: t('sdk.toolchainSource.github') },
 ]);
 
 // 根据 SDK 来源自动设置默认工具链下载源
-watch(() => props.sdkSource, (newSource: string | undefined) => {
-  if (newSource === 'github') {
-    toolchainSource.value = 'github';
-  } else if (newSource === 'gitee') {
-    toolchainSource.value = 'sifli';
-  }
-}, { immediate: true });
+watch(
+  () => props.sdkSource,
+  (newSource: string | undefined) => {
+    if (newSource === 'github') {
+      toolchainSource.value = 'github';
+    } else if (newSource === 'gitee') {
+      toolchainSource.value = 'sifli';
+    }
+  },
+  { immediate: true }
+);
 
 // 监听工具链下载源变化
-watch(toolchainSource, (newValue: 'sifli' | 'github') => {
-  emit('update:modelValue', newValue);
-}, { immediate: true });
+watch(
+  toolchainSource,
+  (newValue: 'sifli' | 'github') => {
+    emit('update:modelValue', newValue);
+  },
+  { immediate: true }
+);
 
 // 监听 modelValue 变化
-watch(() => props.modelValue, (newValue) => {
-  if (newValue && newValue !== toolchainSource.value) {
-    toolchainSource.value = newValue;
+watch(
+  () => props.modelValue,
+  newValue => {
+    if (newValue && newValue !== toolchainSource.value) {
+      toolchainSource.value = newValue;
+    }
   }
-});
+);
 </script>
 
 <style scoped>

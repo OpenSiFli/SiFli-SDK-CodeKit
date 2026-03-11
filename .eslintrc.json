@@ -5,9 +5,7 @@
     "ecmaVersion": 6,
     "sourceType": "module"
   },
-  "plugins": [
-    "@typescript-eslint"
-  ],
+  "plugins": ["@typescript-eslint"],
   "rules": {
     "@typescript-eslint/naming-convention": [
       "warn",
@@ -22,11 +20,5 @@
     "no-throw-literal": "warn",
     "semi": "off"
   },
-  "ignorePatterns": [
-    "out",
-    "dist",
-    "**/*.d.ts",
-    "node_modules",
-    "webview-ui"
-  ]
+  "ignorePatterns": ["out", "dist", "**/*.d.ts", "node_modules", "webview-ui"]
 }

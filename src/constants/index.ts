@@ -20,7 +20,7 @@ export const TASK_NAMES = {
   MENUCONFIG: 'SiFli: Menuconfig',
   CLEAN: 'SiFli: Clean',
   REBUILD: 'SiFli: Rebuild',
-  WORKFLOW_SHELL: 'SiFli: Workflow Shell'
+  WORKFLOW_SHELL: 'SiFli: Workflow Shell',
 } as const;
 
 // 命令前缀
@@ -44,7 +44,7 @@ export const LM_TOOL_NAMES = {
   SELECT_BOARD: 'sifli-sdk-codekit_selectBoard',
   SELECT_SERIAL_PORT: 'sifli-sdk-codekit_selectSerialPort',
   OPEN_MONITOR: 'sifli-sdk-codekit_openMonitor',
-  CLOSE_MONITOR: 'sifli-sdk-codekit_closeMonitor'
+  CLOSE_MONITOR: 'sifli-sdk-codekit_closeMonitor',
 } as const;
 
 /**
@@ -69,10 +69,10 @@ export const CONFIG_MIGRATION_VERSIONS = {
 export const GIT_REPOS = {
   GITHUB: {
     API_BASE: 'https://api.github.com/repos/OpenSiFli/SiFli-SDK',
-    GIT_URL: 'https://github.com/OpenSiFli/SiFli-SDK.git'
+    GIT_URL: 'https://github.com/OpenSiFli/SiFli-SDK.git',
   },
   GITEE: {
     API_BASE: 'https://gitee.com/api/v5/repos/SiFli/sifli-sdk',
-    GIT_URL: 'https://gitee.com/SiFli/sifli-sdk.git'
-  }
+    GIT_URL: 'https://gitee.com/SiFli/sifli-sdk.git',
+  },
 } as const;

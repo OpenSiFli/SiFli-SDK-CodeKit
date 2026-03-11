@@ -3,11 +3,7 @@
     <div class="max-w-2xl mx-auto">
       <!-- Back Button -->
       <div class="mb-6">
-        <BaseButton
-          variant="secondary"
-          @click="$emit('go-back')"
-          class="flex items-center gap-2"
-        >
+        <BaseButton variant="secondary" @click="$emit('go-back')" class="flex items-center gap-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
           </svg>
@@ -18,11 +14,7 @@
       <!-- Header -->
       <header class="text-center mb-6 pb-4 border-b border-vscode-panel-border">
         <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-          <img 
-            :src="logoSrc" 
-            alt="SiFli Logo" 
-            class="w-14 h-14 object-contain"
-          />
+          <img :src="logoSrc" alt="SiFli Logo" class="w-14 h-14 object-contain" />
         </div>
         <h1 class="text-3xl font-bold mb-2">{{ $t('express.title') }}</h1>
         <p class="text-vscode-input-placeholder text-sm">{{ $t('express.subtitle') }}</p>
@@ -31,20 +23,13 @@
       <!-- Main Form -->
       <div class="vscode-card rounded-lg p-6 space-y-8 animate-fade-in-scale form-container">
         <!-- SDK Source Selection -->
-        <SdkSourceSelector
-          v-model="sdkManager.state.value.sdkSource"
-        />
+        <SdkSourceSelector v-model="sdkManager.state.value.sdkSource" />
 
         <!-- Toolchain Source Selection -->
-        <ToolchainSourceSelector
-          v-model="toolchainSource"
-          :sdk-source="sdkManager.state.value.sdkSource"
-        />
+        <ToolchainSourceSelector v-model="toolchainSource" :sdk-source="sdkManager.state.value.sdkSource" />
 
         <!-- Download Type Selection -->
-        <DownloadTypeSelector
-          v-model="sdkManager.state.value.downloadType"
-        />
+        <DownloadTypeSelector v-model="sdkManager.state.value.downloadType" />
 
         <!-- Version/Branch Selection -->
         <SdkVersionSelector
@@ -69,28 +54,32 @@
         />
 
         <!-- Toolchain Tools Path Selection -->
-        <ToolsPathSelector
-          v-model="toolsPath"
-          @browse="browseToolsPath"
-        />
+        <ToolsPathSelector v-model="toolsPath" @browse="browseToolsPath" />
 
         <!-- Installation Button and Progress -->
         <div class="pt-4 action-section">
           <!-- Installation Log Window -->
-          <div v-if="sdkManager.state.value.isInstalling" class="mb-4 p-4 bg-vscode-editor-background border border-vscode-editor-foreground/20 rounded">
+          <div
+            v-if="sdkManager.state.value.isInstalling"
+            class="mb-4 p-4 bg-vscode-editor-background border border-vscode-editor-foreground/20 rounded"
+          >
             <div class="flex items-center mb-2">
               <div class="loading loading-spinner loading-sm text-vscode-button-background mr-2"></div>
               <span class="text-sm font-medium">{{ sdkManager.state.value.installationProgress.message }}</span>
             </div>
-            
+
             <!-- 日志窗口 -->
-            <div 
+            <div
               ref="logContainer"
               class="mt-3 bg-black/50 text-green-400 text-xs font-mono p-3 rounded border max-h-64 overflow-y-auto scroll-smooth"
-              style="scrollbar-width: thin; scrollbar-color: #4a5568 #2d3748;"
+              style="scrollbar-width: thin; scrollbar-color: #4a5568 #2d3748"
             >
               <div class="mb-2 text-gray-300 font-semibold border-b border-gray-600 pb-1">安装日志:</div>
-              <div v-for="(log, index) in sdkManager.state.value.installationLogs" :key="index" class="mb-1 leading-tight">
+              <div
+                v-for="(log, index) in sdkManager.state.value.installationLogs"
+                :key="index"
+                class="mb-1 leading-tight"
+              >
                 <span class="text-gray-500 mr-2">[{{ getTimestamp() }}]</span>{{ log }}
               </div>
               <div v-if="sdkManager.state.value.installationLogs.length === 0" class="text-gray-500 italic">
@@ -111,7 +100,7 @@
             >
               {{ sdkManager.state.value.isInstalling ? 'Installing...' : 'Install SiFli SDK' }}
             </BaseButton>
-            
+
             <!-- 取消按钮 -->
             <BaseButton
               v-if="sdkManager.state.value.isInstalling"
@@ -154,8 +143,8 @@ import logoSrc from '@/assets/images/SiFli.png';
 
 // 定义 emits
 const emit = defineEmits<{
-  'go-back': []
-  'installation-complete': []
+  'go-back': [];
+  'installation-complete': [];
 }>();
 
 const { postMessage, onMessage } = useVsCodeApi();
@@ -187,18 +176,18 @@ watch(
 // 获取当前时间戳
 const getTimestamp = () => {
   const now = new Date();
-  return now.toLocaleTimeString('zh-CN', { 
+  return now.toLocaleTimeString('zh-CN', {
     hour12: false,
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
   });
 };
 
 // 浏览工具链路径
 const browseToolsPath = () => {
   postMessage({
-    command: 'browseToolsPath'
+    command: 'browseToolsPath',
   });
 };
 
@@ -212,14 +201,16 @@ const handleInstall = () => {
     // 设置工具链配置到 SDK 管理器状态
     sdkManager.state.value.toolchainSource = toolchainSource.value;
     sdkManager.state.value.toolsPath = toolsPath.value;
-    
+
     console.log('[ExpressSetup] Starting SDK installation...');
     console.log('[ExpressSetup] Tools path:', toolsPath.value);
-    console.log('[ExpressSetup] Will set SIFLI_SDK_TOOLS_PATH env var:', toolsPath.value && toolsPath.value.trim() !== '');
-    
+    console.log(
+      '[ExpressSetup] Will set SIFLI_SDK_TOOLS_PATH env var:',
+      toolsPath.value && toolsPath.value.trim() !== ''
+    );
+
     // 调用安装方法（这是异步的，通过消息处理）
     sdkManager.installSdk();
-    
   } catch (error) {
     console.error('Installation failed:', error);
   }
@@ -229,7 +220,7 @@ const handleInstall = () => {
 const handleCancelInstall = () => {
   console.log('[ExpressSetup] Cancelling SDK installation...');
   postMessage({
-    command: 'cancelInstallation'
+    command: 'cancelInstallation',
   });
 };
 
@@ -240,12 +231,24 @@ onMounted(() => {
 
 <style scoped>
 /* 统一的表单项动画延迟 */
-.form-container > *:nth-child(1) .form-item { animation-delay: 0.05s; }
-.form-container > *:nth-child(2) .form-item { animation-delay: 0.1s; }
-.form-container > *:nth-child(3) .form-item { animation-delay: 0.15s; }
-.form-container > *:nth-child(4) .form-item { animation-delay: 0.2s; }
-.form-container > *:nth-child(5) .form-item { animation-delay: 0.25s; }
-.form-container > *:nth-child(6) .form-item { animation-delay: 0.3s; }
+.form-container > *:nth-child(1) .form-item {
+  animation-delay: 0.05s;
+}
+.form-container > *:nth-child(2) .form-item {
+  animation-delay: 0.1s;
+}
+.form-container > *:nth-child(3) .form-item {
+  animation-delay: 0.15s;
+}
+.form-container > *:nth-child(4) .form-item {
+  animation-delay: 0.2s;
+}
+.form-container > *:nth-child(5) .form-item {
+  animation-delay: 0.25s;
+}
+.form-container > *:nth-child(6) .form-item {
+  animation-delay: 0.3s;
+}
 
 /* 操作区域动画延迟 */
 .action-section {

@@ -9,7 +9,7 @@ async function findExecutable(executableName: string): Promise<string | null> {
   const envExt = process.platform === 'win32' ? process.env.PATHEXT || '.EXE;.CMD;.BAT;.COM' : '';
   const pathDirs = envPath.replace(/["]+/g, '').split(path.delimiter).filter(Boolean);
   const extensions = envExt ? envExt.split(';') : [''];
-  const candidates = pathDirs.flatMap((dir) => extensions.map((ext) => path.join(dir, executableName + ext)));
+  const candidates = pathDirs.flatMap(dir => extensions.map(ext => path.join(dir, executableName + ext)));
 
   for (const candidate of candidates) {
     try {

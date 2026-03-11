@@ -4,7 +4,7 @@ export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
   WARN = 2,
-  ERROR = 3
+  ERROR = 3,
 }
 
 export class LogService {
@@ -15,15 +15,15 @@ export class LogService {
   // ANSI 颜色代码
   private readonly colors = {
     reset: '\x1b[0m',
-    debug: '\x1b[90m',    // 灰色 (暗灰)
-    info: '\x1b[36m',     // 青色
-    warn: '\x1b[33m',     // 黄色
-    error: '\x1b[31m',    // 红色
-    timestamp: '\x1b[90m' // 时间戳用灰色
+    debug: '\x1b[90m', // 灰色 (暗灰)
+    info: '\x1b[36m', // 青色
+    warn: '\x1b[33m', // 黄色
+    error: '\x1b[31m', // 红色
+    timestamp: '\x1b[90m', // 时间戳用灰色
   };
 
   private constructor() {
-    this.outputChannel = vscode.window.createOutputChannel('SiFli SDK CodeKit', "log");
+    this.outputChannel = vscode.window.createOutputChannel('SiFli SDK CodeKit', 'log');
   }
 
   public static getInstance(): LogService {
@@ -52,12 +52,16 @@ export class LogService {
    */
   private getTimestamp(): string {
     const now = new Date();
-    return now.toLocaleTimeString('zh-CN', { 
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    }) + '.' + now.getMilliseconds().toString().padStart(3, '0');
+    return (
+      now.toLocaleTimeString('zh-CN', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }) +
+      '.' +
+      now.getMilliseconds().toString().padStart(3, '0')
+    );
   }
 
   /**
@@ -69,15 +73,16 @@ export class LogService {
     }
 
     const timestamp = this.getTimestamp();
-    const formattedMessage = args.length > 0 
-      ? `${message} ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ')}`
-      : message;
-    
+    const formattedMessage =
+      args.length > 0
+        ? `${message} ${args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg))).join(' ')}`
+        : message;
+
     const logEntry = `${timestamp} [${levelName}] ${formattedMessage}`;
-    
+
     // 输出到 VS Code 输出通道
     this.outputChannel.appendLine(logEntry);
-    
+
     // 同时输出到开发者控制台（开发环境可见）
     switch (level) {
       case LogLevel.DEBUG:

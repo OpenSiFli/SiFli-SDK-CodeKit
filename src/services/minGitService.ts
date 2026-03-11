@@ -19,7 +19,7 @@ export class MinGitService {
   private static readonly MINGIT_URLS = {
     x64: 'https://downloads.sifli.com/dl/sifli-sdk/MinGit/MinGit-2.52.0-64-bit.zip',
     arm64: 'https://downloads.sifli.com/dl/sifli-sdk/MinGit/MinGit-2.52.0-arm64.zip',
-    ia32: 'https://downloads.sifli.com/dl/sifli-sdk/MinGit/MinGit-2.52.0-32-bit.zip'
+    ia32: 'https://downloads.sifli.com/dl/sifli-sdk/MinGit/MinGit-2.52.0-32-bit.zip',
   };
 
   private constructor() {
@@ -78,9 +78,7 @@ export class MinGitService {
 
     // 未安装则下载
     try {
-      vscode.window.showInformationMessage(
-        vscode.l10n.t('System Git not found. Downloading MinGit...')
-      );
+      vscode.window.showInformationMessage(vscode.l10n.t('System Git not found. Downloading MinGit...'));
       await this.downloadAndExtractMinGit(installDir);
       if (fs.existsSync(gitExe)) {
         this.injectPath(cmdDir);
@@ -92,10 +90,7 @@ export class MinGitService {
     } catch (error) {
       this.logService.error('Failed to install MinGit:', error);
       vscode.window.showErrorMessage(
-        vscode.l10n.t(
-          'Failed to install MinGit: {0}',
-          error instanceof Error ? error.message : String(error)
-        )
+        vscode.l10n.t('Failed to install MinGit: {0}', error instanceof Error ? error.message : String(error))
       );
     }
   }
@@ -108,9 +103,9 @@ export class MinGitService {
   }
 
   private async isGitOnPath(): Promise<boolean> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const proc = spawn('git', ['--version'], { stdio: 'ignore' });
-      proc.on('close', (code) => resolve(code === 0));
+      proc.on('close', code => resolve(code === 0));
       proc.on('error', () => resolve(false));
       setTimeout(() => {
         try {
@@ -136,7 +131,7 @@ export class MinGitService {
     const response = await axios({
       method: 'GET',
       url: downloadUrl,
-      responseType: 'stream'
+      responseType: 'stream',
     });
 
     await new Promise<void>((resolve, reject) => {
@@ -165,11 +160,9 @@ export class MinGitService {
     const powershellPath = configuredPath && configuredPath.trim() !== '' ? configuredPath : 'powershell.exe';
 
     return new Promise((resolve, reject) => {
-      const proc = spawn(
-        powershellPath,
-        ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
-        { windowsHide: true }
-      );
+      const proc = spawn(powershellPath, ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command], {
+        windowsHide: true,
+      });
 
       let stderrOutput = '';
       proc.stderr?.on('data', (data: Buffer) => {

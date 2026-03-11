@@ -73,7 +73,7 @@ export class BuildExecutionService {
         success: false,
         taskName: TASK_NAMES.BUILD,
         runId: options?.runId,
-        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
+        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'),
       };
     }
 
@@ -84,7 +84,7 @@ export class BuildExecutionService {
     command = this.resolveTemplate(command, templateValues);
     const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(command, TASK_NAMES.BUILD, {
       waitForExit,
-      runId: options?.runId
+      runId: options?.runId,
     });
     return {
       success: exitCode === undefined || exitCode === 0,
@@ -92,7 +92,7 @@ export class BuildExecutionService {
       exitCode,
       command,
       background: !waitForExit,
-      runId: options?.runId
+      runId: options?.runId,
     };
   }
 
@@ -106,7 +106,7 @@ export class BuildExecutionService {
       return {
         success: false,
         taskName: TASK_NAMES.CLEAN,
-        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
+        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'),
       };
     }
 
@@ -115,7 +115,7 @@ export class BuildExecutionService {
       return {
         success: false,
         taskName: TASK_NAMES.CLEAN,
-        message: vscode.l10n.t('No workspace folder is open.')
+        message: vscode.l10n.t('No workspace folder is open.'),
       };
     }
 
@@ -123,12 +123,14 @@ export class BuildExecutionService {
     const buildPath = path.join(workspaceFolder.uri.fsPath, buildFolder);
     if (!fs.existsSync(buildPath)) {
       if (showNotifications) {
-        vscode.window.showInformationMessage(vscode.l10n.t('Build directory does not exist. No cleanup needed: {0}', buildFolder));
+        vscode.window.showInformationMessage(
+          vscode.l10n.t('Build directory does not exist. No cleanup needed: {0}', buildFolder)
+        );
       }
       return {
         success: true,
         taskName: TASK_NAMES.CLEAN,
-        message: vscode.l10n.t('Build directory does not exist. No cleanup needed: {0}', buildFolder)
+        message: vscode.l10n.t('Build directory does not exist. No cleanup needed: {0}', buildFolder),
       };
     }
 
@@ -139,7 +141,7 @@ export class BuildExecutionService {
     return {
       success: true,
       taskName: TASK_NAMES.CLEAN,
-      message: vscode.l10n.t('Build directory cleaned: {0}', buildFolder)
+      message: vscode.l10n.t('Build directory cleaned: {0}', buildFolder),
     };
   }
 
@@ -156,19 +158,21 @@ export class BuildExecutionService {
         success: false,
         taskName: TASK_NAMES.DOWNLOAD,
         runId: options?.runId,
-        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
+        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'),
       };
     }
     const selectedSerialPort = this.serialPortService.selectedSerialPort;
     if (!selectedSerialPort) {
       if (showNotifications) {
-        vscode.window.showWarningMessage(vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'));
+        vscode.window.showWarningMessage(
+          vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.')
+        );
       }
       return {
         success: false,
         taskName: TASK_NAMES.DOWNLOAD,
         runId: options?.runId,
-        message: vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.')
+        message: vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'),
       };
     }
 
@@ -184,7 +188,10 @@ export class BuildExecutionService {
           success: false,
           taskName: TASK_NAMES.DOWNLOAD,
           runId: options?.runId,
-          message: vscode.l10n.t('Build directory does not exist: {0}. Build first?', this.boardService.getBuildTargetFolder(selectedBoardName))
+          message: vscode.l10n.t(
+            'Build directory does not exist: {0}. Build first?',
+            this.boardService.getBuildTargetFolder(selectedBoardName)
+          ),
         };
       }
     }
@@ -199,7 +206,7 @@ export class BuildExecutionService {
     command = this.resolveTemplate(command, templateValues);
     const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(command, TASK_NAMES.DOWNLOAD, {
       waitForExit,
-      runId: options?.runId
+      runId: options?.runId,
     });
     return {
       success: exitCode === undefined || exitCode === 0,
@@ -207,7 +214,7 @@ export class BuildExecutionService {
       exitCode,
       command,
       background: !waitForExit,
-      runId: options?.runId
+      runId: options?.runId,
     };
   }
 
@@ -234,7 +241,7 @@ export class BuildExecutionService {
         success: false,
         taskName: TASK_NAMES.MENUCONFIG,
         runId: options?.runId,
-        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
+        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'),
       };
     }
 
@@ -244,7 +251,7 @@ export class BuildExecutionService {
     command = this.resolveTemplate(command, templateValues);
     const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(command, TASK_NAMES.MENUCONFIG, {
       waitForExit,
-      runId: options?.runId
+      runId: options?.runId,
     });
     return {
       success: exitCode === undefined || exitCode === 0,
@@ -252,7 +259,7 @@ export class BuildExecutionService {
       exitCode,
       command,
       background: !waitForExit,
-      runId: options?.runId
+      runId: options?.runId,
     };
   }
 
@@ -260,7 +267,9 @@ export class BuildExecutionService {
     const selectedBoardName = this.configService.getSelectedBoardName();
     if (!selectedBoardName || selectedBoardName === 'N/A') {
       if (showNotification) {
-        vscode.window.showWarningMessage(vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'));
+        vscode.window.showWarningMessage(
+          vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
+        );
       }
       return undefined;
     }
@@ -312,7 +321,7 @@ export class BuildExecutionService {
     return this.executeCompile({
       waitForExit: true,
       showNotifications,
-      runId
+      runId,
     });
   }
 

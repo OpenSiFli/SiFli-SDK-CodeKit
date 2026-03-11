@@ -4,15 +4,15 @@ export * from './sdk';
 export * from './workflow';
 // export * from './serialMonitor'; // 暂时注释掉避免 SerialPort 类型冲突
 
-export type TaskName = 
+export type TaskName =
   | 'SiFli: Build'
-  | 'SiFli: Download' 
+  | 'SiFli: Download'
   | 'SiFli: Menuconfig'
   | 'SiFli: Clean'
   | 'SiFli: Rebuild'
   | 'SiFli: Workflow Shell';
 
-export type CommandId = 
+export type CommandId =
   | 'extension.compile'
   | 'extension.rebuild'
   | 'extension.clean'

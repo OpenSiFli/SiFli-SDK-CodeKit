@@ -51,7 +51,7 @@ export class SdkService {
             version,
             path: sdkPath,
             current: isCurrent,
-            valid: isValid
+            valid: isValid,
           });
 
           this.logService.debug(`Found SDK: ${version} at ${sdkPath} (valid: ${isValid}, current: ${isCurrent})`);
@@ -72,7 +72,7 @@ export class SdkService {
         await this.configService.removeSdkConfig(invalidPath);
         this.logService.debug(`Removed invalid SDK path: ${invalidPath}`);
       }
-      
+
       // 如果当前激活的 SDK 也是无效的，清除它
       if (currentSdkPath && invalidPaths.includes(currentSdkPath)) {
         await this.configService.setCurrentSdkPath('');
@@ -90,9 +90,11 @@ export class SdkService {
           version,
           path: currentSdkRoot,
           current: true,
-          valid: isValid
+          valid: isValid,
         });
-        this.logService.debug(`Added current SDK from export script: ${version} at ${currentSdkRoot} (valid: ${isValid})`);
+        this.logService.debug(
+          `Added current SDK from export script: ${version} at ${currentSdkRoot} (valid: ${isValid})`
+        );
       }
     }
 
@@ -204,17 +206,13 @@ export class SdkService {
       const quickPickItems = sdkVersions.map(sdk => ({
         label: sdk.version,
         description: sdk.current ? vscode.l10n.t('(current)') : '',
-        detail: vscode.l10n.t(
-          'Path: {0}{1}',
-          sdk.path,
-          sdk.valid ? '' : vscode.l10n.t(' (invalid)')
-        ),
-        sdk
+        detail: vscode.l10n.t('Path: {0}{1}', sdk.path, sdk.valid ? '' : vscode.l10n.t(' (invalid)')),
+        sdk,
       }));
 
       const selectedItem = await vscode.window.showQuickPick(quickPickItems, {
         placeHolder: vscode.l10n.t('Select a SiFli SDK version to switch'),
-        canPickMany: false
+        canPickMany: false,
       });
 
       // if (selectedItem && !selectedItem.sdk.current) {
@@ -226,9 +224,7 @@ export class SdkService {
       }
     } catch (error) {
       this.logService.error('Error in switchSdkVersion:', error);
-      vscode.window.showErrorMessage(
-        vscode.l10n.t('Failed to switch SDK version: {0}', String(error))
-      );
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to switch SDK version: {0}', String(error)));
     }
   }
 
@@ -238,7 +234,7 @@ export class SdkService {
   public async activateSdk(sdk: SdkVersion): Promise<void> {
     try {
       this.logService.info(`Activating SDK: ${sdk.version} at ${sdk.path}`);
-      
+
       if (!sdk.valid) {
         const message = vscode.l10n.t('Selected SDK path is invalid: {0}', sdk.path);
         this.logService.error(message);
@@ -249,10 +245,7 @@ export class SdkService {
       // 获取当前平台对应的激活脚本路径
       const activationScript = this.getActivationScriptForPlatform(sdk.path);
       if (!activationScript) {
-        const message = vscode.l10n.t(
-          'No export script found for the current platform in SDK path: {0}',
-          sdk.path
-        );
+        const message = vscode.l10n.t('No export script found for the current platform in SDK path: {0}', sdk.path);
         this.logService.error(message);
         vscode.window.showErrorMessage(message);
         return;
@@ -269,7 +262,6 @@ export class SdkService {
       const successMessage = vscode.l10n.t('Switched to SiFli SDK version: {0}', sdk.version);
       this.logService.info(successMessage);
       vscode.window.showInformationMessage(successMessage);
-
     } catch (error) {
       this.logService.error('Error activating SDK:', error);
       vscode.window.showErrorMessage(vscode.l10n.t('Failed to activate SDK: {0}', String(error)));
@@ -279,7 +271,9 @@ export class SdkService {
   /**
    * 获取当前平台对应的激活脚本信息
    */
-  private getActivationScriptForPlatform(sdkPath: string): { scriptPath: string; configPath: string; command: string } | null {
+  private getActivationScriptForPlatform(
+    sdkPath: string
+  ): { scriptPath: string; configPath: string; command: string } | null {
     if (process.platform === 'win32') {
       // Windows 平台
       const ps1ScriptPath = path.join(sdkPath, 'export.ps1');
@@ -287,7 +281,7 @@ export class SdkService {
         return {
           scriptPath: ps1ScriptPath,
           configPath: ps1ScriptPath, // 配置中保存的路径
-          command: './export.ps1'    // 在SDK目录下执行的相对命令
+          command: './export.ps1', // 在SDK目录下执行的相对命令
         };
       }
     } else {
@@ -296,8 +290,8 @@ export class SdkService {
       if (fs.existsSync(shScriptPath)) {
         return {
           scriptPath: shScriptPath,
-          configPath: shScriptPath,    // 配置中保存的路径
-          command: '. ./export.sh'     // 在SDK目录下执行的相对命令
+          configPath: shScriptPath, // 配置中保存的路径
+          command: '. ./export.sh', // 在SDK目录下执行的相对命令
         };
       }
     }
@@ -323,7 +317,11 @@ export class SdkService {
   /**
    * 在终端中执行 SDK 激活脚本
    */
-  private async executeActivationScript(activationScript: { scriptPath: string; configPath: string; command: string }): Promise<void> {
+  private async executeActivationScript(activationScript: {
+    scriptPath: string;
+    configPath: string;
+    command: string;
+  }): Promise<void> {
     try {
       this.logService.info(`Executing SDK activation script: ${activationScript.scriptPath}`);
       const terminal = await this.terminalService.getOrCreateSiFliTerminalAndCdProject(false, { autoExport: false });
@@ -449,9 +447,7 @@ export class SdkService {
       );
     } catch (error) {
       console.error('[SdkService] Error setting SDK tools path:', error);
-      vscode.window.showErrorMessage(
-        vscode.l10n.t('Failed to set toolchain path: {0}', String(error))
-      );
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to set toolchain path: {0}', String(error)));
     }
   }
 

@@ -14,7 +14,7 @@
       @installation-complete="handleInstallationComplete"
     />
 
-        <!-- Advanced Setup (Original SDK Manager) -->
+    <!-- Advanced Setup (Original SDK Manager) -->
     <AdvancedSetup
       v-else-if="currentPage === 'advanced'"
       @go-back="currentPage = 'welcome'"
@@ -48,7 +48,10 @@
     />
 
     <!-- Success Page -->
-    <div v-else-if="currentPage === 'success'" class="min-h-screen bg-vscode-background text-vscode-foreground font-vscode p-8">
+    <div
+      v-else-if="currentPage === 'success'"
+      class="min-h-screen bg-vscode-background text-vscode-foreground font-vscode p-8"
+    >
       <div class="max-w-2xl mx-auto text-center">
         <div class="py-8">
           <div class="w-16 h-16 mx-auto mb-4 bg-green-500 rounded-full flex items-center justify-center">
@@ -60,11 +63,7 @@
           <p class="text-sm text-vscode-input-placeholder mb-6">
             {{ $t('success.message') }}
           </p>
-          <BaseButton
-            variant="primary"
-            @click="currentPage = 'welcome'"
-            class="px-8 py-3"
-          >
+          <BaseButton variant="primary" @click="currentPage = 'welcome'" class="px-8 py-3">
             {{ $t('success.returnHome') }}
           </BaseButton>
         </div>
@@ -99,11 +98,11 @@ const installationResult = ref<InstallationResult>({
   sdkVersion: '',
   installPath: '',
   sdkSource: 'github',
-  logs: []
+  logs: [],
 });
 const failureInfo = ref<{ message: string; logs: string[] }>({
   message: '',
-  logs: []
+  logs: [],
 });
 
 const handleModeSelected = (mode: string) => {
@@ -126,22 +125,25 @@ const handleInstallationComplete = (data?: any) => {
 };
 
 // 监听安装完成事件
-onMessage('installationCompleted', (data: { message: string; path: string; version?: string; source?: string; logs?: string[] }) => {
-  installationResult.value = {
-    sdkVersion: data.version || 'Unknown',
-    installPath: data.path,
-    sdkSource: (data.source as 'github' | 'gitee') || 'github',
-    logs: data.logs || []
-  };
-  failureInfo.value = { message: '', logs: [] };
-  currentPage.value = 'complete';
-});
+onMessage(
+  'installationCompleted',
+  (data: { message: string; path: string; version?: string; source?: string; logs?: string[] }) => {
+    installationResult.value = {
+      sdkVersion: data.version || 'Unknown',
+      installPath: data.path,
+      sdkSource: (data.source as 'github' | 'gitee') || 'github',
+      logs: data.logs || [],
+    };
+    failureInfo.value = { message: '', logs: [] };
+    currentPage.value = 'complete';
+  }
+);
 
 // 监听安装失败事件，跳转到错误页并展示日志
 onMessage('installationFailed', (data: { message: string; logs?: string[] }) => {
   failureInfo.value = {
     message: data.message || '安装失败',
-    logs: data.logs || []
+    logs: data.logs || [],
   };
   currentPage.value = 'error';
 });
@@ -186,12 +188,16 @@ onMounted(() => {
 .vscode-card {
   background: var(--vscode-editor-background);
   border: 1px solid var(--vscode-panel-border);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
 }
 
 .vscode-card:hover {
   border-color: var(--vscode-focus-border);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 </style>

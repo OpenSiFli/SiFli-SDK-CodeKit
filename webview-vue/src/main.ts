@@ -13,18 +13,20 @@ setupVSCodeMessageListener();
 function detectAndSetVSCodeTheme() {
   // 检测当前主题类型
   const body = document.body;
-  
+
   // 通过 CSS 变量检测主题
-  const backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--vscode-editor-background').trim();
+  const backgroundColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--vscode-editor-background')
+    .trim();
   const foregroundColor = getComputedStyle(document.documentElement).getPropertyValue('--vscode-foreground').trim();
-  
+
   console.log('[Theme Debug] Background color:', backgroundColor);
   console.log('[Theme Debug] Foreground color:', foregroundColor);
-  
+
   // 更准确的主题检测
   let isDark = false;
   let isLight = false;
-  
+
   if (backgroundColor) {
     // 转换rgb到亮度值
     if (backgroundColor.startsWith('rgb')) {
@@ -48,11 +50,15 @@ function detectAndSetVSCodeTheme() {
       console.log('[Theme Debug] HEX brightness:', brightness, isDark ? 'dark' : 'light');
     } else {
       // 关键词检测
-      isDark = backgroundColor.includes('30') || backgroundColor.includes('37') || backgroundColor.includes('1e') || backgroundColor.includes('25');
+      isDark =
+        backgroundColor.includes('30') ||
+        backgroundColor.includes('37') ||
+        backgroundColor.includes('1e') ||
+        backgroundColor.includes('25');
       isLight = backgroundColor.includes('255') || backgroundColor.includes('fff') || backgroundColor.includes('white');
     }
   }
-  
+
   // 如果背景色检测失败，尝试前景色
   if (!isDark && !isLight && foregroundColor) {
     if (foregroundColor.startsWith('rgb')) {
@@ -67,27 +73,27 @@ function detectAndSetVSCodeTheme() {
       }
     }
   }
-  
+
   // 设置主题属性
   const currentTheme = body.getAttribute('data-vscode-theme-kind');
   const newTheme = isDark ? 'vscode-dark' : 'vscode-light';
-  
+
   if (currentTheme !== newTheme) {
     body.setAttribute('data-vscode-theme-kind', newTheme);
     console.log('[Theme] Theme changed from', currentTheme, 'to', newTheme);
   }
-  
+
   console.log('[Theme] Current theme:', newTheme);
-  
+
   // 监听主题变化
   const observer = new MutationObserver(() => {
     // 延迟重新检测主题
     setTimeout(detectAndSetVSCodeTheme, 100);
   });
-  
+
   observer.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ['style']
+    attributeFilter: ['style'],
   });
 }
 
@@ -107,7 +113,7 @@ const page = urlParams.get('page') || 'sdk-manager';
 // 动态导入对应的页面组件
 async function loadPage() {
   let component;
-  
+
   switch (page) {
     case 'sdk-manager':
       component = (await import('./pages/SdkManager.vue')).default;
@@ -115,7 +121,7 @@ async function loadPage() {
     default:
       component = (await import('./pages/SdkManager.vue')).default;
   }
-  
+
   const app = createApp(component);
   app.use(i18n);
   app.mount('#app');

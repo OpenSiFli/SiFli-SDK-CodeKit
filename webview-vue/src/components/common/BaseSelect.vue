@@ -9,21 +9,16 @@
       @blur="handleBlur"
     >
       <option v-if="placeholder" value="" disabled>{{ placeholder }}</option>
-      <option
-        v-for="option in options"
-        :key="option.value"
-        :value="option.value"
-        :disabled="option.disabled"
-      >
+      <option v-for="option in options" :key="option.value" :value="option.value" :disabled="option.disabled">
         {{ option.label }}
       </option>
     </select>
     <div class="select-arrow">
-      <svg 
+      <svg
         :class="{ 'rotate-180': isFocused }"
-        class="w-4 h-4 transition-transform duration-200" 
-        fill="none" 
-        stroke="currentColor" 
+        class="w-4 h-4 transition-transform duration-200"
+        fill="none"
+        stroke="currentColor"
         viewBox="0 0 24 24"
       >
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -50,7 +45,7 @@ interface Props extends BaseSelectProps {
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
   disabled: false,
-  placeholder: ''
+  placeholder: '',
 });
 
 const emit = defineEmits<{
@@ -68,8 +63,10 @@ const selectClasses = computed(() => {
     'focus:border-vscode-focus-border focus:outline-none focus:ring-2 focus:ring-vscode-focus-border focus:ring-opacity-20',
     'hover:border-opacity-70 cursor-pointer appearance-none',
     'disabled:opacity-50 disabled:cursor-not-allowed',
-    isFocused.value ? 'border-vscode-focus-border shadow-lg' : ''
-  ].filter(Boolean).join(' ');
+    isFocused.value ? 'border-vscode-focus-border shadow-lg' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 });
 
 const handleChange = (event: Event) => {

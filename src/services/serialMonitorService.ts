@@ -32,9 +32,7 @@ export class SerialMonitorService {
       console.log('串口监听器服务已初始化（使用内置实现）');
     } catch (error) {
       console.error('初始化串口监听器服务失败:', error);
-      vscode.window.showErrorMessage(
-        vscode.l10n.t('Failed to initialize serial monitor: {0}', String(error))
-      );
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to initialize serial monitor: {0}', String(error)));
     }
   }
 
@@ -46,7 +44,7 @@ export class SerialMonitorService {
   public async openSerialMonitor(serialPort?: string, baudRate?: number): Promise<boolean> {
     try {
       const actualBaudRate = baudRate || this.defaultBaudRate;
-      
+
       this.currentConnectionId = await this.builtinService.openSerialMonitor(
         serialPort,
         actualBaudRate,
@@ -80,12 +78,12 @@ export class SerialMonitorService {
       }
 
       const success = await this.builtinService.closeSerialMonitor(this.currentConnectionId);
-      
+
       if (success) {
         console.log('串口监听器已关闭');
         this.currentConnectionId = undefined;
       }
-      
+
       return success;
     } catch (error) {
       console.error('关闭串口监听器失败:', error);
@@ -108,19 +106,16 @@ export class SerialMonitorService {
       }
 
       console.log('正在重新打开串口监听器...');
-      
+
       // 重新打开串口监听器
-      const success = await this.openSerialMonitor(
-        this.lastUsedSerialPort, 
-        this.lastUsedBaudRate
-      );
-      
+      const success = await this.openSerialMonitor(this.lastUsedSerialPort, this.lastUsedBaudRate);
+
       if (success) {
         console.log('串口监听器已重新打开');
       } else {
         console.log('重新打开串口监听器失败');
       }
-      
+
       return success;
     } catch (error) {
       console.error('恢复串口监听器失败:', error);
@@ -181,7 +176,7 @@ export class SerialMonitorService {
   public getLastUsedConfig(): { port?: string; baudRate?: number } {
     return {
       port: this.lastUsedSerialPort,
-      baudRate: this.lastUsedBaudRate
+      baudRate: this.lastUsedBaudRate,
     };
   }
 

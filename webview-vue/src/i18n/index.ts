@@ -7,7 +7,7 @@ import zh from './locales/zh.json';
 
 // 支持的语言列表
 export const supportedLocales = ['en', 'zh'] as const;
-export type SupportedLocale = typeof supportedLocales[number];
+export type SupportedLocale = (typeof supportedLocales)[number];
 
 // 默认语言
 const defaultLocale: SupportedLocale = 'en';
@@ -38,7 +38,7 @@ export function getCurrentLocale(): SupportedLocale {
 export function initializeLocale() {
   // 从 VS Code 获取语言设置，如果获取不到则使用默认语言
   let locale: SupportedLocale = defaultLocale;
-  
+
   // 通知 VS Code 我们已准备好接收初始化数据
   const vscodeApi = getVSCodeApiInstance();
   if (vscodeApi) {
@@ -55,16 +55,16 @@ export function initializeLocale() {
     }
     setLocale(locale);
   }
-  
+
   return locale;
 }
 
 // 监听来自 VS Code 的消息
 export function setupVSCodeMessageListener() {
   if (typeof window !== 'undefined') {
-    window.addEventListener('message', (event) => {
+    window.addEventListener('message', event => {
       const message = event.data;
-      
+
       switch (message.command) {
         case 'initializeLocale':
         case 'localeChanged':
@@ -84,7 +84,7 @@ export function notifyVSCodeLocaleChange(locale: SupportedLocale) {
   if (vscodeApi) {
     vscodeApi.postMessage({
       command: 'localeChanged',
-      locale: locale
+      locale: locale,
     });
   }
 }

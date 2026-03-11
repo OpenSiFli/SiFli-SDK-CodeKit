@@ -1,9 +1,5 @@
 <template>
-  <button
-    :class="buttonClasses"
-    :disabled="disabled || loading"
-    @click="$emit('click', $event)"
-  >
+  <button :class="buttonClasses" :disabled="disabled || loading" @click="$emit('click', $event)">
     <span v-if="loading" class="loading loading-spinner loading-sm mr-2"></span>
     <slot></slot>
   </button>
@@ -26,7 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
   size: 'md',
   disabled: false,
   loading: false,
-  block: false
+  block: false,
 });
 
 defineEmits<{
@@ -34,31 +30,27 @@ defineEmits<{
 }>();
 
 const buttonClasses = computed(() => {
-  const baseClasses = 'btn vscode-button btn-ripple transition-all duration-200 transform hover:scale-105 active:scale-95 focus:ring-2 focus:ring-opacity-50 rounded-md px-4 py-2 font-medium border-none focus:border-none';
-  
+  const baseClasses =
+    'btn vscode-button btn-ripple transition-all duration-200 transform hover:scale-105 active:scale-95 focus:ring-2 focus:ring-opacity-50 rounded-md px-4 py-2 font-medium border-none focus:border-none';
+
   const variantClasses = {
     primary: 'btn-primary vscode-button-primary',
     secondary: 'btn-secondary vscode-button-secondary',
     success: 'btn-success vscode-button-success',
     warning: 'btn-warning vscode-button-warning',
     error: 'btn-error vscode-button-error',
-    info: 'btn-info vscode-button-info'
+    info: 'btn-info vscode-button-info',
   };
 
   const sizeClasses = {
     sm: 'btn-sm text-sm px-3 py-1',
     md: 'px-4 py-2',
-    lg: 'btn-lg text-lg px-6 py-3'
+    lg: 'btn-lg text-lg px-6 py-3',
   };
 
   const blockClass = props.block ? 'btn-block w-full' : '';
 
-  return [
-    baseClasses,
-    variantClasses[props.variant],
-    sizeClasses[props.size],
-    blockClass
-  ].filter(Boolean).join(' ');
+  return [baseClasses, variantClasses[props.variant], sizeClasses[props.size], blockClass].filter(Boolean).join(' ');
 });
 </script>
 
@@ -93,7 +85,11 @@ const buttonClasses = computed(() => {
   height: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
-  transition: width 0.6s, height 0.6s, top 0.6s, left 0.6s;
+  transition:
+    width 0.6s,
+    height 0.6s,
+    top 0.6s,
+    left 0.6s;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }

@@ -3,14 +3,17 @@
     <label class="block text-sm font-medium text-vscode-foreground mb-2 transition-colors duration-200">
       {{ downloadType === 'release' ? 'SDK 版本' : 'SDK 分支' }}
     </label>
-    
-    <div v-if="isLoading" class="flex items-center justify-center py-3 px-4 bg-vscode-input-background border border-vscode-input-border rounded-md">
+
+    <div
+      v-if="isLoading"
+      class="flex items-center justify-center py-3 px-4 bg-vscode-input-background border border-vscode-input-border rounded-md"
+    >
       <div class="loading loading-spinner loading-sm mr-2"></div>
       <span class="text-vscode-input-placeholder">
         {{ downloadType === 'release' ? '正在加载版本...' : '正在加载分支...' }}
       </span>
     </div>
-    
+
     <Transition v-else name="fade" mode="out-in">
       <BaseSelect
         v-if="downloadType === 'release'"
@@ -55,29 +58,29 @@ const emit = defineEmits<{
 
 const selectedVersion = computed({
   get: () => props.selectedVersion,
-  set: (value: string) => emit('update:version', value)
+  set: (value: string) => emit('update:version', value),
 });
 
 const selectedBranch = computed({
   get: () => props.selectedBranch,
-  set: (value: string) => emit('update:branch', value)
+  set: (value: string) => emit('update:branch', value),
 });
 
-const releaseOptions = computed(() => 
+const releaseOptions = computed(() =>
   props.releases
     .filter(release => release.tagName && release.tagName.trim() !== '')
     .map(release => ({
       value: release.tagName,
-      label: release.name || release.tagName
+      label: release.name || release.tagName,
     }))
 );
 
-const branchOptions = computed(() => 
+const branchOptions = computed(() =>
   props.branches
     .filter(branch => branch.name && branch.name.trim() !== '')
     .map(branch => ({
       value: branch.name,
-      label: branch.name
+      label: branch.name,
     }))
 );
 
@@ -116,11 +119,13 @@ const handleBranchUpdate = (value: string) => {
 }
 
 /* Fade transition for content switching */
-.fade-enter-active, .fade-leave-active {
+.fade-enter-active,
+.fade-leave-active {
   transition: opacity 0.3s ease;
 }
 
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
 
@@ -129,7 +134,11 @@ const handleBranchUpdate = (value: string) => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>

@@ -41,13 +41,13 @@ export class ConfigService {
    */
   private loadConfiguration(): SiFliConfig {
     const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
-    
+
     return {
       powershellPath: config.get<string>('powershellPath'),
       embeddedPythonPath: config.get<string>('embeddedPythonPath'),
       useEmbeddedPython: config.get<boolean>('useEmbeddedPython') ?? true,
       customBoardSearchPath: config.get<string>('customBoardSearchPath'),
-      sdkConfigs: config.get<SdkConfig[]>('sdkConfigs') || []
+      sdkConfigs: config.get<SdkConfig[]>('sdkConfigs') || [],
     };
   }
 
@@ -58,7 +58,7 @@ export class ConfigService {
   private compareVersions(v1: string, v2: string): number {
     const parts1 = v1.split('.').map(Number);
     const parts2 = v2.split('.').map(Number);
-    
+
     for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
       const p1 = parts1[i] || 0;
       const p2 = parts2[i] || 0;
@@ -90,7 +90,7 @@ export class ConfigService {
    */
   public async runConfigMigrations(context: vscode.ExtensionContext): Promise<void> {
     const lastVersion = context.globalState.get<string>('sifli-sdk-codekit.lastMigrationVersion');
-    
+
     this.logService.debug(`Last migration version: ${lastVersion || 'none'}`);
 
     // 执行 v1.2.2 的迁移：将配置从 settings.json 迁移到 workspaceState
@@ -118,7 +118,7 @@ export class ConfigService {
    */
   private async migrateToWorkspaceState(): Promise<void> {
     const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
-    
+
     // 迁移 defaultChipModule
     const oldDefaultChipModule = config.get<string>('defaultChipModule');
     if (oldDefaultChipModule && !this.workspaceStateService.getDefaultChipModule()) {
@@ -135,9 +135,11 @@ export class ConfigService {
 
     // 迁移 numThreads
     const oldNumThreads = config.get<number>('numThreads');
-    if (oldNumThreads && oldNumThreads !== 8) { // 8 是默认值
+    if (oldNumThreads && oldNumThreads !== 8) {
+      // 8 是默认值
       const currentNumThreads = this.workspaceStateService.getNumThreads();
-      if (currentNumThreads === 8) { // 如果 workspaceState 中还是默认值，则迁移
+      if (currentNumThreads === 8) {
+        // 如果 workspaceState 中还是默认值，则迁移
         await this.workspaceStateService.setNumThreads(oldNumThreads);
         this.logService.debug(`Migrated numThreads: ${oldNumThreads}`);
       }
@@ -167,8 +169,8 @@ export class ConfigService {
   }
 
   public async updateConfigValue<K extends keyof SiFliConfig>(
-    key: K, 
-    value: SiFliConfig[K], 
+    key: K,
+    value: SiFliConfig[K],
     target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Global
   ): Promise<void> {
     const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
@@ -229,7 +231,7 @@ export class ConfigService {
     // 同时更新 detectedSdkVersions 中的 current 标记
     this._detectedSdkVersions = this._detectedSdkVersions.map(sdk => ({
       ...sdk,
-      current: sdk.path === path
+      current: sdk.path === path,
     }));
   }
 
@@ -270,7 +272,7 @@ export class ConfigService {
   public async setSdkToolsPath(sdkPath: string, toolsPath: string): Promise<void> {
     const updatedConfigs = [...this._config.sdkConfigs];
     const existingIndex = updatedConfigs.findIndex(config => config.path === sdkPath);
-    
+
     if (existingIndex === -1) {
       // 如果SDK不存在，添加新的配置
       updatedConfigs.push({ path: sdkPath, toolsPath });
@@ -295,7 +297,7 @@ export class ConfigService {
   public async removeSdkToolsPath(sdkPath: string): Promise<void> {
     const updatedConfigs = [...this._config.sdkConfigs];
     const existingIndex = updatedConfigs.findIndex(config => config.path === sdkPath);
-    
+
     if (existingIndex !== -1) {
       // 移除工具链路径，但保留SDK配置
       updatedConfigs[existingIndex] = { ...updatedConfigs[existingIndex], toolsPath: undefined };
@@ -327,7 +329,7 @@ export class ConfigService {
   public async setSdkConfig(sdkPath: string, config: SdkConfig): Promise<void> {
     const updatedConfigs = [...this._config.sdkConfigs];
     const existingIndex = updatedConfigs.findIndex(c => c.path === sdkPath);
-    
+
     if (existingIndex === -1) {
       updatedConfigs.push({ ...config, path: sdkPath });
     } else {

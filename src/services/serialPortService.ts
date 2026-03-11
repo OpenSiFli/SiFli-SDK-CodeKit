@@ -64,12 +64,12 @@ export class SerialPortService {
    */
   public async initialize(): Promise<void> {
     this.logService.info('Initializing serial port service...');
-    
+
     // 从 workspaceState 中获取上次选择的串口
     const savedPort = this.workspaceStateService.getSelectedSerialPort();
     if (savedPort) {
       this.logService.debug(`Checking saved serial port: ${savedPort}`);
-      
+
       // 检查保存的串口是否仍然可用
       const isAvailable = await this.validateSerialPort(savedPort);
       if (isAvailable) {
@@ -105,7 +105,7 @@ export class SerialPortService {
   public async getSerialPorts(): Promise<SerialPort[]> {
     try {
       const ports = await SerialPortAPI.list();
-      
+
       return ports.map(port => ({
         path: port.path,
         manufacturer: port.manufacturer,
@@ -113,7 +113,7 @@ export class SerialPortService {
         pnpId: port.pnpId,
         locationId: port.locationId,
         productId: port.productId,
-        vendorId: port.vendorId
+        vendorId: port.vendorId,
       }));
     } catch (error) {
       console.error(`[SerialPortService] Error getting serial ports: ${error}`);
@@ -128,7 +128,7 @@ export class SerialPortService {
     try {
       // 第一步：选择串口
       const ports = await this.getSerialPorts();
-      
+
       if (ports.length === 0) {
         vscode.window.showWarningMessage(
           vscode.l10n.t('No serial ports detected. Please check your device connection.')
@@ -139,12 +139,12 @@ export class SerialPortService {
       const portItems = ports.map(port => ({
         label: port.path,
         description: port.manufacturer || '',
-        detail: port.serialNumber || port.pnpId || ''
+        detail: port.serialNumber || port.pnpId || '',
       }));
 
       const selectedPort = await vscode.window.showQuickPick(portItems, {
         placeHolder: vscode.l10n.t('Select a serial port'),
-        canPickMany: false
+        canPickMany: false,
       });
 
       if (!selectedPort) {
@@ -155,15 +155,12 @@ export class SerialPortService {
       const downloadBaudItems = SerialPortService.BAUD_RATES.map(baud => ({
         label: baud.toString(),
         // description: baud === this._downloadBaudRate ? '(当前)' : '',
-        detail: vscode.l10n.t('Download baud rate: {0}', String(baud))
+        detail: vscode.l10n.t('Download baud rate: {0}', String(baud)),
       }));
 
       const selectedDownloadBaud = await vscode.window.showQuickPick(downloadBaudItems, {
-        placeHolder: vscode.l10n.t(
-          'Select download baud rate (current: {0})',
-          String(this._downloadBaudRate)
-        ),
-        canPickMany: false
+        placeHolder: vscode.l10n.t('Select download baud rate (current: {0})', String(this._downloadBaudRate)),
+        canPickMany: false,
       });
 
       if (!selectedDownloadBaud) {
@@ -174,15 +171,12 @@ export class SerialPortService {
       const monitorBaudItems = SerialPortService.BAUD_RATES.map(baud => ({
         label: baud.toString(),
         // description: baud === this._monitorBaudRate ? '(当前)' : '',
-        detail: vscode.l10n.t('Monitor baud rate: {0}', String(baud))
+        detail: vscode.l10n.t('Monitor baud rate: {0}', String(baud)),
       }));
 
       const selectedMonitorBaud = await vscode.window.showQuickPick(monitorBaudItems, {
-        placeHolder: vscode.l10n.t(
-          'Select monitor baud rate (current: {0})',
-          String(this._monitorBaudRate)
-        ),
-        canPickMany: false
+        placeHolder: vscode.l10n.t('Select monitor baud rate (current: {0})', String(this._monitorBaudRate)),
+        canPickMany: false,
       });
 
       if (!selectedMonitorBaud) {
@@ -202,7 +196,7 @@ export class SerialPortService {
       await this.workspaceStateService.setSelectedSerialPort(port);
       await this.workspaceStateService.setDownloadBaudRate(downloadBaud);
       await this.workspaceStateService.setMonitorBaudRate(monitorBaud);
-      
+
       this.logService.info(`Port configuration updated: ${port}, download: ${downloadBaud}, monitor: ${monitorBaud}`);
       vscode.window.showInformationMessage(
         vscode.l10n.t(
@@ -216,13 +210,11 @@ export class SerialPortService {
       return {
         port,
         downloadBaud,
-        monitorBaud
+        monitorBaud,
       };
     } catch (error) {
       console.error('[SerialPortService] Error in selectPort:', error);
-      vscode.window.showErrorMessage(
-        vscode.l10n.t('Error selecting serial port configuration: {0}', String(error))
-      );
+      vscode.window.showErrorMessage(vscode.l10n.t('Error selecting serial port configuration: {0}', String(error)));
       return undefined;
     }
   }

@@ -7,17 +7,17 @@ export function validateSerialPortPath(path: string): boolean {
   }
 
   const trimmedPath = path.trim();
-  
+
   // Windows: COM1, COM2, etc.
   if (/^COM\d+$/i.test(trimmedPath)) {
     return true;
   }
-  
+
   // Unix-like: /dev/ttyUSB0, /dev/ttyACM0, /dev/cu.*, etc.
   if (/^\/dev\/(tty(USB|ACM)\d+|cu\..*)$/.test(trimmedPath)) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -28,9 +28,9 @@ export function validateBoardName(name: string): boolean {
   if (!name || typeof name !== 'string') {
     return false;
   }
-  
+
   const trimmedName = name.trim();
-  
+
   // 板子名称应该只包含字母、数字、下划线和连字符
   return /^[a-zA-Z0-9_-]+$/.test(trimmedName) && trimmedName.length > 0;
 }
@@ -49,15 +49,15 @@ export function validateSdkVersion(version: string): boolean {
   if (!version || typeof version !== 'string') {
     return false;
   }
-  
+
   const trimmedVersion = version.trim();
-  
+
   // 支持语义化版本号格式：1.0.0, v1.0.0, 1.0.0-beta, etc.
   const semanticVersionRegex = /^v?(\d+)\.(\d+)\.(\d+)(-[a-zA-Z0-9.-]+)?$/;
-  
+
   // 或者支持简单的标签名
   const tagNameRegex = /^[a-zA-Z0-9._-]+$/;
-  
+
   return semanticVersionRegex.test(trimmedVersion) || tagNameRegex.test(trimmedVersion);
 }
 
@@ -68,20 +68,20 @@ export function validateFilePath(path: string): boolean {
   if (!path || typeof path !== 'string') {
     return false;
   }
-  
+
   const trimmedPath = path.trim();
-  
+
   // 检查路径长度
   if (trimmedPath.length === 0 || trimmedPath.length > 260) {
     return false;
   }
-  
+
   // 检查是否包含非法字符（Windows）
   const illegalChars = /[<>:"|?*]/;
   if (process.platform === 'win32' && illegalChars.test(trimmedPath)) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -92,7 +92,7 @@ export function validateUrl(url: string): boolean {
   if (!url || typeof url !== 'string') {
     return false;
   }
-  
+
   try {
     new URL(url);
     return true;
@@ -136,9 +136,9 @@ export function sanitizeBoardPath(path: string): string | null {
   if (!validateFilePath(path)) {
     return null;
   }
-  
+
   // 移除前后空格并规范化路径分隔符
   const sanitized = path.trim().replace(/[\\\/]+/g, require('path').sep);
-  
+
   return sanitized;
 }

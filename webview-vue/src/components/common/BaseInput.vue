@@ -29,7 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
   placeholder: '',
   disabled: false,
   readonly: false,
-  type: 'text'
+  type: 'text',
 });
 
 const emit = defineEmits<{
@@ -49,8 +49,10 @@ const inputClasses = computed(() => {
     'hover:border-opacity-70',
     'disabled:opacity-50 disabled:cursor-not-allowed',
     'readonly:bg-opacity-50 readonly:cursor-default',
-    isFocused.value ? 'border-vscode-focus-border shadow-lg' : ''
-  ].filter(Boolean).join(' ');
+    isFocused.value ? 'border-vscode-focus-border shadow-lg' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 });
 
 const handleInput = (event: Event) => {

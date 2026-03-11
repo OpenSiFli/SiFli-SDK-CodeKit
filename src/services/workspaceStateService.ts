@@ -90,10 +90,7 @@ export class WorkspaceStateService {
   /**
    * 设置工作区状态值
    */
-  public async set<K extends keyof WorkspaceState>(
-    key: K,
-    value: WorkspaceState[K]
-  ): Promise<void> {
+  public async set<K extends keyof WorkspaceState>(key: K, value: WorkspaceState[K]): Promise<void> {
     const context = this.ensureInitialized();
     await context.workspaceState.update(key, value);
   }

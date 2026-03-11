@@ -80,11 +80,14 @@ export class BoardService {
             const boardName = entry.name;
 
             // 避免重复添加（优先级：project_local > custom > sdk）
-            if (!boardMap.has(boardName) || this.getBoardTypePriority(sourceType) > this.getBoardTypePriority(boardMap.get(boardName)!.type)) {
+            if (
+              !boardMap.has(boardName) ||
+              this.getBoardTypePriority(sourceType) > this.getBoardTypePriority(boardMap.get(boardName)!.type)
+            ) {
               boardMap.set(boardName, {
                 name: boardName,
                 path: boardPath,
-                type: sourceType
+                type: sourceType,
               });
             }
           }
@@ -97,10 +100,14 @@ export class BoardService {
 
   private getBoardTypePriority(type: Board['type']): number {
     switch (type) {
-      case 'project_local': return 3;
-      case 'custom': return 2;
-      case 'sdk': return 1;
-      default: return 0;
+      case 'project_local':
+        return 3;
+      case 'custom':
+        return 2;
+      case 'sdk':
+        return 1;
+      default:
+        return 0;
     }
   }
 
@@ -257,9 +264,7 @@ export class BoardService {
         }
 
         // 构建完整文件路径
-        const fullFilePath = path.isAbsolute(filePath)
-          ? filePath
-          : path.join(workspaceRoot, buildFolder, filePath);
+        const fullFilePath = path.isAbsolute(filePath) ? filePath : path.join(workspaceRoot, buildFolder, filePath);
 
         // 生成参数：自动地址文件仅使用路径，否则使用 file@address
         const fileArgument = fileAddress ? `${fullFilePath}@${fileAddress}` : fullFilePath;

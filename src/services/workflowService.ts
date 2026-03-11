@@ -8,7 +8,7 @@ import {
   WorkflowStatusBarButton,
   WorkflowValidationIssue,
   WorkflowStep,
-  WorkflowStepType
+  WorkflowStepType,
 } from '../types';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
@@ -102,7 +102,7 @@ export class WorkflowService {
       'shell.command',
       'monitor.open',
       'monitor.close',
-      'serial.selectPort'
+      'serial.selectPort',
     ];
   }
 
@@ -157,7 +157,7 @@ export class WorkflowService {
         scoped.push({
           scope,
           workflow,
-          workflowRef: this.getWorkflowReference(scope, workflow.id)
+          workflowRef: this.getWorkflowReference(scope, workflow.id),
         });
       }
     }
@@ -176,7 +176,7 @@ export class WorkflowService {
     return {
       scope: parsed.scope,
       workflow,
-      workflowRef: this.getWorkflowReference(parsed.scope, parsed.workflowId)
+      workflowRef: this.getWorkflowReference(parsed.scope, parsed.workflowId),
     };
   }
 
@@ -211,18 +211,8 @@ export class WorkflowService {
         .map(workflow => workflow.id?.trim())
         .filter((id): id is string => !!id)
     );
-    this.validateStatusBarButtonList(
-      this.getWorkspaceStatusBarButtons(),
-      'workspace',
-      resolvedWorkflowIds,
-      issues
-    );
-    this.validateStatusBarButtonList(
-      this.getUserStatusBarButtons(),
-      'user',
-      resolvedWorkflowIds,
-      issues
-    );
+    this.validateStatusBarButtonList(this.getWorkspaceStatusBarButtons(), 'workspace', resolvedWorkflowIds, issues);
+    this.validateStatusBarButtonList(this.getUserStatusBarButtons(), 'user', resolvedWorkflowIds, issues);
 
     return issues;
   }
@@ -241,13 +231,13 @@ export class WorkflowService {
         issues.push({
           code: 'workflow.id.empty',
           path: `${basePath}.id`,
-          message: 'Workflow id must be a non-empty string.'
+          message: 'Workflow id must be a non-empty string.',
         });
       } else if (workflowIds.has(workflowId)) {
         issues.push({
           code: 'workflow.id.duplicate',
           path: `${basePath}.id`,
-          message: `Duplicate workflow id "${workflowId}".`
+          message: `Duplicate workflow id "${workflowId}".`,
         });
       } else {
         workflowIds.add(workflowId);
@@ -257,7 +247,7 @@ export class WorkflowService {
         issues.push({
           code: 'workflow.name.empty',
           path: `${basePath}.name`,
-          message: 'Workflow name must be a non-empty string.'
+          message: 'Workflow name must be a non-empty string.',
         });
       }
 
@@ -265,7 +255,7 @@ export class WorkflowService {
         issues.push({
           code: 'workflow.steps.empty',
           path: `${basePath}.steps`,
-          message: 'Workflow must contain at least one step.'
+          message: 'Workflow must contain at least one step.',
         });
         return;
       }
@@ -275,7 +265,7 @@ export class WorkflowService {
           issues.push({
             code: 'workflow.step.unsupported',
             path: `${basePath}.steps[${stepIndex}].type`,
-            message: `Unsupported step type "${step.type}".`
+            message: `Unsupported step type "${step.type}".`,
           });
         }
         if (step.type === 'shell.command') {
@@ -284,7 +274,7 @@ export class WorkflowService {
             issues.push({
               code: 'workflow.step.shell.command.empty',
               path: `${basePath}.steps[${stepIndex}].args.command`,
-              message: 'shell.command step requires args.command.'
+              message: 'shell.command step requires args.command.',
             });
           }
         }
@@ -306,13 +296,13 @@ export class WorkflowService {
         issues.push({
           code: 'statusbar.id.empty',
           path: `${basePath}.id`,
-          message: 'Status bar button id must be a non-empty string.'
+          message: 'Status bar button id must be a non-empty string.',
         });
       } else if (buttonIds.has(buttonId)) {
         issues.push({
           code: 'statusbar.id.duplicate',
           path: `${basePath}.id`,
-          message: `Duplicate status bar button id "${buttonId}".`
+          message: `Duplicate status bar button id "${buttonId}".`,
         });
       } else {
         buttonIds.add(buttonId);
@@ -322,7 +312,7 @@ export class WorkflowService {
         issues.push({
           code: 'statusbar.action.invalid',
           path: `${basePath}.action`,
-          message: 'Button action.kind must be "workflow" or "command".'
+          message: 'Button action.kind must be "workflow" or "command".',
         });
         return;
       }
@@ -332,13 +322,13 @@ export class WorkflowService {
           issues.push({
             code: 'statusbar.action.workflowId.empty',
             path: `${basePath}.action.workflowId`,
-            message: 'workflow action requires workflowId.'
+            message: 'workflow action requires workflowId.',
           });
         } else if (!resolvedWorkflowIds.has(button.action.workflowId)) {
           issues.push({
             code: 'statusbar.action.workflowId.notFound',
             path: `${basePath}.action.workflowId`,
-            message: `workflowId "${button.action.workflowId}" does not exist.`
+            message: `workflowId "${button.action.workflowId}" does not exist.`,
           });
         }
       }
@@ -347,7 +337,7 @@ export class WorkflowService {
         issues.push({
           code: 'statusbar.action.commandId.empty',
           path: `${basePath}.action.commandId`,
-          message: 'command action requires commandId.'
+          message: 'command action requires commandId.',
         });
       }
     });
@@ -392,12 +382,12 @@ export class WorkflowService {
     const items = issues.map(issue => ({
       label: issue.code,
       description: issue.path,
-      detail: issue.message
+      detail: issue.message,
     }));
     await vscode.window.showQuickPick(items, {
       title: vscode.l10n.t('Workflow diagnostics ({0})', String(issues.length)),
       canPickMany: false,
-      placeHolder: vscode.l10n.t('Select an item to review')
+      placeHolder: vscode.l10n.t('Select an item to review'),
     });
   }
 
@@ -414,7 +404,7 @@ export class WorkflowService {
       allowShellApprovalPrompt: true,
       allowNotifications: true,
       allowInteractivePortSelection: true,
-      allowMonitorPortPrompt: true
+      allowMonitorPortPrompt: true,
     });
     return result.success;
   }
@@ -425,7 +415,7 @@ export class WorkflowService {
       return {
         runnable: false,
         reasons: [vscode.l10n.t('Workflow not found: {0}', String(workflowRef))],
-        hasShellCommand: false
+        hasShellCommand: false,
       };
     }
 
@@ -449,7 +439,7 @@ export class WorkflowService {
         message: vscode.l10n.t('Workflow not found: {0}', String(workflowRef)),
         skippedStepIndexes: [],
         continuedFailureSteps: [],
-        runId: options?.runId
+        runId: options?.runId,
       };
     }
 
@@ -465,7 +455,7 @@ export class WorkflowService {
         runId: options?.runId,
         message: compatibility.reasons.join('; '),
         skippedStepIndexes: [],
-        continuedFailureSteps: []
+        continuedFailureSteps: [],
       };
     }
 
@@ -478,7 +468,7 @@ export class WorkflowService {
       allowInteractivePortSelection: false,
       allowMonitorPortPrompt: false,
       runId: options?.runId,
-      disallowedStepTypes: new Set<WorkflowStepType>(['build.menuconfig', 'serial.selectPort'])
+      disallowedStepTypes: new Set<WorkflowStepType>(['build.menuconfig', 'serial.selectPort']),
     });
   }
 
@@ -530,7 +520,7 @@ export class WorkflowService {
             return vscode.l10n.t('This field is required.');
           }
           return null;
-        }
+        },
       });
 
       if (value === undefined) {
@@ -560,7 +550,7 @@ export class WorkflowService {
           values[input.key] = input.defaultValue;
         } else if (input.required) {
           return {
-            error: vscode.l10n.t('Workflow input is required: {0}', input.key)
+            error: vscode.l10n.t('Workflow input is required: {0}', input.key),
           };
         }
       }
@@ -573,7 +563,8 @@ export class WorkflowService {
     if (!step.runIf) {
       return true;
     }
-    const boardSelected = !!this.configService.getSelectedBoardName() && this.configService.getSelectedBoardName() !== 'N/A';
+    const boardSelected =
+      !!this.configService.getSelectedBoardName() && this.configService.getSelectedBoardName() !== 'N/A';
     const serialPortSelected = !!this.serialPortService.selectedSerialPort;
     const monitorActive = this.serialMonitorService.hasActiveMonitor();
 
@@ -619,17 +610,20 @@ export class WorkflowService {
           return await this.runMonitorOpenStep(options);
         case 'monitor.close':
           return {
-            success: await this.serialMonitorService.closeSerialMonitor()
+            success: await this.serialMonitorService.closeSerialMonitor(),
           };
         case 'serial.selectPort':
           if (!options.allowInteractivePortSelection) {
             return {
               success: false,
-              message: vscode.l10n.t('Workflow step type is interactive-only and cannot run from language model tools: {0}', step.type)
+              message: vscode.l10n.t(
+                'Workflow step type is interactive-only and cannot run from language model tools: {0}',
+                step.type
+              ),
             };
           }
           return {
-            success: !!(await this.serialPortService.selectPort())
+            success: !!(await this.serialPortService.selectPort()),
           };
         default:
           if (options.allowNotifications) {
@@ -637,14 +631,14 @@ export class WorkflowService {
           }
           return {
             success: false,
-            message: vscode.l10n.t('Unsupported workflow step: {0}', step.type)
+            message: vscode.l10n.t('Unsupported workflow step: {0}', step.type),
           };
       }
     } catch (error) {
       this.logService.error(`Workflow step failed: ${step.type}`, error);
       return {
         success: false,
-        message: String(error)
+        message: String(error),
       };
     }
   }
@@ -658,12 +652,12 @@ export class WorkflowService {
       templateValues: inputs,
       waitForExit: step.wait ?? true,
       showNotifications: options.allowNotifications,
-      runId: options.runId
+      runId: options.runId,
     });
     return {
       success: result.success,
       exitCode: result.exitCode,
-      message: result.message
+      message: result.message,
     };
   }
 
@@ -683,7 +677,7 @@ export class WorkflowService {
     const result = this.buildExecutionService.executeCleanDetailed(options.allowNotifications);
     return {
       success: result.success,
-      message: result.message
+      message: result.message,
     };
   }
 
@@ -704,7 +698,7 @@ export class WorkflowService {
       waitForExit: step.wait ?? true,
       ensureBuildDirectory: false,
       showNotifications: options.allowNotifications,
-      runId: options.runId
+      runId: options.runId,
     });
     if (this.serialMonitorService.canResume()) {
       await this.serialMonitorService.resumeSerialMonitor();
@@ -712,7 +706,7 @@ export class WorkflowService {
     return {
       success: result.success,
       exitCode: result.exitCode,
-      message: result.message
+      message: result.message,
     };
   }
 
@@ -725,12 +719,12 @@ export class WorkflowService {
       templateValues: inputs,
       waitForExit: step.wait ?? false,
       showNotifications: options.allowNotifications,
-      runId: options.runId
+      runId: options.runId,
     });
     return {
       success: result.success,
       exitCode: result.exitCode,
-      message: result.message
+      message: result.message,
     };
   }
 
@@ -766,10 +760,7 @@ export class WorkflowService {
       if (!options.allowShellApprovalPrompt) {
         return {
           success: false,
-          message: vscode.l10n.t(
-            'Workflow shell step requires prior approval in the workflow UI: {0}',
-            workflowName
-          )
+          message: vscode.l10n.t('Workflow shell step requires prior approval in the workflow UI: {0}', workflowName),
         };
       }
       const runAction = vscode.l10n.t('Allow and run');
@@ -785,7 +776,7 @@ export class WorkflowService {
       if (confirm !== runAction) {
         return {
           success: false,
-          message: vscode.l10n.t('Workflow shell approval was canceled.')
+          message: vscode.l10n.t('Workflow shell approval was canceled.'),
         };
       }
       await this.workspaceStateService.approveWorkflowShell(approvalKey, commandTemplate);
@@ -799,7 +790,7 @@ export class WorkflowService {
     );
     return {
       success: exitCode === undefined || exitCode === 0,
-      exitCode
+      exitCode,
     };
   }
 
@@ -809,14 +800,14 @@ export class WorkflowService {
     if (!selectedSerialPort && !options.allowMonitorPortPrompt) {
       return {
         success: false,
-        message: vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.')
+        message: vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'),
       };
     }
     return {
       success: await this.serialMonitorService.openSerialMonitor(
         selectedSerialPort,
         this.serialPortService.monitorBaudRate
-      )
+      ),
     };
   }
 
@@ -875,7 +866,7 @@ export class WorkflowService {
       return {
         scope: 'user',
         workflow: userWorkflow,
-        workflowRef: this.getWorkflowReference('user', workflowId)
+        workflowRef: this.getWorkflowReference('user', workflowId),
       };
     }
 
@@ -884,7 +875,7 @@ export class WorkflowService {
       return {
         scope: 'workspace',
         workflow: workspaceWorkflow,
-        workflowRef: this.getWorkflowReference('workspace', workflowId)
+        workflowRef: this.getWorkflowReference('workspace', workflowId),
       };
     }
 
@@ -906,9 +897,20 @@ export class WorkflowService {
         reasons.add(vscode.l10n.t('Workflow step type is not supported by language model tools: {0}', step.type));
       }
       if (step.type === 'serial.selectPort') {
-        reasons.add(vscode.l10n.t('Workflow step type is interactive-only and cannot run from language model tools: {0}', step.type));
+        reasons.add(
+          vscode.l10n.t(
+            'Workflow step type is interactive-only and cannot run from language model tools: {0}',
+            step.type
+          )
+        );
       }
-      if ((step.type === 'build.compile' || step.type === 'build.rebuild' || step.type === 'build.clean' || step.type === 'build.download') && !hasBoard) {
+      if (
+        (step.type === 'build.compile' ||
+          step.type === 'build.rebuild' ||
+          step.type === 'build.clean' ||
+          step.type === 'build.download') &&
+        !hasBoard
+      ) {
         reasons.add(vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'));
       }
       if ((step.type === 'build.download' || step.type === 'monitor.open') && !hasSerialPort) {
@@ -922,7 +924,12 @@ export class WorkflowService {
           const commandTemplate = rawCommand.trim();
           const approvalKey = `${scopedWorkflow.workflow.id}:${index}`;
           if (commandTemplate && !this.workspaceStateService.isWorkflowShellApproved(approvalKey, commandTemplate)) {
-            reasons.add(vscode.l10n.t('Workflow shell step requires prior approval in the workflow UI: {0}', scopedWorkflow.workflow.name));
+            reasons.add(
+              vscode.l10n.t(
+                'Workflow shell step requires prior approval in the workflow UI: {0}',
+                scopedWorkflow.workflow.name
+              )
+            );
           }
         }
       }
@@ -931,7 +938,7 @@ export class WorkflowService {
     return {
       runnable: reasons.size === 0,
       reasons: Array.from(reasons),
-      hasShellCommand
+      hasShellCommand,
     };
   }
 
@@ -960,13 +967,16 @@ export class WorkflowService {
         runId: options.runId,
         message,
         skippedStepIndexes: [],
-        continuedFailureSteps: []
+        continuedFailureSteps: [],
       };
     }
 
     const blockedStep = workflow.steps.find(step => disallowedStepTypes.has(step.type));
     if (blockedStep) {
-      const message = vscode.l10n.t('Workflow step type is not supported by language model tools: {0}', blockedStep.type);
+      const message = vscode.l10n.t(
+        'Workflow step type is not supported by language model tools: {0}',
+        blockedStep.type
+      );
       return {
         success: false,
         workflowId: workflow.id,
@@ -977,7 +987,7 @@ export class WorkflowService {
         runId: options.runId,
         message,
         skippedStepIndexes: [],
-        continuedFailureSteps: []
+        continuedFailureSteps: [],
       };
     }
 
@@ -997,7 +1007,7 @@ export class WorkflowService {
         runId: options.runId,
         message: resolvedInputs.error,
         skippedStepIndexes: [],
-        continuedFailureSteps: []
+        continuedFailureSteps: [],
       };
     }
 
@@ -1016,7 +1026,7 @@ export class WorkflowService {
         runId: options.runId,
         message: preview,
         skippedStepIndexes: [],
-        continuedFailureSteps: []
+        continuedFailureSteps: [],
       };
     }
 
@@ -1038,7 +1048,7 @@ export class WorkflowService {
         runId: options.runId,
         message,
         skippedStepIndexes: [],
-        continuedFailureSteps: []
+        continuedFailureSteps: [],
       };
     }
 
@@ -1052,14 +1062,7 @@ export class WorkflowService {
         continue;
       }
 
-      const stepResult = await this.executeStep(
-        step,
-        resolvedInputs.values,
-        workflow.id,
-        workflow.name,
-        i,
-        options
-      );
+      const stepResult = await this.executeStep(step, resolvedInputs.values, workflow.id, workflow.name, i, options);
       if (stepResult.success) {
         continue;
       }
@@ -1086,16 +1089,14 @@ export class WorkflowService {
           failedStepIndex: i,
           failedStepType: step.type,
           skippedStepIndexes,
-          continuedFailureSteps
+          continuedFailureSteps,
         };
       }
       continuedFailureSteps.push(i);
       this.logService.warn(`Workflow step failed but continued: ${stepLabel}`);
     }
 
-    const finishedMessage = workflow.name
-      ? vscode.l10n.t('Workflow finished: {0}', workflow.name)
-      : undefined;
+    const finishedMessage = workflow.name ? vscode.l10n.t('Workflow finished: {0}', workflow.name) : undefined;
     if (allowNotifications) {
       vscode.window.showInformationMessage(vscode.l10n.t('Workflow finished: {0}', workflow.name));
     }
@@ -1109,7 +1110,7 @@ export class WorkflowService {
       runId: options.runId,
       message: finishedMessage,
       skippedStepIndexes,
-      continuedFailureSteps
+      continuedFailureSteps,
     };
   }
 

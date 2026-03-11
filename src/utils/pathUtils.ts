@@ -48,11 +48,11 @@ export function isAbsolutePath(filePath: string): boolean {
  * 解析路径中的环境变量
  */
 export function resolvePathVariables(filePath: string): string {
-  // 替换 ${HOME} 或 ~ 
+  // 替换 ${HOME} 或 ~
   if (filePath.startsWith('~')) {
     return path.join(os.homedir(), filePath.slice(1));
   }
-  
+
   // 替换环境变量
   return filePath.replace(/\${(\w+)}/g, (match, varName) => {
     return process.env[varName] || match;

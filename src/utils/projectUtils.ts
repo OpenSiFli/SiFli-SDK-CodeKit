@@ -1,12 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import {
-  HCPU_SUBFOLDER,
-  LCPU_SUBFOLDER,
-  PROJECT_SUBFOLDER,
-  SCONSCRIPT_FILE,
-  SRC_SUBFOLDER
-} from '../constants';
+import { HCPU_SUBFOLDER, LCPU_SUBFOLDER, PROJECT_SUBFOLDER, SCONSCRIPT_FILE, SRC_SUBFOLDER } from '../constants';
 import { fileExists, isDirectory } from './fileUtils';
 
 export interface SiFliProjectInfo {
@@ -26,13 +20,11 @@ function getWorkspaceRootPath(): string | null {
   return workspaceFolders[0].uri.fsPath;
 }
 
-function resolveProjectEntry(
-  projectPath: string
-): { projectEntryPath: string; sconscriptPath: string } | null {
+function resolveProjectEntry(projectPath: string): { projectEntryPath: string; sconscriptPath: string } | null {
   const projectCandidates = [
     path.join(projectPath, HCPU_SUBFOLDER),
     path.join(projectPath, LCPU_SUBFOLDER),
-    projectPath
+    projectPath,
   ];
 
   for (const candidate of projectCandidates) {
@@ -40,7 +32,7 @@ function resolveProjectEntry(
     if (fileExists(sconscriptPath)) {
       return {
         projectEntryPath: candidate,
-        sconscriptPath
+        sconscriptPath,
       };
     }
   }
@@ -52,7 +44,7 @@ function getSconscriptCandidatePaths(projectPath: string): string[] {
   return [
     path.join(projectPath, SCONSCRIPT_FILE),
     path.join(projectPath, HCPU_SUBFOLDER, SCONSCRIPT_FILE),
-    path.join(projectPath, LCPU_SUBFOLDER, SCONSCRIPT_FILE)
+    path.join(projectPath, LCPU_SUBFOLDER, SCONSCRIPT_FILE),
   ];
 }
 
@@ -73,7 +65,7 @@ export function getSiFliProjectInfo(rootPath: string): SiFliProjectInfo | null {
     srcPath,
     projectEntryPath: projectEntry.projectEntryPath,
     projectEntryRelativePath,
-    sconscriptPath: projectEntry.sconscriptPath
+    sconscriptPath: projectEntry.sconscriptPath,
   };
 }
 
@@ -142,7 +134,7 @@ export function validateProjectStructure(): {
   if (!workspaceRoot) {
     return {
       isValid: false,
-      missingParts: ['workspace']
+      missingParts: ['workspace'],
     };
   }
 
@@ -164,6 +156,6 @@ export function validateProjectStructure(): {
 
   return {
     isValid: missingParts.length === 0,
-    missingParts
+    missingParts,
   };
 }

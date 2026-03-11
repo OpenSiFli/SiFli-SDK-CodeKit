@@ -35,14 +35,14 @@ export function useVsCodeApi() {
       console.error('[useVsCodeApi] Unable to get VS Code API instance');
       return;
     }
-      
+
     // 避免重复添加事件监听器
     if (!isInitialized) {
       messageEventListener = handleMessage;
       window.addEventListener('message', messageEventListener);
       isInitialized = true;
       console.log('[useVsCodeApi] Message listener attached');
-      
+
       // 通知 VS Code 我们已准备好
       postMessage({ command: 'ready' });
     }
@@ -64,7 +64,7 @@ export function useVsCodeApi() {
 
   const handleMessage = (event: MessageEvent) => {
     const message = event.data as WebviewMessage;
-    
+
     // 处理语言相关消息
     switch (message.command) {
       case 'initializeLocale':
@@ -75,7 +75,7 @@ export function useVsCodeApi() {
         }
         isReady.value = true;
         break;
-        
+
       case 'localeChanged':
         console.log('[useVsCodeApi] VS Code locale changed:', message.locale);
         const newLocale = message.locale as SupportedLocale;
@@ -84,7 +84,7 @@ export function useVsCodeApi() {
         }
         break;
     }
-    
+
     // 调用所有注册的处理器
     const handlersSet = globalMessageHandlers.get(message.command);
     if (handlersSet) {
@@ -109,7 +109,7 @@ export function useVsCodeApi() {
   const onMessage = (command: string, handler: (data: any) => void) => {
     // 注册到本地映射
     messageHandlers.value.set(command, handler);
-    
+
     // 注册到全局映射
     if (!globalMessageHandlers.has(command)) {
       globalMessageHandlers.set(command, new Set());
@@ -121,7 +121,7 @@ export function useVsCodeApi() {
     const handler = messageHandlers.value.get(command);
     if (handler) {
       messageHandlers.value.delete(command);
-      
+
       // 从全局映射中移除
       const handlersSet = globalMessageHandlers.get(command);
       if (handlersSet) {
@@ -145,7 +145,7 @@ export function useVsCodeApi() {
   const notifyLocaleChange = (locale: SupportedLocale) => {
     postMessage({
       command: 'localeChanged',
-      locale: locale
+      locale: locale,
     });
   };
 
@@ -157,6 +157,6 @@ export function useVsCodeApi() {
     offMessage,
     getState,
     setState,
-    notifyLocaleChange
+    notifyLocaleChange,
   };
 }

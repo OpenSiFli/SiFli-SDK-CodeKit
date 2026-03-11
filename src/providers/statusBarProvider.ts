@@ -29,43 +29,43 @@ export class StatusBarProvider {
       text: '$(symbol-property)',
       tooltip: 'Run SiFli build',
       priority: 98,
-      action: { kind: 'command', commandId: CMD_PREFIX + 'compile' }
+      action: { kind: 'command', commandId: CMD_PREFIX + 'compile' },
     },
     {
       id: 'rebuild',
       text: '$(sync)',
       tooltip: 'Clean and run SiFli build',
       priority: 97,
-      action: { kind: 'command', commandId: CMD_PREFIX + 'rebuild' }
+      action: { kind: 'command', commandId: CMD_PREFIX + 'rebuild' },
     },
     {
       id: 'clean',
       text: '$(trashcan)',
       tooltip: 'Delete SiFli build cache',
       priority: 96,
-      action: { kind: 'command', commandId: CMD_PREFIX + 'clean' }
+      action: { kind: 'command', commandId: CMD_PREFIX + 'clean' },
     },
     {
       id: 'download',
       text: '$(symbol-event)',
       tooltip: 'Run SiFli download',
       priority: 95,
-      action: { kind: 'command', commandId: CMD_PREFIX + 'download' }
+      action: { kind: 'command', commandId: CMD_PREFIX + 'download' },
     },
     {
       id: 'menuconfig',
       text: '$(settings-gear)',
       tooltip: 'Open SiFli Menuconfig',
       priority: 94,
-      action: { kind: 'command', commandId: CMD_PREFIX + 'menuconfig' }
+      action: { kind: 'command', commandId: CMD_PREFIX + 'menuconfig' },
     },
     {
       id: 'deviceMonitor',
       text: '$(device-desktop)',
       tooltip: 'Monitor device - open serial monitor',
       priority: 93,
-      action: { kind: 'command', commandId: CMD_PREFIX + 'openDeviceMonitor' }
-    }
+      action: { kind: 'command', commandId: CMD_PREFIX + 'openDeviceMonitor' },
+    },
   ];
 
   private constructor() {
@@ -127,7 +127,7 @@ export class StatusBarProvider {
   public getDefaultWorkflowButtons(): WorkflowStatusBarButton[] {
     return this.defaultWorkflowButtons.map(button => ({
       ...button,
-      action: { ...button.action }
+      action: { ...button.action },
     }));
   }
 
@@ -278,15 +278,14 @@ export class StatusBarProvider {
     });
 
     merged.forEach(button => {
-      const alignment =
-        button.alignment === 'right' ? vscode.StatusBarAlignment.Right : vscode.StatusBarAlignment.Left;
+      const alignment = button.alignment === 'right' ? vscode.StatusBarAlignment.Right : vscode.StatusBarAlignment.Left;
       const item = vscode.window.createStatusBarItem(alignment, button.priority ?? 90);
       item.text = this.ensureStatusBarTextHasIcon(button.text);
       item.tooltip = button.tooltip;
       item.command = {
         command: CMD_PREFIX + 'runStatusBarButton',
         title: button.tooltip || button.text,
-        arguments: [button.id]
+        arguments: [button.id],
       };
       item.show();
 

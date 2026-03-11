@@ -32,14 +32,14 @@ export class GitService {
   public terminateAllProcesses(): void {
     console.log(`[GitService] Terminating ${this.activeProcesses.size} active processes...`);
     this.gitOutputChannel.appendLine(`[Git] Terminating ${this.activeProcesses.size} active processes...`);
-    
+
     for (const [processId, process] of this.activeProcesses) {
       try {
         if (!process.killed) {
           console.log(`[GitService] Killing process ${processId}...`);
           this.gitOutputChannel.appendLine(`[Git] Killing process ${processId}...`);
           process.kill('SIGTERM');
-          
+
           // 如果进程在3秒内没有退出，使用SIGKILL强制终止
           setTimeout(() => {
             if (!process.killed) {
@@ -54,7 +54,7 @@ export class GitService {
         this.gitOutputChannel.appendLine(`[Git] Error terminating process ${processId}: ${error}`);
       }
     }
-    
+
     this.activeProcesses.clear();
   }
 
@@ -71,25 +71,25 @@ export class GitService {
    */
   public async isGitInstalled(): Promise<boolean> {
     try {
-      return new Promise((resolve) => {
+      return new Promise(resolve => {
         const gitProcess = spawn('git', ['--version'], {
-          stdio: ['ignore', 'pipe', 'pipe']
+          stdio: ['ignore', 'pipe', 'pipe'],
         });
-        
+
         // 为版本检查进程生成ID
         const processId = `version-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         this.activeProcesses.set(processId, gitProcess);
-        
-        gitProcess.on('close', (code) => {
+
+        gitProcess.on('close', code => {
           this.removeProcess(processId);
           resolve(code === 0);
         });
-        
+
         gitProcess.on('error', () => {
           this.removeProcess(processId);
           resolve(false);
         });
-        
+
         // 版本检查超时
         setTimeout(() => {
           if (this.activeProcesses.has(processId) && !gitProcess.killed) {
@@ -111,9 +111,8 @@ export class GitService {
    */
   public async fetchSiFliSdkReleases(source: 'github' | 'gitee'): Promise<SdkRelease[]> {
     try {
-      const apiUrl = source === 'github' 
-        ? `${GIT_REPOS.GITHUB.API_BASE}/releases`
-        : `${GIT_REPOS.GITEE.API_BASE}/releases`;
+      const apiUrl =
+        source === 'github' ? `${GIT_REPOS.GITHUB.API_BASE}/releases` : `${GIT_REPOS.GITEE.API_BASE}/releases`;
 
       console.log(`[GitService] Fetching releases from: ${apiUrl}`);
       this.gitOutputChannel.appendLine(`[GitService] Fetching releases from: ${apiUrl}`);
@@ -121,19 +120,21 @@ export class GitService {
       const response = await axios.get(apiUrl, {
         timeout: 10000,
         headers: {
-          'User-Agent': 'SiFli-SDK-CodeKit'
-        }
+          'User-Agent': 'SiFli-SDK-CodeKit',
+        },
       });
 
       console.log(`[GitService] Response status: ${response.status}, data length: ${response.data.length}`);
-      this.gitOutputChannel.appendLine(`[GitService] Response status: ${response.status}, data length: ${response.data.length}`);
+      this.gitOutputChannel.appendLine(
+        `[GitService] Response status: ${response.status}, data length: ${response.data.length}`
+      );
 
       if (source === 'github') {
         const releases = response.data.map((release: any) => ({
           tagName: release.tag_name,
           name: release.name,
           publishedAt: release.published_at,
-          prerelease: release.prerelease || false
+          prerelease: release.prerelease || false,
         }));
         console.log(`[GitService] Processed ${releases.length} GitHub releases`);
         this.gitOutputChannel.appendLine(`[GitService] Processed ${releases.length} GitHub releases`);
@@ -144,7 +145,7 @@ export class GitService {
           tagName: release.tag_name,
           name: release.name,
           publishedAt: release.created_at,
-          prerelease: false
+          prerelease: false,
         }));
         console.log(`[GitService] Processed ${releases.length} Gitee releases`);
         this.gitOutputChannel.appendLine(`[GitService] Processed ${releases.length} Gitee releases`);
@@ -162,9 +163,8 @@ export class GitService {
    */
   public async fetchSiFliSdkBranches(source: 'github' | 'gitee'): Promise<SdkBranch[]> {
     try {
-      const apiUrl = source === 'github'
-        ? `${GIT_REPOS.GITHUB.API_BASE}/branches`
-        : `${GIT_REPOS.GITEE.API_BASE}/branches`;
+      const apiUrl =
+        source === 'github' ? `${GIT_REPOS.GITHUB.API_BASE}/branches` : `${GIT_REPOS.GITEE.API_BASE}/branches`;
 
       console.log(`[GitService] Fetching branches from: ${apiUrl}`);
       this.gitOutputChannel.appendLine(`[GitService] Fetching branches from: ${apiUrl}`);
@@ -172,19 +172,21 @@ export class GitService {
       const response = await axios.get(apiUrl, {
         timeout: 10000,
         headers: {
-          'User-Agent': 'SiFli-SDK-CodeKit'
-        }
+          'User-Agent': 'SiFli-SDK-CodeKit',
+        },
       });
 
       console.log(`[GitService] Response status: ${response.status}, data length: ${response.data.length}`);
-      this.gitOutputChannel.appendLine(`[GitService] Response status: ${response.status}, data length: ${response.data.length}`);
+      this.gitOutputChannel.appendLine(
+        `[GitService] Response status: ${response.status}, data length: ${response.data.length}`
+      );
 
       const branches = response.data.map((branch: any) => ({
         name: branch.name,
         commit: {
           sha: branch.commit.sha,
-          url: branch.commit.url
-        }
+          url: branch.commit.url,
+        },
       }));
 
       console.log(`[GitService] Processed ${branches.length} branches`);
@@ -201,8 +203,8 @@ export class GitService {
    * 使用原生 Git 命令克隆仓库（备用方案）
    */
   public async cloneRepositoryNative(
-    repoUrl: string, 
-    localPath: string, 
+    repoUrl: string,
+    localPath: string,
     options?: {
       branch?: string;
       depth?: number;
@@ -215,22 +217,22 @@ export class GitService {
 
       // 构建 Git 命令
       const args = ['clone', '--recursive', '--progress'];
-      
+
       if (options?.branch) {
         args.push('--branch', options.branch);
       }
-      
+
       if (options?.depth) {
         args.push('--depth', options.depth.toString());
       }
-      
+
       args.push(repoUrl, localPath);
-      
+
       console.log(`[GitService] Native git command: git ${args.join(' ')}`);
       this.gitOutputChannel.appendLine(`[Git] Command: git ${args.join(' ')}`);
 
       const gitProcess = spawn('git', args, {
-        stdio: ['ignore', 'pipe', 'pipe']
+        stdio: ['ignore', 'pipe', 'pipe'],
       });
 
       // 生成进程ID并跟踪进程
@@ -257,12 +259,12 @@ export class GitService {
         errorOutput += output;
         console.log(`[GitService] Native clone stderr: ${output.trim()}`);
         this.gitOutputChannel.append(output);
-        
+
         // Git 的进度信息通常通过 stderr 输出
         if (output.toLowerCase().includes('error') || output.toLowerCase().includes('fatal')) {
           hasError = true;
         }
-        
+
         if (options?.onProgress) {
           options.onProgress(output.trim());
         }
@@ -271,10 +273,10 @@ export class GitService {
       gitProcess.on('close', (code: number) => {
         console.log(`[GitService] Native clone process ${processId} exited with code: ${code}`);
         this.gitOutputChannel.appendLine(`[Git] Process ${processId} exited with code: ${code}`);
-        
+
         // 从活跃进程列表中移除
         this.removeProcess(processId);
-        
+
         if (code === 0 && !hasError) {
           resolve();
         } else {
@@ -289,22 +291,25 @@ export class GitService {
       gitProcess.on('error', (error: Error) => {
         console.error(`[GitService] Native clone process ${processId} error:`, error);
         this.gitOutputChannel.appendLine(`[Git] Process ${processId} error: ${error.message}`);
-        
+
         // 从活跃进程列表中移除
         this.removeProcess(processId);
         reject(error);
       });
 
       // 设置超时
-      setTimeout(() => {
-        if (this.activeProcesses.has(processId) && !gitProcess.killed) {
-          console.log(`[GitService] Native clone timeout, killing process ${processId}...`);
-          this.gitOutputChannel.appendLine(`[Git] Process ${processId} timeout, killing...`);
-          gitProcess.kill();
-          this.removeProcess(processId);
-          reject(new Error('Git clone 操作超时'));
-        }
-      }, 10 * 60 * 1000); // 10分钟超时
+      setTimeout(
+        () => {
+          if (this.activeProcesses.has(processId) && !gitProcess.killed) {
+            console.log(`[GitService] Native clone timeout, killing process ${processId}...`);
+            this.gitOutputChannel.appendLine(`[Git] Process ${processId} timeout, killing...`);
+            gitProcess.kill();
+            this.removeProcess(processId);
+            reject(new Error('Git clone 操作超时'));
+          }
+        },
+        10 * 60 * 1000
+      ); // 10分钟超时
     });
   }
 
@@ -312,8 +317,8 @@ export class GitService {
    * 克隆仓库
    */
   public async cloneRepository(
-    repoUrl: string, 
-    localPath: string, 
+    repoUrl: string,
+    localPath: string,
     options?: {
       branch?: string;
       depth?: number;
@@ -325,9 +330,9 @@ export class GitService {
       console.log(`[GitService] Repository URL: ${repoUrl}`);
       console.log(`[GitService] Local path: ${localPath}`);
       console.log(`[GitService] Options:`, options);
-      
+
       this.gitOutputChannel.appendLine(`[Git] Cloning repository: ${repoUrl} to ${localPath}`);
-      
+
       // 检查父目录是否存在，如果不存在则创建
       const parentDir = path.dirname(localPath);
       if (!fs.existsSync(parentDir)) {
@@ -355,12 +360,12 @@ export class GitService {
       // 使用修正后的分支名来调用 native Git 命令
       await this.cloneRepositoryNative(repoUrl, localPath, {
         ...options,
-        branch: finalBranchName
+        branch: finalBranchName,
       });
-      
+
       console.log(`[GitService] Clone operation completed successfully`);
       this.gitOutputChannel.appendLine(`[Git] Successfully cloned repository to ${localPath}`);
-      
+
       // 验证克隆结果
       if (fs.existsSync(localPath)) {
         console.log(`[GitService] Clone verification: directory exists`);
@@ -370,11 +375,10 @@ export class GitService {
       } else {
         throw new Error('克隆完成但目标目录不存在');
       }
-      
     } catch (error) {
       console.error(`[GitService] Clone operation failed:`, error);
       this.gitOutputChannel.appendLine(`[Git] Clone failed: ${error}`);
-      
+
       // 提供更详细的错误信息
       if (error instanceof Error) {
         throw new Error(`克隆仓库失败: ${error.message}`);
@@ -390,11 +394,11 @@ export class GitService {
   public async checkoutBranch(repoPath: string, branchName: string): Promise<void> {
     try {
       this.gitOutputChannel.appendLine(`[Git] Checking out branch: ${branchName} in ${repoPath}`);
-      
+
       return new Promise((resolve, reject) => {
         const gitProcess = spawn('git', ['checkout', branchName], {
           cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe']
+          stdio: ['ignore', 'pipe', 'pipe'],
         });
 
         let errorOutput = '';
@@ -430,11 +434,11 @@ export class GitService {
   public async pullLatest(repoPath: string): Promise<void> {
     try {
       this.gitOutputChannel.appendLine(`[Git] Pulling latest changes in ${repoPath}`);
-      
+
       return new Promise((resolve, reject) => {
         const gitProcess = spawn('git', ['pull'], {
           cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe']
+          stdio: ['ignore', 'pipe', 'pipe'],
         });
 
         let errorOutput = '';
@@ -477,7 +481,7 @@ export class GitService {
       return new Promise((resolve, reject) => {
         const gitProcess = spawn('git', ['branch', '--show-current'], {
           cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe']
+          stdio: ['ignore', 'pipe', 'pipe'],
         });
 
         let stdOutput = '';
@@ -520,7 +524,7 @@ export class GitService {
       return new Promise((resolve, reject) => {
         const gitProcess = spawn('git', ['branch', '--format=%(refname:short)'], {
           cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe']
+          stdio: ['ignore', 'pipe', 'pipe'],
         });
 
         let stdOutput = '';
@@ -536,7 +540,10 @@ export class GitService {
 
         gitProcess.on('close', (code: number) => {
           if (code === 0) {
-            const branches = stdOutput.trim().split('\n').filter(branch => branch.length > 0);
+            const branches = stdOutput
+              .trim()
+              .split('\n')
+              .filter(branch => branch.length > 0);
             resolve(branches);
           } else {
             this.gitOutputChannel.appendLine(`[Git] Get local branches failed: ${errorOutput}`);
@@ -563,7 +570,7 @@ export class GitService {
       return new Promise((resolve, reject) => {
         const gitProcess = spawn('git', ['branch', '-r', '--format=%(refname:short)'], {
           cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe']
+          stdio: ['ignore', 'pipe', 'pipe'],
         });
 
         let stdOutput = '';
@@ -579,7 +586,9 @@ export class GitService {
 
         gitProcess.on('close', (code: number) => {
           if (code === 0) {
-            const branches = stdOutput.trim().split('\n')
+            const branches = stdOutput
+              .trim()
+              .split('\n')
               .filter(branch => branch.length > 0 && !branch.includes('HEAD'));
             resolve(branches);
           } else {
@@ -604,10 +613,10 @@ export class GitService {
    */
   public async isRepository(repoPath: string): Promise<boolean> {
     try {
-      return new Promise((resolve) => {
+      return new Promise(resolve => {
         const gitProcess = spawn('git', ['status'], {
           cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe']
+          stdio: ['ignore', 'pipe', 'pipe'],
         });
 
         gitProcess.on('close', (code: number) => {
@@ -637,12 +646,12 @@ export class GitService {
     try {
       // 获取当前分支
       const currentBranch = await this.getCurrentBranch(repoPath);
-      
+
       // 获取状态信息
       return new Promise((resolve, reject) => {
         const gitProcess = spawn('git', ['status', '--porcelain'], {
           cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe']
+          stdio: ['ignore', 'pipe', 'pipe'],
         });
 
         let stdOutput = '';
@@ -658,7 +667,10 @@ export class GitService {
 
         gitProcess.on('close', (code: number) => {
           if (code === 0) {
-            const lines = stdOutput.trim().split('\n').filter(line => line.length > 0);
+            const lines = stdOutput
+              .trim()
+              .split('\n')
+              .filter(line => line.length > 0);
             const modified: string[] = [];
             const created: string[] = [];
             const deleted: string[] = [];
@@ -666,7 +678,7 @@ export class GitService {
             lines.forEach(line => {
               const status = line.substring(0, 2);
               const filename = line.substring(3);
-              
+
               if (status.includes('M')) {
                 modified.push(filename);
               } else if (status.includes('A') || status.includes('?')) {
@@ -682,7 +694,7 @@ export class GitService {
               behind: 0,
               modified,
               created,
-              deleted
+              deleted,
             });
           } else {
             this.gitOutputChannel.appendLine(`[Git] Get repository status failed: ${errorOutput}`);
@@ -712,7 +724,7 @@ export class GitService {
       return new Promise((resolve, reject) => {
         const gitProcess = spawn('git', args, {
           cwd: cwd,
-          stdio: ['ignore', 'pipe', 'pipe']
+          stdio: ['ignore', 'pipe', 'pipe'],
         });
 
         let stdOutput = '';

@@ -2,10 +2,7 @@ import daisyui from 'daisyui';
 
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./src/**/*.{vue,js,ts,jsx,tsx}",
-    "./src/**/*.html"
-  ],
+  content: ['./src/**/*.{vue,js,ts,jsx,tsx}', './src/**/*.html'],
   theme: {
     extend: {
       colors: {
@@ -21,19 +18,19 @@ export default {
           'input-border': 'var(--vscode-input-border)',
           'input-placeholder': 'var(--vscode-input-placeholderForeground)',
           'panel-border': 'var(--vscode-panel-border)',
-          'focus-border': 'var(--vscode-focusBorder)'
-        }
+          'focus-border': 'var(--vscode-focusBorder)',
+        },
       },
       fontFamily: {
-        vscode: ['var(--vscode-font-family)', 'ui-sans-serif', 'system-ui']
-      }
+        vscode: ['var(--vscode-font-family)', 'ui-sans-serif', 'system-ui'],
+      },
     },
   },
   plugins: [daisyui],
   daisyui: {
-    themes: ["dark"], // 使用简单的暗色主题
+    themes: ['dark'], // 使用简单的暗色主题
     base: false,
     styled: true,
-    utils: true
-  }
-}
+    utils: true,
+  },
+};

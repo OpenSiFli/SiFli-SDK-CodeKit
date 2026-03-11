@@ -32,17 +32,10 @@ const GITIGNORE_LINES = [
   '.sconsign.dblite',
   '.DS_Store',
   '.idea',
-  'Kconfig.tmp'
+  'Kconfig.tmp',
 ];
 
-const SKIP_DIRECTORIES = new Set([
-  '.git',
-  '.svn',
-  '.idea',
-  '__pycache__',
-  'build',
-  'node_modules'
-]);
+const SKIP_DIRECTORIES = new Set(['.git', '.svn', '.idea', '__pycache__', 'build', 'node_modules']);
 
 export class ProjectCreationService {
   private static instance: ProjectCreationService;
@@ -89,9 +82,9 @@ export class ProjectCreationService {
         {
           location: vscode.ProgressLocation.Notification,
           title: vscode.l10n.t('Creating project...'),
-          cancellable: false
+          cancellable: false,
         },
-        async (progress) => {
+        async progress => {
           progress.report({ message: vscode.l10n.t('Copying template files...') });
           this.copyTemplate(template.templateRootPath, targetPath);
         }
@@ -105,9 +98,9 @@ export class ProjectCreationService {
             {
               location: vscode.ProgressLocation.Notification,
               title: vscode.l10n.t('Initializing Git repository...'),
-              cancellable: false
+              cancellable: false,
             },
-            async (progress) => {
+            async progress => {
               progress.report({ message: vscode.l10n.t('Preparing .gitignore...') });
               this.ensureGitignore(targetPath);
 
@@ -144,9 +137,7 @@ export class ProjectCreationService {
       );
     } catch (error) {
       this.logService.error('Failed to create SiFli project:', error);
-      vscode.window.showErrorMessage(
-        vscode.l10n.t('Failed to create SiFli project: {0}', this.getErrorMessage(error))
-      );
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to create SiFli project: {0}', this.getErrorMessage(error)));
     }
   }
 
@@ -187,10 +178,10 @@ export class ProjectCreationService {
         label: sdk.version,
         description: sdk.current ? vscode.l10n.t('(current)') : '',
         detail: sdk.path,
-        sdk
+        sdk,
       })),
       {
-        placeHolder: vscode.l10n.t('Select the SiFli SDK used to create the project')
+        placeHolder: vscode.l10n.t('Select the SiFli SDK used to create the project'),
       }
     );
 
@@ -215,11 +206,11 @@ export class ProjectCreationService {
       {
         location: vscode.ProgressLocation.Notification,
         title: vscode.l10n.t('Scanning SDK examples...'),
-        cancellable: true
+        cancellable: true,
       },
       async (progress, token) => {
         progress.report({
-          message: vscode.l10n.t('Scanning {0}/example for project templates...', sdk.version)
+          message: vscode.l10n.t('Scanning {0}/example for project templates...', sdk.version),
         });
 
         return this.discoverTemplates(sdk, token);
@@ -242,12 +233,12 @@ export class ProjectCreationService {
         label: template.displayName,
         description: sdk.version,
         detail: template.templateRootPath,
-        template
+        template,
       })),
       {
         matchOnDescription: true,
         matchOnDetail: true,
-        placeHolder: vscode.l10n.t('Select a SiFli project template')
+        placeHolder: vscode.l10n.t('Select a SiFli project template'),
       }
     );
 
@@ -260,7 +251,7 @@ export class ProjectCreationService {
       canSelectFolders: true,
       canSelectMany: false,
       openLabel: vscode.l10n.t('Select Parent Folder'),
-      title: vscode.l10n.t('Select the parent folder for the new SiFli project')
+      title: vscode.l10n.t('Select the parent folder for the new SiFli project'),
     });
 
     if (!parentSelection || parentSelection.length === 0) {
@@ -273,7 +264,7 @@ export class ProjectCreationService {
       prompt: vscode.l10n.t('Enter the new project folder name'),
       placeHolder: defaultName,
       value: defaultName,
-      validateInput: (value) => this.validateProjectName(parentPath, value, template.templateRootPath)
+      validateInput: value => this.validateProjectName(parentPath, value, template.templateRootPath),
     });
 
     if (projectName === undefined) {
@@ -303,16 +294,10 @@ export class ProjectCreationService {
     const openInCurrentWindow = vscode.l10n.t('Open in Current Window');
     const later = vscode.l10n.t('Later');
 
-    const showMessage = severity === 'warning'
-      ? vscode.window.showWarningMessage
-      : vscode.window.showInformationMessage;
+    const showMessage =
+      severity === 'warning' ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;
 
-    const choice = await showMessage(
-      message,
-      openInNewWindow,
-      openInCurrentWindow,
-      later
-    );
+    const choice = await showMessage(message, openInNewWindow, openInCurrentWindow, later);
 
     if (choice === openInNewWindow) {
       await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(targetPath), true);
@@ -344,7 +329,7 @@ export class ProjectCreationService {
           sdkVersion: sdk.version,
           templateRootPath: directory,
           relativeExamplePath,
-          displayName: relativeExamplePath.split(path.sep).join('/')
+          displayName: relativeExamplePath.split(path.sep).join('/'),
         });
         return true;
       }
@@ -387,11 +372,7 @@ export class ProjectCreationService {
   }
 
   private shouldSkipScanDirectory(name: string): boolean {
-    return (
-      SKIP_DIRECTORIES.has(name) ||
-      name.startsWith('build_') ||
-      name.startsWith('.')
-    );
+    return SKIP_DIRECTORIES.has(name) || name.startsWith('build_') || name.startsWith('.');
   }
 
   private validateProjectName(parentPath: string, value: string, templateRootPath: string): string | null {
@@ -437,7 +418,7 @@ export class ProjectCreationService {
         recursive: true,
         errorOnExist: true,
         force: false,
-        filter: (sourcePath) => this.shouldCopyPath(sourceRoot, sourcePath)
+        filter: sourcePath => this.shouldCopyPath(sourceRoot, sourcePath),
       });
 
       fs.renameSync(stagingTarget, targetRoot);
@@ -490,9 +471,7 @@ export class ProjectCreationService {
 
   private ensureGitignore(targetRoot: string): void {
     const gitignorePath = path.join(targetRoot, '.gitignore');
-    const existingLines = fs.existsSync(gitignorePath)
-      ? fs.readFileSync(gitignorePath, 'utf8').split(/\r?\n/)
-      : [];
+    const existingLines = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf8').split(/\r?\n/) : [];
 
     const normalizedExistingLines = existingLines.map(line => line.trimEnd());
     const lineSet = new Set(normalizedExistingLines);
@@ -515,7 +494,7 @@ export class ProjectCreationService {
   }
 
   private async initializeGitRepository(targetRoot: string): Promise<void> {
-    if (!await this.gitService.isGitInstalled()) {
+    if (!(await this.gitService.isGitInstalled())) {
       throw new Error(vscode.l10n.t('Git is not installed or not available in PATH.'));
     }
 
@@ -572,9 +551,7 @@ export class ProjectCreationService {
     const existingAncestorPath = this.findExistingAncestorPath(resolvedPath);
     const realAncestorPath = fs.realpathSync.native(existingAncestorPath);
     const relativeSuffix = path.relative(existingAncestorPath, resolvedPath);
-    const comparablePath = relativeSuffix
-      ? path.join(realAncestorPath, relativeSuffix)
-      : realAncestorPath;
+    const comparablePath = relativeSuffix ? path.join(realAncestorPath, relativeSuffix) : realAncestorPath;
 
     return this.normalizePathForComparison(comparablePath);
   }
@@ -600,9 +577,7 @@ export class ProjectCreationService {
 
   private normalizePathForComparison(targetPath: string): string {
     const normalizedPath = path.normalize(targetPath);
-    return process.platform === 'win32'
-      ? normalizedPath.toLowerCase()
-      : normalizedPath;
+    return process.platform === 'win32' ? normalizedPath.toLowerCase() : normalizedPath;
   }
 
   private getErrorMessage(error: unknown): string {

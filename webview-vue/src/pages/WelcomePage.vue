@@ -8,11 +8,7 @@
     <!-- Header -->
     <header class="text-center py-4 border-b border-vscode-panel-border">
       <div class="flex flex-col items-center justify-center mb-2">
-        <img 
-          :src="logoSrc" 
-          alt="SiFli Logo" 
-          class="w-16 h-16 object-contain mb-2"
-        />
+        <img :src="logoSrc" alt="SiFli Logo" class="w-16 h-16 object-contain mb-2" />
         <div>
           <h1 class="text-2xl font-bold text-vscode-foreground">{{ $t('welcome.title') }}</h1>
           <p class="text-sm text-vscode-input-placeholder">{{ $t('welcome.subtitle') }}</p>
@@ -28,8 +24,8 @@
         <p class="text-sm text-vscode-input-placeholder mb-1">
           {{ $t('welcome.prerequisites.intro') }}
         </p>
-        <a 
-          href="https://github.com/OpenSiFli/SiFli-SDK" 
+        <a
+          href="https://github.com/OpenSiFli/SiFli-SDK"
           class="text-vscode-button-background hover:text-vscode-button-hover underline transition-colors duration-200"
           target="_blank"
         >
@@ -50,18 +46,13 @@
         <!-- Options Grid -->
         <div class="grid gap-4 max-w-3xl mx-auto">
           <!-- Express Mode -->
-          <div 
-            @click="selectMode('express')"
-            :class="[
-              'setup-card',
-              selectedMode === 'express' ? 'selected' : ''
-            ]"
-          >
+          <div @click="selectMode('express')" :class="['setup-card', selectedMode === 'express' ? 'selected' : '']">
             <div class="flex items-start">
               <div class="flex-shrink-0 mr-4">
-                <div class="w-3 h-3 rounded-full border-2 border-vscode-button-background mt-1 transition-all duration-200"
-                     :class="selectedMode === 'express' ? 'bg-vscode-button-background' : ''">
-                </div>
+                <div
+                  class="w-3 h-3 rounded-full border-2 border-vscode-button-background mt-1 transition-all duration-200"
+                  :class="selectedMode === 'express' ? 'bg-vscode-button-background' : ''"
+                ></div>
               </div>
               <div class="flex-1">
                 <h4 class="text-lg font-semibold mb-3">{{ $t('welcome.modes.express.title') }}</h4>
@@ -73,18 +64,13 @@
           </div>
 
           <!-- Advanced Mode -->
-          <div 
-            @click="selectMode('advanced')"
-            :class="[
-              'setup-card',
-              selectedMode === 'advanced' ? 'selected' : ''
-            ]"
-          >
+          <div @click="selectMode('advanced')" :class="['setup-card', selectedMode === 'advanced' ? 'selected' : '']">
             <div class="flex items-start">
               <div class="flex-shrink-0 mr-4">
-                <div class="w-3 h-3 rounded-full border-2 border-vscode-button-background mt-1 transition-all duration-200"
-                     :class="selectedMode === 'advanced' ? 'bg-vscode-button-background' : ''">
-                </div>
+                <div
+                  class="w-3 h-3 rounded-full border-2 border-vscode-button-background mt-1 transition-all duration-200"
+                  :class="selectedMode === 'advanced' ? 'bg-vscode-button-background' : ''"
+                ></div>
               </div>
               <div class="flex-1">
                 <h4 class="text-lg font-semibold mb-3">{{ $t('welcome.modes.advanced.title') }}</h4>
@@ -96,18 +82,13 @@
           </div>
 
           <!-- Use Existing Setup -->
-          <div 
-            @click="selectMode('existing')"
-            :class="[
-              'setup-card',
-              selectedMode === 'existing' ? 'selected' : ''
-            ]"
-          >
+          <div @click="selectMode('existing')" :class="['setup-card', selectedMode === 'existing' ? 'selected' : '']">
             <div class="flex items-start">
               <div class="flex-shrink-0 mr-4">
-                <div class="w-3 h-3 rounded-full border-2 border-vscode-button-background mt-1 transition-all duration-200"
-                     :class="selectedMode === 'existing' ? 'bg-vscode-button-background' : ''">
-                </div>
+                <div
+                  class="w-3 h-3 rounded-full border-2 border-vscode-button-background mt-1 transition-all duration-200"
+                  :class="selectedMode === 'existing' ? 'bg-vscode-button-background' : ''"
+                ></div>
               </div>
               <div class="flex-1">
                 <h4 class="text-lg font-semibold mb-3">{{ $t('welcome.modes.existing.title') }}</h4>
@@ -122,12 +103,7 @@
 
       <!-- Action Buttons -->
       <div class="flex justify-center mt-6">
-        <BaseButton
-          variant="primary"
-          :disabled="!selectedMode"
-          @click="proceedWithMode"
-          class="px-8 py-3"
-        >
+        <BaseButton variant="primary" :disabled="!selectedMode" @click="proceedWithMode" class="px-8 py-3">
           {{ $t('common.continue') }}
         </BaseButton>
       </div>
@@ -198,7 +174,13 @@ const proceedWithMode = () => {
   }
 }
 
-.setup-card:nth-child(1) { animation-delay: 0.1s; }
-.setup-card:nth-child(2) { animation-delay: 0.2s; }
-.setup-card:nth-child(3) { animation-delay: 0.3s; }
+.setup-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.setup-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.setup-card:nth-child(3) {
+  animation-delay: 0.3s;
+}
 </style>

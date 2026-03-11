@@ -64,13 +64,13 @@ export class ConfigCommands {
         return {
           label: board.name,
           description,
-          detail: board.path
+          detail: board.path,
         };
       });
 
       const selectedQuickPickItem = await vscode.window.showQuickPick(boardPickOptions, {
         placeHolder: vscode.l10n.t('Select a SiFli board'),
-        canPickMany: false
+        canPickMany: false,
       });
 
       if (selectedQuickPickItem) {
@@ -87,21 +87,19 @@ export class ConfigCommands {
       const numThreadsInput = await vscode.window.showInputBox({
         prompt: vscode.l10n.t('Enter build threads (current: J{0})', String(currentThreads)),
         value: String(currentThreads),
-        validateInput: (value) => {
+        validateInput: value => {
           const parsed = parseInt(value);
           if (isNaN(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
             return vscode.l10n.t('Please enter a positive integer.');
           }
           return null;
-        }
+        },
       });
 
       if (numThreadsInput !== undefined && numThreadsInput !== String(currentThreads)) {
         const newThreads = parseInt(numThreadsInput);
         await this.configService.setNumThreads(newThreads);
-        vscode.window.showInformationMessage(
-          vscode.l10n.t('Build threads set to: J{0}', String(newThreads))
-        );
+        vscode.window.showInformationMessage(vscode.l10n.t('Build threads set to: J{0}', String(newThreads)));
         // 更新状态栏显示
         this.statusBarProvider.updateStatusBarItems();
       }
@@ -135,10 +133,10 @@ export class ConfigCommands {
   public async promptForInitialBoardSelection(context: vscode.ExtensionContext): Promise<void> {
     try {
       const hasRunInitialSetup = context.globalState.get<boolean>(HAS_RUN_INITIAL_SETUP_KEY, false);
-      
+
       if (!hasRunInitialSetup) {
         const availableBoards = await this.boardService.discoverBoards();
-        
+
         if (availableBoards.length > 0) {
           const selectBoard = vscode.l10n.t('Select board');
           const selectLater = vscode.l10n.t('Later');
@@ -171,7 +169,7 @@ export class ConfigCommands {
   public async listSerialPorts(): Promise<void> {
     try {
       const ports = await this.serialMonitorService.listSerialPorts();
-      
+
       if (ports.length === 0) {
         vscode.window.showInformationMessage(vscode.l10n.t('No serial ports found.'));
         return;
@@ -180,26 +178,20 @@ export class ConfigCommands {
       const items = ports.map(port => ({
         label: port.path,
         description: port.manufacturer || vscode.l10n.t('Unknown manufacturer'),
-        detail: port.serialNumber
-          ? vscode.l10n.t('Serial: {0}', port.serialNumber)
-          : vscode.l10n.t('No serial number')
+        detail: port.serialNumber ? vscode.l10n.t('Serial: {0}', port.serialNumber) : vscode.l10n.t('No serial number'),
       }));
 
       const selected = await vscode.window.showQuickPick(items, {
         placeHolder: vscode.l10n.t('Available serial ports'),
-        title: vscode.l10n.t('Found {0} serial port(s)', String(ports.length))
+        title: vscode.l10n.t('Found {0} serial port(s)', String(ports.length)),
       });
 
       if (selected) {
-        vscode.window.showInformationMessage(
-          vscode.l10n.t('Selected serial port: {0}', selected.label)
-        );
+        vscode.window.showInformationMessage(vscode.l10n.t('Selected serial port: {0}', selected.label));
       }
     } catch (error) {
       console.error('列出串口失败:', error);
-      vscode.window.showErrorMessage(
-        vscode.l10n.t('Failed to get serial port list: {0}', String(error))
-      );
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to get serial port list: {0}', String(error)));
     }
   }
 
@@ -210,7 +202,7 @@ export class ConfigCommands {
     try {
       // 获取当前选择的芯片模组
       const selectedBoard = this.configService.getSelectedBoardName();
-      
+
       if (!selectedBoard || selectedBoard === 'N/A') {
         vscode.window.showWarningMessage(vscode.l10n.t('Select a board first.'));
         return;
@@ -256,15 +248,12 @@ export class ConfigCommands {
       fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 4), 'utf-8');
 
       console.log(`[ConfigCommands] clangd 配置已更新: ${settingsPath}`);
-      
+
       // 显示成功消息并提示重启
       const restartAction = vscode.l10n.t('Restart VS Code');
       const laterAction = vscode.l10n.t('Later');
       const action = await vscode.window.showInformationMessage(
-        vscode.l10n.t(
-          'clangd configuration completed for board {0}. Restart VS Code to apply.',
-          selectedBoard
-        ),
+        vscode.l10n.t('clangd configuration completed for board {0}. Restart VS Code to apply.', selectedBoard),
         restartAction,
         laterAction
       );

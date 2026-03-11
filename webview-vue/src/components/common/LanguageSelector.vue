@@ -1,16 +1,22 @@
 <template>
   <div class="relative">
-    <BaseButton
-      variant="secondary"
-      size="sm"
-      @click="isOpen = !isOpen"
-      class="flex items-center gap-2 min-w-0"
-    >
+    <BaseButton variant="secondary" size="sm" @click="isOpen = !isOpen" class="flex items-center gap-2 min-w-0">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+        ></path>
       </svg>
       <span class="hidden sm:inline">{{ getCurrentLanguageName() }}</span>
-      <svg class="w-3 h-3 transition-transform duration-200" :class="{ 'rotate-180': isOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        class="w-3 h-3 transition-transform duration-200"
+        :class="{ 'rotate-180': isOpen }"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
       </svg>
     </BaseButton>
@@ -39,7 +45,7 @@
               'focus:bg-vscode-list-hoverBackground focus:outline-none',
               getCurrentLocale() === lang.code
                 ? 'bg-vscode-list-activeSelectionBackground text-vscode-list-activeSelectionForeground'
-                : 'text-vscode-dropdown-foreground'
+                : 'text-vscode-dropdown-foreground',
             ]"
           >
             <div class="flex items-center justify-between">

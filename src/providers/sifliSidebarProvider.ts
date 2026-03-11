@@ -29,8 +29,10 @@ export class SifliSidebarItem extends vscode.TreeItem {
 }
 
 export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSidebarItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<SifliSidebarItem | undefined | null | void> = new vscode.EventEmitter<SifliSidebarItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<SifliSidebarItem | undefined | null | void> = this._onDidChangeTreeData.event;
+  private _onDidChangeTreeData: vscode.EventEmitter<SifliSidebarItem | undefined | null | void> =
+    new vscode.EventEmitter<SifliSidebarItem | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<SifliSidebarItem | undefined | null | void> =
+    this._onDidChangeTreeData.event;
 
   private configService: ConfigService;
   private sdkService: SdkService;
@@ -85,61 +87,71 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
   private async getRootItems(): Promise<SifliSidebarItem[]> {
     const items: SifliSidebarItem[] = [];
 
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('Create New Project'),
-      vscode.TreeItemCollapsibleState.None,
-      {
-        command: 'extension.createNewSiFliProject',
-        title: vscode.l10n.t('Create New Project'),
-        arguments: []
-      },
-      new vscode.ThemeIcon('new-folder'),
-      vscode.l10n.t('Create a new SiFli project from an SDK example'),
-      'createProject'
-    ));
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Create New Project'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.createNewSiFliProject',
+          title: vscode.l10n.t('Create New Project'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('new-folder'),
+        vscode.l10n.t('Create a new SiFli project from an SDK example'),
+        'createProject'
+      )
+    );
 
     // SDK 管理
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('SDK Manager'),
-      vscode.TreeItemCollapsibleState.None,
-      {
-        command: 'extension.manageSiFliSdk',
-        title: vscode.l10n.t('SDK Manager'),
-        arguments: []
-      },
-      new vscode.ThemeIcon('cloud-download'),
-      vscode.l10n.t('Open SiFli SDK Manager to install, switch, and manage SDK versions'),
-      'sdkManager'
-    ));
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('SDK Manager'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.manageSiFliSdk',
+          title: vscode.l10n.t('SDK Manager'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('cloud-download'),
+        vscode.l10n.t('Open SiFli SDK Manager to install, switch, and manage SDK versions'),
+        'sdkManager'
+      )
+    );
 
     // 只有在 SiFli 项目中才显示项目配置
     if (isSiFliProject()) {
-      items.push(new SifliSidebarItem(
-        vscode.l10n.t('Project Configuration'),
-        vscode.TreeItemCollapsibleState.Expanded,
-        undefined,
-        new vscode.ThemeIcon('settings-gear'),
-        vscode.l10n.t('View and modify the current project configuration'),
-        'configGroup'
-      ));
+      items.push(
+        new SifliSidebarItem(
+          vscode.l10n.t('Project Configuration'),
+          vscode.TreeItemCollapsibleState.Expanded,
+          undefined,
+          new vscode.ThemeIcon('settings-gear'),
+          vscode.l10n.t('View and modify the current project configuration'),
+          'configGroup'
+        )
+      );
 
-      items.push(new SifliSidebarItem(
-        vscode.l10n.t('Workflows'),
-        vscode.TreeItemCollapsibleState.Expanded,
-        undefined,
-        new vscode.ThemeIcon('run-all'),
-        vscode.l10n.t('View and manage workflows and status bar workflow bindings'),
-        'workflowGroup'
-      ));
+      items.push(
+        new SifliSidebarItem(
+          vscode.l10n.t('Workflows'),
+          vscode.TreeItemCollapsibleState.Expanded,
+          undefined,
+          new vscode.ThemeIcon('run-all'),
+          vscode.l10n.t('View and manage workflows and status bar workflow bindings'),
+          'workflowGroup'
+        )
+      );
 
-      items.push(new SifliSidebarItem(
-        vscode.l10n.t('Status Bar Buttons'),
-        vscode.TreeItemCollapsibleState.Collapsed,
-        undefined,
-        new vscode.ThemeIcon('layout-statusbar'),
-        vscode.l10n.t('View status bar button bindings'),
-        'statusBarGroup'
-      ));
+      items.push(
+        new SifliSidebarItem(
+          vscode.l10n.t('Status Bar Buttons'),
+          vscode.TreeItemCollapsibleState.Collapsed,
+          undefined,
+          new vscode.ThemeIcon('layout-statusbar'),
+          vscode.l10n.t('View status bar button bindings'),
+          'statusBarGroup'
+        )
+      );
     }
 
     return items;
@@ -151,89 +163,97 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
     // SDK 版本
     const currentSdk = this.configService.getCurrentSdk();
     const sdkDescription = currentSdk ? currentSdk.version : vscode.l10n.t('Not configured');
-    
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('SDK Version'),
-      vscode.TreeItemCollapsibleState.None,
-      {
-        command: 'extension.switchSdkVersion',
-        title: vscode.l10n.t('Switch SDK Version'),
-        arguments: []
-      },
-      new vscode.ThemeIcon('package'),
-      vscode.l10n.t('Click to switch SiFli SDK version'),
-      'sdkVersion',
-      sdkDescription
-    ));
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('SDK Version'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.switchSdkVersion',
+          title: vscode.l10n.t('Switch SDK Version'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('package'),
+        vscode.l10n.t('Click to switch SiFli SDK version'),
+        'sdkVersion',
+        sdkDescription
+      )
+    );
 
     // 芯片模组
     const selectedBoard = this.configService.getSelectedBoardName();
     const numThreads = this.configService.getNumThreads();
-    const boardDescription = selectedBoard
-      ? `${selectedBoard} (J${numThreads})`
-      : vscode.l10n.t('Not selected');
-    
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('Board'),
-      vscode.TreeItemCollapsibleState.None,
-      {
-        command: 'extension.selectChipModule',
-        title: vscode.l10n.t('Switch Board'),
-        arguments: []
-      },
-      new vscode.ThemeIcon('circuit-board'),
-      vscode.l10n.t('Click to switch SiFli board and build threads'),
-      'chipModule',
-      boardDescription
-    ));
+    const boardDescription = selectedBoard ? `${selectedBoard} (J${numThreads})` : vscode.l10n.t('Not selected');
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Board'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.selectChipModule',
+          title: vscode.l10n.t('Switch Board'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('circuit-board'),
+        vscode.l10n.t('Click to switch SiFli board and build threads'),
+        'chipModule',
+        boardDescription
+      )
+    );
 
     // 串口配置
     const selectedPort = this.serialPortService.selectedSerialPort;
     const portDescription = selectedPort
       ? SerialPortService.getDisplayPortName(selectedPort)
       : vscode.l10n.t('Not selected');
-    
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('Serial Port'),
-      vscode.TreeItemCollapsibleState.None,
-      {
-        command: 'extension.selectPort',
-        title: vscode.l10n.t('Select Serial Port'),
-        arguments: []
-      },
-      new vscode.ThemeIcon('plug'),
-      vscode.l10n.t('Click to configure serial connection'),
-      'serialPort',
-      portDescription
-    ));
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Serial Port'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.selectPort',
+          title: vscode.l10n.t('Select Serial Port'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('plug'),
+        vscode.l10n.t('Click to configure serial connection'),
+        'serialPort',
+        portDescription
+      )
+    );
 
     // 新建 SiFli 终端
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('New SiFli Terminal'),
-      vscode.TreeItemCollapsibleState.None,
-      {
-        command: 'extension.createNewSiFliTerminal',
-        title: vscode.l10n.t('New SiFli Terminal'),
-        arguments: []
-      },
-      new vscode.ThemeIcon('terminal'),
-      vscode.l10n.t('Create a new terminal with SiFli environment'),
-      'newSifliTerminal'
-    ));
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('New SiFli Terminal'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.createNewSiFliTerminal',
+          title: vscode.l10n.t('New SiFli Terminal'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('terminal'),
+        vscode.l10n.t('Create a new terminal with SiFli environment'),
+        'newSifliTerminal'
+      )
+    );
 
     // 配置 clangd
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('Configure clangd'),
-      vscode.TreeItemCollapsibleState.None,
-      {
-        command: 'extension.configureClangd',
-        title: vscode.l10n.t('Configure clangd'),
-        arguments: []
-      },
-      new vscode.ThemeIcon('tools'),
-      vscode.l10n.t('Configure clangd compile-commands-dir path'),
-      'clangdConfig'
-    ));
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Configure clangd'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.configureClangd',
+          title: vscode.l10n.t('Configure clangd'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('tools'),
+        vscode.l10n.t('Configure clangd compile-commands-dir path'),
+        'clangdConfig'
+      )
+    );
 
     return items;
   }
@@ -241,58 +261,65 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
   private async getWorkflowItems(): Promise<SifliSidebarItem[]> {
     const items: SifliSidebarItem[] = [];
 
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('Add Workflow'),
-      vscode.TreeItemCollapsibleState.None,
-      {
-        command: 'extension.workflows.create',
-        title: vscode.l10n.t('Create workflow'),
-        arguments: []
-      },
-      new vscode.ThemeIcon('add'),
-      vscode.l10n.t('Create a new workflow'),
-      'workflowCreateEntry'
-    ));
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Add Workflow'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.workflows.create',
+          title: vscode.l10n.t('Create workflow'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('add'),
+        vscode.l10n.t('Create a new workflow'),
+        'workflowCreateEntry'
+      )
+    );
 
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('Workspace Workflows'),
-      vscode.TreeItemCollapsibleState.Expanded,
-      undefined,
-      new vscode.ThemeIcon('folder-library'),
-      vscode.l10n.t('Workflows saved in workspace settings'),
-      'workflowWorkspaceGroup'
-    ));
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Workspace Workflows'),
+        vscode.TreeItemCollapsibleState.Expanded,
+        undefined,
+        new vscode.ThemeIcon('folder-library'),
+        vscode.l10n.t('Workflows saved in workspace settings'),
+        'workflowWorkspaceGroup'
+      )
+    );
 
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('User Workflows'),
-      vscode.TreeItemCollapsibleState.Collapsed,
-      undefined,
-      new vscode.ThemeIcon('account'),
-      vscode.l10n.t('Workflows saved in user settings'),
-      'workflowUserGroup'
-    ));
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('User Workflows'),
+        vscode.TreeItemCollapsibleState.Collapsed,
+        undefined,
+        new vscode.ThemeIcon('account'),
+        vscode.l10n.t('Workflows saved in user settings'),
+        'workflowUserGroup'
+      )
+    );
 
     return items;
   }
 
   private async getWorkflowItemsByScope(scope: 'workspace' | 'user'): Promise<SifliSidebarItem[]> {
     const items: SifliSidebarItem[] = [];
-    const workflows = scope === 'workspace'
-      ? this.workflowService.getWorkspaceWorkflows()
-      : this.workflowService.getUserWorkflows();
+    const workflows =
+      scope === 'workspace' ? this.workflowService.getWorkspaceWorkflows() : this.workflowService.getUserWorkflows();
 
     workflows.forEach(workflow => {
       const stepCount = Array.isArray(workflow.steps) ? workflow.steps.length : 0;
-      items.push(new SifliSidebarItem(
-        workflow.name,
-        vscode.TreeItemCollapsibleState.Collapsed,
-        undefined,
-        new vscode.ThemeIcon('run-all'),
-        workflow.description || workflow.id,
-        'workflowItem',
-        `${stepCount} step(s)`,
-        { workflowId: workflow.id, workflowScope: scope }
-      ));
+      items.push(
+        new SifliSidebarItem(
+          workflow.name,
+          vscode.TreeItemCollapsibleState.Collapsed,
+          undefined,
+          new vscode.ThemeIcon('run-all'),
+          workflow.description || workflow.id,
+          'workflowItem',
+          `${stepCount} step(s)`,
+          { workflowId: workflow.id, workflowScope: scope }
+        )
+      );
     });
 
     return items;
@@ -300,32 +327,38 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
 
   private async getStatusBarButtonItems(): Promise<SifliSidebarItem[]> {
     const items: SifliSidebarItem[] = [];
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('Default Status Buttons'),
-      vscode.TreeItemCollapsibleState.Expanded,
-      undefined,
-      new vscode.ThemeIcon('home'),
-      vscode.l10n.t('Default status bar buttons provided by the extension'),
-      'statusBarDefaultGroup'
-    ));
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Default Status Buttons'),
+        vscode.TreeItemCollapsibleState.Expanded,
+        undefined,
+        new vscode.ThemeIcon('home'),
+        vscode.l10n.t('Default status bar buttons provided by the extension'),
+        'statusBarDefaultGroup'
+      )
+    );
 
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('Workspace Status Buttons'),
-      vscode.TreeItemCollapsibleState.Collapsed,
-      undefined,
-      new vscode.ThemeIcon('folder-library'),
-      vscode.l10n.t('Status bar buttons saved in workspace settings'),
-      'statusBarWorkspaceGroup'
-    ));
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Workspace Status Buttons'),
+        vscode.TreeItemCollapsibleState.Collapsed,
+        undefined,
+        new vscode.ThemeIcon('folder-library'),
+        vscode.l10n.t('Status bar buttons saved in workspace settings'),
+        'statusBarWorkspaceGroup'
+      )
+    );
 
-    items.push(new SifliSidebarItem(
-      vscode.l10n.t('User Status Buttons'),
-      vscode.TreeItemCollapsibleState.Collapsed,
-      undefined,
-      new vscode.ThemeIcon('account'),
-      vscode.l10n.t('Status bar buttons saved in user settings'),
-      'statusBarUserGroup'
-    ));
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('User Status Buttons'),
+        vscode.TreeItemCollapsibleState.Collapsed,
+        undefined,
+        new vscode.ThemeIcon('account'),
+        vscode.l10n.t('Status bar buttons saved in user settings'),
+        'statusBarUserGroup'
+      )
+    );
 
     return items;
   }
@@ -336,9 +369,10 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
     const workspaceOverrides = new Set(this.workflowService.getWorkspaceStatusBarButtons().map(button => button.id));
 
     defaultButtons.forEach(button => {
-      const actionDescription = button.action.kind === 'workflow'
-        ? `workflow: ${button.action.workflowId || 'N/A'}`
-        : `command: ${button.action.commandId || 'N/A'}`;
+      const actionDescription =
+        button.action.kind === 'workflow'
+          ? `workflow: ${button.action.workflowId || 'N/A'}`
+          : `command: ${button.action.commandId || 'N/A'}`;
       const parsed = this.parseStatusButtonText(button.text);
       const label = this.isIconOnlyStatusButtonText(button.text)
         ? this.getDefaultStatusButtonLabel(button.id)
@@ -346,16 +380,18 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
       const description = workspaceOverrides.has(button.id)
         ? vscode.l10n.t('Overridden in workspace settings')
         : actionDescription;
-      items.push(new SifliSidebarItem(
-        label,
-        vscode.TreeItemCollapsibleState.None,
-        undefined,
-        new vscode.ThemeIcon(parsed.icon || 'rocket'),
-        button.tooltip || button.id,
-        'defaultWorkflowButtonItem',
-        description,
-        { buttonId: button.id, buttonScope: 'default' }
-      ));
+      items.push(
+        new SifliSidebarItem(
+          label,
+          vscode.TreeItemCollapsibleState.None,
+          undefined,
+          new vscode.ThemeIcon(parsed.icon || 'rocket'),
+          button.tooltip || button.id,
+          'defaultWorkflowButtonItem',
+          description,
+          { buttonId: button.id, buttonScope: 'default' }
+        )
+      );
     });
 
     return items;
@@ -363,9 +399,10 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
 
   private async getStatusBarButtonItemsByScope(scope: 'workspace' | 'user'): Promise<SifliSidebarItem[]> {
     const items: SifliSidebarItem[] = [];
-    const sourceButtons = scope === 'workspace'
-      ? this.workflowService.getWorkspaceStatusBarButtons()
-      : this.workflowService.getUserStatusBarButtons();
+    const sourceButtons =
+      scope === 'workspace'
+        ? this.workflowService.getWorkspaceStatusBarButtons()
+        : this.workflowService.getUserStatusBarButtons();
     const defaultButtonIds = new Set(this.statusBarProvider.getDefaultWorkflowButtons().map(button => button.id));
     const buttons = sourceButtons.filter(button => !defaultButtonIds.has(button.id));
     const workflowNameById = new Map(
@@ -373,21 +410,24 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
     );
 
     buttons.forEach(button => {
-      const actionDescription = button.action.kind === 'workflow'
-        ? `workflow: ${workflowNameById.get(button.action.workflowId || '') || 'N/A'}`
-        : `command: ${button.action.commandId || 'N/A'}`;
+      const actionDescription =
+        button.action.kind === 'workflow'
+          ? `workflow: ${workflowNameById.get(button.action.workflowId || '') || 'N/A'}`
+          : `command: ${button.action.commandId || 'N/A'}`;
       const parsed = this.parseStatusButtonText(button.text);
 
-      items.push(new SifliSidebarItem(
-        parsed.label,
-        vscode.TreeItemCollapsibleState.None,
-        undefined,
-        new vscode.ThemeIcon(parsed.icon || 'rocket'),
-        button.tooltip || button.id,
-        'workflowButtonItem',
-        actionDescription,
-        { buttonId: button.id, buttonScope: scope }
-      ));
+      items.push(
+        new SifliSidebarItem(
+          parsed.label,
+          vscode.TreeItemCollapsibleState.None,
+          undefined,
+          new vscode.ThemeIcon(parsed.icon || 'rocket'),
+          button.tooltip || button.id,
+          'workflowButtonItem',
+          actionDescription,
+          { buttonId: button.id, buttonScope: scope }
+        )
+      );
     });
 
     return items;
@@ -405,7 +445,7 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
     const isValidIconName = /^[a-zA-Z][a-zA-Z0-9-]*$/.test(iconName);
     return {
       icon: isValidIconName ? iconName : undefined,
-      label: label || raw
+      label: label || raw,
     };
   }
 
@@ -439,11 +479,12 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
       return [];
     }
 
-    const workflows = workflowScope === 'user'
-      ? this.workflowService.getUserWorkflows()
-      : workflowScope === 'workspace'
-        ? this.workflowService.getWorkspaceWorkflows()
-        : this.workflowService.getResolvedWorkflows();
+    const workflows =
+      workflowScope === 'user'
+        ? this.workflowService.getUserWorkflows()
+        : workflowScope === 'workspace'
+          ? this.workflowService.getWorkspaceWorkflows()
+          : this.workflowService.getResolvedWorkflows();
 
     const workflow = workflows.find(item => item.id === workflowId);
     if (!workflow) {
@@ -461,32 +502,39 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
         {
           command: 'extension.workflows.stepAdd',
           title: vscode.l10n.t('Add step'),
-          arguments: [{ metadata: workflowMetadata }]
+          arguments: [{ metadata: workflowMetadata }],
         },
         new vscode.ThemeIcon('add'),
         vscode.l10n.t('Add step to workflow'),
         'workflowStepAddItem',
         undefined,
         workflowMetadata
-      )
+      ),
     ];
 
     const workflowSteps = Array.isArray(workflow.steps) ? workflow.steps : [];
     workflowSteps.forEach((step, index) => {
       const stepLabel = getWorkflowStepDisplayLabel(step);
-      const stepTooltip = step.type === 'shell.command' && typeof step.args?.command === 'string'
-        ? `${getWorkflowStepTypeLabel(step.type)}: ${step.args.command}`
-        : vscode.l10n.t('wait: {0}, continueOnError: {1}', String(step.wait ?? false), String(step.continueOnError ?? false));
-      items.push(new SifliSidebarItem(
-        `${index + 1}. ${stepLabel}`,
-        vscode.TreeItemCollapsibleState.None,
-        undefined,
-        new vscode.ThemeIcon('symbol-method'),
-        stepTooltip,
-        'workflowStepItem',
-        undefined,
-        { ...workflowMetadata, stepIndex: String(index) }
-      ));
+      const stepTooltip =
+        step.type === 'shell.command' && typeof step.args?.command === 'string'
+          ? `${getWorkflowStepTypeLabel(step.type)}: ${step.args.command}`
+          : vscode.l10n.t(
+              'wait: {0}, continueOnError: {1}',
+              String(step.wait ?? false),
+              String(step.continueOnError ?? false)
+            );
+      items.push(
+        new SifliSidebarItem(
+          `${index + 1}. ${stepLabel}`,
+          vscode.TreeItemCollapsibleState.None,
+          undefined,
+          new vscode.ThemeIcon('symbol-method'),
+          stepTooltip,
+          'workflowStepItem',
+          undefined,
+          { ...workflowMetadata, stepIndex: String(index) }
+        )
+      );
     });
 
     return items;
@@ -502,7 +550,7 @@ export class SifliSidebarManager {
     this.sidebarProvider = new SifliSidebarProvider();
     this.treeView = vscode.window.createTreeView('sifliSdkManager', {
       treeDataProvider: this.sidebarProvider,
-      showCollapseAll: false
+      showCollapseAll: false,
     });
   }
 
@@ -526,7 +574,7 @@ export class SifliSidebarManager {
     context.subscriptions.push(this.treeView, refreshCommand);
 
     // 监听配置变化
-    const configChangeListener = vscode.workspace.onDidChangeConfiguration((e) => {
+    const configChangeListener = vscode.workspace.onDidChangeConfiguration(e => {
       if (e.affectsConfiguration('sifli-sdk-codekit')) {
         this.refresh();
       }

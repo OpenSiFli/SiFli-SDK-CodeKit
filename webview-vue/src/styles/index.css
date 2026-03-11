@@ -61,41 +61,41 @@ body {
   }
 
   /* VS Code 主题按钮样式统一管理 */
-  
+
   /* Primary 按钮 - 深色主题 */
-  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-primary,
-  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-primary {
+  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-primary,
+  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-primary {
     background-color: #0e639c !important;
     color: #ffffff !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   }
 
-  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-primary:hover,
-  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-primary:hover {
+  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-primary:hover,
+  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-primary:hover {
     background-color: #1177bb !important;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
   }
 
-  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-primary:active,
-  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-primary:active {
+  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-primary:active,
+  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-primary:active {
     background-color: #094771 !important;
   }
 
   /* Secondary 按钮 - 深色主题 */
-  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-secondary,
-  body[data-vscode-theme-kind="vscode-dark"] .btn.vscode-button-secondary,
-  body[data-vscode-theme-kind="vscode-dark"] button.vscode-button-secondary,
-  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-secondary {
+  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-secondary,
+  body[data-vscode-theme-kind='vscode-dark'] .btn.vscode-button-secondary,
+  body[data-vscode-theme-kind='vscode-dark'] button.vscode-button-secondary,
+  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-secondary {
     background-color: #2d2d30 !important;
     color: #cccccc !important;
     border: 1px solid #3e3e42 !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
   }
 
-  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-secondary:hover,
-  body[data-vscode-theme-kind="vscode-dark"] .btn.vscode-button-secondary:hover,
-  body[data-vscode-theme-kind="vscode-dark"] button.vscode-button-secondary:hover,
-  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-secondary:hover {
+  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-secondary:hover,
+  body[data-vscode-theme-kind='vscode-dark'] .btn.vscode-button-secondary:hover,
+  body[data-vscode-theme-kind='vscode-dark'] button.vscode-button-secondary:hover,
+  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-secondary:hover {
     background-color: #37373d !important;
     border-color: #464647 !important;
     color: #ffffff !important;
@@ -103,34 +103,34 @@ body {
     transform: translateY(-1px) !important;
   }
 
-  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-secondary:active,
-  body[data-vscode-theme-kind="vscode-dark"] .btn.vscode-button-secondary:active,
-  body[data-vscode-theme-kind="vscode-dark"] button.vscode-button-secondary:active,
-  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-secondary:active {
+  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-secondary:active,
+  body[data-vscode-theme-kind='vscode-dark'] .btn.vscode-button-secondary:active,
+  body[data-vscode-theme-kind='vscode-dark'] button.vscode-button-secondary:active,
+  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-secondary:active {
     background-color: #252526 !important;
     border-color: #3e3e42 !important;
     transform: translateY(0px) !important;
   }
 
   /* Secondary 按钮 - 浅色主题 */
-  body[data-vscode-theme-kind="vscode-light"] .vscode-button-secondary,
-  body[data-vscode-theme-kind="vscode-light"] .btn.vscode-button-secondary,
-  body[data-vscode-theme-kind="vscode-light"] button.vscode-button-secondary,
-  body:not([data-vscode-theme-kind="vscode-dark"]) .vscode-button-secondary,
-  body:not([data-vscode-theme-kind="vscode-dark"]) .btn.vscode-button-secondary,
-  body:not([data-vscode-theme-kind="vscode-dark"]) button.vscode-button-secondary {
+  body[data-vscode-theme-kind='vscode-light'] .vscode-button-secondary,
+  body[data-vscode-theme-kind='vscode-light'] .btn.vscode-button-secondary,
+  body[data-vscode-theme-kind='vscode-light'] button.vscode-button-secondary,
+  body:not([data-vscode-theme-kind='vscode-dark']) .vscode-button-secondary,
+  body:not([data-vscode-theme-kind='vscode-dark']) .btn.vscode-button-secondary,
+  body:not([data-vscode-theme-kind='vscode-dark']) button.vscode-button-secondary {
     background-color: #f3f4f6 !important;
     color: #374151 !important;
     border: 1px solid #d1d5db !important;
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
   }
 
-  body[data-vscode-theme-kind="vscode-light"] .vscode-button-secondary:hover,
-  body[data-vscode-theme-kind="vscode-light"] .btn.vscode-button-secondary:hover,
-  body[data-vscode-theme-kind="vscode-light"] button.vscode-button-secondary:hover,
-  body:not([data-vscode-theme-kind="vscode-dark"]) .vscode-button-secondary:hover,
-  body:not([data-vscode-theme-kind="vscode-dark"]) .btn.vscode-button-secondary:hover,
-  body:not([data-vscode-theme-kind="vscode-dark"]) button.vscode-button-secondary:hover {
+  body[data-vscode-theme-kind='vscode-light'] .vscode-button-secondary:hover,
+  body[data-vscode-theme-kind='vscode-light'] .btn.vscode-button-secondary:hover,
+  body[data-vscode-theme-kind='vscode-light'] button.vscode-button-secondary:hover,
+  body:not([data-vscode-theme-kind='vscode-dark']) .vscode-button-secondary:hover,
+  body:not([data-vscode-theme-kind='vscode-dark']) .btn.vscode-button-secondary:hover,
+  body:not([data-vscode-theme-kind='vscode-dark']) button.vscode-button-secondary:hover {
     background-color: #e5e7eb !important;
     border-color: #9ca3af !important;
     color: #1f2937 !important;
@@ -160,10 +160,10 @@ body {
   }
 
   /* 深色模式下的禁用按钮 - 更明显的灰色 */
-  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-secondary:disabled,
-  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-secondary[disabled],
-  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-secondary:disabled,
-  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-secondary[disabled] {
+  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-secondary:disabled,
+  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-secondary[disabled],
+  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-secondary:disabled,
+  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-secondary[disabled] {
     background-color: #374151 !important;
     color: #9ca3af !important;
     border: 1px solid #4b5563 !important;
@@ -178,10 +178,10 @@ body {
     box-shadow: none !important;
   }
 
-  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-primary:disabled,
-  body[data-vscode-theme-kind="vscode-dark"] .vscode-button-primary[disabled],
-  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-primary:disabled,
-  body[data-vscode-theme-kind="vscode-high-contrast"] .vscode-button-primary[disabled] {
+  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-primary:disabled,
+  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-primary[disabled],
+  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-primary:disabled,
+  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-primary[disabled] {
     background-color: #374151 !important;
     color: #6b7280 !important;
     box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important;
@@ -200,14 +200,14 @@ body {
 
   /* 深色模式下的 success 按钮增强 */
   .dark .vscode-button-success,
-  [data-theme="dark"] .vscode-button-success {
+  [data-theme='dark'] .vscode-button-success {
     background-color: #10b981 !important;
     color: #ffffff !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   }
 
   .dark .vscode-button-success:hover,
-  [data-theme="dark"] .vscode-button-success:hover {
+  [data-theme='dark'] .vscode-button-success:hover {
     background-color: #059669 !important;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
   }
@@ -225,14 +225,14 @@ body {
 
   /* 深色模式下的 warning 按钮增强 */
   .dark .vscode-button-warning,
-  [data-theme="dark"] .vscode-button-warning {
+  [data-theme='dark'] .vscode-button-warning {
     background-color: #fbbf24 !important;
     color: #1f2937 !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   }
 
   .dark .vscode-button-warning:hover,
-  [data-theme="dark"] .vscode-button-warning:hover {
+  [data-theme='dark'] .vscode-button-warning:hover {
     background-color: #f59e0b !important;
     color: #ffffff !important;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
@@ -251,14 +251,14 @@ body {
 
   /* 深色模式下的 error 按钮增强 */
   .dark .vscode-button-error,
-  [data-theme="dark"] .vscode-button-error {
+  [data-theme='dark'] .vscode-button-error {
     background-color: #ef4444 !important;
     color: #ffffff !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   }
 
   .dark .vscode-button-error:hover,
-  [data-theme="dark"] .vscode-button-error:hover {
+  [data-theme='dark'] .vscode-button-error:hover {
     background-color: #dc2626 !important;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
   }
@@ -276,14 +276,14 @@ body {
 
   /* 深色模式下的 info 按钮增强 */
   .dark .vscode-button-info,
-  [data-theme="dark"] .vscode-button-info {
+  [data-theme='dark'] .vscode-button-info {
     background-color: #06b6d4 !important;
     color: #ffffff !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   }
 
   .dark .vscode-button-info:hover,
-  [data-theme="dark"] .vscode-button-info:hover {
+  [data-theme='dark'] .vscode-button-info:hover {
     background-color: #0284c7 !important;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
   }
@@ -325,13 +325,22 @@ body {
 
 /* 加载动画 */
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @keyframes slideInUp {
@@ -446,7 +455,11 @@ body {
   height: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
-  transition: width 0.3s, height 0.3s, top 0.3s, left 0.3s;
+  transition:
+    width 0.3s,
+    height 0.3s,
+    top 0.3s,
+    left 0.3s;
   transform: translate(-50%, -50%);
 }
 

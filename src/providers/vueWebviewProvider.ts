@@ -32,33 +32,28 @@ export class VueWebviewProvider {
    * 创建 Vue SDK 管理 WebView
    */
   public async createSdkManagementWebview(context: vscode.ExtensionContext): Promise<void> {
-    const panel = vscode.window.createWebviewPanel(
-      'sifliSdkManagerVue',
-      'SiFli SDK 管理器',
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        enableCommandUris: true,
-        localResourceRoots: [
-          vscode.Uri.file(path.join(context.extensionPath, 'webview-vue', 'dist')),
-          vscode.Uri.file(path.join(context.extensionPath, 'webview-vue', 'dist', 'assets'))
-        ]
-      }
-    );
+    const panel = vscode.window.createWebviewPanel('sifliSdkManagerVue', 'SiFli SDK 管理器', vscode.ViewColumn.One, {
+      enableScripts: true,
+      retainContextWhenHidden: true,
+      enableCommandUris: true,
+      localResourceRoots: [
+        vscode.Uri.file(path.join(context.extensionPath, 'webview-vue', 'dist')),
+        vscode.Uri.file(path.join(context.extensionPath, 'webview-vue', 'dist', 'assets')),
+      ],
+    });
 
     // 设置 WebView 内容
     panel.webview.html = this.getWebviewContent(panel.webview, context.extensionPath);
 
     // 发送初始化数据，包括语言设置
     panel.webview.onDidReceiveMessage(
-      async (message) => {
+      async message => {
         if (message.command === 'ready') {
           // 当 webview 准备就绪时发送初始化数据
           const locale = this.getVSCodeLocale();
           panel.webview.postMessage({
             command: 'initializeLocale',
-            locale: locale
+            locale: locale,
           });
           // 发送区域默认源设置（仅在需要时）
           this.sendRegionDefaults(panel.webview).catch(err => {
@@ -71,7 +66,7 @@ export class VueWebviewProvider {
             console.error('[VueWebviewProvider] Error handling webview message:', error);
             panel.webview.postMessage({
               command: 'error',
-              error: error instanceof Error ? error.message : String(error)
+              error: error instanceof Error ? error.message : String(error),
             });
           }
         }
@@ -81,19 +76,19 @@ export class VueWebviewProvider {
     );
 
     // 监听 VS Code 语言配置变化
-    const configChangeListener = vscode.workspace.onDidChangeConfiguration((e) => {
+    const configChangeListener = vscode.workspace.onDidChangeConfiguration(e => {
       if (e.affectsConfiguration('locale')) {
         const locale = this.getVSCodeLocale();
         panel.webview.postMessage({
           command: 'localeChanged',
-          locale: locale
+          locale: locale,
         });
       }
     });
 
     panel.onDidDispose(() => {
       configChangeListener.dispose();
-      
+
       // 关闭WebView时终止所有Git进程
       console.log('[VueWebviewProvider] WebView disposed, terminating Git processes...');
       this.terminateGitProcesses();
@@ -120,7 +115,7 @@ export class VueWebviewProvider {
     // 获取 VS Code 的语言设置
     const config = vscode.workspace.getConfiguration();
     const locale = config.get<string>('locale') || vscode.env.language || 'en';
-    
+
     // 将 VS Code 的语言代码映射到我们支持的语言
     if (locale.startsWith('zh')) {
       return 'zh';
@@ -134,17 +129,17 @@ export class VueWebviewProvider {
   private getWebviewContent(webview: vscode.Webview, extensionPath: string): string {
     const vueDistPath = path.join(extensionPath, 'webview-vue', 'dist');
     const templatePath = path.join(extensionPath, 'src', 'providers', 'templates', 'webview.html');
-    
+
     console.log('[VueWebviewProvider] Vue dist path:', vueDistPath);
     console.log('[VueWebviewProvider] Template path:', templatePath);
-    
+
     // 获取资源 URI
     const getResourceUri = (relativePath: string) => {
       const fullPath = path.join(vueDistPath, relativePath);
       console.log('[VueWebviewProvider] Checking resource:', fullPath);
       const exists = fs.existsSync(fullPath);
       console.log('[VueWebviewProvider] Resource exists:', exists);
-      
+
       if (exists) {
         const uri = webview.asWebviewUri(vscode.Uri.file(fullPath)).toString();
         console.log('[VueWebviewProvider] Resource URI:', uri);
@@ -154,12 +149,12 @@ export class VueWebviewProvider {
     };
 
     const jsUri = getResourceUri('assets/index.js');
-    const cssFiles = fs.existsSync(path.join(vueDistPath, 'assets')) 
+    const cssFiles = fs.existsSync(path.join(vueDistPath, 'assets'))
       ? fs.readdirSync(path.join(vueDistPath, 'assets')).filter(f => f.endsWith('.css'))
       : [];
-    
+
     console.log('[VueWebviewProvider] CSS files found:', cssFiles);
-    
+
     const cssUris = cssFiles.map(file => getResourceUri(`assets/${file}`)).filter(Boolean);
 
     if (!jsUri) {
@@ -174,14 +169,14 @@ export class VueWebviewProvider {
 
     try {
       let html = fs.readFileSync(templatePath, 'utf8');
-      
+
       // 添加 CSS 链接
       const cssLinks = cssUris.map(uri => `<link rel="stylesheet" href="${uri}">`).join('\n  ');
-      
+
       // 替换模板变量
       html = html.replace('{{VUE_SCRIPT_URI}}', jsUri);
       html = html.replace('</head>', `  ${cssLinks}\n</head>`);
-      
+
       console.log('[VueWebviewProvider] Generated HTML preview:', html.substring(0, 500));
       return html;
     } catch (error) {
@@ -232,7 +227,7 @@ export class VueWebviewProvider {
     const { SdkService } = await import('../services/sdkService');
     const { GitService } = await import('../services/gitService');
     const { ConfigService } = await import('../services/configService'); // 确保这里有 ConfigService 的引用
-    
+
     const sdkCommands = SdkCommands.getInstance();
     const sdkService = SdkService.getInstance();
     const gitService = GitService.getInstance();
@@ -243,11 +238,9 @@ export class VueWebviewProvider {
         const sdks = await sdkService.discoverSiFliSdks();
         webview.postMessage({
           command: 'updateSdkList',
-          sdks
+          sdks,
         });
         break;
-
-
 
       case 'fetchVersions':
         try {
@@ -256,17 +249,17 @@ export class VueWebviewProvider {
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
-          
+
           const versions = await response.json();
           webview.postMessage({
             command: 'displayVersions',
-            versions
+            versions,
           });
         } catch (error) {
           console.error('[VueWebviewProvider] Error fetching unified versions:', error);
           webview.postMessage({
             command: 'error',
-            message: '获取版本列表失败: ' + (error instanceof Error ? error.message : String(error))
+            message: '获取版本列表失败: ' + (error instanceof Error ? error.message : String(error)),
           });
         }
         break;
@@ -277,20 +270,20 @@ export class VueWebviewProvider {
             canSelectFiles: false,
             canSelectFolders: true,
             canSelectMany: false,
-            title: '选择 SDK 安装目录'
+            title: '选择 SDK 安装目录',
           });
-          
+
           if (result && result.length > 0) {
             webview.postMessage({
               command: 'installPathSelected',
-              path: result[0].fsPath
+              path: result[0].fsPath,
             });
           }
         } catch (error) {
           console.error('[VueWebviewProvider] Error browsing path:', error);
           webview.postMessage({
             command: 'error',
-            message: '选择路径失败: ' + (error instanceof Error ? error.message : String(error))
+            message: '选择路径失败: ' + (error instanceof Error ? error.message : String(error)),
           });
         }
         break;
@@ -301,20 +294,20 @@ export class VueWebviewProvider {
             canSelectFiles: false,
             canSelectFolders: true,
             canSelectMany: false,
-            title: '选择工具链目录'
+            title: '选择工具链目录',
           });
-          
+
           if (result && result.length > 0) {
             webview.postMessage({
               command: 'toolsPathSelected',
-              path: result[0].fsPath
+              path: result[0].fsPath,
             });
           }
         } catch (error) {
           console.error('[VueWebviewProvider] Error browsing tools path:', error);
           webview.postMessage({
             command: 'error',
-            message: '选择工具链路径失败: ' + (error instanceof Error ? error.message : String(error))
+            message: '选择工具链路径失败: ' + (error instanceof Error ? error.message : String(error)),
           });
         }
         break;
@@ -325,13 +318,13 @@ export class VueWebviewProvider {
         try {
           console.log('[VueWebviewProvider] Starting SDK installation...');
           const { sdkSource, version, installPath, toolchainSource, toolsPath } = message.data;
-          
+
           console.log('[VueWebviewProvider] Installation parameters:', {
             sdkSource,
             version,
             installPath,
             toolchainSource,
-            toolsPath
+            toolsPath,
           });
 
           // 辅助函数：发送日志并收集
@@ -339,13 +332,13 @@ export class VueWebviewProvider {
             installationLogs.push(log);
             webview.postMessage({
               command: 'installationLog',
-              log: log
+              log: log,
             });
           };
 
           // 存储工具链路径以便后续使用
           const toolsPathForEnv = toolsPath && toolsPath.trim() !== '' ? toolsPath.trim() : null;
-          
+
           if (toolsPathForEnv) {
             console.log('[VueWebviewProvider] Tools path provided:', toolsPathForEnv);
             sendLog(`🔧 检测到工具链路径: ${toolsPathForEnv}`);
@@ -364,13 +357,14 @@ export class VueWebviewProvider {
           // 发送安装开始消息
           webview.postMessage({
             command: 'installationStarted',
-            message: '开始安装 SiFli SDK...'
+            message: '开始安装 SiFli SDK...',
           });
 
           // 确定仓库 URL
-          const repoUrl = sdkSource === 'github' 
-            ? 'https://github.com/OpenSiFli/SiFli-SDK.git'
-            : 'https://gitee.com/SiFli/sifli-sdk.git';
+          const repoUrl =
+            sdkSource === 'github'
+              ? 'https://github.com/OpenSiFli/SiFli-SDK.git'
+              : 'https://gitee.com/SiFli/sifli-sdk.git';
 
           console.log('[VueWebviewProvider] Repository URL:', repoUrl);
 
@@ -417,16 +411,16 @@ export class VueWebviewProvider {
           // 使用 GitService 克隆仓库，包含 --recursive 选项
           await gitService.cloneRepository(repoUrl, fullInstallPath, {
             branch: branchName,
-            onProgress: (progress) => {
+            onProgress: progress => {
               console.log('[VueWebviewProvider] Clone progress:', progress);
               // 发送 Git 日志到前端并收集
               const logMessage = progress;
               installationLogs.push(logMessage);
               webview.postMessage({
                 command: 'installationLog',
-                log: logMessage
+                log: logMessage,
               });
-            }
+            },
           });
 
           console.log('[VueWebviewProvider] Clone operation completed');
@@ -462,29 +456,28 @@ export class VueWebviewProvider {
             path: fullInstallPath,
             version: dirName,
             source: sdkSource,
-            logs: installationLogs
+            logs: installationLogs,
           });
 
           console.log('[VueWebviewProvider] SDK installation completed successfully');
-
         } catch (error) {
           console.error('[VueWebviewProvider] SDK installation failed:', error);
-          
+
           // 安装失败时终止Git进程
           await this.terminateGitProcesses();
-          
+
           // 发送错误日志
           const errorMessage = `❌ 安装失败: ${error instanceof Error ? error.message : String(error)}`;
           installationLogs.push(errorMessage);
           webview.postMessage({
             command: 'installationLog',
-            log: errorMessage
+            log: errorMessage,
           });
-          
+
           webview.postMessage({
             command: 'installationFailed',
             message: '安装失败: ' + (error instanceof Error ? error.message : String(error)),
-            logs: installationLogs
+            logs: installationLogs,
           });
         }
         break;
@@ -492,26 +485,25 @@ export class VueWebviewProvider {
       case 'cancelInstallation':
         try {
           console.log('[VueWebviewProvider] Cancelling SDK installation...');
-          
+
           // 终止所有Git进程
           await this.terminateGitProcesses();
-          
-      webview.postMessage({
-        command: 'installationLog',
-        log: '⚠️ 用户取消了安装操作'
-      });
-      
-      webview.postMessage({
-        command: 'installationFailed',
-        message: '安装已取消',
-        logs: []
-      });
-          
+
+          webview.postMessage({
+            command: 'installationLog',
+            log: '⚠️ 用户取消了安装操作',
+          });
+
+          webview.postMessage({
+            command: 'installationFailed',
+            message: '安装已取消',
+            logs: [],
+          });
         } catch (error) {
           console.error('[VueWebviewProvider] Error cancelling installation:', error);
           webview.postMessage({
             command: 'installationLog',
-            log: `❌ 取消安装时发生错误: ${error instanceof Error ? error.message : String(error)}`
+            log: `❌ 取消安装时发生错误: ${error instanceof Error ? error.message : String(error)}`,
           });
         }
         break;
@@ -522,17 +514,17 @@ export class VueWebviewProvider {
           const path = require('path');
           const homeDir = os.homedir();
           const defaultPath = path.join(homeDir, 'sifli');
-          
+
           webview.postMessage({
             command: 'defaultInstallPath',
-            path: defaultPath
+            path: defaultPath,
           });
         } catch (error) {
           console.error('[VueWebviewProvider] Error getting default install path:', error);
           // 如果获取失败，发送一个通用默认路径
           webview.postMessage({
             command: 'defaultInstallPath',
-            path: '~/sifli'
+            path: '~/sifli',
           });
         }
         break;
@@ -557,7 +549,7 @@ export class VueWebviewProvider {
           if (targetPath && fs.existsSync(targetPath)) {
             const terminal = vscode.window.createTerminal({
               name: vscode.l10n.t('SiFli SDK'),
-              cwd: targetPath
+              cwd: targetPath,
             });
             terminal.show();
           } else {
@@ -587,7 +579,7 @@ export class VueWebviewProvider {
           webview.postMessage({
             command: 'sdkValidationResult',
             valid: false,
-            message: '验证 SDK 时发生错误: ' + (error instanceof Error ? error.message : String(error))
+            message: '验证 SDK 时发生错误: ' + (error instanceof Error ? error.message : String(error)),
           });
         }
         break;
@@ -600,7 +592,7 @@ export class VueWebviewProvider {
           console.error('[VueWebviewProvider] Error installing existing SDK:', error);
           webview.postMessage({
             command: 'installationFailed',
-            message: '安装 SDK 失败: ' + (error instanceof Error ? error.message : String(error))
+            message: '安装 SDK 失败: ' + (error instanceof Error ? error.message : String(error)),
           });
         }
         break;
@@ -613,7 +605,13 @@ export class VueWebviewProvider {
   /**
    * 安装工具链
    */
-  private async installToolchain(sdkPath: string, webview: vscode.Webview, installationLogs?: string[], toolsPath?: string | null, toolchainSource?: string): Promise<void> {
+  private async installToolchain(
+    sdkPath: string,
+    webview: vscode.Webview,
+    installationLogs?: string[],
+    toolsPath?: string | null,
+    toolchainSource?: string
+  ): Promise<void> {
     try {
       console.log('[VueWebviewProvider] Starting toolchain installation...');
       const logMessage = '🔧 开始安装工具链...';
@@ -622,7 +620,7 @@ export class VueWebviewProvider {
       }
       webview.postMessage({
         command: 'installationLog',
-        log: logMessage
+        log: logMessage,
       });
 
       // 如果设置了工具链路径，记录环境变量信息
@@ -633,7 +631,7 @@ export class VueWebviewProvider {
         }
         webview.postMessage({
           command: 'installationLog',
-          log: envLog
+          log: envLog,
         });
       }
 
@@ -646,7 +644,7 @@ export class VueWebviewProvider {
         }
         webview.postMessage({
           command: 'installationLog',
-          log: logMessage
+          log: logMessage,
         });
         return;
       }
@@ -657,7 +655,7 @@ export class VueWebviewProvider {
       }
       webview.postMessage({
         command: 'installationLog',
-        log: foundScriptLog
+        log: foundScriptLog,
       });
 
       // 执行安装脚本
@@ -669,9 +667,8 @@ export class VueWebviewProvider {
       }
       webview.postMessage({
         command: 'installationLog',
-        log: completedLog
+        log: completedLog,
       });
-
     } catch (error) {
       console.error('[VueWebviewProvider] Toolchain installation failed:', error);
       const errorLog = `❌ 工具链安装失败: ${error instanceof Error ? error.message : String(error)}`;
@@ -680,7 +677,7 @@ export class VueWebviewProvider {
       }
       webview.postMessage({
         command: 'installationLog',
-        log: errorLog
+        log: errorLog,
       });
       // 不抛出错误，让SDK安装继续完成
     }
@@ -709,7 +706,14 @@ export class VueWebviewProvider {
   /**
    * 执行安装脚本
    */
-  private async executeInstallScript(scriptPath: string, workingDir: string, webview: vscode.Webview, installationLogs?: string[], toolsPath?: string | null, toolchainSource?: string): Promise<void> {
+  private async executeInstallScript(
+    scriptPath: string,
+    workingDir: string,
+    webview: vscode.Webview,
+    installationLogs?: string[],
+    toolsPath?: string | null,
+    toolchainSource?: string
+  ): Promise<void> {
     // 提前获取 PythonService
     let pythonDir: string | undefined;
     if (process.platform === 'win32') {
@@ -742,7 +746,7 @@ export class VueWebviewProvider {
       }
       webview.postMessage({
         command: 'installationLog',
-        log: execLog
+        log: execLog,
       });
 
       // 设置环境变量
@@ -759,7 +763,7 @@ export class VueWebviewProvider {
         }
         webview.postMessage({
           command: 'installationLog',
-          log: pythonLog
+          log: pythonLog,
         });
       }
 
@@ -771,7 +775,7 @@ export class VueWebviewProvider {
         }
         webview.postMessage({
           command: 'installationLog',
-          log: envSetLog
+          log: envSetLog,
         });
       }
 
@@ -781,11 +785,11 @@ export class VueWebviewProvider {
         // SiFli镜像源时设置额外的环境变量
         env.SIFLI_SDK_GITHUB_ASSETS = 'downloads.sifli.com/github_assets';
         env.PIP_INDEX_URL = 'https://mirrors.ustc.edu.cn/pypi/simple';
-        
+
         const mirrorLogMessage = `🌐 检测到SiFli镜像源，设置镜像环境变量:`;
         const githubAssetsLog = `   SIFLI_SDK_GITHUB_ASSETS=downloads.sifli.com/github_assets`;
         const pipIndexLog = `   PIP_INDEX_URL=https://mirrors.ustc.edu.cn/pypi/simple`;
-        
+
         if (installationLogs) {
           installationLogs.push(mirrorLogMessage);
           installationLogs.push(githubAssetsLog);
@@ -793,22 +797,22 @@ export class VueWebviewProvider {
         }
         webview.postMessage({
           command: 'installationLog',
-          log: mirrorLogMessage
+          log: mirrorLogMessage,
         });
         webview.postMessage({
           command: 'installationLog',
-          log: githubAssetsLog
+          log: githubAssetsLog,
         });
         webview.postMessage({
           command: 'installationLog',
-          log: pipIndexLog
+          log: pipIndexLog,
         });
       }
 
       const installProcess = spawn(command, args, {
         cwd: workingDir,
         stdio: ['ignore', 'pipe', 'pipe'],
-        env: env
+        env: env,
       });
 
       let hasError = false;
@@ -824,7 +828,7 @@ export class VueWebviewProvider {
           }
           webview.postMessage({
             command: 'installationLog',
-            log: output
+            log: output,
           });
         }
       });
@@ -841,7 +845,7 @@ export class VueWebviewProvider {
           }
           webview.postMessage({
             command: 'installationLog',
-            log: output
+            log: output,
           });
         }
       });
@@ -849,7 +853,7 @@ export class VueWebviewProvider {
       // 处理进程退出
       installProcess.on('close', (code: number) => {
         console.log(`[VueWebviewProvider] Install script exited with code: ${code}`);
-        
+
         if (code === 0) {
           const successLog = `✅ 安装脚本执行成功（退出代码: ${code}）`;
           if (installationLogs) {
@@ -857,26 +861,26 @@ export class VueWebviewProvider {
           }
           webview.postMessage({
             command: 'installationLog',
-            log: successLog
+            log: successLog,
           });
           resolve();
         } else {
           const errorMessage = `安装脚本执行失败，退出代码: ${code}`;
           console.error(`[VueWebviewProvider] ${errorMessage}`);
-          
+
           if (errorOutput) {
             console.error(`[VueWebviewProvider] Error details: ${errorOutput}`);
           }
-          
+
           const errorLog = `❌ ${errorMessage}`;
           if (installationLogs) {
             installationLogs.push(errorLog);
           }
           webview.postMessage({
             command: 'installationLog',
-            log: errorLog
+            log: errorLog,
           });
-          
+
           if (errorOutput) {
             const errorDetailLog = `错误详情: ${errorOutput}`;
             if (installationLogs) {
@@ -884,10 +888,10 @@ export class VueWebviewProvider {
             }
             webview.postMessage({
               command: 'installationLog',
-              log: errorDetailLog
+              log: errorDetailLog,
             });
           }
-          
+
           reject(new Error(`${errorMessage}${errorOutput ? '\n' + errorOutput : ''}`));
         }
       });
@@ -901,27 +905,30 @@ export class VueWebviewProvider {
         }
         webview.postMessage({
           command: 'installationLog',
-          log: processErrorLog
+          log: processErrorLog,
         });
         reject(error);
       });
 
       // 设置超时（10分钟）
-      setTimeout(() => {
-        if (!installProcess.killed) {
-          console.log(`[VueWebviewProvider] Install script timeout, killing process...`);
-          const timeoutLog = '⏰ 安装脚本执行超时，正在终止...';
-          if (installationLogs) {
-            installationLogs.push(timeoutLog);
+      setTimeout(
+        () => {
+          if (!installProcess.killed) {
+            console.log(`[VueWebviewProvider] Install script timeout, killing process...`);
+            const timeoutLog = '⏰ 安装脚本执行超时，正在终止...';
+            if (installationLogs) {
+              installationLogs.push(timeoutLog);
+            }
+            webview.postMessage({
+              command: 'installationLog',
+              log: timeoutLog,
+            });
+            installProcess.kill();
+            reject(new Error('安装脚本执行超时'));
           }
-          webview.postMessage({
-            command: 'installationLog',
-            log: timeoutLog
-          });
-          installProcess.kill();
-          reject(new Error('安装脚本执行超时'));
-        }
-      }, 10 * 60 * 1000); // 10分钟超时
+        },
+        10 * 60 * 1000
+      ); // 10分钟超时
     });
   }
 
@@ -936,7 +943,7 @@ export class VueWebviewProvider {
         webview.postMessage({
           command: 'sdkValidationResult',
           valid: false,
-          message: 'SDK 路径不存在'
+          message: 'SDK 路径不存在',
         });
         return;
       }
@@ -946,7 +953,7 @@ export class VueWebviewProvider {
         { path: 'tools/sdk.py', name: 'SDK 工具脚本' },
         { path: 'version.txt', name: '版本文件' },
         { path: 'install.sh', name: '安装脚本' },
-        { path: 'export.sh', name: '环境变量脚本' }
+        { path: 'export.sh', name: '环境变量脚本' },
       ];
 
       const missingFiles: string[] = [];
@@ -961,7 +968,7 @@ export class VueWebviewProvider {
         webview.postMessage({
           command: 'sdkValidationResult',
           valid: false,
-          message: `缺少必要文件: ${missingFiles.join(', ')}`
+          message: `缺少必要文件: ${missingFiles.join(', ')}`,
         });
         return;
       }
@@ -971,7 +978,7 @@ export class VueWebviewProvider {
       try {
         const { GitService } = await import('../services/gitService');
         const gitService = GitService.getInstance();
-        
+
         const isRepo = await gitService.isRepository(sdkPath);
         if (isRepo) {
           version = await gitService.getCurrentBranch(sdkPath);
@@ -991,15 +998,14 @@ export class VueWebviewProvider {
         command: 'sdkValidationResult',
         valid: true,
         message: 'SDK 验证成功',
-        version
+        version,
       });
-
     } catch (error) {
       console.error('[VueWebviewProvider] Error validating SDK:', error);
       webview.postMessage({
         command: 'sdkValidationResult',
         valid: false,
-        message: '验证过程出错: ' + (error instanceof Error ? error.message : String(error))
+        message: '验证过程出错: ' + (error instanceof Error ? error.message : String(error)),
       });
     }
   }
@@ -1008,30 +1014,30 @@ export class VueWebviewProvider {
    * 安装已存在的 SDK
    */
   private async installExistingSdk(
-    sdkPath: string, 
-    toolchainSource: string, 
-    toolsPath: string, 
+    sdkPath: string,
+    toolchainSource: string,
+    toolsPath: string,
     webview: vscode.Webview
   ): Promise<void> {
     const installationLogs: string[] = [];
     try {
       console.log('[VueWebviewProvider] Installing existing SDK:', sdkPath);
-      
+
       const sendLog = (log: string) => {
         installationLogs.push(log);
         webview.postMessage({
           command: 'installationLog',
-          log: log
+          log: log,
         });
       };
 
       webview.postMessage({
         command: 'installationStarted',
-        message: '开始配置 SDK...'
+        message: '开始配置 SDK...',
       });
 
       sendLog(`📂 SDK 路径: ${sdkPath}`);
-      
+
       if (toolsPath && toolsPath.trim() !== '') {
         sendLog(`🔧 工具链路径: ${toolsPath}`);
       }
@@ -1041,7 +1047,7 @@ export class VueWebviewProvider {
       try {
         const { GitService } = await import('../services/gitService');
         const gitService = GitService.getInstance();
-        
+
         const isRepo = await gitService.isRepository(sdkPath);
         if (isRepo) {
           version = await gitService.getCurrentBranch(sdkPath);
@@ -1057,7 +1063,7 @@ export class VueWebviewProvider {
       // 添加 SDK 到配置
       const { ConfigService } = await import('../services/configService');
       const configService = ConfigService.getInstance();
-      
+
       await configService.addSdkConfig(sdkPath, toolsPath || undefined);
       sendLog(`💾 SDK 已添加到配置`);
 
@@ -1075,19 +1081,18 @@ export class VueWebviewProvider {
         path: sdkPath,
         version: version,
         source: 'local',
-        logs: installationLogs
+        logs: installationLogs,
       });
+    } catch (error) {
+      console.error('[VueWebviewProvider] Error installing existing SDK:', error);
+      webview.postMessage({
+        command: 'installationFailed',
+        message: '安装失败: ' + (error instanceof Error ? error.message : String(error)),
+        logs: installationLogs,
+      });
+    }
+  }
 
-        } catch (error) {
-          console.error('[VueWebviewProvider] Error installing existing SDK:', error);
-          webview.postMessage({
-            command: 'installationFailed',
-            message: '安装失败: ' + (error instanceof Error ? error.message : String(error)),
-            logs: installationLogs
-          });
-        }
-      }
-  
   /**
    * 向 WebView 发送区域默认选项（中国用户默认 Gitee/Sifli 源）
    */
@@ -1099,7 +1104,7 @@ export class VueWebviewProvider {
         webview.postMessage({
           command: 'setDefaultSources',
           sdkSource: 'gitee',
-          toolchainSource: 'sifli'
+          toolchainSource: 'sifli',
         });
       }
     } catch (error) {

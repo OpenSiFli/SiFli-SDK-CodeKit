@@ -29,12 +29,12 @@ const emit = defineEmits<{
 
 const selectedSource = computed({
   get: () => props.modelValue,
-  set: (value: SdkSource) => emit('update:modelValue', value)
+  set: (value: SdkSource) => emit('update:modelValue', value),
 });
 
 const sourceOptions = computed(() => [
   { value: 'github', label: 'GitHub' },
-  { value: 'gitee', label: 'Gitee' }
+  { value: 'gitee', label: 'Gitee' },
 ]);
 
 const handleSourceUpdate = (value: string) => {

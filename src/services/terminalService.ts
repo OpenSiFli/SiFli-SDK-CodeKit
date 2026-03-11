@@ -63,7 +63,7 @@ export class TerminalService {
     if (process.platform !== 'win32') {
       return 'powershell.exe'; // 非 Windows 平台返回默认值（实际不会使用）
     }
-    
+
     const configuredPath = this.configService.config.powershellPath;
     return configuredPath && configuredPath.trim() !== '' ? configuredPath : 'powershell.exe';
   }
@@ -129,7 +129,7 @@ export class TerminalService {
   private createSiFliTerminal(): vscode.Terminal {
     // 根据平台设置终端配置
     const terminalOptions: vscode.TerminalOptions = {
-      name: TERMINAL_NAME
+      name: TERMINAL_NAME,
     };
 
     // 在 Windows 平台强制使用 PowerShell
@@ -160,10 +160,7 @@ export class TerminalService {
   /**
    * 根据配置执行导出脚本，确保当前终端拥有 SDK 环境
    */
-  private async runExportScriptIfNeeded(
-    terminal: vscode.Terminal,
-    scriptPath: string | undefined
-  ): Promise<void> {
+  private async runExportScriptIfNeeded(terminal: vscode.Terminal, scriptPath: string | undefined): Promise<void> {
     if (!scriptPath) {
       this.markExportPrepared(terminal, null);
       return;
@@ -206,7 +203,7 @@ export class TerminalService {
     }
     const pythonService = PythonService.getInstance();
     const pythonDir = pythonService.getPythonDir();
-    
+
     if (!pythonDir) {
       this.logService.debug('Embedded Python not available; skipping PATH injection.');
       return;
@@ -354,8 +351,12 @@ export class TerminalService {
     taskName?: TaskName,
     runId?: string
   ): string {
-    const markerStart = runId ? `Write-Host "${this.escapePowerShellString(this.buildRunMarker('START', taskName, runId))}"` : undefined;
-    const markerEndPrefix = runId ? this.escapePowerShellString(this.buildRunMarker('END', taskName, runId)) : undefined;
+    const markerStart = runId
+      ? `Write-Host "${this.escapePowerShellString(this.buildRunMarker('START', taskName, runId))}"`
+      : undefined;
+    const markerEndPrefix = runId
+      ? this.escapePowerShellString(this.buildRunMarker('END', taskName, runId))
+      : undefined;
 
     if (exitMarkerPath) {
       const commands: string[] = [];
@@ -405,8 +406,12 @@ export class TerminalService {
     taskName?: TaskName,
     runId?: string
   ): string {
-    const markerStart = runId ? this.escapeUnixDoubleQuotedString(this.buildRunMarker('START', taskName, runId)) : undefined;
-    const markerEndPrefix = runId ? this.escapeUnixDoubleQuotedString(this.buildRunMarker('END', taskName, runId)) : undefined;
+    const markerStart = runId
+      ? this.escapeUnixDoubleQuotedString(this.buildRunMarker('START', taskName, runId))
+      : undefined;
+    const markerEndPrefix = runId
+      ? this.escapeUnixDoubleQuotedString(this.buildRunMarker('END', taskName, runId))
+      : undefined;
 
     if (exitMarkerPath) {
       const escapedMarker = exitMarkerPath.replace(/(["\\$`])/g, '\\$1');

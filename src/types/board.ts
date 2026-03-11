@@ -58,13 +58,13 @@ export interface SftoolParam {
   compat?: boolean;
   /** 写入 Flash 命令参数 */
   write_flash?: WriteFlashCommand;
-  
+
   // 兼容旧版本字段
   /** @deprecated 使用 write_flash.files[0].path */
   load_file?: string;
   /** @deprecated 使用 write_flash.files[0].address */
   load_addr?: string;
-  
+
   /** 其他未知字段 */
   [key: string]: any;
 }

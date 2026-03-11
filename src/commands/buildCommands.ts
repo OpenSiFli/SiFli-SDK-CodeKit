@@ -72,19 +72,18 @@ export class BuildCommands {
       const downloadOk = await this.buildExecutionService.executeDownload({
         waitForExit: true,
         ensureBuildDirectory: true,
-        promptBuildIfMissing: true
+        promptBuildIfMissing: true,
       });
       if (!downloadOk) {
         return;
       }
       await this.statusBarProvider.handlePostDownloadOperation();
-    
     } catch (error) {
       console.error('[BuildCommands] Error in executeDownloadTask:', error);
       vscode.window.showErrorMessage(
         vscode.l10n.t('Download failed: {0}', error instanceof Error ? error.message : String(error))
       );
-      
+
       // 即使发生错误也尝试恢复串口监视器
       await this.statusBarProvider.handlePostDownloadOperation();
     }

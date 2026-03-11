@@ -39,8 +39,8 @@ class DesktopSerialDevice extends SerialDevice {
 
   public get name(): string {
     const info = this.portInfo;
-    return (info.manufacturer || info.serialNumber) 
-      ? `${info.path} (${info.manufacturer || info.serialNumber})` 
+    return info.manufacturer || info.serialNumber
+      ? `${info.path} (${info.manufacturer || info.serialNumber})`
       : info.path;
   }
 
@@ -54,13 +54,13 @@ class DesktopSerialDevice extends SerialDevice {
       baudRate: options.baudRate,
       dataBits,
       parity: options.parity,
-      stopBits
+      stopBits,
     });
 
     this.serialPort.on('end', () => this._onEnd.fire());
     this.serialPort.on('close', () => this._onEnd.fire());
     this.serialPort.on('data', (data: Buffer) => this.emit(data));
-    this.serialPort.on('error', (error) => {
+    this.serialPort.on('error', error => {
       this._onData.fire(vscode.l10n.t('Error: {0}', error.message));
       this.close();
     });
@@ -69,7 +69,7 @@ class DesktopSerialDevice extends SerialDevice {
         // Set control signals: DTR and RTS to false to prevent device reset
         this.serialPort.set({
           dtr: false,
-          rts: false
+          rts: false,
         });
       }
     });
@@ -110,21 +110,21 @@ class DesktopSerialDevice extends SerialDevice {
 class SerialTerminal implements vscode.Pseudoterminal {
   private writeEmitter = new vscode.EventEmitter<string>();
   public readonly onDidWrite = this.writeEmitter.event;
-  
+
   private closeEmitter = new vscode.EventEmitter<number>();
   public readonly onDidClose = this.closeEmitter.event;
-  
+
   public closed = false;
 
   constructor(
-    private serialDevice: SerialDevice, 
+    private serialDevice: SerialDevice,
     private options: SerialOptions
   ) {}
 
   public async open(_initialDimensions?: vscode.TerminalDimensions): Promise<void> {
     // 监听串口数据
     this.serialDevice.onData(data => this.writeOutput(data));
-    
+
     // 监听串口关闭
     this.serialDevice.onEnd(() => {
       if (!this.closed) {
@@ -136,11 +136,7 @@ class SerialTerminal implements vscode.Pseudoterminal {
     // 打开串口
     await this.serialDevice.open(this.options);
     this.writeLine(
-      vscode.l10n.t(
-        '📡 Connected to {0} @ {1} baud',
-        this.serialDevice.name,
-        String(this.options.baudRate)
-      )
+      vscode.l10n.t('📡 Connected to {0} @ {1} baud', this.serialDevice.name, String(this.options.baudRate))
     );
     this.writeLine(vscode.l10n.t('📝 Type data to send to device. Press Ctrl+C to disconnect.'));
   }
@@ -151,7 +147,8 @@ class SerialTerminal implements vscode.Pseudoterminal {
 
   public handleInput(data: string): void {
     // 处理特殊键
-    if (data === '\x03') { // Ctrl+C
+    if (data === '\x03') {
+      // Ctrl+C
       this.writeLine(vscode.l10n.t('🔌 Disconnecting...'));
       this.close();
       return;
@@ -213,7 +210,7 @@ export class BuiltinSerialMonitorService {
       return ports.map(port => ({
         path: port.path,
         manufacturer: port.manufacturer,
-        serialNumber: port.serialNumber
+        serialNumber: port.serialNumber,
       }));
     } catch (error) {
       console.error('Failed to list serial ports:', error);
@@ -231,7 +228,7 @@ export class BuiltinSerialMonitorService {
   ): Promise<string | undefined> {
     try {
       let selectedPortInfo;
-      
+
       if (portPath) {
         // 使用指定端口
         selectedPortInfo = { path: portPath };
@@ -246,11 +243,11 @@ export class BuiltinSerialMonitorService {
         const portItems = ports.map(port => ({
           label: port.path,
           description: port.manufacturer || vscode.l10n.t('Unknown'),
-          detail: port.serialNumber ? vscode.l10n.t('Serial: {0}', port.serialNumber) : ''
+          detail: port.serialNumber ? vscode.l10n.t('Serial: {0}', port.serialNumber) : '',
         }));
 
         const selected = await vscode.window.showQuickPick(portItems, {
-          placeHolder: vscode.l10n.t('Select a serial port to monitor')
+          placeHolder: vscode.l10n.t('Select a serial port to monitor'),
         });
 
         if (!selected) {
@@ -277,12 +274,16 @@ export class BuiltinSerialMonitorService {
 
       // 创建新设备和终端
       const serialDevice = new DesktopSerialDevice(selectedPortInfo);
-      const success = await this.openSerialPort(serialDevice, {
-        baudRate,
-        dataBits: 8,
-        stopBits: 1,
-        parity: 'none'
-      }, title);
+      const success = await this.openSerialPort(
+        serialDevice,
+        {
+          baudRate,
+          dataBits: 8,
+          stopBits: 1,
+          parity: 'none',
+        },
+        title
+      );
 
       if (success) {
         const handle = serialDevice.handle;
@@ -293,9 +294,7 @@ export class BuiltinSerialMonitorService {
       return undefined;
     } catch (error) {
       console.error('Failed to open serial monitor:', error);
-      vscode.window.showErrorMessage(
-        vscode.l10n.t('Failed to open serial monitor: {0}', String(error))
-      );
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to open serial monitor: {0}', String(error)));
       return undefined;
     }
   }
@@ -304,35 +303,31 @@ export class BuiltinSerialMonitorService {
    * 打开串口设备
    */
   private async openSerialPort(
-    serialDevice: SerialDevice, 
-    options: SerialOptions, 
+    serialDevice: SerialDevice,
+    options: SerialOptions,
     terminalName: string
   ): Promise<boolean> {
     try {
       const pty = new SerialTerminal(serialDevice, options);
-      
+
       // 监听终端关闭事件
       pty.onDidClose(() => {
         this.cleanup(serialDevice);
       });
 
       // 创建终端
-      const terminal = vscode.window.createTerminal({ 
-        name: `${terminalName} (${serialDevice.name})`, 
-        pty 
+      const terminal = vscode.window.createTerminal({
+        name: `${terminalName} (${serialDevice.name})`,
+        pty,
       });
-      
+
       this.serialTerminals.set(serialDevice, terminal);
       terminal.show();
 
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown Error';
-      vscode.window.showErrorMessage(
-        error instanceof Error
-          ? message
-          : vscode.l10n.t('Unknown Error')
-      );
+      vscode.window.showErrorMessage(error instanceof Error ? message : vscode.l10n.t('Unknown Error'));
       return false;
     }
   }
@@ -350,7 +345,7 @@ export class BuiltinSerialMonitorService {
       await device.close();
       this.cleanup(device);
       this.serialHandles.delete(connectionId);
-      
+
       return true;
     } catch (error) {
       console.error('Failed to close serial monitor:', error);
