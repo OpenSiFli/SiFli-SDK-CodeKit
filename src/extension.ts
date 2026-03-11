@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { CMD_PREFIX, HAS_RUN_INITIAL_SETUP_KEY, LAST_VERSION_KEY } from './constants';
+import { CMD_PREFIX, HAS_RUN_INITIAL_SETUP_KEY, LAST_VERSION_KEY, SIFLI_PROJECT_CONTEXT_KEY } from './constants';
 import { ConfigService } from './services/configService';
 import { SdkService } from './services/sdkService';
 import { GitService } from './services/gitService';
@@ -21,6 +21,7 @@ import { StatusBarProvider } from './providers/statusBarProvider';
 import { VueWebviewProvider } from './providers/vueWebviewProvider';
 import { SifliSidebarManager } from './providers/sifliSidebarProvider';
 import { WorkflowService } from './services/workflowService';
+import { LanguageModelToolService } from './services/languageModelToolService';
 import { isSiFliProject } from './utils/projectUtils';
 import { registerProbeRsDebugger } from './probe-rs/extension';
 
@@ -80,6 +81,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 初始化侧边栏管理器
   const sidebarManager = SifliSidebarManager.getInstance();
   const workflowService = WorkflowService.getInstance();
+  const languageModelToolService = LanguageModelToolService.getInstance();
 
   // 注册输出通道和 Git 输出通道到订阅列表
   context.subscriptions.push(
@@ -90,6 +92,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 在插件激活时立即读取配置
   await configService.updateConfiguration();
   logService.info('Configuration loaded successfully');
+
+  const refreshProjectContext = async (): Promise<void> => {
+    await vscode.commands.executeCommand('setContext', SIFLI_PROJECT_CONTEXT_KEY, isSiFliProject());
+  };
+  await refreshProjectContext();
+  languageModelToolService.register(context);
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      void refreshProjectContext();
+    })
+  );
   
   // 检查并安装嵌入式 Python (仅限 Windows)
   // 不阻塞激活过程，在后台运行
@@ -167,6 +180,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           configService.detectedSdkVersions = newSdkVersions;
           statusBarProvider.updateStatusBarItems();
           workflowService.reportValidationIssues(false);
+          await refreshProjectContext();
           logService.info('Configuration update completed');
         }
       })

@@ -168,6 +168,220 @@
         "icon": "$(refresh)"
       }
     ],
+    "languageModelTools": [
+      {
+        "name": "sifli-sdk-codekit_getProjectState",
+        "toolReferenceName": "getProjectState",
+        "displayName": "%lmTool.getProjectState.displayName%",
+        "modelDescription": "%lmTool.getProjectState.modelDescription%",
+        "tags": ["sifli", "project", "state"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "sifli-sdk-codekit_listWorkflows",
+        "toolReferenceName": "listWorkflows",
+        "displayName": "%lmTool.listWorkflows.displayName%",
+        "modelDescription": "%lmTool.listWorkflows.modelDescription%",
+        "tags": ["sifli", "workflow"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "enum": ["workspace", "user", "all"],
+              "description": "%lmTool.listWorkflows.scope.description%"
+            }
+          }
+        }
+      },
+      {
+        "name": "sifli-sdk-codekit_listBoards",
+        "toolReferenceName": "listBoards",
+        "displayName": "%lmTool.listBoards.displayName%",
+        "modelDescription": "%lmTool.listBoards.modelDescription%",
+        "tags": ["sifli", "board"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "sifli-sdk-codekit_listSerialPorts",
+        "toolReferenceName": "listSerialPorts",
+        "displayName": "%lmTool.listSerialPorts.displayName%",
+        "modelDescription": "%lmTool.listSerialPorts.modelDescription%",
+        "tags": ["sifli", "serial", "device"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "sifli-sdk-codekit_runWorkflow",
+        "toolReferenceName": "runWorkflow",
+        "displayName": "%lmTool.runWorkflow.displayName%",
+        "modelDescription": "%lmTool.runWorkflow.modelDescription%",
+        "tags": ["sifli", "workflow", "automation"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "workflowRef": {
+              "type": "string",
+              "description": "%lmTool.runWorkflow.workflowRef.description%"
+            },
+            "inputs": {
+              "type": "object",
+              "description": "%lmTool.runWorkflow.inputs.description%",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "required": ["workflowRef"]
+        }
+      },
+      {
+        "name": "sifli-sdk-codekit_compile",
+        "toolReferenceName": "compile",
+        "displayName": "%lmTool.compile.displayName%",
+        "modelDescription": "%lmTool.compile.modelDescription%",
+        "tags": ["sifli", "build", "compile"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "sifli-sdk-codekit_rebuild",
+        "toolReferenceName": "rebuild",
+        "displayName": "%lmTool.rebuild.displayName%",
+        "modelDescription": "%lmTool.rebuild.modelDescription%",
+        "tags": ["sifli", "build", "rebuild"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "sifli-sdk-codekit_clean",
+        "toolReferenceName": "clean",
+        "displayName": "%lmTool.clean.displayName%",
+        "modelDescription": "%lmTool.clean.modelDescription%",
+        "tags": ["sifli", "build", "clean"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "sifli-sdk-codekit_download",
+        "toolReferenceName": "download",
+        "displayName": "%lmTool.download.displayName%",
+        "modelDescription": "%lmTool.download.modelDescription%",
+        "tags": ["sifli", "flash", "download"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "sifli-sdk-codekit_selectBoard",
+        "toolReferenceName": "selectBoard",
+        "displayName": "%lmTool.selectBoard.displayName%",
+        "modelDescription": "%lmTool.selectBoard.modelDescription%",
+        "tags": ["sifli", "board", "configuration"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "boardName": {
+              "type": "string",
+              "description": "%lmTool.selectBoard.boardName.description%"
+            },
+            "numThreads": {
+              "type": "number",
+              "description": "%lmTool.selectBoard.numThreads.description%"
+            }
+          },
+          "required": ["boardName"]
+        }
+      },
+      {
+        "name": "sifli-sdk-codekit_selectSerialPort",
+        "toolReferenceName": "selectSerialPort",
+        "displayName": "%lmTool.selectSerialPort.displayName%",
+        "modelDescription": "%lmTool.selectSerialPort.modelDescription%",
+        "tags": ["sifli", "serial", "configuration"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "port": {
+              "type": "string",
+              "description": "%lmTool.selectSerialPort.port.description%"
+            },
+            "downloadBaud": {
+              "type": "number",
+              "description": "%lmTool.selectSerialPort.downloadBaud.description%"
+            },
+            "monitorBaud": {
+              "type": "number",
+              "description": "%lmTool.selectSerialPort.monitorBaud.description%"
+            }
+          },
+          "required": ["port"]
+        }
+      },
+      {
+        "name": "sifli-sdk-codekit_openMonitor",
+        "toolReferenceName": "openMonitor",
+        "displayName": "%lmTool.openMonitor.displayName%",
+        "modelDescription": "%lmTool.openMonitor.modelDescription%",
+        "tags": ["sifli", "serial", "monitor"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "sifli-sdk-codekit_closeMonitor",
+        "toolReferenceName": "closeMonitor",
+        "displayName": "%lmTool.closeMonitor.displayName%",
+        "modelDescription": "%lmTool.closeMonitor.modelDescription%",
+        "tags": ["sifli", "serial", "monitor"],
+        "canBeReferencedInPrompt": true,
+        "when": "sifli.isProject",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    ],
     "views": {
       "sifli-sidebar": [
         {

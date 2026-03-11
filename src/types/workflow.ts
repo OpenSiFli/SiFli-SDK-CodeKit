@@ -1,4 +1,6 @@
 export type WorkflowFailurePolicy = 'stop' | 'continue';
+export type WorkflowScope = 'workspace' | 'user';
+export type WorkflowReference = `${WorkflowScope}:${string}`;
 
 export type WorkflowStepType =
   | 'build.compile'

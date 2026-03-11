@@ -262,7 +262,7 @@ export class TerminalService {
   public async executeShellCommandInSiFliTerminal(
     commandLine: string,
     taskName: TaskName,
-    options?: { waitForExit?: boolean }
+    options?: { waitForExit?: boolean; runId?: string }
   ): Promise<number | undefined> {
     try {
       this.logService.info(`Executing ${taskName}: ${commandLine}`);
@@ -276,7 +276,14 @@ export class TerminalService {
       const needsEnvSetup = !!scriptPath && !this.isExportPrepared(terminal, scriptPath);
 
       if (!options?.waitForExit) {
-        const commandToSend = this.buildCommandForTerminal(commandLine, scriptPath, needsEnvSetup);
+        const commandToSend = this.buildCommandForTerminal(
+          commandLine,
+          scriptPath,
+          needsEnvSetup,
+          undefined,
+          taskName,
+          options?.runId
+        );
         terminal.sendText(commandToSend);
         if (needsEnvSetup) {
           this.markExportPrepared(terminal, scriptPath ?? null);
@@ -294,7 +301,9 @@ export class TerminalService {
         commandLine,
         scriptPath,
         needsEnvSetup,
-        exitMarkerPath
+        exitMarkerPath,
+        taskName,
+        options?.runId
       );
       terminal.sendText(commandWithTracking);
 
@@ -327,22 +336,32 @@ export class TerminalService {
     commandLine: string,
     scriptPath: string | undefined,
     includeEnvSetup: boolean,
-    exitMarkerPath?: string
+    exitMarkerPath?: string,
+    taskName?: TaskName,
+    runId?: string
   ): string {
     const effectiveScriptPath = includeEnvSetup ? scriptPath : undefined;
     if (process.platform === 'win32') {
-      return this.buildPowerShellCommand(commandLine, effectiveScriptPath, exitMarkerPath);
+      return this.buildPowerShellCommand(commandLine, effectiveScriptPath, exitMarkerPath, taskName, runId);
     }
-    return this.buildUnixShellCommand(commandLine, effectiveScriptPath, exitMarkerPath);
+    return this.buildUnixShellCommand(commandLine, effectiveScriptPath, exitMarkerPath, taskName, runId);
   }
 
   private buildPowerShellCommand(
     commandLine: string,
     exportScriptPath?: string,
-    exitMarkerPath?: string
+    exitMarkerPath?: string,
+    taskName?: TaskName,
+    runId?: string
   ): string {
+    const markerStart = runId ? `Write-Host "${this.escapePowerShellString(this.buildRunMarker('START', taskName, runId))}"` : undefined;
+    const markerEndPrefix = runId ? this.escapePowerShellString(this.buildRunMarker('END', taskName, runId)) : undefined;
+
     if (exitMarkerPath) {
       const commands: string[] = [];
+      if (markerStart) {
+        commands.push(markerStart);
+      }
       if (exportScriptPath) {
         const escapedScript = exportScriptPath.replace(/"/g, '""');
         commands.push(`& "${escapedScript}"`);
@@ -352,39 +371,82 @@ export class TerminalService {
         commands.push(`${commandLine}`);
         commands.push(`$sifli_command_exit = $LASTEXITCODE`);
       }
+      if (markerEndPrefix) {
+        commands.push(`Write-Host "${markerEndPrefix} exit=$sifli_command_exit"`);
+      }
       const escapedMarker = exitMarkerPath.replace(/"/g, '""');
       commands.push(`Set-Content -Path "${escapedMarker}" -Value $sifli_command_exit -NoNewline`);
       return commands.join('; ');
     }
 
+    const commands: string[] = [];
+    if (markerStart) {
+      commands.push(markerStart);
+    }
     if (exportScriptPath) {
       const escapedScript = exportScriptPath.replace(/"/g, '""');
-      return `& "${escapedScript}"; if ($LASTEXITCODE -eq 0) { ${commandLine} }`;
+      commands.push(`& "${escapedScript}"`);
+      commands.push(`$sifli_command_exit = $LASTEXITCODE`);
+      commands.push(`if ($sifli_command_exit -eq 0) { ${commandLine}; $sifli_command_exit = $LASTEXITCODE }`);
+    } else {
+      commands.push(`${commandLine}`);
+      commands.push(`$sifli_command_exit = $LASTEXITCODE`);
     }
-
-    return commandLine;
+    if (markerEndPrefix) {
+      commands.push(`Write-Host "${markerEndPrefix} exit=$sifli_command_exit"`);
+    }
+    return commands.join('; ');
   }
 
   private buildUnixShellCommand(
     commandLine: string,
     exportScriptPath?: string,
-    exitMarkerPath?: string
+    exitMarkerPath?: string,
+    taskName?: TaskName,
+    runId?: string
   ): string {
+    const markerStart = runId ? this.escapeUnixDoubleQuotedString(this.buildRunMarker('START', taskName, runId)) : undefined;
+    const markerEndPrefix = runId ? this.escapeUnixDoubleQuotedString(this.buildRunMarker('END', taskName, runId)) : undefined;
+
     if (exitMarkerPath) {
       const escapedMarker = exitMarkerPath.replace(/(["\\$`])/g, '\\$1');
+      const commands: string[] = [];
+      if (markerStart) {
+        commands.push(`printf '%s\\n' "${markerStart}"`);
+      }
       if (exportScriptPath) {
         const escapedScript = exportScriptPath.replace(/(["\\$`])/g, '\\$1');
-        return `. "${escapedScript}"; sifli_exit=$?; if [ $sifli_exit -eq 0 ]; then ${commandLine}; sifli_exit=$?; fi; printf "%s" "$sifli_exit" > "${escapedMarker}"`;
+        commands.push(`. "${escapedScript}"`);
+        commands.push(`sifli_exit=$?`);
+        commands.push(`if [ $sifli_exit -eq 0 ]; then ${commandLine}; sifli_exit=$?; fi`);
+      } else {
+        commands.push(`${commandLine}`);
+        commands.push(`sifli_exit=$?`);
       }
-      return `${commandLine}; sifli_exit=$?; printf "%s" "$sifli_exit" > "${escapedMarker}"`;
+      if (markerEndPrefix) {
+        commands.push(`printf '%s\\n' "${markerEndPrefix} exit=$sifli_exit"`);
+      }
+      commands.push(`printf "%s" "$sifli_exit" > "${escapedMarker}"`);
+      return commands.join('; ');
     }
 
+    const commands: string[] = [];
+    if (markerStart) {
+      commands.push(`printf '%s\\n' "${markerStart}"`);
+    }
     if (exportScriptPath) {
       const escapedScript = exportScriptPath.replace(/(["\\$`])/g, '\\$1');
-      return `. "${escapedScript}" && ${commandLine}`;
+      commands.push(`. "${escapedScript}"`);
+      commands.push(`sifli_exit=$?`);
+      commands.push(`if [ $sifli_exit -eq 0 ]; then ${commandLine}; sifli_exit=$?; fi`);
+    } else {
+      commands.push(`${commandLine}`);
+      commands.push(`sifli_exit=$?`);
     }
-
-    return commandLine;
+    if (markerEndPrefix) {
+      commands.push(`printf '%s\\n' "${markerEndPrefix} exit=$sifli_exit"`);
+    }
+    return commands.join('; ');
   }
 
   private async waitForExitCode(exitMarkerPath: string): Promise<number | undefined> {
@@ -427,6 +489,19 @@ export class TerminalService {
 
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private buildRunMarker(phase: 'START' | 'END', taskName: TaskName | undefined, runId: string): string {
+    const label = taskName ?? 'SiFli Command';
+    return `[SiFli LM Tool][${runId}] ${phase} ${label}`;
+  }
+
+  private escapePowerShellString(value: string): string {
+    return value.replace(/"/g, '""');
+  }
+
+  private escapeUnixDoubleQuotedString(value: string): string {
+    return value.replace(/(["\\$`])/g, '\\$1');
   }
 
   /**

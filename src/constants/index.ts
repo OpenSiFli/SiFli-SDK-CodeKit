@@ -25,10 +25,27 @@ export const TASK_NAMES = {
 
 // 命令前缀
 export const CMD_PREFIX = 'extension.';
+export const SIFLI_PROJECT_CONTEXT_KEY = 'sifli.isProject';
 
 // 全局状态键
 export const HAS_RUN_INITIAL_SETUP_KEY = 'oneStepForSifli.hasRunInitialSetup';
 export const LAST_VERSION_KEY = 'sifli-sdk-codekit.lastVersion';
+
+export const LM_TOOL_NAMES = {
+  GET_PROJECT_STATE: 'sifli-sdk-codekit_getProjectState',
+  LIST_WORKFLOWS: 'sifli-sdk-codekit_listWorkflows',
+  LIST_BOARDS: 'sifli-sdk-codekit_listBoards',
+  LIST_SERIAL_PORTS: 'sifli-sdk-codekit_listSerialPorts',
+  RUN_WORKFLOW: 'sifli-sdk-codekit_runWorkflow',
+  COMPILE: 'sifli-sdk-codekit_compile',
+  REBUILD: 'sifli-sdk-codekit_rebuild',
+  CLEAN: 'sifli-sdk-codekit_clean',
+  DOWNLOAD: 'sifli-sdk-codekit_download',
+  SELECT_BOARD: 'sifli-sdk-codekit_selectBoard',
+  SELECT_SERIAL_PORT: 'sifli-sdk-codekit_selectSerialPort',
+  OPEN_MONITOR: 'sifli-sdk-codekit_openMonitor',
+  CLOSE_MONITOR: 'sifli-sdk-codekit_closeMonitor'
+} as const;
 
 /**
  * 配置迁移版本记录

@@ -14,6 +14,18 @@ export type DownloadExecutionOptions = {
   waitForExit?: boolean;
   ensureBuildDirectory?: boolean;
   promptBuildIfMissing?: boolean;
+  showNotifications?: boolean;
+  runId?: string;
+};
+
+export type BuildTaskExecutionResult = {
+  success: boolean;
+  taskName: string;
+  exitCode?: number;
+  command?: string;
+  background?: boolean;
+  runId?: string;
+  message?: string;
 };
 
 export class BuildExecutionService {
@@ -41,10 +53,28 @@ export class BuildExecutionService {
   public async executeCompile(options?: {
     templateValues?: TemplateValues;
     waitForExit?: boolean;
+    showNotifications?: boolean;
+    runId?: string;
   }): Promise<boolean> {
-    const selectedBoardName = this.getSelectedBoardNameOrWarn();
+    const result = await this.executeCompileDetailed(options);
+    return result.success;
+  }
+
+  public async executeCompileDetailed(options?: {
+    templateValues?: TemplateValues;
+    waitForExit?: boolean;
+    showNotifications?: boolean;
+    runId?: string;
+  }): Promise<BuildTaskExecutionResult> {
+    const showNotifications = options?.showNotifications ?? true;
+    const selectedBoardName = this.getSelectedBoardNameOrWarn(showNotifications);
     if (!selectedBoardName) {
-      return false;
+      return {
+        success: false,
+        taskName: TASK_NAMES.BUILD,
+        runId: options?.runId,
+        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
+      };
     }
 
     const waitForExit = options?.waitForExit ?? true;
@@ -53,49 +83,109 @@ export class BuildExecutionService {
     let command = await this.boardService.getCompileCommand(selectedBoardName, numThreads);
     command = this.resolveTemplate(command, templateValues);
     const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(command, TASK_NAMES.BUILD, {
-      waitForExit
+      waitForExit,
+      runId: options?.runId
     });
-    return exitCode === undefined || exitCode === 0;
+    return {
+      success: exitCode === undefined || exitCode === 0,
+      taskName: TASK_NAMES.BUILD,
+      exitCode,
+      command,
+      background: !waitForExit,
+      runId: options?.runId
+    };
   }
 
   public executeClean(): boolean {
-    const selectedBoardName = this.getSelectedBoardNameOrWarn();
+    return this.executeCleanDetailed().success;
+  }
+
+  public executeCleanDetailed(showNotifications = true): BuildTaskExecutionResult {
+    const selectedBoardName = this.getSelectedBoardNameOrWarn(showNotifications);
     if (!selectedBoardName) {
-      return false;
+      return {
+        success: false,
+        taskName: TASK_NAMES.CLEAN,
+        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
+      };
     }
 
-    const workspaceFolder = this.getWorkspaceFolderOrError();
+    const workspaceFolder = this.getWorkspaceFolderOrError(showNotifications);
     if (!workspaceFolder) {
-      return false;
+      return {
+        success: false,
+        taskName: TASK_NAMES.CLEAN,
+        message: vscode.l10n.t('No workspace folder is open.')
+      };
     }
 
     const buildFolder = this.boardService.getBuildTargetFolder(selectedBoardName);
     const buildPath = path.join(workspaceFolder.uri.fsPath, buildFolder);
     if (!fs.existsSync(buildPath)) {
-      vscode.window.showInformationMessage(vscode.l10n.t('Build directory does not exist. No cleanup needed: {0}', buildFolder));
-      return true;
+      if (showNotifications) {
+        vscode.window.showInformationMessage(vscode.l10n.t('Build directory does not exist. No cleanup needed: {0}', buildFolder));
+      }
+      return {
+        success: true,
+        taskName: TASK_NAMES.CLEAN,
+        message: vscode.l10n.t('Build directory does not exist. No cleanup needed: {0}', buildFolder)
+      };
     }
 
     fs.rmSync(buildPath, { recursive: true, force: true });
-    vscode.window.showInformationMessage(vscode.l10n.t('Build directory cleaned: {0}', buildFolder));
-    return true;
+    if (showNotifications) {
+      vscode.window.showInformationMessage(vscode.l10n.t('Build directory cleaned: {0}', buildFolder));
+    }
+    return {
+      success: true,
+      taskName: TASK_NAMES.CLEAN,
+      message: vscode.l10n.t('Build directory cleaned: {0}', buildFolder)
+    };
   }
 
   public async executeDownload(options?: DownloadExecutionOptions): Promise<boolean> {
-    const selectedBoardName = this.getSelectedBoardNameOrWarn();
+    const result = await this.executeDownloadDetailed(options);
+    return result.success;
+  }
+
+  public async executeDownloadDetailed(options?: DownloadExecutionOptions): Promise<BuildTaskExecutionResult> {
+    const showNotifications = options?.showNotifications ?? true;
+    const selectedBoardName = this.getSelectedBoardNameOrWarn(showNotifications);
     if (!selectedBoardName) {
-      return false;
+      return {
+        success: false,
+        taskName: TASK_NAMES.DOWNLOAD,
+        runId: options?.runId,
+        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
+      };
     }
     const selectedSerialPort = this.serialPortService.selectedSerialPort;
     if (!selectedSerialPort) {
-      vscode.window.showWarningMessage(vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'));
-      return false;
+      if (showNotifications) {
+        vscode.window.showWarningMessage(vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'));
+      }
+      return {
+        success: false,
+        taskName: TASK_NAMES.DOWNLOAD,
+        runId: options?.runId,
+        message: vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.')
+      };
     }
 
     if (options?.ensureBuildDirectory) {
-      const buildReady = await this.ensureBuildDirectory(selectedBoardName, options.promptBuildIfMissing);
+      const buildReady = await this.ensureBuildDirectory(
+        selectedBoardName,
+        options.promptBuildIfMissing,
+        showNotifications,
+        options?.runId
+      );
       if (!buildReady) {
-        return false;
+        return {
+          success: false,
+          taskName: TASK_NAMES.DOWNLOAD,
+          runId: options?.runId,
+          message: vscode.l10n.t('Build directory does not exist: {0}. Build first?', this.boardService.getBuildTargetFolder(selectedBoardName))
+        };
       }
     }
 
@@ -108,18 +198,44 @@ export class BuildExecutionService {
     );
     command = this.resolveTemplate(command, templateValues);
     const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(command, TASK_NAMES.DOWNLOAD, {
-      waitForExit
+      waitForExit,
+      runId: options?.runId
     });
-    return exitCode === undefined || exitCode === 0;
+    return {
+      success: exitCode === undefined || exitCode === 0,
+      taskName: TASK_NAMES.DOWNLOAD,
+      exitCode,
+      command,
+      background: !waitForExit,
+      runId: options?.runId
+    };
   }
 
   public async executeMenuconfig(options?: {
     templateValues?: TemplateValues;
     waitForExit?: boolean;
+    showNotifications?: boolean;
+    runId?: string;
   }): Promise<boolean> {
-    const selectedBoardName = this.getSelectedBoardNameOrWarn();
+    const result = await this.executeMenuconfigDetailed(options);
+    return result.success;
+  }
+
+  public async executeMenuconfigDetailed(options?: {
+    templateValues?: TemplateValues;
+    waitForExit?: boolean;
+    showNotifications?: boolean;
+    runId?: string;
+  }): Promise<BuildTaskExecutionResult> {
+    const showNotifications = options?.showNotifications ?? true;
+    const selectedBoardName = this.getSelectedBoardNameOrWarn(showNotifications);
     if (!selectedBoardName) {
-      return false;
+      return {
+        success: false,
+        taskName: TASK_NAMES.MENUCONFIG,
+        runId: options?.runId,
+        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.')
+      };
     }
 
     const templateValues = options?.templateValues ?? {};
@@ -127,31 +243,48 @@ export class BuildExecutionService {
     let command = await this.boardService.getMenuconfigCommand(selectedBoardName);
     command = this.resolveTemplate(command, templateValues);
     const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(command, TASK_NAMES.MENUCONFIG, {
-      waitForExit
+      waitForExit,
+      runId: options?.runId
     });
-    return exitCode === undefined || exitCode === 0;
+    return {
+      success: exitCode === undefined || exitCode === 0,
+      taskName: TASK_NAMES.MENUCONFIG,
+      exitCode,
+      command,
+      background: !waitForExit,
+      runId: options?.runId
+    };
   }
 
-  private getSelectedBoardNameOrWarn(): string | undefined {
+  private getSelectedBoardNameOrWarn(showNotification = true): string | undefined {
     const selectedBoardName = this.configService.getSelectedBoardName();
     if (!selectedBoardName || selectedBoardName === 'N/A') {
-      vscode.window.showWarningMessage(vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'));
+      if (showNotification) {
+        vscode.window.showWarningMessage(vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'));
+      }
       return undefined;
     }
     return selectedBoardName;
   }
 
-  private getWorkspaceFolderOrError(): vscode.WorkspaceFolder | undefined {
+  private getWorkspaceFolderOrError(showNotification = true): vscode.WorkspaceFolder | undefined {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
-      vscode.window.showErrorMessage(vscode.l10n.t('No workspace folder is open.'));
+      if (showNotification) {
+        vscode.window.showErrorMessage(vscode.l10n.t('No workspace folder is open.'));
+      }
       return undefined;
     }
     return workspaceFolder;
   }
 
-  private async ensureBuildDirectory(selectedBoardName: string, promptBuildIfMissing = false): Promise<boolean> {
-    const workspaceFolder = this.getWorkspaceFolderOrError();
+  private async ensureBuildDirectory(
+    selectedBoardName: string,
+    promptBuildIfMissing = false,
+    showNotifications = true,
+    runId?: string
+  ): Promise<boolean> {
+    const workspaceFolder = this.getWorkspaceFolderOrError(showNotifications);
     if (!workspaceFolder) {
       return false;
     }
@@ -176,7 +309,11 @@ export class BuildExecutionService {
       return false;
     }
 
-    return this.executeCompile({ waitForExit: true });
+    return this.executeCompile({
+      waitForExit: true,
+      showNotifications,
+      runId
+    });
   }
 
   private resolveTemplate(input: string, values: TemplateValues): string {

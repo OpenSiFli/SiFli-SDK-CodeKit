@@ -3,6 +3,8 @@ import { TASK_NAMES } from '../constants';
 import {
   WorkflowDefinition,
   WorkflowInputSpec,
+  WorkflowReference,
+  WorkflowScope,
   WorkflowStatusBarButton,
   WorkflowValidationIssue,
   WorkflowStep,
@@ -16,6 +18,52 @@ import { TerminalService } from './terminalService';
 import { WorkspaceStateService } from './workspaceStateService';
 import { getWorkflowStepDisplayLabel } from '../utils/workflowStepLabel';
 import { BuildExecutionService } from './buildExecutionService';
+
+export type ScopedWorkflowDefinition = {
+  scope: WorkflowScope;
+  workflow: WorkflowDefinition;
+  workflowRef: WorkflowReference;
+};
+
+export type WorkflowToolCompatibility = {
+  runnable: boolean;
+  reasons: string[];
+  hasShellCommand: boolean;
+};
+
+export type WorkflowExecutionResult = {
+  success: boolean;
+  workflowId?: string;
+  workflowName?: string;
+  workflowScope?: WorkflowScope;
+  workflowRef?: WorkflowReference;
+  dryRun: boolean;
+  runId?: string;
+  message?: string;
+  exitCode?: number;
+  failedStepIndex?: number;
+  failedStepType?: WorkflowStepType;
+  skippedStepIndexes: number[];
+  continuedFailureSteps: number[];
+};
+
+type WorkflowExecutionOptions = {
+  dryRun?: boolean;
+  providedInputs?: Record<string, string>;
+  allowInputPrompts?: boolean;
+  allowShellApprovalPrompt?: boolean;
+  allowNotifications?: boolean;
+  allowInteractivePortSelection?: boolean;
+  allowMonitorPortPrompt?: boolean;
+  runId?: string;
+  disallowedStepTypes?: Set<WorkflowStepType>;
+};
+
+type WorkflowStepExecutionResult = {
+  success: boolean;
+  exitCode?: number;
+  message?: string;
+};
 
 export class WorkflowService {
   private static instance: WorkflowService;
@@ -73,6 +121,63 @@ export class WorkflowService {
   public getUserWorkflows(): WorkflowDefinition[] {
     const inspect = vscode.workspace.getConfiguration('sifli-sdk-codekit').inspect('workflows');
     return this.asArray<WorkflowDefinition>(inspect?.globalValue);
+  }
+
+  public getWorkflowReference(scope: WorkflowScope, workflowId: string): WorkflowReference {
+    return `${scope}:${workflowId}` as WorkflowReference;
+  }
+
+  public parseWorkflowReference(workflowRef: string): { scope: WorkflowScope; workflowId: string } | undefined {
+    if (!workflowRef) {
+      return undefined;
+    }
+    const separator = workflowRef.indexOf(':');
+    if (separator <= 0) {
+      return undefined;
+    }
+    const scope = workflowRef.slice(0, separator);
+    const workflowId = workflowRef.slice(separator + 1).trim();
+    if ((scope !== 'workspace' && scope !== 'user') || !workflowId) {
+      return undefined;
+    }
+    return { scope, workflowId };
+  }
+
+  public getScopedWorkflows(scope: WorkflowScope): WorkflowDefinition[] {
+    return scope === 'user' ? this.getUserWorkflows() : this.getWorkspaceWorkflows();
+  }
+
+  public getAllScopedWorkflows(): ScopedWorkflowDefinition[] {
+    const scoped: ScopedWorkflowDefinition[] = [];
+    for (const scope of ['workspace', 'user'] as const) {
+      for (const workflow of this.getScopedWorkflows(scope)) {
+        if (!workflow?.id) {
+          continue;
+        }
+        scoped.push({
+          scope,
+          workflow,
+          workflowRef: this.getWorkflowReference(scope, workflow.id)
+        });
+      }
+    }
+    return scoped;
+  }
+
+  public getWorkflowByReference(workflowRef: WorkflowReference | string): ScopedWorkflowDefinition | undefined {
+    const parsed = this.parseWorkflowReference(workflowRef);
+    if (!parsed) {
+      return undefined;
+    }
+    const workflow = this.getScopedWorkflows(parsed.scope).find(item => item.id === parsed.workflowId);
+    if (!workflow) {
+      return undefined;
+    }
+    return {
+      scope: parsed.scope,
+      workflow,
+      workflowRef: this.getWorkflowReference(parsed.scope, parsed.workflowId)
+    };
   }
 
   public getResolvedStatusBarButtons(): WorkflowStatusBarButton[] {
@@ -297,62 +402,84 @@ export class WorkflowService {
   }
 
   public async executeWorkflow(workflowId: string, dryRun = false): Promise<boolean> {
-    const workflow = this.getResolvedWorkflows().find(item => item.id === workflowId);
-    if (!workflow) {
+    const scopedWorkflow = this.findResolvedWorkflowById(workflowId);
+    if (!scopedWorkflow) {
       vscode.window.showErrorMessage(vscode.l10n.t('Workflow not found: {0}', workflowId));
       return false;
     }
 
-    const executionIssues = this.validateWorkflowForExecution(workflow);
-    if (executionIssues.length > 0) {
-      vscode.window.showErrorMessage(
-        vscode.l10n.t('Workflow "{0}" is invalid: {1}', workflow.name, executionIssues.join('; '))
-      );
-      return false;
+    const result = await this.executeScopedWorkflow(scopedWorkflow, {
+      dryRun,
+      allowInputPrompts: true,
+      allowShellApprovalPrompt: true,
+      allowNotifications: true,
+      allowInteractivePortSelection: true,
+      allowMonitorPortPrompt: true
+    });
+    return result.success;
+  }
+
+  public getWorkflowToolCompatibility(workflowRef: WorkflowReference | string): WorkflowToolCompatibility {
+    const scopedWorkflow = this.getWorkflowByReference(workflowRef);
+    if (!scopedWorkflow) {
+      return {
+        runnable: false,
+        reasons: [vscode.l10n.t('Workflow not found: {0}', String(workflowRef))],
+        hasShellCommand: false
+      };
     }
 
-    const inputs = await this.collectWorkflowInputs(workflow.inputs ?? []);
-    if (!inputs) {
-      return false;
+    return this.assessWorkflowToolCompatibility(scopedWorkflow);
+  }
+
+  public async executeWorkflowByReference(
+    workflowRef: WorkflowReference | string,
+    options?: {
+      dryRun?: boolean;
+      inputs?: Record<string, string>;
+      runId?: string;
+    }
+  ): Promise<WorkflowExecutionResult> {
+    const scopedWorkflow = this.getWorkflowByReference(workflowRef);
+    if (!scopedWorkflow) {
+      return {
+        success: false,
+        dryRun: options?.dryRun ?? false,
+        workflowRef: typeof workflowRef === 'string' ? undefined : workflowRef,
+        message: vscode.l10n.t('Workflow not found: {0}', String(workflowRef)),
+        skippedStepIndexes: [],
+        continuedFailureSteps: [],
+        runId: options?.runId
+      };
     }
 
-    if (dryRun) {
-      const preview = workflow.steps.map((step, i) => `${i + 1}. ${getWorkflowStepDisplayLabel(step)}`).join('\n');
-      vscode.window.showInformationMessage(vscode.l10n.t('Dry Run: {0}\n{1}', workflow.name, preview));
-      return true;
+    const compatibility = this.assessWorkflowToolCompatibility(scopedWorkflow);
+    if (!compatibility.runnable) {
+      return {
+        success: false,
+        workflowId: scopedWorkflow.workflow.id,
+        workflowName: scopedWorkflow.workflow.name,
+        workflowScope: scopedWorkflow.scope,
+        workflowRef: scopedWorkflow.workflowRef,
+        dryRun: options?.dryRun ?? false,
+        runId: options?.runId,
+        message: compatibility.reasons.join('; '),
+        skippedStepIndexes: [],
+        continuedFailureSteps: []
+      };
     }
 
-    const policy = workflow.failurePolicy ?? 'stop';
-    this.logService.info(`Running workflow: ${workflow.id}`);
-
-    if (!Array.isArray(workflow.steps) || workflow.steps.length === 0) {
-      vscode.window.showInformationMessage(vscode.l10n.t('Workflow has no steps: {0}', workflow.name));
-      return true;
-    }
-
-    for (let i = 0; i < workflow.steps.length; i++) {
-      const step = workflow.steps[i];
-      if (!this.shouldRunStep(step)) {
-        this.logService.info(`Skip workflow step #${i + 1}: ${step.type}`);
-        continue;
-      }
-
-      const stepOk = await this.executeStep(step, inputs, workflow.id, workflow.name, i);
-      if (stepOk) {
-        continue;
-      }
-
-      const continueOnError = step.continueOnError ?? policy === 'continue';
-      const stepLabel = `${workflow.name} #${i + 1} (${getWorkflowStepDisplayLabel(step)})`;
-      if (!continueOnError) {
-        vscode.window.showErrorMessage(vscode.l10n.t('Workflow stopped at step: {0}', stepLabel));
-        return false;
-      }
-      this.logService.warn(`Workflow step failed but continued: ${stepLabel}`);
-    }
-
-    vscode.window.showInformationMessage(vscode.l10n.t('Workflow finished: {0}', workflow.name));
-    return true;
+    return this.executeScopedWorkflow(scopedWorkflow, {
+      dryRun: options?.dryRun,
+      providedInputs: options?.inputs,
+      allowInputPrompts: false,
+      allowShellApprovalPrompt: false,
+      allowNotifications: false,
+      allowInteractivePortSelection: false,
+      allowMonitorPortPrompt: false,
+      runId: options?.runId,
+      disallowedStepTypes: new Set<WorkflowStepType>(['build.menuconfig', 'serial.selectPort'])
+    });
   }
 
   public async executeButtonAction(button: WorkflowStatusBarButton): Promise<void> {
@@ -414,6 +541,34 @@ export class WorkflowService {
     return result;
   }
 
+  private async resolveWorkflowInputs(
+    inputs: WorkflowInputSpec[],
+    providedInputs: Record<string, string> | undefined,
+    allowInputPrompts: boolean
+  ): Promise<{ values?: Record<string, string>; error?: string }> {
+    if (allowInputPrompts) {
+      const values = await this.collectWorkflowInputs(inputs);
+      return values
+        ? { values: { ...(providedInputs ?? {}), ...values } }
+        : { error: vscode.l10n.t('Workflow input collection was canceled.') };
+    }
+
+    const values: Record<string, string> = { ...(providedInputs ?? {}) };
+    for (const input of inputs) {
+      if (values[input.key] === undefined) {
+        if (input.defaultValue !== undefined) {
+          values[input.key] = input.defaultValue;
+        } else if (input.required) {
+          return {
+            error: vscode.l10n.t('Workflow input is required: {0}', input.key)
+          };
+        }
+      }
+    }
+
+    return { values };
+  }
+
   private shouldRunStep(step: WorkflowStep): boolean {
     if (!step.runIf) {
       return true;
@@ -443,58 +598,100 @@ export class WorkflowService {
     inputs: Record<string, string>,
     workflowId: string,
     workflowName: string,
-    stepIndex: number
-  ): Promise<boolean> {
+    stepIndex: number,
+    options: WorkflowExecutionOptions
+  ): Promise<WorkflowStepExecutionResult> {
     try {
       switch (step.type) {
         case 'build.compile':
-          return await this.runCompileStep(step, inputs);
+          return await this.runCompileStep(step, inputs, options);
         case 'build.rebuild':
-          return await this.runRebuildStep(step, inputs);
+          return await this.runRebuildStep(step, inputs, options);
         case 'build.clean':
-          return this.runCleanStep();
+          return this.runCleanStep(options);
         case 'build.download':
-          return await this.runDownloadStep(step, inputs);
+          return await this.runDownloadStep(step, inputs, options);
         case 'build.menuconfig':
-          return await this.runMenuconfigStep(step, inputs);
+          return await this.runMenuconfigStep(step, inputs, options);
         case 'shell.command':
-          return await this.runShellCommandStep(step, inputs, workflowId, workflowName, stepIndex);
+          return await this.runShellCommandStep(step, inputs, workflowId, workflowName, stepIndex, options);
         case 'monitor.open':
-          return await this.runMonitorOpenStep();
+          return await this.runMonitorOpenStep(options);
         case 'monitor.close':
-          return await this.serialMonitorService.closeSerialMonitor();
+          return {
+            success: await this.serialMonitorService.closeSerialMonitor()
+          };
         case 'serial.selectPort':
-          return !!(await this.serialPortService.selectPort());
+          if (!options.allowInteractivePortSelection) {
+            return {
+              success: false,
+              message: vscode.l10n.t('Workflow step type is interactive-only and cannot run from language model tools: {0}', step.type)
+            };
+          }
+          return {
+            success: !!(await this.serialPortService.selectPort())
+          };
         default:
-          vscode.window.showWarningMessage(vscode.l10n.t('Unsupported workflow step: {0}', step.type));
-          return false;
+          if (options.allowNotifications) {
+            vscode.window.showWarningMessage(vscode.l10n.t('Unsupported workflow step: {0}', step.type));
+          }
+          return {
+            success: false,
+            message: vscode.l10n.t('Unsupported workflow step: {0}', step.type)
+          };
       }
     } catch (error) {
       this.logService.error(`Workflow step failed: ${step.type}`, error);
-      return false;
+      return {
+        success: false,
+        message: String(error)
+      };
     }
   }
 
-  private async runCompileStep(step: WorkflowStep, inputs: Record<string, string>): Promise<boolean> {
-    return this.buildExecutionService.executeCompile({
+  private async runCompileStep(
+    step: WorkflowStep,
+    inputs: Record<string, string>,
+    options: WorkflowExecutionOptions
+  ): Promise<WorkflowStepExecutionResult> {
+    const result = await this.buildExecutionService.executeCompileDetailed({
       templateValues: inputs,
-      waitForExit: step.wait ?? true
+      waitForExit: step.wait ?? true,
+      showNotifications: options.allowNotifications,
+      runId: options.runId
     });
+    return {
+      success: result.success,
+      exitCode: result.exitCode,
+      message: result.message
+    };
   }
 
-  private async runRebuildStep(step: WorkflowStep, inputs: Record<string, string>): Promise<boolean> {
-    const cleanOk = this.runCleanStep();
-    if (!cleanOk) {
-      return false;
+  private async runRebuildStep(
+    step: WorkflowStep,
+    inputs: Record<string, string>,
+    options: WorkflowExecutionOptions
+  ): Promise<WorkflowStepExecutionResult> {
+    const cleanResult = this.runCleanStep(options);
+    if (!cleanResult.success) {
+      return cleanResult;
     }
-    return this.runCompileStep(step, inputs);
+    return this.runCompileStep(step, inputs, options);
   }
 
-  private runCleanStep(): boolean {
-    return this.buildExecutionService.executeClean();
+  private runCleanStep(options: WorkflowExecutionOptions): WorkflowStepExecutionResult {
+    const result = this.buildExecutionService.executeCleanDetailed(options.allowNotifications);
+    return {
+      success: result.success,
+      message: result.message
+    };
   }
 
-  private async runDownloadStep(step: WorkflowStep, inputs: Record<string, string>): Promise<boolean> {
+  private async runDownloadStep(
+    step: WorkflowStep,
+    inputs: Record<string, string>,
+    options: WorkflowExecutionOptions
+  ): Promise<WorkflowStepExecutionResult> {
     const closedMonitor = this.serialMonitorService.hasActiveMonitor()
       ? await this.serialMonitorService.closeSerialMonitor()
       : true;
@@ -502,22 +699,39 @@ export class WorkflowService {
       this.logService.warn('Failed to close active serial monitor before download.');
     }
 
-    const ok = await this.buildExecutionService.executeDownload({
+    const result = await this.buildExecutionService.executeDownloadDetailed({
       templateValues: inputs,
       waitForExit: step.wait ?? true,
-      ensureBuildDirectory: false
+      ensureBuildDirectory: false,
+      showNotifications: options.allowNotifications,
+      runId: options.runId
     });
     if (this.serialMonitorService.canResume()) {
       await this.serialMonitorService.resumeSerialMonitor();
     }
-    return ok;
+    return {
+      success: result.success,
+      exitCode: result.exitCode,
+      message: result.message
+    };
   }
 
-  private async runMenuconfigStep(step: WorkflowStep, inputs: Record<string, string>): Promise<boolean> {
-    return this.buildExecutionService.executeMenuconfig({
+  private async runMenuconfigStep(
+    step: WorkflowStep,
+    inputs: Record<string, string>,
+    options: WorkflowExecutionOptions
+  ): Promise<WorkflowStepExecutionResult> {
+    const result = await this.buildExecutionService.executeMenuconfigDetailed({
       templateValues: inputs,
-      waitForExit: step.wait ?? false
+      waitForExit: step.wait ?? false,
+      showNotifications: options.allowNotifications,
+      runId: options.runId
     });
+    return {
+      success: result.success,
+      exitCode: result.exitCode,
+      message: result.message
+    };
   }
 
   private async runShellCommandStep(
@@ -525,25 +739,39 @@ export class WorkflowService {
     inputs: Record<string, string>,
     workflowId: string,
     workflowName: string,
-    stepIndex: number
-  ): Promise<boolean> {
+    stepIndex: number,
+    options: WorkflowExecutionOptions
+  ): Promise<WorkflowStepExecutionResult> {
     if (!vscode.workspace.isTrusted) {
-      vscode.window.showErrorMessage(
-        vscode.l10n.t('shell.command step requires a trusted workspace.')
-      );
-      return false;
+      const message = vscode.l10n.t('shell.command step requires a trusted workspace.');
+      if (options.allowNotifications) {
+        vscode.window.showErrorMessage(message);
+      }
+      return { success: false, message };
     }
 
     const rawCommand = typeof step.args?.command === 'string' ? step.args.command : '';
     const commandTemplate = rawCommand.trim();
     const resolvedCommand = this.resolveTemplate(rawCommand, inputs).trim();
     if (!resolvedCommand) {
-      vscode.window.showErrorMessage(vscode.l10n.t('shell.command step requires args.command.'));
-      return false;
+      const message = vscode.l10n.t('shell.command step requires args.command.');
+      if (options.allowNotifications) {
+        vscode.window.showErrorMessage(message);
+      }
+      return { success: false, message };
     }
 
     const approvalKey = `${workflowId}:${stepIndex}`;
     if (!this.workspaceStateService.isWorkflowShellApproved(approvalKey, commandTemplate)) {
+      if (!options.allowShellApprovalPrompt) {
+        return {
+          success: false,
+          message: vscode.l10n.t(
+            'Workflow shell step requires prior approval in the workflow UI: {0}',
+            workflowName
+          )
+        };
+      }
       const runAction = vscode.l10n.t('Allow and run');
       const confirm = await vscode.window.showWarningMessage(
         vscode.l10n.t(
@@ -555,7 +783,10 @@ export class WorkflowService {
         runAction
       );
       if (confirm !== runAction) {
-        return false;
+        return {
+          success: false,
+          message: vscode.l10n.t('Workflow shell approval was canceled.')
+        };
       }
       await this.workspaceStateService.approveWorkflowShell(approvalKey, commandTemplate);
     }
@@ -564,15 +795,29 @@ export class WorkflowService {
     const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(
       resolvedCommand,
       TASK_NAMES.WORKFLOW_SHELL,
-      { waitForExit: wait }
+      { waitForExit: wait, runId: options.runId }
     );
-    return exitCode === undefined || exitCode === 0;
+    return {
+      success: exitCode === undefined || exitCode === 0,
+      exitCode
+    };
   }
 
-  private async runMonitorOpenStep(): Promise<boolean> {
+  private async runMonitorOpenStep(options: WorkflowExecutionOptions): Promise<WorkflowStepExecutionResult> {
     await this.serialMonitorService.initialize();
     const selectedSerialPort = this.serialPortService.selectedSerialPort || undefined;
-    return this.serialMonitorService.openSerialMonitor(selectedSerialPort, this.serialPortService.monitorBaudRate);
+    if (!selectedSerialPort && !options.allowMonitorPortPrompt) {
+      return {
+        success: false,
+        message: vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.')
+      };
+    }
+    return {
+      success: await this.serialMonitorService.openSerialMonitor(
+        selectedSerialPort,
+        this.serialPortService.monitorBaudRate
+      )
+    };
   }
 
   private asArray<T>(value: unknown): T[] {
@@ -622,5 +867,254 @@ export class WorkflowService {
     });
 
     return issues;
+  }
+
+  private findResolvedWorkflowById(workflowId: string): ScopedWorkflowDefinition | undefined {
+    const userWorkflow = this.getUserWorkflows().find(item => item.id === workflowId);
+    if (userWorkflow) {
+      return {
+        scope: 'user',
+        workflow: userWorkflow,
+        workflowRef: this.getWorkflowReference('user', workflowId)
+      };
+    }
+
+    const workspaceWorkflow = this.getWorkspaceWorkflows().find(item => item.id === workflowId);
+    if (workspaceWorkflow) {
+      return {
+        scope: 'workspace',
+        workflow: workspaceWorkflow,
+        workflowRef: this.getWorkflowReference('workspace', workflowId)
+      };
+    }
+
+    return undefined;
+  }
+
+  private assessWorkflowToolCompatibility(scopedWorkflow: ScopedWorkflowDefinition): WorkflowToolCompatibility {
+    const reasons = new Set<string>();
+    const validationIssues = this.validateWorkflowForExecution(scopedWorkflow.workflow);
+    validationIssues.forEach(issue => reasons.add(issue));
+    const steps = Array.isArray(scopedWorkflow.workflow.steps) ? scopedWorkflow.workflow.steps : [];
+
+    const hasBoard = this.isBoardSelected();
+    const hasSerialPort = !!this.serialPortService.selectedSerialPort;
+    const hasShellCommand = steps.some(step => step.type === 'shell.command');
+
+    steps.forEach((step, index) => {
+      if (step.type === 'build.menuconfig') {
+        reasons.add(vscode.l10n.t('Workflow step type is not supported by language model tools: {0}', step.type));
+      }
+      if (step.type === 'serial.selectPort') {
+        reasons.add(vscode.l10n.t('Workflow step type is interactive-only and cannot run from language model tools: {0}', step.type));
+      }
+      if ((step.type === 'build.compile' || step.type === 'build.rebuild' || step.type === 'build.clean' || step.type === 'build.download') && !hasBoard) {
+        reasons.add(vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'));
+      }
+      if ((step.type === 'build.download' || step.type === 'monitor.open') && !hasSerialPort) {
+        reasons.add(vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'));
+      }
+      if (step.type === 'shell.command') {
+        if (!vscode.workspace.isTrusted) {
+          reasons.add(vscode.l10n.t('shell.command step requires a trusted workspace.'));
+        } else {
+          const rawCommand = typeof step.args?.command === 'string' ? step.args.command : '';
+          const commandTemplate = rawCommand.trim();
+          const approvalKey = `${scopedWorkflow.workflow.id}:${index}`;
+          if (commandTemplate && !this.workspaceStateService.isWorkflowShellApproved(approvalKey, commandTemplate)) {
+            reasons.add(vscode.l10n.t('Workflow shell step requires prior approval in the workflow UI: {0}', scopedWorkflow.workflow.name));
+          }
+        }
+      }
+    });
+
+    return {
+      runnable: reasons.size === 0,
+      reasons: Array.from(reasons),
+      hasShellCommand
+    };
+  }
+
+  private async executeScopedWorkflow(
+    scopedWorkflow: ScopedWorkflowDefinition,
+    options: WorkflowExecutionOptions
+  ): Promise<WorkflowExecutionResult> {
+    const workflow = scopedWorkflow.workflow;
+    const dryRun = options.dryRun ?? false;
+    const allowNotifications = options.allowNotifications ?? true;
+    const disallowedStepTypes = options.disallowedStepTypes ?? new Set<WorkflowStepType>();
+
+    const executionIssues = this.validateWorkflowForExecution(workflow);
+    if (executionIssues.length > 0) {
+      const message = vscode.l10n.t('Workflow "{0}" is invalid: {1}', workflow.name, executionIssues.join('; '));
+      if (allowNotifications) {
+        vscode.window.showErrorMessage(message);
+      }
+      return {
+        success: false,
+        workflowId: workflow.id,
+        workflowName: workflow.name,
+        workflowScope: scopedWorkflow.scope,
+        workflowRef: scopedWorkflow.workflowRef,
+        dryRun,
+        runId: options.runId,
+        message,
+        skippedStepIndexes: [],
+        continuedFailureSteps: []
+      };
+    }
+
+    const blockedStep = workflow.steps.find(step => disallowedStepTypes.has(step.type));
+    if (blockedStep) {
+      const message = vscode.l10n.t('Workflow step type is not supported by language model tools: {0}', blockedStep.type);
+      return {
+        success: false,
+        workflowId: workflow.id,
+        workflowName: workflow.name,
+        workflowScope: scopedWorkflow.scope,
+        workflowRef: scopedWorkflow.workflowRef,
+        dryRun,
+        runId: options.runId,
+        message,
+        skippedStepIndexes: [],
+        continuedFailureSteps: []
+      };
+    }
+
+    const resolvedInputs = await this.resolveWorkflowInputs(
+      workflow.inputs ?? [],
+      options.providedInputs,
+      options.allowInputPrompts ?? true
+    );
+    if (!resolvedInputs.values) {
+      return {
+        success: false,
+        workflowId: workflow.id,
+        workflowName: workflow.name,
+        workflowScope: scopedWorkflow.scope,
+        workflowRef: scopedWorkflow.workflowRef,
+        dryRun,
+        runId: options.runId,
+        message: resolvedInputs.error,
+        skippedStepIndexes: [],
+        continuedFailureSteps: []
+      };
+    }
+
+    if (dryRun) {
+      const preview = workflow.steps.map((step, i) => `${i + 1}. ${getWorkflowStepDisplayLabel(step)}`).join('\n');
+      if (allowNotifications) {
+        vscode.window.showInformationMessage(vscode.l10n.t('Dry Run: {0}\n{1}', workflow.name, preview));
+      }
+      return {
+        success: true,
+        workflowId: workflow.id,
+        workflowName: workflow.name,
+        workflowScope: scopedWorkflow.scope,
+        workflowRef: scopedWorkflow.workflowRef,
+        dryRun: true,
+        runId: options.runId,
+        message: preview,
+        skippedStepIndexes: [],
+        continuedFailureSteps: []
+      };
+    }
+
+    const policy = workflow.failurePolicy ?? 'stop';
+    this.logService.info(`Running workflow: ${workflow.id}`);
+
+    if (!Array.isArray(workflow.steps) || workflow.steps.length === 0) {
+      const message = vscode.l10n.t('Workflow has no steps: {0}', workflow.name);
+      if (allowNotifications) {
+        vscode.window.showInformationMessage(message);
+      }
+      return {
+        success: true,
+        workflowId: workflow.id,
+        workflowName: workflow.name,
+        workflowScope: scopedWorkflow.scope,
+        workflowRef: scopedWorkflow.workflowRef,
+        dryRun: false,
+        runId: options.runId,
+        message,
+        skippedStepIndexes: [],
+        continuedFailureSteps: []
+      };
+    }
+
+    const skippedStepIndexes: number[] = [];
+    const continuedFailureSteps: number[] = [];
+    for (let i = 0; i < workflow.steps.length; i++) {
+      const step = workflow.steps[i];
+      if (!this.shouldRunStep(step)) {
+        this.logService.info(`Skip workflow step #${i + 1}: ${step.type}`);
+        skippedStepIndexes.push(i);
+        continue;
+      }
+
+      const stepResult = await this.executeStep(
+        step,
+        resolvedInputs.values,
+        workflow.id,
+        workflow.name,
+        i,
+        options
+      );
+      if (stepResult.success) {
+        continue;
+      }
+
+      const continueOnError = step.continueOnError ?? policy === 'continue';
+      const stepLabel = `${workflow.name} #${i + 1} (${getWorkflowStepDisplayLabel(step)})`;
+      if (!continueOnError) {
+        const message = stepResult.message
+          ? `${vscode.l10n.t('Workflow stopped at step: {0}', stepLabel)} ${stepResult.message}`
+          : vscode.l10n.t('Workflow stopped at step: {0}', stepLabel);
+        if (allowNotifications) {
+          vscode.window.showErrorMessage(vscode.l10n.t('Workflow stopped at step: {0}', stepLabel));
+        }
+        return {
+          success: false,
+          workflowId: workflow.id,
+          workflowName: workflow.name,
+          workflowScope: scopedWorkflow.scope,
+          workflowRef: scopedWorkflow.workflowRef,
+          dryRun: false,
+          runId: options.runId,
+          message,
+          exitCode: stepResult.exitCode,
+          failedStepIndex: i,
+          failedStepType: step.type,
+          skippedStepIndexes,
+          continuedFailureSteps
+        };
+      }
+      continuedFailureSteps.push(i);
+      this.logService.warn(`Workflow step failed but continued: ${stepLabel}`);
+    }
+
+    const finishedMessage = workflow.name
+      ? vscode.l10n.t('Workflow finished: {0}', workflow.name)
+      : undefined;
+    if (allowNotifications) {
+      vscode.window.showInformationMessage(vscode.l10n.t('Workflow finished: {0}', workflow.name));
+    }
+    return {
+      success: true,
+      workflowId: workflow.id,
+      workflowName: workflow.name,
+      workflowScope: scopedWorkflow.scope,
+      workflowRef: scopedWorkflow.workflowRef,
+      dryRun: false,
+      runId: options.runId,
+      message: finishedMessage,
+      skippedStepIndexes,
+      continuedFailureSteps
+    };
+  }
+
+  private isBoardSelected(): boolean {
+    const boardName = this.configService.getSelectedBoardName();
+    return !!boardName && boardName !== 'N/A';
   }
 }
