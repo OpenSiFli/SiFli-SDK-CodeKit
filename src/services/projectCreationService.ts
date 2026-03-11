@@ -426,19 +426,27 @@ export class ProjectCreationService {
   }
 
   private copyTemplate(sourceRoot: string, targetRoot: string): void {
+    const parentRoot = path.dirname(targetRoot);
+    const stagingContainer = fs.mkdtempSync(path.join(parentRoot, '.sifli-create-'));
+    const stagingTarget = path.join(stagingContainer, path.basename(targetRoot));
+
     try {
-      fs.cpSync(sourceRoot, targetRoot, {
+      fs.cpSync(sourceRoot, stagingTarget, {
         recursive: true,
         errorOnExist: true,
         force: false,
         filter: (sourcePath) => this.shouldCopyPath(sourceRoot, sourcePath)
       });
+
+      fs.renameSync(stagingTarget, targetRoot);
       this.logService.info(`Project template copied from ${sourceRoot} to ${targetRoot}`);
     } catch (error) {
-      if (fs.existsSync(targetRoot)) {
-        fs.rmSync(targetRoot, { recursive: true, force: true });
+      if (this.isTargetAlreadyExistsError(error)) {
+        throw new Error(vscode.l10n.t('Target folder already exists.'));
       }
       throw error;
+    } finally {
+      this.cleanupStagingDirectory(stagingContainer);
     }
   }
 
@@ -515,6 +523,27 @@ export class ProjectCreationService {
     }
 
     await this.gitService.executeGitCommand('git', ['init'], targetRoot);
+  }
+
+  private cleanupStagingDirectory(stagingContainer: string): void {
+    if (!fs.existsSync(stagingContainer)) {
+      return;
+    }
+
+    try {
+      fs.rmSync(stagingContainer, { recursive: true, force: true });
+    } catch (error) {
+      this.logService.warn(`Failed to clean up staging directory: ${stagingContainer}`, error);
+    }
+  }
+
+  private isTargetAlreadyExistsError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    const errorCode = (error as NodeJS.ErrnoException).code;
+    return errorCode === 'EEXIST' || errorCode === 'ENOTEMPTY';
   }
 
   private getErrorMessage(error: unknown): string {
