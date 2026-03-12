@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { createHash } from 'crypto';
 
 /**
  * 工作区状态的类型定义
@@ -17,8 +18,8 @@ export interface WorkspaceState {
   currentSdkPath?: string;
   // 编译线程数
   numThreads?: number;
-  // workflow shell step 授权缓存（key: workflowId:stepIndex, value: command template）
-  workflowShellApprovals?: Record<string, string>;
+  // workflow shell step 授权缓存（key: workflowRef:stepIndex:commandFingerprint）
+  workflowShellApprovals?: Record<string, true>;
 }
 
 // 工作区状态的 key 常量
@@ -185,22 +186,27 @@ export class WorkspaceStateService {
   }
 
   // workflowShellApprovals
-  public getWorkflowShellApprovals(): Record<string, string> {
+  public getWorkflowShellApprovals(): Record<string, true> {
     return this.get('workflowShellApprovals') || {};
   }
 
-  public async setWorkflowShellApprovals(value: Record<string, string>): Promise<void> {
+  public async setWorkflowShellApprovals(value: Record<string, true>): Promise<void> {
     await this.set('workflowShellApprovals', value);
   }
 
-  public isWorkflowShellApproved(approvalKey: string, commandTemplate: string): boolean {
-    const approvals = this.getWorkflowShellApprovals();
-    return approvals[approvalKey] === commandTemplate;
+  public buildWorkflowShellApprovalKey(workflowRef: string, stepIndex: number, commandTemplate: string): string {
+    const fingerprint = createHash('sha256').update(commandTemplate).digest('hex').slice(0, 16);
+    return `${workflowRef}:${stepIndex}:${fingerprint}`;
   }
 
-  public async approveWorkflowShell(approvalKey: string, commandTemplate: string): Promise<void> {
+  public isWorkflowShellApproved(approvalKey: string): boolean {
     const approvals = this.getWorkflowShellApprovals();
-    approvals[approvalKey] = commandTemplate;
+    return approvals[approvalKey] === true;
+  }
+
+  public async approveWorkflowShell(approvalKey: string): Promise<void> {
+    const approvals = this.getWorkflowShellApprovals();
+    approvals[approvalKey] = true;
     await this.setWorkflowShellApprovals(approvals);
   }
 }

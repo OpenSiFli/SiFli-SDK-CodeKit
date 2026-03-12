@@ -587,7 +587,7 @@ export class WorkflowService {
   private async executeStep(
     step: WorkflowStep,
     inputs: Record<string, string>,
-    workflowId: string,
+    workflowRef: WorkflowReference,
     workflowName: string,
     stepIndex: number,
     options: WorkflowExecutionOptions
@@ -605,7 +605,7 @@ export class WorkflowService {
         case 'build.menuconfig':
           return await this.runMenuconfigStep(step, inputs, options);
         case 'shell.command':
-          return await this.runShellCommandStep(step, inputs, workflowId, workflowName, stepIndex, options);
+          return await this.runShellCommandStep(step, inputs, workflowRef, workflowName, stepIndex, options);
         case 'monitor.open':
           return await this.runMonitorOpenStep(options);
         case 'monitor.close':
@@ -731,7 +731,7 @@ export class WorkflowService {
   private async runShellCommandStep(
     step: WorkflowStep,
     inputs: Record<string, string>,
-    workflowId: string,
+    workflowRef: WorkflowReference,
     workflowName: string,
     stepIndex: number,
     options: WorkflowExecutionOptions
@@ -755,8 +755,12 @@ export class WorkflowService {
       return { success: false, message };
     }
 
-    const approvalKey = `${workflowId}:${stepIndex}`;
-    if (!this.workspaceStateService.isWorkflowShellApproved(approvalKey, commandTemplate)) {
+    const approvalKey = this.workspaceStateService.buildWorkflowShellApprovalKey(
+      workflowRef,
+      stepIndex,
+      commandTemplate
+    );
+    if (!this.workspaceStateService.isWorkflowShellApproved(approvalKey)) {
       if (!options.allowShellApprovalPrompt) {
         return {
           success: false,
@@ -779,7 +783,7 @@ export class WorkflowService {
           message: vscode.l10n.t('Workflow shell approval was canceled.'),
         };
       }
-      await this.workspaceStateService.approveWorkflowShell(approvalKey, commandTemplate);
+      await this.workspaceStateService.approveWorkflowShell(approvalKey);
     }
 
     const wait = step.wait ?? true;
@@ -922,8 +926,12 @@ export class WorkflowService {
         } else {
           const rawCommand = typeof step.args?.command === 'string' ? step.args.command : '';
           const commandTemplate = rawCommand.trim();
-          const approvalKey = `${scopedWorkflow.workflow.id}:${index}`;
-          if (commandTemplate && !this.workspaceStateService.isWorkflowShellApproved(approvalKey, commandTemplate)) {
+          const approvalKey = this.workspaceStateService.buildWorkflowShellApprovalKey(
+            scopedWorkflow.workflowRef,
+            index,
+            commandTemplate
+          );
+          if (commandTemplate && !this.workspaceStateService.isWorkflowShellApproved(approvalKey)) {
             reasons.add(
               vscode.l10n.t(
                 'Workflow shell step requires prior approval in the workflow UI: {0}',
@@ -1062,7 +1070,14 @@ export class WorkflowService {
         continue;
       }
 
-      const stepResult = await this.executeStep(step, resolvedInputs.values, workflow.id, workflow.name, i, options);
+      const stepResult = await this.executeStep(
+        step,
+        resolvedInputs.values,
+        scopedWorkflow.workflowRef,
+        workflow.name,
+        i,
+        options
+      );
       if (stepResult.success) {
         continue;
       }
