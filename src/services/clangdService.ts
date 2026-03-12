@@ -1,12 +1,9 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { ConfigService } from './configService';
 import { getProjectInfo } from '../utils/projectUtils';
 
 export type ClangdConfigurationResult = {
   success: boolean;
-  settingsPath?: string;
   selectedBoard?: string;
   compileCommandsDir?: string;
   message?: string;
@@ -27,7 +24,7 @@ export class ClangdService {
     return ClangdService.instance;
   }
 
-  public configure(boardName?: string): ClangdConfigurationResult {
+  public async configure(boardName?: string): Promise<ClangdConfigurationResult> {
     const selectedBoard = boardName ?? this.configService.getSelectedBoardName();
     if (!selectedBoard || selectedBoard === 'N/A') {
       return {
@@ -44,31 +41,23 @@ export class ClangdService {
       };
     }
 
-    const vscodeDir = path.join(workspaceFolder.uri.fsPath, '.vscode');
-    const settingsPath = path.join(vscodeDir, 'settings.json');
-    if (!fs.existsSync(vscodeDir)) {
-      fs.mkdirSync(vscodeDir, { recursive: true });
-    }
-
-    let settings: Record<string, unknown> = {};
-    if (fs.existsSync(settingsPath)) {
-      const content = fs.readFileSync(settingsPath, 'utf-8');
-      try {
-        settings = JSON.parse(content) as Record<string, unknown>;
-      } catch {
-        settings = {};
-      }
-    }
-
     const projectInfo = getProjectInfo();
     const projectRelativePath = projectInfo?.projectEntryRelativePath || 'project';
     const compileCommandsDir = `\${workspaceFolder}/${projectRelativePath}/build_${selectedBoard}_hcpu`;
-    settings['clangd.arguments'] = [`--compile-commands-dir=${compileCommandsDir}`];
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 4), 'utf-8');
+    const clangdConfig = vscode.workspace.getConfiguration('clangd', workspaceFolder.uri);
+    const existingArguments = clangdConfig.get<unknown>('arguments');
+    const preservedArguments = Array.isArray(existingArguments)
+      ? existingArguments.filter((value): value is string => typeof value === 'string')
+      : [];
+    const nextArguments = [
+      ...preservedArguments.filter(argument => !argument.startsWith('--compile-commands-dir=')),
+      `--compile-commands-dir=${compileCommandsDir}`,
+    ];
+
+    await clangdConfig.update('arguments', nextArguments, vscode.ConfigurationTarget.WorkspaceFolder);
 
     return {
       success: true,
-      settingsPath,
       selectedBoard,
       compileCommandsDir,
       message: vscode.l10n.t('clangd configuration completed for board {0}.', selectedBoard),

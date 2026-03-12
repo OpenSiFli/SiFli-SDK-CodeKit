@@ -202,7 +202,7 @@ export class ConfigCommands {
    */
   public async configureClangd(): Promise<void> {
     try {
-      const result = this.clangdService.configure();
+      const result = await this.clangdService.configure();
       if (!result.success) {
         const message = result.message ?? vscode.l10n.t('Failed to configure clangd.');
         if (message === vscode.l10n.t('Select a board first.')) {
