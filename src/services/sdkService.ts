@@ -232,39 +232,49 @@ export class SdkService {
    * 激活指定的 SDK
    */
   public async activateSdk(sdk: SdkVersion): Promise<void> {
+    const result = await this.activateSdkVersion(sdk, true);
+    if (!result.success && result.message) {
+      vscode.window.showErrorMessage(result.message);
+    }
+  }
+
+  public async activateSdkDetailed(input: {
+    sdkPath?: string;
+    version?: string;
+    showNotifications?: boolean;
+  }): Promise<{
+    success: boolean;
+    sdk?: SdkVersion;
+    scriptPath?: string;
+    message?: string;
+  }> {
     try {
-      this.logService.info(`Activating SDK: ${sdk.version} at ${sdk.path}`);
+      const sdkVersions = await this.discoverSiFliSdks();
+      const sdk = input.sdkPath
+        ? sdkVersions.find(item => item.path === input.sdkPath)
+        : input.version
+          ? sdkVersions.find(item => item.version === input.version)
+          : this.getCurrentSdk();
 
-      if (!sdk.valid) {
-        const message = vscode.l10n.t('Selected SDK path is invalid: {0}', sdk.path);
-        this.logService.error(message);
-        vscode.window.showErrorMessage(message);
-        return;
+      if (!sdk) {
+        return {
+          success: false,
+          message: vscode.l10n.t('No matching SiFli SDK found.'),
+        };
       }
 
-      // 获取当前平台对应的激活脚本路径
-      const activationScript = this.getActivationScriptForPlatform(sdk.path);
-      if (!activationScript) {
-        const message = vscode.l10n.t('No export script found for the current platform in SDK path: {0}', sdk.path);
-        this.logService.error(message);
-        vscode.window.showErrorMessage(message);
-        return;
-      }
-
-      this.logService.debug(`Using activation script: ${activationScript.scriptPath}`);
-
-      // 在终端中执行激活命令
-      await this.executeActivationScript(activationScript);
-
-      // 保存当前 SDK 路径到 workspaceState
-      await this.configService.setCurrentSdkPath(sdk.path);
-
-      const successMessage = vscode.l10n.t('Switched to SiFli SDK version: {0}', sdk.version);
-      this.logService.info(successMessage);
-      vscode.window.showInformationMessage(successMessage);
+      const result = await this.activateSdkVersion(sdk, input.showNotifications ?? false);
+      return {
+        success: result.success,
+        sdk,
+        scriptPath: result.scriptPath,
+        message: result.message,
+      };
     } catch (error) {
-      this.logService.error('Error activating SDK:', error);
-      vscode.window.showErrorMessage(vscode.l10n.t('Failed to activate SDK: {0}', String(error)));
+      return {
+        success: false,
+        message: vscode.l10n.t('Failed to activate SDK: {0}', String(error)),
+      };
     }
   }
 
@@ -399,21 +409,13 @@ export class SdkService {
    * 添加 SDK 路径到配置
    */
   public async addSdkPath(sdkPath: string): Promise<void> {
-    try {
-      if (!this.validateSdkPath(sdkPath)) {
-        throw new Error(vscode.l10n.t('Invalid SDK path'));
-      }
-
-      const installedPaths = this.configService.getInstalledSdkPaths();
-      if (!installedPaths.includes(sdkPath)) {
-        await this.configService.addSdkConfig(sdkPath);
-        vscode.window.showInformationMessage(vscode.l10n.t('Added SDK path: {0}', sdkPath));
+    const result = await this.addSdkPathDetailed(sdkPath);
+    if (result.message) {
+      if (result.success) {
+        vscode.window.showInformationMessage(result.message);
       } else {
-        vscode.window.showInformationMessage(vscode.l10n.t('SDK path already exists: {0}', sdkPath));
+        vscode.window.showErrorMessage(result.message);
       }
-    } catch (error) {
-      console.error('[SdkService] Error adding SDK path:', error);
-      vscode.window.showErrorMessage(vscode.l10n.t('Failed to add SDK path: {0}', String(error)));
     }
   }
 
@@ -421,18 +423,13 @@ export class SdkService {
    * 移除 SDK 路径
    */
   public async removeSdkPath(sdkPath: string): Promise<void> {
-    try {
-      const installedPaths = this.configService.getInstalledSdkPaths();
-
-      if (installedPaths.includes(sdkPath)) {
-        await this.configService.removeSdkConfig(sdkPath);
-        vscode.window.showInformationMessage(vscode.l10n.t('Removed SDK path: {0}', sdkPath));
+    const result = await this.removeSdkPathDetailed(sdkPath);
+    if (result.message) {
+      if (result.success) {
+        vscode.window.showInformationMessage(result.message);
       } else {
-        vscode.window.showWarningMessage(vscode.l10n.t('SDK path does not exist: {0}', sdkPath));
+        vscode.window.showWarningMessage(result.message);
       }
-    } catch (error) {
-      console.error('[SdkService] Error removing SDK path:', error);
-      vscode.window.showErrorMessage(vscode.l10n.t('Failed to remove SDK path: {0}', String(error)));
     }
   }
 
@@ -440,14 +437,13 @@ export class SdkService {
    * 设置SDK的工具链路径
    */
   public async setSdkToolsPath(sdkPath: string, toolsPath: string): Promise<void> {
-    try {
-      await this.configService.setSdkToolsPath(sdkPath, toolsPath);
-      vscode.window.showInformationMessage(
-        vscode.l10n.t('Set toolchain path for SDK {0}: {1}', path.basename(sdkPath), toolsPath)
-      );
-    } catch (error) {
-      console.error('[SdkService] Error setting SDK tools path:', error);
-      vscode.window.showErrorMessage(vscode.l10n.t('Failed to set toolchain path: {0}', String(error)));
+    const result = await this.setSdkToolsPathDetailed(sdkPath, toolsPath);
+    if (result.message) {
+      if (result.success) {
+        vscode.window.showInformationMessage(result.message);
+      } else {
+        vscode.window.showErrorMessage(result.message);
+      }
     }
   }
 
@@ -456,5 +452,134 @@ export class SdkService {
    */
   public getSdkToolsPath(sdkPath: string): string | undefined {
     return this.configService.getSdkToolsPath(sdkPath);
+  }
+
+  public async addSdkPathDetailed(
+    sdkPath: string,
+    toolsPath?: string
+  ): Promise<{ success: boolean; message?: string }> {
+    try {
+      if (!this.validateSdkPath(sdkPath)) {
+        return {
+          success: false,
+          message: vscode.l10n.t('Invalid SDK path'),
+        };
+      }
+
+      const installedPaths = this.configService.getInstalledSdkPaths();
+      if (!installedPaths.includes(sdkPath)) {
+        await this.configService.addSdkConfig(sdkPath, toolsPath);
+        return {
+          success: true,
+          message: vscode.l10n.t('Added SDK path: {0}', sdkPath),
+        };
+      }
+
+      if (toolsPath) {
+        await this.configService.setSdkToolsPath(sdkPath, toolsPath);
+      }
+
+      return {
+        success: true,
+        message: vscode.l10n.t('SDK path already exists: {0}', sdkPath),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: vscode.l10n.t('Failed to add SDK path: {0}', String(error)),
+      };
+    }
+  }
+
+  public async removeSdkPathDetailed(sdkPath: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const installedPaths = this.configService.getInstalledSdkPaths();
+      if (!installedPaths.includes(sdkPath)) {
+        return {
+          success: false,
+          message: vscode.l10n.t('SDK path does not exist: {0}', sdkPath),
+        };
+      }
+
+      await this.configService.removeSdkConfig(sdkPath);
+      return {
+        success: true,
+        message: vscode.l10n.t('Removed SDK path: {0}', sdkPath),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: vscode.l10n.t('Failed to remove SDK path: {0}', String(error)),
+      };
+    }
+  }
+
+  public async setSdkToolsPathDetailed(
+    sdkPath: string,
+    toolsPath: string
+  ): Promise<{ success: boolean; message?: string }> {
+    try {
+      await this.configService.setSdkToolsPath(sdkPath, toolsPath);
+      return {
+        success: true,
+        message: vscode.l10n.t('Set toolchain path for SDK {0}: {1}', path.basename(sdkPath), toolsPath),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: vscode.l10n.t('Failed to set toolchain path: {0}', String(error)),
+      };
+    }
+  }
+
+  private async activateSdkVersion(
+    sdk: SdkVersion,
+    showNotifications: boolean
+  ): Promise<{ success: boolean; scriptPath?: string; message?: string }> {
+    try {
+      this.logService.info(`Activating SDK: ${sdk.version} at ${sdk.path}`);
+
+      if (!sdk.valid) {
+        const message = vscode.l10n.t('Selected SDK path is invalid: {0}', sdk.path);
+        this.logService.error(message);
+        if (showNotifications) {
+          vscode.window.showErrorMessage(message);
+        }
+        return { success: false, message };
+      }
+
+      const activationScript = this.getActivationScriptForPlatform(sdk.path);
+      if (!activationScript) {
+        const message = vscode.l10n.t('No export script found for the current platform in SDK path: {0}', sdk.path);
+        this.logService.error(message);
+        if (showNotifications) {
+          vscode.window.showErrorMessage(message);
+        }
+        return { success: false, message };
+      }
+
+      this.logService.debug(`Using activation script: ${activationScript.scriptPath}`);
+      await this.executeActivationScript(activationScript);
+      await this.configService.setCurrentSdkPath(sdk.path);
+
+      const successMessage = vscode.l10n.t('Switched to SiFli SDK version: {0}', sdk.version);
+      this.logService.info(successMessage);
+      if (showNotifications) {
+        vscode.window.showInformationMessage(successMessage);
+      }
+
+      return {
+        success: true,
+        scriptPath: activationScript.scriptPath,
+        message: successMessage,
+      };
+    } catch (error) {
+      this.logService.error('Error activating SDK:', error);
+      const message = vscode.l10n.t('Failed to activate SDK: {0}', String(error));
+      if (showNotifications) {
+        vscode.window.showErrorMessage(message);
+      }
+      return { success: false, message };
+    }
   }
 }

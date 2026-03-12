@@ -47,6 +47,9 @@ export const LM_TOOL_NAMES = {
   CLOSE_MONITOR: 'sifli-sdk-codekit_closeMonitor',
 } as const;
 
+export const MCP_SERVER_LABEL = 'SiFli CodeKit';
+export const MCP_SERVER_DEFINITION_PROVIDER_ID = 'sifli-sdk-codekit.embedded-mcp';
+
 /**
  * 配置迁移版本记录
  * 当需要添加新的配置迁移时，在此添加新的版本号

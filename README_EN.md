@@ -19,3 +19,13 @@
 ## How to Use
 
 Please refer to our [User Guide](https://docs.sifli.com/projects/codekit) to learn how to install and use the extension.
+
+## MCP Server
+
+CodeKit now includes an optional embedded MCP Server so other agent tools or IDEs can call extension capabilities through MCP.
+
+- Run `Start SiFli MCP Server` from the command palette to start the server
+- Run `Show SiFli MCP Connection Info` to get the URL and Bearer token
+- Enable `sifli-sdk-codekit.mcp.autoStart` to start it automatically on activation
+
+The current implementation runs inside the VS Code extension host, so the VS Code instance that hosts CodeKit must remain running while external clients use the MCP connection.

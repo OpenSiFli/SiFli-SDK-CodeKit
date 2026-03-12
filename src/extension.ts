@@ -17,11 +17,14 @@ import { ConfigCommands } from './commands/configCommands';
 import { ProjectCommands } from './commands/projectCommands';
 import { SdkCommands } from './commands/sdkCommands';
 import { WorkflowCommands } from './commands/workflowCommands';
+import { McpCommands } from './commands/mcpCommands';
 import { StatusBarProvider } from './providers/statusBarProvider';
 import { VueWebviewProvider } from './providers/vueWebviewProvider';
 import { SifliSidebarManager } from './providers/sifliSidebarProvider';
 import { WorkflowService } from './services/workflowService';
 import { LanguageModelToolService } from './services/languageModelToolService';
+import { McpServerService } from './services/mcpServerService';
+import { McpServerDefinitionProviderService } from './services/mcpServerDefinitionProviderService';
 import { isSiFliProject } from './utils/projectUtils';
 import { registerProbeRsDebugger } from './probe-rs/extension';
 
@@ -71,6 +74,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const projectCommands = ProjectCommands.getInstance();
   const sdkCommands = SdkCommands.getInstance();
   const workflowCommands = WorkflowCommands.getInstance();
+  const mcpCommands = McpCommands.getInstance();
 
   // 初始化状态栏提供者
   const statusBarProvider = StatusBarProvider.getInstance();
@@ -82,6 +86,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const sidebarManager = SifliSidebarManager.getInstance();
   const workflowService = WorkflowService.getInstance();
   const languageModelToolService = LanguageModelToolService.getInstance();
+  const mcpServerService = McpServerService.getInstance();
+  const mcpServerDefinitionProviderService = McpServerDefinitionProviderService.getInstance();
 
   // 注册输出通道和 Git 输出通道到订阅列表
   context.subscriptions.push(logService.getOutputChannel(), gitService.getOutputChannel());
@@ -95,6 +101,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   };
   await refreshProjectContext();
   languageModelToolService.register(context);
+  mcpServerDefinitionProviderService.register(context);
+  await mcpServerService.syncWithConfiguration();
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       void refreshProjectContext();
@@ -131,9 +139,55 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const createProjectCommand = vscode.commands.registerCommand(CMD_PREFIX + 'createNewSiFliProject', () =>
     projectCommands.createNewSiFliProject()
   );
-  context.subscriptions.push(manageSdkCommand);
-  context.subscriptions.push(createProjectCommand);
+  const startMcpCommand = vscode.commands.registerCommand(CMD_PREFIX + 'mcp.start', async () => {
+    await mcpCommands.startServer();
+  });
+  const stopMcpCommand = vscode.commands.registerCommand(CMD_PREFIX + 'mcp.stop', async () => {
+    await mcpCommands.stopServer();
+  });
+  const showMcpCommand = vscode.commands.registerCommand(CMD_PREFIX + 'mcp.showConnectionInfo', async () => {
+    await mcpCommands.copyConnectionInfo();
+  });
+  const toggleMcpEnabledCommand = vscode.commands.registerCommand(CMD_PREFIX + 'mcp.toggleEnabled', async () => {
+    await mcpCommands.toggleEnabled();
+  });
+  const toggleMcpAutoStartCommand = vscode.commands.registerCommand(CMD_PREFIX + 'mcp.toggleAutoStart', async () => {
+    await mcpCommands.toggleAutoStart();
+  });
+  const configureMcpEndpointCommand = vscode.commands.registerCommand(
+    CMD_PREFIX + 'mcp.configureEndpoint',
+    async () => {
+      await mcpCommands.configureEndpoint();
+    }
+  );
+  const showMcpLogsCommand = vscode.commands.registerCommand(CMD_PREFIX + 'mcp.showLogs', async () => {
+    await mcpCommands.showLogs();
+  });
+  context.subscriptions.push(
+    manageSdkCommand,
+    createProjectCommand,
+    startMcpCommand,
+    stopMcpCommand,
+    showMcpCommand,
+    toggleMcpEnabledCommand,
+    toggleMcpAutoStartCommand,
+    configureMcpEndpointCommand,
+    showMcpLogsCommand
+  );
   logService.info('SDK management command registered');
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(async e => {
+      if (e.affectsConfiguration('sifli-sdk-codekit.mcp')) {
+        await mcpServerService.syncWithConfiguration();
+        mcpServerDefinitionProviderService.notifyDefinitionsChanged();
+      }
+      if (e.affectsConfiguration('sifli-sdk-codekit.workflows')) {
+        mcpServerService.notifyToolsListChanged();
+        mcpServerDefinitionProviderService.notifyDefinitionsChanged();
+      }
+    })
+  );
 
   // 检查是否为 SiFli 项目
   if (isSiFliProject()) {
@@ -177,6 +231,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           configService.detectedSdkVersions = newSdkVersions;
           statusBarProvider.updateStatusBarItems();
           workflowService.reportValidationIssues(false);
+          mcpServerService.notifyToolsListChanged();
+          if (e.affectsConfiguration('sifli-sdk-codekit.workflows')) {
+            mcpServerDefinitionProviderService.notifyDefinitionsChanged();
+          }
           await refreshProjectContext();
           logService.info('Configuration update completed');
         }
@@ -306,7 +364,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 /**
  * 扩展停用函数
  */
-export function deactivate(): void {
+export async function deactivate(): Promise<void> {
   const logService = LogService.getInstance();
   logService.info('SiFli SDK CodeKit extension is deactivating...');
 
@@ -325,6 +383,10 @@ export function deactivate(): void {
   // 清理 Git 服务
   const gitService = GitService.getInstance();
   gitService.dispose();
+
+  // 清理 MCP 服务
+  const mcpServerService = McpServerService.getInstance();
+  await mcpServerService.stop();
 
   // 清理日志服务
   logService.info('SiFli SDK CodeKit extension deactivated');

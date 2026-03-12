@@ -4,6 +4,7 @@ import { SdkService } from '../services/sdkService';
 import { VueWebviewProvider } from './vueWebviewProvider';
 import { SerialPortService } from '../services/serialPortService';
 import { WorkflowService } from '../services/workflowService';
+import { McpServerService } from '../services/mcpServerService';
 import { StatusBarProvider } from './statusBarProvider';
 import { isSiFliProject } from '../utils/projectUtils';
 import { getWorkflowStepDisplayLabel, getWorkflowStepTypeLabel } from '../utils/workflowStepLabel';
@@ -38,6 +39,7 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
   private sdkService: SdkService;
   private serialPortService: SerialPortService;
   private workflowService: WorkflowService;
+  private mcpServerService: McpServerService;
   private statusBarProvider: StatusBarProvider;
 
   constructor() {
@@ -45,6 +47,7 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
     this.sdkService = SdkService.getInstance();
     this.serialPortService = SerialPortService.getInstance();
     this.workflowService = WorkflowService.getInstance();
+    this.mcpServerService = McpServerService.getInstance();
     this.statusBarProvider = StatusBarProvider.getInstance();
   }
 
@@ -79,6 +82,8 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
       return this.getStatusBarButtonItemsByScope('workspace');
     } else if (element.contextValue === 'statusBarUserGroup') {
       return this.getStatusBarButtonItemsByScope('user');
+    } else if (element.contextValue === 'mcpGroup') {
+      return this.getMcpItems();
     }
 
     return Promise.resolve([]);
@@ -103,6 +108,17 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
     );
 
     // SDK 管理
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('MCP Server'),
+        vscode.TreeItemCollapsibleState.Expanded,
+        undefined,
+        new vscode.ThemeIcon('plug'),
+        vscode.l10n.t('View and configure the embedded MCP server'),
+        'mcpGroup'
+      )
+    );
+
     items.push(
       new SifliSidebarItem(
         vscode.l10n.t('SDK Manager'),
@@ -252,6 +268,108 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
         new vscode.ThemeIcon('tools'),
         vscode.l10n.t('Configure clangd compile-commands-dir path'),
         'clangdConfig'
+      )
+    );
+
+    return items;
+  }
+
+  private async getMcpItems(): Promise<SifliSidebarItem[]> {
+    const items: SifliSidebarItem[] = [];
+    const settings = this.mcpServerService.getSettings();
+    const connection = this.mcpServerService.getConnectionInfo();
+    const statusLabel = !settings.enabled
+      ? vscode.l10n.t('Disabled')
+      : connection.running
+        ? vscode.l10n.t('Running')
+        : vscode.l10n.t('Stopped');
+    const statusCommand = settings.enabled
+      ? connection.running
+        ? 'extension.mcp.stop'
+        : 'extension.mcp.start'
+      : 'extension.mcp.toggleEnabled';
+    const statusTooltip = !settings.enabled
+      ? vscode.l10n.t('Click to enable MCP')
+      : connection.running
+        ? vscode.l10n.t('Click to stop the embedded MCP server')
+        : vscode.l10n.t('Click to start the embedded MCP server');
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Status'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: statusCommand,
+          title: vscode.l10n.t('Toggle MCP status'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon(!settings.enabled ? 'circle-slash' : connection.running ? 'play-circle' : 'debug-stop'),
+        statusTooltip,
+        'mcpStatusItem',
+        statusLabel
+      )
+    );
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Auto Start'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.mcp.toggleAutoStart',
+          title: vscode.l10n.t('Toggle MCP auto-start'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon(settings.autoStart ? 'history' : 'debug-pause'),
+        vscode.l10n.t('Click to toggle automatic MCP server startup'),
+        'mcpToggleItem',
+        settings.autoStart ? vscode.l10n.t('On') : vscode.l10n.t('Off')
+      )
+    );
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Configure Endpoint'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.mcp.configureEndpoint',
+          title: vscode.l10n.t('Configure MCP endpoint'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('settings-gear'),
+        vscode.l10n.t('Edit MCP host, port and optional fixed token'),
+        'mcpSettingItem',
+        `${settings.host}:${settings.port || 0}`
+      )
+    );
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Copy Connection Info'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.mcp.showConnectionInfo',
+          title: vscode.l10n.t('Copy MCP connection info'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('copy'),
+        vscode.l10n.t('Copy JSON configuration for external MCP clients'),
+        'mcpConnectionItem',
+        connection.running ? vscode.l10n.t('JSON') : vscode.l10n.t('Starts server')
+      )
+    );
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Open Logs'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.mcp.showLogs',
+          title: vscode.l10n.t('Open logs'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('output'),
+        vscode.l10n.t('Open the SiFli CodeKit log output'),
+        'mcpActionItem'
       )
     );
 
@@ -581,6 +699,12 @@ export class SifliSidebarManager {
     });
 
     context.subscriptions.push(configChangeListener);
+
+    const mcpStateListener = McpServerService.getInstance().onDidChangeState(() => {
+      this.refresh();
+    });
+
+    context.subscriptions.push(mcpStateListener);
   }
 
   public dispose(): void {
