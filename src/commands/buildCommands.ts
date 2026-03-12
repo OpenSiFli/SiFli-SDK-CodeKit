@@ -75,7 +75,7 @@ export class BuildCommands {
         // ===== 第二次弹窗：非阻塞式询问是否记住选择 =====
         // 移除await，直接调用，不等待用户回答，主流程继续执行
         const rememberAction = vscode.l10n.t('Remember my choice'); // 记住选择
-        const notRememberAction = vscode.l10n.t('Not remember'); // 不记住
+        // const notRememberAction = vscode.l10n.t('Not remember'); // 不记住
         const askEveryTimeAction = vscode.l10n.t('Ask Every Time'); // 每次询问
 
         // 非阻塞调用：弹窗展示，但主流程不等待
@@ -84,7 +84,7 @@ export class BuildCommands {
             vscode.l10n.t('Do you want to remember this choice for future builds?'),
             { modal: false }, // 非模态，不阻塞界面操作
             rememberAction,
-            notRememberAction,
+            // notRememberAction,
             askEveryTimeAction
           )
           .then(secondResponse => {
