@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Board, SftoolParam } from '../types';
+import { Board, BoardDiscoveryResult, SftoolParam } from '../types';
 import { CUSTOMER_BOARDS_SUBFOLDER, HCPU_SUBFOLDER, PTAB_JSON_FILE, SFTOOL_PARAM_JSON_FILE } from '../constants';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
@@ -113,11 +113,7 @@ export class BoardService {
 
   public getProjectFolderPath(): string {
     const projectInfo = getProjectInfo();
-    if (!projectInfo) {
-      return 'project';
-    }
-    // 返回绝对路径，避免 path.relative() 混合相对/绝对路径的问题
-    return path.join(projectInfo.workspaceRoot, projectInfo.projectEntryRelativePath);
+    return projectInfo?.projectEntryRelativePath || 'project';
   }
 
   /**
