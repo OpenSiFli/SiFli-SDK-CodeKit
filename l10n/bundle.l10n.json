@@ -429,5 +429,10 @@
   "MCP port (0 means auto-assign)": "MCP port (0 means auto-assign)",
   "Port must be an integer between 0 and 65535.": "Port must be an integer between 0 and 65535.",
   "Fixed MCP token (leave empty to auto-generate)": "Fixed MCP token (leave empty to auto-generate)",
-  "Fixed token should be at least 8 characters long.": "Fixed token should be at least 8 characters long."
+  "Fixed token should be at least 8 characters long.": "Fixed token should be at least 8 characters long.",
+  "Remember my choice": "Remember my choice",
+  "Not remember": "Not remember",
+  "Do you want to remember this choice for future builds?": "Do you want to remember this choice for future builds?",
+  "Some files could not be saved. Continue building anyway?": "Some files could not be saved. Continue building anyway?",
+  "Current file could not be saved. Continue building anyway?": "Current file could not be saved. Continue building anyway?"
 }

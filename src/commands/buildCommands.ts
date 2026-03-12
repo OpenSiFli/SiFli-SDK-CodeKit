@@ -18,7 +18,6 @@ export class BuildCommands {
     }
     return BuildCommands.instance;
   }
-
   public async buildWithSaveCheck() {
     // 获取配置：检查构建前保存的方式
     const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
@@ -36,44 +35,73 @@ export class BuildCommands {
     if (hasDirtyDocs) {
       let action: string | undefined = buildWithSaveCheck;
 
-      // 如果当前配置是"prompt"，则弹窗询问用户
+      // 如果当前配置是"prompt"，则执行二次提示逻辑
       if (buildWithSaveCheck === 'prompt') {
+        // ===== 第一次弹窗：选择具体操作（阻塞，必须选择） =====
         const saveAllAction = vscode.l10n.t('Save All');
         const saveCurrentAction = vscode.l10n.t('Save Current File');
         const doNotSaveAction = vscode.l10n.t("Don't Save");
-        const askEveryTimeAction = vscode.l10n.t('Ask Every Time');
 
-        const response = await vscode.window.showWarningMessage(
+        const firstResponse = await vscode.window.showWarningMessage(
           vscode.l10n.t('Save Dialog Alert'),
           { modal: true },
           saveAllAction,
           saveCurrentAction,
-          doNotSaveAction,
-          askEveryTimeAction
+          doNotSaveAction
         );
 
-        if (response === undefined) {
-          // 用户选择取消或关闭了对话框
-          return; // 不执行编译
-        }
-
-        // 根据用户选择决定下一步操作
-        if (response === saveAllAction) {
-          action = 'saveAll';
-          // 更新配置为始终保存所有文件
-          await config.update('buildWithSaveCheck', 'saveAll', vscode.ConfigurationTarget.Global);
-        } else if (response === saveCurrentAction) {
-          action = 'saveCurrent';
-          // 更新配置为始终保存当前文件
-          await config.update('buildWithSaveCheck', 'saveCurrent', vscode.ConfigurationTarget.Global);
-        } else if (response === doNotSaveAction) {
-          action = 'doNotSave';
-          // 更新配置为不保存
-          await config.update('buildWithSaveCheck', 'doNotSave', vscode.ConfigurationTarget.Global);
-        } else if (response === askEveryTimeAction) {
-          // 用户选择每次都询问，所以不需要做任何更改，继续保持 prompt
+        // 用户关闭第一次弹窗，直接返回（不执行编译）
+        if (firstResponse === undefined) {
           return;
         }
+
+        // 映射用户选择到对应的操作标识
+        let selectedAction: string;
+        switch (firstResponse) {
+          case saveAllAction:
+            selectedAction = 'saveAll';
+            break;
+          case saveCurrentAction:
+            selectedAction = 'saveCurrent';
+            break;
+          case doNotSaveAction:
+            selectedAction = 'doNotSave';
+            break;
+          default:
+            selectedAction = 'prompt'; // 兜底
+        }
+        action = selectedAction;
+
+        // ===== 第二次弹窗：非阻塞式询问是否记住选择 =====
+        // 移除await，直接调用，不等待用户回答，主流程继续执行
+        const rememberAction = vscode.l10n.t('Remember my choice'); // 记住选择
+        const notRememberAction = vscode.l10n.t('Not remember'); // 不记住
+        const askEveryTimeAction = vscode.l10n.t('Ask Every Time'); // 每次询问
+
+        // 非阻塞调用：弹窗展示，但主流程不等待
+        vscode.window
+          .showInformationMessage(
+            vscode.l10n.t('Do you want to remember this choice for future builds?'),
+            { modal: false }, // 非模态，不阻塞界面操作
+            rememberAction,
+            notRememberAction,
+            askEveryTimeAction
+          )
+          .then(secondResponse => {
+            // 异步处理用户的选择（不影响主流程）
+            try {
+              if (secondResponse === rememberAction) {
+                // 用户选择“记住”，异步更新全局配置
+                config.update('buildWithSaveCheck', selectedAction, vscode.ConfigurationTarget.Global);
+              } else if (secondResponse === askEveryTimeAction) {
+                // 强制重置配置为prompt
+                config.update('buildWithSaveCheck', 'prompt', vscode.ConfigurationTarget.Global);
+              }
+              // 选“不记住”/关闭弹窗：不更新配置
+            } catch (error) {
+              console.warn('[BuildCommands] Failed to update save choice config:', error);
+            }
+          });
       }
 
       // 根据确定的操作执行相应的保存动作
@@ -116,7 +144,7 @@ export class BuildCommands {
     }
 
     console.log('[BuildCommands] buildWithSaveCheck called');
-    // 执行编译操作
+    // 执行编译操作（不会被第二次弹窗阻塞）
     await this.executeCompileTask();
   }
 

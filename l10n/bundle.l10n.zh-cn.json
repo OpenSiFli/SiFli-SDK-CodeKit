@@ -429,5 +429,10 @@
   "MCP port (0 means auto-assign)": "MCP 端口（0 表示自动分配）",
   "Port must be an integer between 0 and 65535.": "端口必须是 0 到 65535 之间的整数。",
   "Fixed MCP token (leave empty to auto-generate)": "固定 MCP token（留空则自动生成）",
-  "Fixed token should be at least 8 characters long.": "固定 token 长度至少应为 8 个字符。"
+  "Fixed token should be at least 8 characters long.": "固定 token 长度至少应为 8 个字符。",
+  "Remember my choice": "记住我的选择",
+  "Not remember": "不记住",
+  "Do you want to remember this choice for future builds?": "是否要记住此选择用于将来的构建？",
+  "Some files could not be saved. Continue building anyway?": "某些文件无法保存。是否继续构建？",
+  "Current file could not be saved. Continue building anyway?": "当前文件无法保存。是否继续构建？"
 }
