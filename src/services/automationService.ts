@@ -2,9 +2,6 @@ import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
 import { TERMINAL_NAME } from '../constants';
 import {
-  Board,
-  SdkBranch,
-  SdkRelease,
   SdkVersion,
   WorkflowDefinition,
   WorkflowReference,
@@ -16,16 +13,11 @@ import { StatusBarProvider } from '../providers/statusBarProvider';
 import { isSiFliProject } from '../utils/projectUtils';
 import { BoardService } from './boardService';
 import { BuildExecutionService } from './buildExecutionService';
-import { ClangdConfigurationResult, ClangdService } from './clangdService';
+import { ClangdService } from './clangdService';
 import { ConfigService } from './configService';
 import { GitService } from './gitService';
 import { LogService } from './logService';
-import {
-  CreateProjectFromTemplateOptions,
-  CreateProjectFromTemplateResult,
-  ProjectCreationService,
-  ProjectTemplate,
-} from './projectCreationService';
+import { CreateProjectFromTemplateOptions, ProjectCreationService } from './projectCreationService';
 import { SerialMonitorService } from './serialMonitorService';
 import { SerialPortService } from './serialPortService';
 import { SdkService } from './sdkService';
@@ -423,8 +415,12 @@ export class AutomationService {
       };
     }
 
-    const approvalKey = `${scopedWorkflow.workflow.id}:${input.stepIndex}`;
-    await this.workspaceStateService.approveWorkflowShell(approvalKey, commandTemplate);
+    const approvalKey = this.workspaceStateService.buildWorkflowShellApprovalKey(
+      scopedWorkflow.workflowRef,
+      input.stepIndex,
+      commandTemplate
+    );
+    await this.workspaceStateService.approveWorkflowShell(approvalKey);
 
     return {
       success: true,
@@ -887,7 +883,13 @@ export class AutomationService {
     return {
       success: true,
       operation: 'listProjectTemplates',
-      templates,
+      templates: templates.map(template => ({
+        sdkPath: template.sdkPath,
+        sdkVersion: template.sdkVersion,
+        exampleId: template.exampleId,
+        relativeExamplePath: template.relativeExamplePath,
+        displayName: template.displayName,
+      })),
     };
   }
 
@@ -900,11 +902,10 @@ export class AutomationService {
   }
 
   public async configureClangd(input: { boardName?: string } = {}): Promise<unknown> {
-    const result = this.clangdService.configure(input.boardName);
+    const result = await this.clangdService.configure(input.boardName);
     return {
       operation: 'configureClangd',
       ...result,
-      hostInteractionRequired: result.success,
       state: this.getProjectState(),
     };
   }

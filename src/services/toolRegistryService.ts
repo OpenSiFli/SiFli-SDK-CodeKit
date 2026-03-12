@@ -1,7 +1,14 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { LM_TOOL_NAMES } from '../constants';
-import { JsonSchema, ListedMcpTool, RegisteredMcpToolDefinition, ToolDefinition, ToolExecutionContext } from '../types';
+import {
+  JsonSchema,
+  ListedMcpTool,
+  RegisteredMcpToolDefinition,
+  ToolDefinition,
+  ToolExecutionContext,
+  WorkflowDefinition,
+} from '../types';
 import { AutomationService } from './automationService';
 
 type ToolSet = ToolDefinition<Record<string, unknown>>;
@@ -11,6 +18,85 @@ const EMPTY_OBJECT_SCHEMA = {
   properties: {},
   additionalProperties: false,
 } as const;
+
+const WORKFLOW_RUN_IF_SCHEMA = {
+  type: 'object',
+  properties: {
+    boardSelected: { type: 'boolean' },
+    serialPortSelected: { type: 'boolean' },
+    monitorActive: { type: 'boolean' },
+  },
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
+const WORKFLOW_INPUT_SPEC_SCHEMA = {
+  type: 'object',
+  properties: {
+    key: { type: 'string' },
+    prompt: { type: 'string' },
+    placeHolder: { type: 'string' },
+    defaultValue: { type: 'string' },
+    required: { type: 'boolean' },
+    password: { type: 'boolean' },
+  },
+  required: ['key', 'prompt'],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
+const WORKFLOW_STEP_SCHEMA = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+    type: {
+      type: 'string',
+      enum: [
+        'build.compile',
+        'build.rebuild',
+        'build.clean',
+        'build.download',
+        'build.menuconfig',
+        'shell.command',
+        'monitor.open',
+        'monitor.close',
+        'serial.selectPort',
+      ],
+    },
+    wait: { type: 'boolean' },
+    continueOnError: { type: 'boolean' },
+    runIf: WORKFLOW_RUN_IF_SCHEMA,
+    args: {
+      type: 'object',
+      additionalProperties: {
+        type: ['string', 'number', 'boolean'],
+      },
+    },
+  },
+  required: ['type'],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
+
+const WORKFLOW_DEFINITION_SCHEMA = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    name: { type: 'string' },
+    description: { type: 'string' },
+    failurePolicy: {
+      type: 'string',
+      enum: ['stop', 'continue'],
+    },
+    inputs: {
+      type: 'array',
+      items: WORKFLOW_INPUT_SPEC_SCHEMA,
+    },
+    steps: {
+      type: 'array',
+      items: WORKFLOW_STEP_SCHEMA,
+    },
+  },
+  required: ['id', 'name', 'steps'],
+  additionalProperties: false,
+} as const satisfies JsonSchema;
 
 export class ToolRegistryService {
   private static instance: ToolRegistryService;
@@ -148,10 +234,7 @@ export class ToolRegistryService {
           inputSchema: {
             type: 'object',
             properties: {
-              workflow: {
-                type: 'object',
-                description: 'Optional workflow payload to validate.',
-              },
+              workflow: { ...WORKFLOW_DEFINITION_SCHEMA, description: 'Optional workflow payload to validate.' },
             },
             additionalProperties: false,
           },
@@ -194,159 +277,6 @@ export class ToolRegistryService {
           this.automationService.runWorkflow({
             workflowRef: this.asString(input.workflowRef),
             inputs: this.asStringMap(input.inputs),
-          }),
-      },
-      {
-        id: 'workflow.create',
-        mcp: {
-          name: 'sifli.workflow.create',
-          description: 'Create a workflow in workspace or user settings.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              scope: {
-                type: 'string',
-                enum: ['workspace', 'user'],
-              },
-              workflow: {
-                type: 'object',
-              },
-            },
-            required: ['scope', 'workflow'],
-            additionalProperties: false,
-          },
-        },
-        invoke: async input =>
-          this.automationService.createWorkflow({
-            scope: this.asWorkflowScope(input.scope),
-            workflow: this.asWorkflowDefinition(input.workflow),
-          }),
-      },
-      {
-        id: 'workflow.update',
-        mcp: {
-          name: 'sifli.workflow.update',
-          description: 'Update an existing workflow by workflowRef.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              workflowRef: {
-                type: 'string',
-              },
-              workflow: {
-                type: 'object',
-              },
-            },
-            required: ['workflowRef', 'workflow'],
-            additionalProperties: false,
-          },
-        },
-        invoke: async input =>
-          this.automationService.updateWorkflow({
-            workflowRef: this.asString(input.workflowRef),
-            workflow: this.asWorkflowDefinition(input.workflow),
-          }),
-      },
-      {
-        id: 'workflow.delete',
-        mcp: {
-          name: 'sifli.workflow.delete',
-          description: 'Delete a workflow by workflowRef.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              workflowRef: {
-                type: 'string',
-              },
-            },
-            required: ['workflowRef'],
-            additionalProperties: false,
-          },
-        },
-        invoke: async input =>
-          this.automationService.deleteWorkflow({
-            workflowRef: this.asString(input.workflowRef),
-          }),
-      },
-      {
-        id: 'workflow.saveStatusBarButton',
-        mcp: {
-          name: 'sifli.workflow.saveStatusBarButton',
-          description: 'Create or update a workflow status bar button configuration.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              scope: {
-                type: 'string',
-                enum: ['workspace', 'user'],
-              },
-              button: {
-                type: 'object',
-              },
-            },
-            required: ['scope', 'button'],
-            additionalProperties: false,
-          },
-        },
-        invoke: async input =>
-          this.automationService.saveStatusBarButton({
-            scope: this.asWorkflowScope(input.scope),
-            button: this.asStatusBarButton(input.button),
-          }),
-      },
-      {
-        id: 'workflow.deleteStatusBarButton',
-        mcp: {
-          name: 'sifli.workflow.deleteStatusBarButton',
-          description: 'Delete a workflow status bar button configuration.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              scope: {
-                type: 'string',
-                enum: ['workspace', 'user'],
-              },
-              buttonId: {
-                type: 'string',
-              },
-            },
-            required: ['scope', 'buttonId'],
-            additionalProperties: false,
-          },
-        },
-        invoke: async input =>
-          this.automationService.deleteStatusBarButton({
-            scope: this.asWorkflowScope(input.scope),
-            buttonId: this.asString(input.buttonId),
-          }),
-      },
-      {
-        id: 'workflow.approveShellStep',
-        mcp: {
-          name: 'sifli.workflow.approveShellStep',
-          description: 'Approve a shell.command workflow step for non-interactive execution.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              workflowRef: {
-                type: 'string',
-              },
-              stepIndex: {
-                type: 'integer',
-              },
-              commandTemplate: {
-                type: 'string',
-              },
-            },
-            required: ['workflowRef', 'stepIndex', 'commandTemplate'],
-            additionalProperties: false,
-          },
-        },
-        invoke: async input =>
-          this.automationService.approveWorkflowShellStep({
-            workflowRef: this.asString(input.workflowRef),
-            stepIndex: this.asNumber(input.stepIndex),
-            commandTemplate: this.asString(input.commandTemplate),
           }),
       },
       {
@@ -463,6 +393,9 @@ export class ToolRegistryService {
             },
             additionalProperties: false,
           },
+          execution: {
+            taskSupport: 'required',
+          },
         },
         invoke: async input =>
           this.automationService.openMonitor({
@@ -551,6 +484,9 @@ export class ToolRegistryService {
           name: 'sifli.build.menuconfig',
           description: 'Open menuconfig in the VS Code terminal for the current board.',
           inputSchema: EMPTY_OBJECT_SCHEMA,
+          execution: {
+            taskSupport: 'required',
+          },
         },
         invoke: async () => this.automationService.menuconfig(),
       },
@@ -562,56 +498,6 @@ export class ToolRegistryService {
           inputSchema: EMPTY_OBJECT_SCHEMA,
         },
         invoke: async () => this.automationService.listSdks(),
-      },
-      {
-        id: 'sdk.addPath',
-        mcp: {
-          name: 'sifli.sdk.addPath',
-          description: 'Add an SDK path, optionally set a tools path, and optionally activate it.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              sdkPath: {
-                type: 'string',
-              },
-              toolsPath: {
-                type: 'string',
-              },
-              activate: {
-                type: 'boolean',
-              },
-            },
-            required: ['sdkPath'],
-            additionalProperties: false,
-          },
-        },
-        invoke: async input =>
-          this.automationService.addSdkPath({
-            sdkPath: this.asString(input.sdkPath),
-            toolsPath: this.asOptionalString(input.toolsPath),
-            activate: this.asBoolean(input.activate),
-          }),
-      },
-      {
-        id: 'sdk.removePath',
-        mcp: {
-          name: 'sifli.sdk.removePath',
-          description: 'Remove an SDK path from the configured SDK list.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              sdkPath: {
-                type: 'string',
-              },
-            },
-            required: ['sdkPath'],
-            additionalProperties: false,
-          },
-        },
-        invoke: async input =>
-          this.automationService.removeSdkPath({
-            sdkPath: this.asString(input.sdkPath),
-          }),
       },
       {
         id: 'sdk.activate',
@@ -635,75 +521,6 @@ export class ToolRegistryService {
           this.automationService.activateSdk({
             sdkPath: this.asOptionalString(input.sdkPath),
             version: this.asOptionalString(input.version),
-          }),
-      },
-      {
-        id: 'sdk.setToolsPath',
-        mcp: {
-          name: 'sifli.sdk.setToolsPath',
-          description: 'Set the toolchain path for a configured SDK.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              sdkPath: {
-                type: 'string',
-              },
-              toolsPath: {
-                type: 'string',
-              },
-            },
-            required: ['sdkPath', 'toolsPath'],
-            additionalProperties: false,
-          },
-        },
-        invoke: async input =>
-          this.automationService.setSdkToolsPath({
-            sdkPath: this.asString(input.sdkPath),
-            toolsPath: this.asString(input.toolsPath),
-          }),
-      },
-      {
-        id: 'sdk.fetchReleases',
-        mcp: {
-          name: 'sifli.sdk.fetchReleases',
-          description: 'Fetch SiFli SDK releases from GitHub or Gitee.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              source: {
-                type: 'string',
-                enum: ['github', 'gitee'],
-              },
-            },
-            required: ['source'],
-            additionalProperties: false,
-          },
-        },
-        invoke: async input =>
-          this.automationService.fetchSdkReleases({
-            source: this.asSource(input.source),
-          }),
-      },
-      {
-        id: 'sdk.fetchBranches',
-        mcp: {
-          name: 'sifli.sdk.fetchBranches',
-          description: 'Fetch SiFli SDK branches from GitHub or Gitee.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              source: {
-                type: 'string',
-                enum: ['github', 'gitee'],
-              },
-            },
-            required: ['source'],
-            additionalProperties: false,
-          },
-        },
-        invoke: async input =>
-          this.automationService.fetchSdkBranches({
-            source: this.asSource(input.source),
           }),
       },
       {
@@ -744,10 +561,7 @@ export class ToolRegistryService {
               sdkVersion: {
                 type: 'string',
               },
-              templatePath: {
-                type: 'string',
-              },
-              relativeExamplePath: {
+              exampleId: {
                 type: 'string',
               },
               targetPath: {
@@ -757,7 +571,7 @@ export class ToolRegistryService {
                 type: 'boolean',
               },
             },
-            required: ['targetPath'],
+            required: ['exampleId', 'targetPath'],
             additionalProperties: false,
           },
         },
@@ -765,8 +579,7 @@ export class ToolRegistryService {
           this.automationService.createProjectFromExample({
             sdkPath: this.asOptionalString(input.sdkPath),
             sdkVersion: this.asOptionalString(input.sdkVersion),
-            templatePath: this.asOptionalString(input.templatePath),
-            relativeExamplePath: this.asOptionalString(input.relativeExamplePath),
+            exampleId: this.asString(input.exampleId),
             targetPath: this.asString(input.targetPath),
             initializeGit: this.asBoolean(input.initializeGit),
           }),
@@ -775,7 +588,7 @@ export class ToolRegistryService {
         id: 'project.configureClangd',
         mcp: {
           name: 'sifli.project.configureClangd',
-          description: 'Write .vscode/settings.json with the compile-commands-dir for the active board.',
+          description: 'Update the VS Code clangd configuration for the active board compile commands directory.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -794,30 +607,12 @@ export class ToolRegistryService {
     ];
   }
 
-  private resolveMcpInputShape(schema: JsonSchema): z.ZodRawShape | undefined {
+  private resolveMcpInputShape(schema: JsonSchema): z.ZodTypeAny | z.ZodRawShape | undefined {
     const jsonSchema = schema as Record<string, unknown>;
     if (jsonSchema.type !== 'object') {
       return undefined;
     }
-
-    const properties = this.asRecord(jsonSchema.properties);
-    if (!properties) {
-      return undefined;
-    }
-
-    const requiredKeys = new Set(
-      Array.isArray(jsonSchema.required)
-        ? jsonSchema.required.filter((item): item is string => typeof item === 'string')
-        : []
-    );
-
-    const shape: z.ZodRawShape = {};
-    for (const [key, value] of Object.entries(properties)) {
-      const field = this.toZodSchema(value as JsonSchema);
-      shape[key] = requiredKeys.has(key) ? field : field.optional();
-    }
-
-    return Object.keys(shape).length > 0 ? shape : undefined;
+    return this.toZodSchema(schema);
   }
 
   private toZodSchema(schema: JsonSchema): z.ZodTypeAny {
@@ -904,19 +699,37 @@ export class ToolRegistryService {
   }
 
   private asString(value: unknown): string {
-    return typeof value === 'string' ? value : '';
+    if (typeof value !== 'string') {
+      throw new Error('Expected a string value.');
+    }
+    return value;
   }
 
   private asOptionalString(value: unknown): string | undefined {
-    return typeof value === 'string' && value.trim() ? value : undefined;
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    if (typeof value !== 'string') {
+      throw new Error('Expected an optional string value.');
+    }
+    return value.trim() ? value : undefined;
   }
 
   private asBoolean(value: unknown): boolean {
-    return value === true;
+    if (value === undefined) {
+      return false;
+    }
+    if (typeof value !== 'boolean') {
+      throw new Error('Expected a boolean value.');
+    }
+    return value;
   }
 
   private asNumber(value: unknown): number {
-    return typeof value === 'number' ? value : Number(value);
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new Error('Expected a numeric value.');
+    }
+    return value;
   }
 
   private asOptionalNumber(value: unknown): number | undefined {
@@ -928,33 +741,38 @@ export class ToolRegistryService {
   }
 
   private asStringMap(value: unknown): Record<string, string> | undefined {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    if (value === undefined) {
       return undefined;
     }
-    const entries = Object.entries(value as Record<string, unknown>).map(([key, itemValue]) => [
-      key,
-      String(itemValue),
-    ]);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('Expected a string map object.');
+    }
+    const entries = Object.entries(value as Record<string, unknown>).map(([key, itemValue]) => {
+      if (typeof itemValue !== 'string') {
+        throw new Error(`Expected string input for "${key}".`);
+      }
+      return [key, itemValue];
+    });
     return Object.fromEntries(entries);
   }
 
-  private asWorkflowScope(value: unknown): 'workspace' | 'user' {
-    return value === 'user' ? 'user' : 'workspace';
-  }
-
   private asScopeFilter(value: unknown): 'workspace' | 'user' | 'all' {
-    return value === 'workspace' || value === 'user' ? value : 'all';
+    if (value === undefined) {
+      return 'all';
+    }
+    if (value !== 'workspace' && value !== 'user' && value !== 'all') {
+      throw new Error('Expected workflow scope filter to be "workspace", "user", or "all".');
+    }
+    return value;
   }
 
-  private asSource(value: unknown): 'github' | 'gitee' {
-    return value === 'gitee' ? 'gitee' : 'github';
-  }
-
-  private asWorkflowDefinition(value: unknown): any {
-    return (value ?? {}) as any;
-  }
-
-  private asStatusBarButton(value: unknown): any {
-    return (value ?? {}) as any;
+  private asWorkflowDefinition(value: unknown): WorkflowDefinition | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('Expected a workflow definition object.');
+    }
+    return value as WorkflowDefinition;
   }
 }

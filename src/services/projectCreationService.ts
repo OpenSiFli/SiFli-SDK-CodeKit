@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { createHash } from 'crypto';
 import { SdkVersion } from '../types';
 import { ConfigService } from './configService';
 import { GitService } from './gitService';
@@ -12,6 +13,7 @@ import { getSiFliProjectInfo, isSiFliProjectPath } from '../utils/projectUtils';
 export interface ProjectTemplate {
   sdkPath: string;
   sdkVersion: string;
+  exampleId: string;
   templateRootPath: string;
   relativeExamplePath: string;
   displayName: string;
@@ -20,8 +22,7 @@ export interface ProjectTemplate {
 export type CreateProjectFromTemplateOptions = {
   sdkPath?: string;
   sdkVersion?: string;
-  templatePath?: string;
-  relativeExamplePath?: string;
+  exampleId: string;
   targetPath: string;
   initializeGit?: boolean;
 };
@@ -30,7 +31,7 @@ export type CreateProjectFromTemplateResult = {
   success: boolean;
   sdkPath?: string;
   sdkVersion?: string;
-  templatePath?: string;
+  exampleId?: string;
   targetPath?: string;
   gitInitialized?: boolean;
   message?: string;
@@ -220,7 +221,7 @@ export class ProjectCreationService {
         success: true,
         sdkPath: template.sdkPath,
         sdkVersion: template.sdkVersion,
-        templatePath: template.templateRootPath,
+        exampleId: template.exampleId,
         targetPath: options.targetPath,
         gitInitialized,
         message: vscode.l10n.t('SiFli project created at {0}', options.targetPath),
@@ -316,23 +317,8 @@ export class ProjectCreationService {
     sdk: SdkVersion,
     options: CreateProjectFromTemplateOptions
   ): Promise<ProjectTemplate | undefined> {
-    if (options.templatePath) {
-      const relativeExamplePath = path.relative(path.join(sdk.path, EXAMPLE_SUBFOLDER), options.templatePath);
-      return {
-        sdkPath: sdk.path,
-        sdkVersion: sdk.version,
-        templateRootPath: options.templatePath,
-        relativeExamplePath,
-        displayName: relativeExamplePath.split(path.sep).join('/'),
-      };
-    }
-
     const templates = await this.listProjectTemplates({ sdkPath: sdk.path });
-    if (options.relativeExamplePath) {
-      return templates.find(template => template.relativeExamplePath === options.relativeExamplePath);
-    }
-
-    return undefined;
+    return templates.find(template => template.exampleId === options.exampleId);
   }
 
   private async syncSelectedSdk(sdk: SdkVersion): Promise<void> {
@@ -468,6 +454,7 @@ export class ProjectCreationService {
         templates.push({
           sdkPath: sdk.path,
           sdkVersion: sdk.version,
+          exampleId: this.buildExampleId(relativeExamplePath),
           templateRootPath: directory,
           relativeExamplePath,
           displayName: relativeExamplePath.split(path.sep).join('/'),
@@ -514,6 +501,10 @@ export class ProjectCreationService {
 
   private shouldSkipScanDirectory(name: string): boolean {
     return SKIP_DIRECTORIES.has(name) || name.startsWith('build_') || name.startsWith('.');
+  }
+
+  private buildExampleId(relativeExamplePath: string): string {
+    return createHash('sha256').update(relativeExamplePath).digest('hex');
   }
 
   private validateProjectName(parentPath: string, value: string, templateRootPath: string): string | null {

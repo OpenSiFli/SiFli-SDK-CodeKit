@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { createHash, randomUUID } from 'crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import type { ZodRawShape } from 'zod';
+import type { ZodRawShape, ZodTypeAny } from 'zod';
 import { MCP_SERVER_LABEL } from '../constants';
 import { RegisteredMcpToolDefinition } from '../types';
 import { LogService } from './logService';
@@ -340,7 +340,7 @@ export class McpServerService {
       const config: {
         title?: string;
         description?: string;
-        inputSchema?: ZodRawShape;
+        inputSchema?: ZodRawShape | ZodTypeAny;
       } = {
         title: definition.mcp.title,
         description: definition.mcp.description,

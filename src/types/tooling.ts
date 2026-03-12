@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { ZodRawShape } from 'zod';
+import type { ZodRawShape, ZodTypeAny } from 'zod';
 
 export type JsonSchema = Record<string, unknown>;
 
@@ -23,7 +23,10 @@ export interface McpToolMetadata {
   title?: string;
   description: string;
   inputSchema: JsonSchema;
-  inputShape?: ZodRawShape;
+  inputShape?: ZodRawShape | ZodTypeAny;
+  execution?: {
+    taskSupport?: 'optional' | 'required';
+  };
 }
 
 export interface ToolDefinition<T extends object = Record<string, unknown>> {
