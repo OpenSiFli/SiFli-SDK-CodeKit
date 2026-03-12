@@ -87,11 +87,10 @@ export class AutomationService {
   }
 
   public async getProjectStatePayload(_input: EmptyInput = {}): Promise<unknown> {
-    return {
+    return this.withResult({
       success: true,
       operation: 'getProjectState',
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public getProjectState(): ProjectState {
@@ -127,33 +126,30 @@ export class AutomationService {
       .filter(item => scope === 'all' || item.scope === scope)
       .map(item => this.describeWorkflow(item.workflowRef));
 
-    return {
+    return this.withResult({
       success: true,
       operation: 'listWorkflows',
       scope,
       workflows,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async getWorkflow(input: { workflowRef: string }): Promise<unknown> {
     const scopedWorkflow = this.workflowService.getWorkflowByReference(input.workflowRef);
     if (!scopedWorkflow) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'getWorkflow',
         message: vscode.l10n.t('Workflow not found: {0}', input.workflowRef),
-        state: this.getProjectState(),
-      };
+      });
     }
 
-    return {
+    return this.withResult({
       success: true,
       operation: 'getWorkflow',
       workflow: this.describeWorkflow(scopedWorkflow.workflowRef),
       definition: this.cloneWorkflow(scopedWorkflow.workflow),
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async validateWorkflows(
@@ -164,17 +160,16 @@ export class AutomationService {
     const issues = input.workflow
       ? this.validateWorkflowDefinition(input.workflow)
       : this.workflowService.validateConfiguration();
-    return {
+    return this.withResult({
       success: true,
       operation: 'validateWorkflows',
       valid: issues.length === 0,
       issues,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async runWorkflow(input: { workflowRef: string; inputs?: Record<string, string> }): Promise<unknown> {
-    const project = this.ensureSiFliProject();
+    const project = this.ensureSiFliProject('runWorkflow');
     if (!project.ok) {
       return project.payload;
     }
@@ -185,7 +180,7 @@ export class AutomationService {
       runId,
     });
 
-    return {
+    return this.withResult({
       success: result.success,
       operation: 'runWorkflow',
       workflowRef: result.workflowRef ?? input.workflowRef,
@@ -200,76 +195,69 @@ export class AutomationService {
       skippedStepIndexes: result.skippedStepIndexes,
       continuedFailureSteps: result.continuedFailureSteps,
       message: result.message,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async createWorkflow(input: { scope: WorkflowScope; workflow: WorkflowDefinition }): Promise<unknown> {
     const validationIssues = this.validateWorkflowDefinition(input.workflow);
     if (validationIssues.length > 0) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'createWorkflow',
         message: validationIssues.map(issue => issue.message).join('; '),
         issues: validationIssues,
-        state: this.getProjectState(),
-      };
+      });
     }
 
     const target = this.configurationTargetFromScope(input.scope);
     const workflows = this.getEditableWorkflows(target);
     if (workflows.some(item => item.id === input.workflow.id)) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'createWorkflow',
         message: vscode.l10n.t('Duplicate workflow id "{0}".', input.workflow.id),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     workflows.push(this.cloneWorkflow(input.workflow));
     await this.workflowService.saveWorkflows(workflows, target);
     this.statusBarProvider.updateStatusBarItems();
 
-    return {
+    return this.withResult({
       success: true,
       operation: 'createWorkflow',
       workflowRef: this.workflowService.getWorkflowReference(input.scope, input.workflow.id),
       workflow: input.workflow,
       issues: this.workflowService.validateConfiguration(),
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async updateWorkflow(input: { workflowRef: string; workflow: WorkflowDefinition }): Promise<unknown> {
     const located = this.getEditableWorkflowByReference(input.workflowRef);
     if (!located) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'updateWorkflow',
         message: vscode.l10n.t('Workflow not found: {0}', input.workflowRef),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     if (located.workflow.id !== input.workflow.id) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'updateWorkflow',
         message: vscode.l10n.t('Workflow id cannot be changed: {0}', located.workflow.id),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     const validationIssues = this.validateWorkflowDefinition(input.workflow);
     if (validationIssues.length > 0) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'updateWorkflow',
         message: validationIssues.map(issue => issue.message).join('; '),
         issues: validationIssues,
-        state: this.getProjectState(),
-      };
+      });
     }
 
     const index = located.workflows.findIndex(item => item.id === located.workflow.id);
@@ -277,49 +265,45 @@ export class AutomationService {
     await this.workflowService.saveWorkflows(located.workflows, located.target);
     this.statusBarProvider.updateStatusBarItems();
 
-    return {
+    return this.withResult({
       success: true,
       operation: 'updateWorkflow',
       workflowRef: input.workflowRef,
       workflow: input.workflow,
       issues: this.workflowService.validateConfiguration(),
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async deleteWorkflow(input: { workflowRef: string }): Promise<unknown> {
     const located = this.getEditableWorkflowByReference(input.workflowRef);
     if (!located) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'deleteWorkflow',
         message: vscode.l10n.t('Workflow not found: {0}', input.workflowRef),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     const nextWorkflows = located.workflows.filter(item => item.id !== located.workflow.id);
     await this.workflowService.saveWorkflows(nextWorkflows, located.target);
     this.statusBarProvider.updateStatusBarItems();
 
-    return {
+    return this.withResult({
       success: true,
       operation: 'deleteWorkflow',
       workflowRef: input.workflowRef,
       deletedWorkflowId: located.workflow.id,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async saveStatusBarButton(input: { scope: WorkflowScope; button: WorkflowStatusBarButton }): Promise<unknown> {
     const validationMessage = this.validateStatusBarButton(input.button);
     if (validationMessage) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'saveStatusBarButton',
         message: validationMessage,
-        state: this.getProjectState(),
-      };
+      });
     }
 
     const target = this.configurationTargetFromScope(input.scope);
@@ -335,12 +319,11 @@ export class AutomationService {
     await this.workflowService.saveStatusBarButtons(buttons, target);
     this.statusBarProvider.updateStatusBarItems();
 
-    return {
+    return this.withResult({
       success: true,
       operation: 'saveStatusBarButton',
       button: cloned,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async deleteStatusBarButton(input: { scope: WorkflowScope; buttonId: string }): Promise<unknown> {
@@ -348,12 +331,11 @@ export class AutomationService {
     const buttons = this.getEditableButtons(target);
     const exists = buttons.some(item => item.id === input.buttonId);
     if (!exists) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'deleteStatusBarButton',
         message: vscode.l10n.t('Status bar button not found: {0}', input.buttonId),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     await this.workflowService.saveStatusBarButtons(
@@ -362,12 +344,11 @@ export class AutomationService {
     );
     this.statusBarProvider.updateStatusBarItems();
 
-    return {
+    return this.withResult({
       success: true,
       operation: 'deleteStatusBarButton',
       buttonId: input.buttonId,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async approveWorkflowShellStep(input: {
@@ -377,42 +358,38 @@ export class AutomationService {
   }): Promise<unknown> {
     const scopedWorkflow = this.workflowService.getWorkflowByReference(input.workflowRef);
     if (!scopedWorkflow) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'approveWorkflowShellStep',
         message: vscode.l10n.t('Workflow not found: {0}', input.workflowRef),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     const steps = Array.isArray(scopedWorkflow.workflow.steps) ? scopedWorkflow.workflow.steps : [];
     if (input.stepIndex < 0 || input.stepIndex >= steps.length) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'approveWorkflowShellStep',
         message: vscode.l10n.t('Workflow step index out of range: {0}', String(input.stepIndex)),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     const step = steps[input.stepIndex];
     if (step.type !== 'shell.command') {
-      return {
+      return this.withResult({
         success: false,
         operation: 'approveWorkflowShellStep',
         message: vscode.l10n.t('Workflow step is not a shell.command step: {0}', String(input.stepIndex)),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     const commandTemplate = typeof step.args?.command === 'string' ? step.args.command.trim() : '';
     if (commandTemplate !== input.commandTemplate.trim()) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'approveWorkflowShellStep',
         message: vscode.l10n.t('Workflow shell command template does not match current configuration.'),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     const approvalKey = this.workspaceStateService.buildWorkflowShellApprovalKey(
@@ -422,19 +399,18 @@ export class AutomationService {
     );
     await this.workspaceStateService.approveWorkflowShell(approvalKey);
 
-    return {
+    return this.withResult({
       success: true,
       operation: 'approveWorkflowShellStep',
       workflowRef: scopedWorkflow.workflowRef,
       stepIndex: input.stepIndex,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async listBoards(): Promise<unknown> {
     const boards = await this.boardService.discoverBoards();
     const selectedBoard = this.configService.getSelectedBoardName();
-    return {
+    return this.withResult({
       success: true,
       operation: 'listBoards',
       boards: boards.map(board => ({
@@ -443,12 +419,11 @@ export class AutomationService {
         path: board.path,
         selected: board.name === selectedBoard,
       })),
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async selectBoard(input: { boardName: string; numThreads?: number }): Promise<unknown> {
-    const project = this.ensureSiFliProject();
+    const project = this.ensureSiFliProject('selectBoard');
     if (!project.ok) {
       return project.payload;
     }
@@ -456,22 +431,20 @@ export class AutomationService {
     const boards = await this.boardService.discoverBoards();
     const board = boards.find(item => item.name === input.boardName);
     if (!board) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'selectBoard',
         message: vscode.l10n.t('Board not found: {0}', input.boardName),
         boards: boards.map(item => item.name),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     if (input.numThreads !== undefined && (!Number.isInteger(input.numThreads) || input.numThreads <= 0)) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'selectBoard',
         message: vscode.l10n.t('Build threads must be a positive integer.'),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     await this.configService.setSelectedBoardName(board.name);
@@ -480,20 +453,19 @@ export class AutomationService {
     }
     this.statusBarProvider.updateStatusBarItems();
 
-    return {
+    return this.withResult({
       success: true,
       operation: 'selectBoard',
       board,
       numThreads: this.configService.getNumThreads(),
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async listSerialPorts(): Promise<unknown> {
     const ports = await this.serialPortService.getSerialPorts();
     const selectedPort = this.serialPortService.selectedSerialPort;
     const supportedBaudRates = SerialPortService.getBaudRates();
-    return {
+    return this.withResult({
       success: true,
       operation: 'listSerialPorts',
       ports: ports.map(port => ({
@@ -507,8 +479,7 @@ export class AutomationService {
         currentDownloadBaudRate: this.serialPortService.downloadBaudRate,
         currentMonitorBaudRate: this.serialPortService.monitorBaudRate,
       })),
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async selectSerialPort(input: {
@@ -516,7 +487,7 @@ export class AutomationService {
     downloadBaud?: number;
     monitorBaud?: number;
   }): Promise<unknown> {
-    const project = this.ensureSiFliProject();
+    const project = this.ensureSiFliProject('selectSerialPort');
     if (!project.ok) {
       return project.payload;
     }
@@ -524,32 +495,29 @@ export class AutomationService {
     const ports = await this.serialPortService.getSerialPorts();
     const port = ports.find(item => item.path === input.port);
     if (!port) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'selectSerialPort',
         message: vscode.l10n.t('Serial port not found: {0}', input.port),
         ports: ports.map(item => item.path),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     const supportedBaudRates = new Set(SerialPortService.getBaudRates());
     if (input.downloadBaud !== undefined && !supportedBaudRates.has(input.downloadBaud)) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'selectSerialPort',
         message: vscode.l10n.t('Unsupported download baud rate: {0}', String(input.downloadBaud)),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     if (input.monitorBaud !== undefined && !supportedBaudRates.has(input.monitorBaud)) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'selectSerialPort',
         message: vscode.l10n.t('Unsupported monitor baud rate: {0}', String(input.monitorBaud)),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     this.serialPortService.selectedSerialPort = port.path;
@@ -561,18 +529,17 @@ export class AutomationService {
     }
     this.statusBarProvider.updateStatusBarItems();
 
-    return {
+    return this.withResult({
       success: true,
       operation: 'selectSerialPort',
       port,
       downloadBaudRate: this.serialPortService.downloadBaudRate,
       monitorBaudRate: this.serialPortService.monitorBaudRate,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async openMonitor(input: { port?: string; monitorBaud?: number } = {}): Promise<unknown> {
-    const project = this.ensureSiFliProject();
+    const project = this.ensureSiFliProject('openMonitor');
     if (!project.ok) {
       return project.payload;
     }
@@ -588,12 +555,11 @@ export class AutomationService {
     } else if (input.monitorBaud !== undefined) {
       const supportedBaudRates = new Set(SerialPortService.getBaudRates());
       if (!supportedBaudRates.has(input.monitorBaud)) {
-        return {
+        return this.withResult({
           success: false,
           operation: 'openMonitor',
           message: vscode.l10n.t('Unsupported monitor baud rate: {0}', String(input.monitorBaud)),
-          state: this.getProjectState(),
-        };
+        });
       }
       this.serialPortService.monitorBaudRate = input.monitorBaud;
     }
@@ -601,12 +567,11 @@ export class AutomationService {
     await this.serialMonitorService.initialize();
     const selectedPort = this.serialPortService.selectedSerialPort;
     if (!selectedPort) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'openMonitor',
         message: vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'),
-        state: this.getProjectState(),
-      };
+      });
     }
 
     const success = await this.serialMonitorService.openSerialMonitor(
@@ -615,29 +580,27 @@ export class AutomationService {
     );
     this.statusBarProvider.updateStatusBarItems();
 
-    return {
+    return this.withResult({
       success,
       operation: 'openMonitor',
       port: selectedPort,
       monitorBaudRate: this.serialPortService.monitorBaudRate,
       hostInteractionRequired: true,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async closeMonitor(): Promise<unknown> {
-    const project = this.ensureSiFliProject();
+    const project = this.ensureSiFliProject('closeMonitor');
     if (!project.ok) {
       return project.payload;
     }
 
     const success = await this.serialMonitorService.closeSerialMonitor();
     this.statusBarProvider.updateStatusBarItems();
-    return {
+    return this.withResult({
       success,
       operation: 'closeMonitor',
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async compile(): Promise<unknown> {
@@ -651,19 +614,18 @@ export class AutomationService {
   }
 
   public async rebuild(): Promise<unknown> {
-    const project = this.ensureSiFliProject();
+    const project = this.ensureSiFliProject('rebuild');
     if (!project.ok) {
       return project.payload;
     }
 
     const cleanResult = this.buildExecutionService.executeCleanDetailed(false);
     if (!cleanResult.success) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'rebuild',
         message: cleanResult.message,
-        state: this.getProjectState(),
-      };
+      });
     }
 
     const runId = this.createRunId('rebuild');
@@ -683,22 +645,21 @@ export class AutomationService {
   }
 
   public async clean(): Promise<unknown> {
-    const project = this.ensureSiFliProject();
+    const project = this.ensureSiFliProject('clean');
     if (!project.ok) {
       return project.payload;
     }
 
     const result = this.buildExecutionService.executeCleanDetailed(false);
-    return {
+    return this.withResult({
       success: result.success,
       operation: 'clean',
       message: result.message,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async download(): Promise<unknown> {
-    const project = this.ensureSiFliProject();
+    const project = this.ensureSiFliProject('download');
     if (!project.ok) {
       return project.payload;
     }
@@ -735,7 +696,7 @@ export class AutomationService {
   }
 
   public async menuconfig(): Promise<unknown> {
-    const project = this.ensureSiFliProject();
+    const project = this.ensureSiFliProject('menuconfig');
     if (!project.ok) {
       return project.payload;
     }
@@ -760,24 +721,22 @@ export class AutomationService {
   public async listSdks(): Promise<unknown> {
     const sdks = await this.sdkService.discoverSiFliSdks();
     this.configService.detectedSdkVersions = sdks;
-    return {
+    return this.withResult({
       success: true,
       operation: 'listSdks',
       sdks,
       currentSdkPath: this.configService.getCurrentSdkPath(),
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async addSdkPath(input: { sdkPath: string; toolsPath?: string; activate?: boolean }): Promise<unknown> {
     const result = await this.sdkService.addSdkPathDetailed(input.sdkPath, input.toolsPath);
     if (!result.success) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'addSdkPath',
         message: result.message,
-        state: this.getProjectState(),
-      };
+      });
     }
 
     let activationResult:
@@ -795,23 +754,21 @@ export class AutomationService {
       });
     }
 
-    return {
+    return this.withResult({
       success: !activationResult || activationResult.success,
       operation: 'addSdkPath',
       message: activationResult?.message ?? result.message,
       activationResult,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async removeSdkPath(input: { sdkPath: string }): Promise<unknown> {
     const result = await this.sdkService.removeSdkPathDetailed(input.sdkPath);
-    return {
+    return this.withResult({
       success: result.success,
       operation: 'removeSdkPath',
       message: result.message,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async activateSdk(input: { sdkPath?: string; version?: string }): Promise<unknown> {
@@ -820,94 +777,91 @@ export class AutomationService {
       version: input.version,
       showNotifications: false,
     });
-    return {
+    return this.withResult({
       success: result.success,
       operation: 'activateSdk',
       sdk: result.sdk,
       scriptPath: result.scriptPath,
       message: result.message,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async setSdkToolsPath(input: { sdkPath: string; toolsPath: string }): Promise<unknown> {
     const result = await this.sdkService.setSdkToolsPathDetailed(input.sdkPath, input.toolsPath);
-    return {
+    return this.withResult({
       success: result.success,
       operation: 'setSdkToolsPath',
       message: result.message,
-      state: this.getProjectState(),
-    };
+    });
   }
 
   public async fetchSdkReleases(input: { source: 'github' | 'gitee' }): Promise<unknown> {
     try {
       const releases = await this.gitService.fetchSiFliSdkReleases(input.source);
-      return {
+      return this.withResult({
         success: true,
         operation: 'fetchSdkReleases',
         source: input.source,
         releases,
-      };
+      });
     } catch (error) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'fetchSdkReleases',
         source: input.source,
         message: String(error),
-      };
+      });
     }
   }
 
   public async fetchSdkBranches(input: { source: 'github' | 'gitee' }): Promise<unknown> {
     try {
       const branches = await this.gitService.fetchSiFliSdkBranches(input.source);
-      return {
+      return this.withResult({
         success: true,
         operation: 'fetchSdkBranches',
         source: input.source,
         branches,
-      };
+      });
     } catch (error) {
-      return {
+      return this.withResult({
         success: false,
         operation: 'fetchSdkBranches',
         source: input.source,
         message: String(error),
-      };
+      });
     }
   }
 
   public async listProjectTemplates(input: { sdkPath?: string; sdkVersion?: string } = {}): Promise<unknown> {
     const templates = await this.projectCreationService.listProjectTemplates(input);
-    return {
+    return this.withResult({
       success: true,
       operation: 'listProjectTemplates',
       templates: templates.map(template => ({
         sdkPath: template.sdkPath,
         sdkVersion: template.sdkVersion,
         exampleId: template.exampleId,
-        relativeExamplePath: template.relativeExamplePath,
         displayName: template.displayName,
       })),
-    };
+    });
   }
 
   public async createProjectFromExample(input: CreateProjectFromTemplateOptions): Promise<unknown> {
     const result = await this.projectCreationService.createProjectFromTemplate(input);
-    return {
+    return this.withResult({
       operation: 'createProjectFromExample',
       ...result,
-    };
+    });
   }
 
   public async configureClangd(input: { boardName?: string } = {}): Promise<unknown> {
     const result = await this.clangdService.configure(input.boardName);
-    return {
+    return this.withResult({
       operation: 'configureClangd',
       ...result,
-      state: this.getProjectState(),
-    };
+      hostInteractionRequired: result.success,
+    });
   }
 
   private async runBuildOperation(
@@ -919,7 +873,7 @@ export class AutomationService {
       message?: string;
     }>
   ): Promise<unknown> {
-    const project = this.ensureSiFliProject();
+    const project = this.ensureSiFliProject(operation);
     if (!project.ok) {
       return project.payload;
     }
@@ -1119,17 +1073,36 @@ export class AutomationService {
     };
   }
 
-  private ensureSiFliProject(): { ok: true } | { ok: false; payload: unknown } {
+  private withResult(payload: {
+    success: boolean;
+    operation: string;
+    message?: string;
+    state?: ProjectState;
+    data?: Record<string, unknown>;
+    [key: string]: unknown;
+  }): unknown {
+    const { success, operation, message, state, data, ...rest } = payload;
+    return {
+      success,
+      operation,
+      message,
+      data: data ?? rest,
+      state: state ?? this.getProjectState(),
+      ...rest,
+    };
+  }
+
+  private ensureSiFliProject(operation: string): { ok: true } | { ok: false; payload: unknown } {
     if (isSiFliProject()) {
       return { ok: true };
     }
     return {
       ok: false,
-      payload: {
+      payload: this.withResult({
         success: false,
+        operation,
         message: vscode.l10n.t('Language model tools are only available in a SiFli project.'),
-        state: this.getProjectState(),
-      },
+      }),
     };
   }
 
@@ -1142,7 +1115,7 @@ export class AutomationService {
     message?: string,
     extras?: Record<string, unknown>
   ): unknown {
-    return {
+    return this.withResult({
       success,
       operation,
       runId,
@@ -1150,9 +1123,8 @@ export class AutomationService {
       exitCode,
       command,
       message,
-      state: this.getProjectState(),
       ...extras,
-    };
+    });
   }
 
   private createRunId(prefix: string): string {
