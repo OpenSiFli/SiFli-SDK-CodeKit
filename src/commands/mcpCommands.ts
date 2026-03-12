@@ -27,10 +27,23 @@ export class McpCommands {
   }
 
   public async startServer(): Promise<void> {
-    const info = await this.mcpServerService.start(true);
-    this.mcpServerDefinitionProviderService.notifyDefinitionsChanged();
-    this.sidebarManager.refresh();
-    await this.copyConnectionInfo(info);
+    try {
+      const info = await this.mcpServerService.start();
+      if (!info.running) {
+        const message = vscode.l10n.t('Enable MCP first in the sidebar or settings.');
+        vscode.window.showWarningMessage(message);
+        return;
+      }
+
+      this.mcpServerDefinitionProviderService.notifyDefinitionsChanged();
+      this.sidebarManager.refresh();
+      await this.copyConnectionInfo(info);
+    } catch (error) {
+      this.logService.error('Failed to start MCP server:', error);
+      vscode.window.showErrorMessage(
+        vscode.l10n.t('Failed to start SiFli MCP server: {0}', error instanceof Error ? error.message : String(error))
+      );
+    }
   }
 
   public async stopServer(): Promise<void> {
@@ -47,7 +60,7 @@ export class McpCommands {
       return;
     }
 
-    const resolvedInfo = info ?? (await this.ensureRunning());
+    const resolvedInfo = info ?? this.mcpServerService.getConnectionInfo();
     if (!resolvedInfo.running || !resolvedInfo.url || !resolvedInfo.token) {
       vscode.window.showWarningMessage(vscode.l10n.t('SiFli MCP server is not running.'));
       return;
@@ -140,16 +153,5 @@ export class McpCommands {
 
   public async showLogs(): Promise<void> {
     this.logService.show();
-  }
-
-  private async ensureRunning(): Promise<McpConnectionInfo> {
-    const currentInfo = this.mcpServerService.getConnectionInfo();
-    if (currentInfo.running) {
-      return currentInfo;
-    }
-    const info = await this.mcpServerService.start(true);
-    this.mcpServerDefinitionProviderService.notifyDefinitionsChanged();
-    this.sidebarManager.refresh();
-    return info;
   }
 }

@@ -55,11 +55,16 @@ export class McpServerDefinitionProviderService
     server: vscode.McpHttpServerDefinition
   ): Promise<vscode.McpHttpServerDefinition | undefined> {
     this.logService.info(`Resolving MCP server definition: ${server.label}`);
-    const connection = await this.mcpServerService.start(true);
+    if (!this.mcpServerService.isEnabled()) {
+      this.logService.info('Skipping MCP definition resolution because MCP is disabled');
+      return undefined;
+    }
+
+    const connection = await this.mcpServerService.start();
     if (!connection.running || !connection.url || !connection.token) {
       const message = 'SiFli MCP server is unavailable.';
       this.logService.warn(message);
-      throw new Error(message);
+      return undefined;
     }
 
     server.uri = vscode.Uri.parse(connection.url);

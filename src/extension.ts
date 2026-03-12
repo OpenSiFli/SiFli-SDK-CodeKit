@@ -102,7 +102,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   await refreshProjectContext();
   languageModelToolService.register(context);
   mcpServerDefinitionProviderService.register(context);
-  await mcpServerService.syncWithConfiguration();
+  try {
+    await mcpServerService.syncWithConfiguration();
+  } catch (error) {
+    logService.error('Failed to sync MCP configuration during activation:', error);
+  }
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       void refreshProjectContext();
@@ -179,7 +183,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async e => {
       if (e.affectsConfiguration('sifli-sdk-codekit.mcp')) {
-        await mcpServerService.syncWithConfiguration();
+        try {
+          await mcpServerService.syncWithConfiguration();
+        } catch (error) {
+          logService.error('Failed to sync MCP configuration after settings change:', error);
+        }
         mcpServerDefinitionProviderService.notifyDefinitionsChanged();
       }
       if (e.affectsConfiguration('sifli-sdk-codekit.workflows')) {

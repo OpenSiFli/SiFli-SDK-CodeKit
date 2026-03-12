@@ -28,11 +28,28 @@ type McpConnectionInfo = {
 type McpSessionEntry = {
   server: McpServer;
   transport: StreamableHTTPServerTransport;
+  lastActivityAt: number;
+};
+
+type TaskStoreLike = {
+  createTask(options: { ttl?: number | null; pollInterval?: number }): Promise<{ taskId: string }>;
+  getTask(taskId: string): Promise<unknown>;
+  getTaskResult(taskId: string): Promise<unknown>;
+  storeTaskResult(taskId: string, status: 'completed' | 'failed', result: unknown): Promise<void>;
+  updateTaskStatus(
+    taskId: string,
+    status: 'working' | 'input_required' | 'completed' | 'failed' | 'cancelled',
+    statusMessage?: string
+  ): Promise<void>;
 };
 
 export type { McpSettings, McpConnectionInfo };
 
 const MCP_PATH = '/mcp';
+const SESSION_IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+const SESSION_CLEANUP_INTERVAL_MS = 60 * 1000;
+const MAX_SESSIONS = 32;
+const TASK_TTL_MS = 15 * 60 * 1000;
 
 export class McpServerService {
   private static instance: McpServerService;
@@ -45,6 +62,12 @@ export class McpServerService {
   private host?: string;
   private port?: number;
   private token?: string;
+  private configuredHost?: string;
+  private configuredPort?: number;
+  private configuredFixedToken?: string;
+  private cleanupTimer?: NodeJS.Timeout;
+  private startingPromise?: Promise<McpConnectionInfo>;
+  private pruningPromise?: Promise<void>;
 
   private constructor() {
     this.logService = LogService.getInstance();
@@ -62,9 +85,9 @@ export class McpServerService {
     return this.changeEmitter.event;
   }
 
-  public async start(force = false): Promise<McpConnectionInfo> {
+  public async start(): Promise<McpConnectionInfo> {
     const settings = this.readSettings();
-    if (!settings.enabled && !force) {
+    if (!settings.enabled) {
       return { running: false };
     }
 
@@ -72,89 +95,89 @@ export class McpServerService {
       return this.getConnectionInfo();
     }
 
-    this.host = settings.host;
-    this.port = settings.port;
-    this.token = settings.fixedToken || randomUUID();
-    this.server = http.createServer((request, response) => {
-      void this.handleRequest(request, response);
+    if (this.startingPromise) {
+      return this.startingPromise;
+    }
+
+    this.startingPromise = this.startServer(settings).finally(() => {
+      this.startingPromise = undefined;
     });
 
-    await new Promise<void>((resolve, reject) => {
-      this.server!.once('error', reject);
-      this.server!.listen(settings.port, settings.host, () => {
-        this.server!.off('error', reject);
-        const address = this.server!.address();
-        if (address && typeof address !== 'string') {
-          this.host = settings.host;
-          this.port = address.port;
-        }
-        resolve();
-      });
-    });
-
-    this.logService.info(`MCP server started at ${this.getConnectionInfo().url}`);
-    this.changeEmitter.fire();
-    return this.getConnectionInfo();
+    return this.startingPromise;
   }
 
   public async stop(): Promise<void> {
-    for (const [sessionId, entry] of this.sessions.entries()) {
+    const pendingStart = this.startingPromise;
+    if (pendingStart) {
       try {
-        await entry.server.close();
-      } catch (error) {
-        this.logService.warn(`Failed to close MCP session ${sessionId}: ${String(error)}`);
+        await pendingStart;
+      } catch {
+        // Ignore start failure here and continue stopping any committed state.
       }
+    }
+
+    this.stopSessionCleanupTimer();
+
+    for (const [sessionId, entry] of Array.from(this.sessions.entries())) {
+      await this.closeSessionEntry(sessionId, entry, 'server stop');
     }
     this.sessions.clear();
 
     if (this.server) {
-      await new Promise<void>((resolve, reject) => {
-        this.server!.close(error => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve();
-        });
-      });
+      await this.closeHttpServer(this.server);
     }
 
     this.server = undefined;
     this.host = undefined;
     this.port = undefined;
     this.token = undefined;
+    this.configuredHost = undefined;
+    this.configuredPort = undefined;
+    this.configuredFixedToken = undefined;
     this.logService.info('MCP server stopped');
     this.changeEmitter.fire();
   }
 
   public async syncWithConfiguration(): Promise<void> {
     const settings = this.readSettings();
+    const isRunning = !!this.server;
     const shouldRestart =
-      !!this.server &&
-      (this.host !== settings.host ||
-        this.port !== settings.port ||
-        this.token !== (settings.fixedToken || this.token));
+      isRunning &&
+      (this.configuredHost !== settings.host ||
+        this.configuredPort !== settings.port ||
+        this.configuredFixedToken !== settings.fixedToken);
 
     if (!settings.enabled) {
-      if (this.server) {
+      if (isRunning || this.sessions.size > 0 || this.cleanupTimer) {
         await this.stop();
-      }
-      this.changeEmitter.fire();
-      return;
-    }
-
-    if (shouldRestart) {
-      await this.stop();
-      if (settings.autoStart) {
-        await this.start();
       } else {
         this.changeEmitter.fire();
       }
       return;
     }
 
-    if (!this.server && settings.autoStart) {
-      await this.start();
+    if (shouldRestart) {
+      await this.stop();
+      if (isRunning || settings.autoStart) {
+        try {
+          await this.start();
+        } catch (error) {
+          this.logService.error('Failed to restart MCP server after configuration change:', error);
+          this.changeEmitter.fire();
+        }
+      } else {
+        this.changeEmitter.fire();
+      }
+      return;
+    }
+
+    if (!isRunning && settings.autoStart) {
+      try {
+        await this.start();
+      } catch (error) {
+        this.logService.error('Failed to auto-start MCP server during configuration sync:', error);
+        this.changeEmitter.fire();
+      }
       return;
     }
 
@@ -202,6 +225,7 @@ export class McpServerService {
 
   public getDefinitionVersion(): string {
     const settings = this.readSettings();
+    const connection = this.getConnectionInfo();
     const extensionVersion = vscode.extensions.getExtension('SiFli.sifli-sdk-codekit')?.packageJSON.version ?? '0.0.0';
     const tools = this.toolRegistry.getMcpTools().map(tool => ({
       name: tool.name,
@@ -209,12 +233,27 @@ export class McpServerService {
       inputSchema: tool.inputSchema,
     }));
 
+    const runtimeInfo = connection.running
+      ? {
+          running: true,
+          url: connection.url,
+          tokenHash: this.hashSecret(connection.token),
+          configuredHost: this.configuredHost,
+          configuredPort: this.configuredPort,
+          configuredFixedTokenHash: this.hashSecret(this.configuredFixedToken),
+        }
+      : {
+          running: false,
+          host: settings.host,
+          port: settings.port,
+          fixedTokenHash: this.hashSecret(settings.fixedToken),
+        };
+
     const digest = createHash('sha256')
       .update(
         JSON.stringify({
           enabled: settings.enabled,
-          host: settings.host,
-          port: settings.port,
+          runtimeInfo,
           tools,
         })
       )
@@ -222,6 +261,50 @@ export class McpServerService {
       .slice(0, 12);
 
     return `${extensionVersion}+${digest}`;
+  }
+
+  private async startServer(settings: McpSettings): Promise<McpConnectionInfo> {
+    const nextToken = settings.fixedToken ?? randomUUID();
+    const pendingServer = http.createServer((request, response) => {
+      void this.handleRequest(request, response);
+    });
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const handleError = (error: Error): void => {
+          pendingServer.off('error', handleError);
+          reject(error);
+        };
+
+        pendingServer.once('error', handleError);
+        pendingServer.listen(settings.port, settings.host, () => {
+          pendingServer.off('error', handleError);
+          const address = pendingServer.address();
+          if (!address || typeof address === 'string') {
+            reject(new Error('Failed to resolve MCP server address.'));
+            return;
+          }
+
+          this.server = pendingServer;
+          this.host = settings.host;
+          this.port = address.port;
+          this.token = nextToken;
+          this.configuredHost = settings.host;
+          this.configuredPort = settings.port;
+          this.configuredFixedToken = settings.fixedToken;
+          this.startSessionCleanupTimer();
+          resolve();
+        });
+      });
+    } catch (error) {
+      await this.closeHttpServer(pendingServer);
+      throw error;
+    }
+
+    const info = this.getConnectionInfo();
+    this.logService.info(`MCP server started at ${info.url}`);
+    this.changeEmitter.fire();
+    return info;
   }
 
   private readSettings(): McpSettings {
@@ -238,6 +321,10 @@ export class McpServerService {
   private normalizeFixedToken(value: string | undefined): string | undefined {
     const trimmed = value?.trim();
     return trimmed ? trimmed : undefined;
+  }
+
+  private hashSecret(value: string | undefined): string | undefined {
+    return value ? createHash('sha256').update(value).digest('hex').slice(0, 12) : undefined;
   }
 
   private async handleRequest(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
@@ -258,40 +345,60 @@ export class McpServerService {
         return;
       }
 
-      if (request.method === 'POST' && !sessionId) {
+      await this.pruneExpiredSessions();
+
+      if (!sessionId) {
+        if (request.method !== 'POST') {
+          this.writeJson(response, 400, {
+            error: 'Session is required. Start with a JSON-RPC initialize request.',
+          });
+          return;
+        }
+
+        const parsedBody = await this.readJsonBody(request);
+        if (!this.isInitializeRequest(parsedBody)) {
+          this.writeJson(response, 400, {
+            error: 'The first MCP request must be a JSON-RPC initialize request.',
+          });
+          return;
+        }
+
+        if (this.sessions.size >= MAX_SESSIONS) {
+          this.writeJson(response, 503, {
+            error: 'Too many active MCP sessions. Retry after existing sessions expire.',
+          });
+          return;
+        }
+
         const entry = await this.createSessionEntry();
-        await entry.transport.handleRequest(request, response);
+        await entry.transport.handleRequest(request, response, parsedBody);
         const createdSessionId = entry.transport.sessionId;
         if (createdSessionId) {
+          entry.lastActivityAt = Date.now();
           this.sessions.set(createdSessionId, entry);
           this.logService.info(`Created MCP session ${createdSessionId}`);
           this.changeEmitter.fire();
-        } else {
-          await entry.server.close();
-        }
-        return;
-      }
-
-      if (!sessionId) {
-        if (request.method === 'GET') {
-          this.sendStatus(response, 405, { Allow: 'POST, GET, DELETE' });
           return;
         }
-        this.sendStatus(response, 400);
+
+        await entry.server.close();
         return;
       }
 
       const entry = this.sessions.get(sessionId);
       if (!entry) {
-        this.sendStatus(response, 404);
+        this.writeJson(response, 404, { error: 'MCP session not found.' });
         return;
       }
 
+      entry.lastActivityAt = Date.now();
       await entry.transport.handleRequest(request, response);
+      entry.lastActivityAt = Date.now();
     } catch (error) {
+      const statusCode = this.getHttpErrorStatus(error);
       const message = error instanceof Error ? error.message : String(error);
       this.logService.error('MCP request handling failed:', error);
-      this.writeJson(response, 500, { error: message });
+      this.writeJson(response, statusCode, { error: message });
     }
   }
 
@@ -315,12 +422,17 @@ export class McpServerService {
 
     await server.connect(transport);
 
+    const entry: McpSessionEntry = {
+      server,
+      transport,
+      lastActivityAt: Date.now(),
+    };
+
     const originalOnClose = transport.onclose;
     transport.onclose = () => {
       originalOnClose?.();
       const currentSessionId = transport.sessionId;
-      if (currentSessionId) {
-        this.sessions.delete(currentSessionId);
+      if (currentSessionId && this.sessions.delete(currentSessionId)) {
         this.logService.info(`Closed MCP session ${currentSessionId}`);
         this.changeEmitter.fire();
       }
@@ -332,11 +444,16 @@ export class McpServerService {
       this.logService.error('MCP transport error:', error);
     };
 
-    return { server, transport };
+    return entry;
   }
 
   private registerTools(server: McpServer): void {
     for (const definition of this.toolRegistry.getMcpToolDefinitions()) {
+      if (definition.mcp.execution?.taskSupport) {
+        this.registerTaskTool(server, definition);
+        continue;
+      }
+
       const config: {
         title?: string;
         description?: string;
@@ -362,6 +479,110 @@ export class McpServerService {
           )) as any
       );
     }
+  }
+
+  private registerTaskTool(server: McpServer, definition: RegisteredMcpToolDefinition): void {
+    const config: {
+      title?: string;
+      description?: string;
+      inputSchema?: ZodRawShape | ZodTypeAny;
+      execution: {
+        taskSupport: 'optional' | 'required';
+      };
+    } = {
+      title: definition.mcp.title,
+      description: definition.mcp.description,
+      execution: {
+        taskSupport: definition.mcp.execution?.taskSupport ?? 'required',
+      },
+    };
+
+    if (definition.mcp.inputShape) {
+      config.inputSchema = definition.mcp.inputShape;
+    }
+
+    server.experimental.tasks.registerToolTask(
+      definition.mcp.name,
+      config as any,
+      {
+        createTask: async (
+          args: Record<string, unknown> | undefined,
+          extra: { sessionId?: string; taskStore: TaskStoreLike }
+        ) => {
+          const task = await extra.taskStore.createTask({
+            ttl: TASK_TTL_MS,
+            pollInterval: 1000,
+          });
+
+          void this.executeTaskTool(
+            definition,
+            (args ?? {}) as Record<string, unknown>,
+            extra.sessionId,
+            extra.taskStore,
+            task.taskId
+          );
+          return { task };
+        },
+        getTask: async (
+          _args: Record<string, unknown> | undefined,
+          extra: { taskId: string; taskStore: TaskStoreLike }
+        ) => extra.taskStore.getTask(extra.taskId),
+        getTaskResult: async (
+          _args: Record<string, unknown> | undefined,
+          extra: { taskId: string; taskStore: TaskStoreLike }
+        ) => extra.taskStore.getTaskResult(extra.taskId) as Promise<any>,
+      } as any
+    );
+  }
+
+  private async executeTaskTool(
+    definition: RegisteredMcpToolDefinition,
+    args: Record<string, unknown>,
+    sessionId: string | undefined,
+    taskStore: TaskStoreLike,
+    taskId: string
+  ): Promise<void> {
+    try {
+      const payload = await definition.invoke(args, {
+        transport: 'mcp',
+        sessionId,
+      });
+      const result = this.toMcpToolResult(payload);
+
+      if (this.requiresHostInteraction(payload)) {
+        await taskStore.updateTaskStatus(
+          taskId,
+          'input_required',
+          this.getTaskStatusMessage(payload) ?? 'Host interaction is required to continue this task.'
+        );
+        return;
+      }
+
+      await taskStore.storeTaskResult(taskId, result.isError ? 'failed' : 'completed', result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await taskStore.storeTaskResult(taskId, 'failed', {
+        content: [{ type: 'text', text: message }],
+        isError: true,
+      });
+    }
+  }
+
+  private requiresHostInteraction(payload: unknown): boolean {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return false;
+    }
+
+    return (payload as Record<string, unknown>).hostInteractionRequired === true;
+  }
+
+  private getTaskStatusMessage(payload: unknown): string | undefined {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return undefined;
+    }
+
+    const message = (payload as Record<string, unknown>).message;
+    return typeof message === 'string' ? message : undefined;
   }
 
   private toMcpToolResult(payload: unknown): {
@@ -398,6 +619,119 @@ export class McpServerService {
 
   private getSessionId(request: http.IncomingMessage): string | undefined {
     return typeof request.headers['mcp-session-id'] === 'string' ? request.headers['mcp-session-id'] : undefined;
+  }
+
+  private async readJsonBody(request: http.IncomingMessage): Promise<unknown> {
+    const chunks: Buffer[] = [];
+
+    for await (const chunk of request) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+
+    const rawBody = Buffer.concat(chunks).toString('utf8').trim();
+    if (!rawBody) {
+      throw new Error('Missing JSON request body.');
+    }
+
+    try {
+      return JSON.parse(rawBody);
+    } catch {
+      const error = new Error('Invalid JSON request body.');
+      (error as Error & { statusCode?: number }).statusCode = 400;
+      throw error;
+    }
+  }
+
+  private isInitializeRequest(body: unknown): boolean {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return false;
+    }
+
+    return (body as Record<string, unknown>).method === 'initialize';
+  }
+
+  private async pruneExpiredSessions(): Promise<void> {
+    if (this.pruningPromise) {
+      return this.pruningPromise;
+    }
+
+    this.pruningPromise = (async () => {
+      const now = Date.now();
+      for (const [sessionId, entry] of Array.from(this.sessions.entries())) {
+        if (now - entry.lastActivityAt <= SESSION_IDLE_TIMEOUT_MS) {
+          continue;
+        }
+
+        await this.closeSessionEntry(sessionId, entry, 'idle timeout');
+      }
+    })().finally(() => {
+      this.pruningPromise = undefined;
+    });
+
+    return this.pruningPromise;
+  }
+
+  private async closeSessionEntry(sessionId: string, entry: McpSessionEntry, reason: string): Promise<void> {
+    try {
+      await entry.server.close();
+    } catch (error) {
+      this.logService.warn(`Failed to close MCP session ${sessionId}: ${String(error)}`);
+    }
+
+    try {
+      await entry.transport.close();
+    } catch (error) {
+      this.logService.warn(`Failed to close MCP transport ${sessionId}: ${String(error)}`);
+    }
+
+    this.sessions.delete(sessionId);
+    this.logService.info(`Closed MCP session ${sessionId} due to ${reason}`);
+    this.changeEmitter.fire();
+  }
+
+  private startSessionCleanupTimer(): void {
+    if (this.cleanupTimer) {
+      return;
+    }
+
+    this.cleanupTimer = setInterval(() => {
+      void this.pruneExpiredSessions();
+    }, SESSION_CLEANUP_INTERVAL_MS);
+
+    this.cleanupTimer.unref?.();
+  }
+
+  private stopSessionCleanupTimer(): void {
+    if (!this.cleanupTimer) {
+      return;
+    }
+
+    clearInterval(this.cleanupTimer);
+    this.cleanupTimer = undefined;
+  }
+
+  private async closeHttpServer(server: http.Server): Promise<void> {
+    if (!server.listening) {
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      server.close(error => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+  }
+
+  private getHttpErrorStatus(error: unknown): number {
+    const statusCode =
+      typeof error === 'object' && error && 'statusCode' in error && typeof error.statusCode === 'number'
+        ? error.statusCode
+        : undefined;
+    return statusCode ?? 500;
   }
 
   private writeJson(response: http.ServerResponse, statusCode: number, payload: unknown): void {
