@@ -11,6 +11,31 @@ import { ConfigService } from '../services/configService';
 import { LogService } from '../services/logService';
 import { RegionService } from '../services/regionService';
 
+const RELEASE_BRANCH_PREFIX = 'release/';
+
+interface SdkInstallVersionPayload {
+  name: string;
+  type: 'release' | 'branch';
+  tagName?: string;
+  gitRef?: string;
+}
+
+function normalizeBranchGitRef(branchName: string): string {
+  if (branchName === 'latest' || branchName === 'main') {
+    return 'main';
+  }
+
+  return branchName.startsWith(RELEASE_BRANCH_PREFIX) ? branchName : `${RELEASE_BRANCH_PREFIX}${branchName}`;
+}
+
+function getBranchFolderName(branchName: string): string {
+  const normalizedBranchName = branchName === 'latest' ? 'main' : branchName;
+
+  return normalizedBranchName.startsWith(RELEASE_BRANCH_PREFIX)
+    ? normalizedBranchName.slice(RELEASE_BRANCH_PREFIX.length)
+    : normalizedBranchName;
+}
+
 export class VueWebviewProvider {
   private static instance: VueWebviewProvider;
   private terminalService: TerminalService;
@@ -317,7 +342,13 @@ export class VueWebviewProvider {
         const installationLogs: string[] = [];
         try {
           console.log('[VueWebviewProvider] Starting SDK installation...');
-          const { sdkSource, version, installPath, toolchainSource, toolsPath } = message.data;
+          const { sdkSource, version, installPath, toolchainSource, toolsPath } = message.data as {
+            sdkSource: 'github' | 'gitee';
+            version: SdkInstallVersionPayload;
+            installPath: string;
+            toolchainSource: 'github' | 'sifli';
+            toolsPath?: string;
+          };
 
           console.log('[VueWebviewProvider] Installation parameters:', {
             sdkSource,
@@ -337,7 +368,7 @@ export class VueWebviewProvider {
           };
 
           // 存储工具链路径以便后续使用
-          const toolsPathForEnv = toolsPath && toolsPath.trim() !== '' ? toolsPath.trim() : null;
+          const toolsPathForEnv = toolsPath && toolsPath.trim() !== '' ? toolsPath.trim() : undefined;
 
           if (toolsPathForEnv) {
             console.log('[VueWebviewProvider] Tools path provided:', toolsPathForEnv);
@@ -369,7 +400,12 @@ export class VueWebviewProvider {
           console.log('[VueWebviewProvider] Repository URL:', repoUrl);
 
           // 修正目录名，确保与前端显示一致
-          const dirName = version.name === 'latest' ? 'main' : version.name;
+          const dirName =
+            version.type === 'branch'
+              ? getBranchFolderName(version.name || version.gitRef || 'main')
+              : version.name === 'latest'
+                ? 'main'
+                : version.name;
 
           // 创建安装目录 - 修正路径结构为 installPath/SiFli-SDK/dirName
           const sdkBasePath = path.join(installPath, 'SiFli-SDK');
@@ -400,8 +436,21 @@ export class VueWebviewProvider {
 
           console.log('[VueWebviewProvider] Starting clone operation...');
 
-          // 确保 'latest' 被转换为 'main' ===
-          let branchName = version.type === 'release' ? version.tagName : version.name;
+          let branchName =
+            version.type === 'release' ? version.tagName || version.name : version.gitRef || version.name;
+
+          if (!branchName) {
+            throw new Error('Missing SDK version or branch information. Cannot clone repository.');
+          }
+
+          if (version.type === 'branch' && !version.gitRef) {
+            const normalizedBranchName = normalizeBranchGitRef(branchName);
+            if (normalizedBranchName !== branchName) {
+              sendLog(`Normalized legacy branch ref to "${normalizedBranchName}"`);
+            }
+            branchName = normalizedBranchName;
+          }
+
           if (branchName === 'latest') {
             branchName = 'main';
             console.log('[VueWebviewProvider] Corrected branch name from "latest" to "main"');

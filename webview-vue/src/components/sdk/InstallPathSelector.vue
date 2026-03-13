@@ -59,6 +59,16 @@ import { computed, onMounted, ref } from 'vue';
 import BaseButton from '@/components/common/BaseButton.vue';
 import { useVsCodeApi } from '@/composables/useVsCodeApi';
 
+const RELEASE_BRANCH_PREFIX = 'release/';
+
+function getBranchFolderName(branchRef: string): string {
+  const normalizedBranchRef = branchRef === 'latest' ? 'main' : branchRef;
+
+  return normalizedBranchRef.startsWith(RELEASE_BRANCH_PREFIX)
+    ? normalizedBranchRef.slice(RELEASE_BRANCH_PREFIX.length)
+    : normalizedBranchRef;
+}
+
 interface Props {
   modelValue: string;
   selectedVersion?: string;
@@ -88,11 +98,7 @@ const pathSuffix = computed(() => {
   if (props.downloadType === 'release' && props.selectedVersion) {
     return `SiFli-SDK/${props.selectedVersion}`;
   } else if (props.downloadType === 'branch' && props.selectedBranch) {
-    // 处理分支名称，移除 'release/' 前缀
-    let folderName = props.selectedBranch;
-    if (folderName.startsWith('release/')) {
-      folderName = folderName.replace('release/', '');
-    }
+    const folderName = getBranchFolderName(props.selectedBranch);
     return `SiFli-SDK/${folderName}`;
   }
   return '';
