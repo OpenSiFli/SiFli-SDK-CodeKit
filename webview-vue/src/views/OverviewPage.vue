@@ -8,7 +8,8 @@
       </p>
       <div class="mt-5 flex flex-wrap gap-3">
         <BaseButton variant="primary" @click="catalogStore.fetchList()">刷新列表</BaseButton>
-        <BaseButton variant="secondary" @click="router.push('/install')">安装或导入 SDK</BaseButton>
+        <BaseButton variant="secondary" @click="router.push('/install')">下载 SDK</BaseButton>
+        <BaseButton variant="secondary" @click="router.push('/import')">导入 SDK</BaseButton>
       </div>
     </div>
 
@@ -25,7 +26,10 @@
     >
       <h3 class="text-xl font-semibold">还没有可管理的 SDK</h3>
       <p class="mt-2 text-sm text-vscode-input-placeholder">去安装页下载一个版本，或导入本地已有 SDK。</p>
-      <BaseButton class="mt-5" variant="primary" @click="router.push('/install')">前往安装页</BaseButton>
+      <div class="mt-5 flex justify-center gap-3">
+        <BaseButton variant="primary" @click="router.push('/install')">下载新版本</BaseButton>
+        <BaseButton variant="secondary" @click="router.push('/import')">导入已有 SDK</BaseButton>
+      </div>
     </div>
 
     <div v-else class="grid gap-4 xl:grid-cols-2">

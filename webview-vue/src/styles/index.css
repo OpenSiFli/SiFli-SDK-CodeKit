@@ -585,6 +585,44 @@ a {
   color: #bdf5cd;
 }
 
+.input-group {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid color-mix(in srgb, var(--vscode-input-border) 92%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--vscode-input-background) 92%, white 8%);
+  overflow: hidden;
+}
+
+.input-group:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--vscode-focusBorder) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.input-group input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 0 14px;
+  color: var(--vscode-input-foreground);
+  outline: none;
+  font-size: inherit;
+}
+
+.input-group .input-addon {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  background: rgba(0, 0, 0, 0.15);
+  border-left: 1px solid color-mix(in srgb, var(--vscode-input-border) 92%, transparent);
+  color: var(--vscode-input-placeholderForeground, var(--vscode-input-placeholder));
+  font-size: inherit;
+  white-space: nowrap;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

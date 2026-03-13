@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import OverviewPage from '@/views/OverviewPage.vue';
 import InstallPage from '@/views/InstallPage.vue';
+import ImportSdkPage from '@/views/ImportSdkPage.vue';
 import SdkDetailPage from '@/views/SdkDetailPage.vue';
 import TaskPage from '@/views/TaskPage.vue';
 
@@ -16,6 +17,11 @@ export const router = createRouter({
       path: '/install',
       name: 'install',
       component: InstallPage,
+    },
+    {
+      path: '/import',
+      name: 'import',
+      component: ImportSdkPage,
     },
     {
       path: '/sdk/:sdkId',
