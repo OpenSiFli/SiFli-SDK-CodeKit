@@ -6,9 +6,9 @@ import { BoardService } from '../services/boardService';
 import { SerialPortService } from '../services/serialPortService';
 import { SerialMonitorService } from '../services/serialMonitorService';
 import { SdkService } from '../services/sdkService';
+import { ClangdService } from '../services/clangdService';
 import { StatusBarProvider } from '../providers/statusBarProvider';
 import { HAS_RUN_INITIAL_SETUP_KEY } from '../constants';
-import { getProjectInfo } from '../utils/projectUtils';
 
 export class ConfigCommands {
   private static instance: ConfigCommands;
@@ -17,6 +17,7 @@ export class ConfigCommands {
   private serialPortService: SerialPortService;
   private serialMonitorService: SerialMonitorService;
   private sdkService: SdkService;
+  private clangdService: ClangdService;
   private statusBarProvider: StatusBarProvider;
 
   private constructor() {
@@ -25,6 +26,7 @@ export class ConfigCommands {
     this.serialPortService = SerialPortService.getInstance();
     this.serialMonitorService = SerialMonitorService.getInstance();
     this.sdkService = SdkService.getInstance();
+    this.clangdService = ClangdService.getInstance();
     this.statusBarProvider = StatusBarProvider.getInstance();
   }
 
@@ -200,60 +202,25 @@ export class ConfigCommands {
    */
   public async configureClangd(): Promise<void> {
     try {
-      // 获取当前选择的芯片模组
-      const selectedBoard = this.configService.getSelectedBoardName();
-
-      if (!selectedBoard || selectedBoard === 'N/A') {
-        vscode.window.showWarningMessage(vscode.l10n.t('Select a board first.'));
-        return;
-      }
-
-      // 获取工作区文件夹
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-      if (!workspaceFolder) {
-        vscode.window.showErrorMessage(vscode.l10n.t('No workspace folder found.'));
-        return;
-      }
-
-      // 构建 .vscode/settings.json 路径
-      const vscodeDir = path.join(workspaceFolder.uri.fsPath, '.vscode');
-      const settingsPath = path.join(vscodeDir, 'settings.json');
-
-      // 确保 .vscode 目录存在
-      if (!fs.existsSync(vscodeDir)) {
-        fs.mkdirSync(vscodeDir, { recursive: true });
-      }
-
-      // 读取现有的 settings.json
-      let settings: any = {};
-      if (fs.existsSync(settingsPath)) {
-        const content = fs.readFileSync(settingsPath, 'utf-8');
-        try {
-          settings = JSON.parse(content);
-        } catch (error) {
-          console.error('[ConfigCommands] Error parsing settings.json:', error);
-          settings = {};
+      const result = await this.clangdService.configure();
+      if (!result.success) {
+        const message = result.message ?? vscode.l10n.t('Failed to configure clangd.');
+        if (message === vscode.l10n.t('Select a board first.')) {
+          vscode.window.showWarningMessage(message);
+        } else {
+          vscode.window.showErrorMessage(message);
         }
+        return;
       }
-
-      // 构建 compile-commands-dir 路径
-      const projectInfo = getProjectInfo();
-      const projectRelativePath = projectInfo?.projectEntryRelativePath || 'project';
-      const compileCommandsDir = `\${workspaceFolder}/${projectRelativePath}/build_${selectedBoard}_hcpu`;
-
-      // 更新 clangd.arguments
-      settings['clangd.arguments'] = [`--compile-commands-dir=${compileCommandsDir}`];
-
-      // 写入 settings.json
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 4), 'utf-8');
-
-      console.log(`[ConfigCommands] clangd 配置已更新: ${settingsPath}`);
 
       // 显示成功消息并提示重启
       const restartAction = vscode.l10n.t('Restart VS Code');
       const laterAction = vscode.l10n.t('Later');
       const action = await vscode.window.showInformationMessage(
-        vscode.l10n.t('clangd configuration completed for board {0}. Restart VS Code to apply.', selectedBoard),
+        vscode.l10n.t(
+          'clangd configuration completed for board {0}. Restart VS Code to apply.',
+          result.selectedBoard ?? ''
+        ),
         restartAction,
         laterAction
       );

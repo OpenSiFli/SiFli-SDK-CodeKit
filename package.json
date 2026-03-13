@@ -163,9 +163,43 @@
         "title": "%command.runStatusBarButton.title%"
       },
       {
+        "command": "extension.mcp.start",
+        "title": "%command.mcp.start.title%"
+      },
+      {
+        "command": "extension.mcp.stop",
+        "title": "%command.mcp.stop.title%"
+      },
+      {
+        "command": "extension.mcp.showConnectionInfo",
+        "title": "%command.mcp.showConnectionInfo.title%"
+      },
+      {
+        "command": "extension.mcp.toggleEnabled",
+        "title": "%command.mcp.toggleEnabled.title%"
+      },
+      {
+        "command": "extension.mcp.toggleAutoStart",
+        "title": "%command.mcp.toggleAutoStart.title%"
+      },
+      {
+        "command": "extension.mcp.configureEndpoint",
+        "title": "%command.mcp.configureEndpoint.title%"
+      },
+      {
+        "command": "extension.mcp.showLogs",
+        "title": "%command.mcp.showLogs.title%"
+      },
+      {
         "command": "sifliSidebar.refresh",
         "title": "%command.sifliSidebar.refresh.title%",
         "icon": "$(refresh)"
+      }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "sifli-sdk-codekit.embedded-mcp",
+        "label": "%mcp.provider.label%"
       }
     ],
     "languageModelTools": [
@@ -758,6 +792,36 @@
                 }
               }
             }
+          },
+          "sifli-sdk-codekit.mcp.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "%configuration.sifli.mcp.enabled.description%",
+            "scope": "machine-overridable"
+          },
+          "sifli-sdk-codekit.mcp.autoStart": {
+            "type": "boolean",
+            "default": false,
+            "description": "%configuration.sifli.mcp.autoStart.description%",
+            "scope": "machine-overridable"
+          },
+          "sifli-sdk-codekit.mcp.host": {
+            "type": "string",
+            "default": "127.0.0.1",
+            "description": "%configuration.sifli.mcp.host.description%",
+            "scope": "machine-overridable"
+          },
+          "sifli-sdk-codekit.mcp.port": {
+            "type": "number",
+            "default": 0,
+            "description": "%configuration.sifli.mcp.port.description%",
+            "scope": "machine-overridable"
+          },
+          "sifli-sdk-codekit.mcp.fixedToken": {
+            "type": "string",
+            "default": "",
+            "description": "%configuration.sifli.mcp.fixedToken.description%",
+            "scope": "machine-overridable"
           }
         }
       },
@@ -1365,7 +1429,9 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "axios": "^1.10.0",
-    "serialport": "^13.0.0"
+    "serialport": "^13.0.0",
+    "zod": "^3.25.0"
   }
 }

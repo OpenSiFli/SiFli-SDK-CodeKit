@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { createHash } from 'crypto';
 import { SdkVersion } from '../types';
 import { ConfigService } from './configService';
 import { GitService } from './gitService';
@@ -9,13 +10,32 @@ import { SdkService } from './sdkService';
 import { StatusBarProvider } from '../providers/statusBarProvider';
 import { getSiFliProjectInfo, isSiFliProjectPath } from '../utils/projectUtils';
 
-interface ProjectTemplate {
+export interface ProjectTemplate {
   sdkPath: string;
   sdkVersion: string;
+  exampleId: string;
   templateRootPath: string;
   relativeExamplePath: string;
   displayName: string;
 }
+
+export type CreateProjectFromTemplateOptions = {
+  sdkPath?: string;
+  sdkVersion?: string;
+  exampleId: string;
+  targetPath: string;
+  initializeGit?: boolean;
+};
+
+export type CreateProjectFromTemplateResult = {
+  success: boolean;
+  sdkPath?: string;
+  sdkVersion?: string;
+  exampleId?: string;
+  targetPath?: string;
+  gitInitialized?: boolean;
+  message?: string;
+};
 
 const EXAMPLE_SUBFOLDER = 'example';
 const GITIGNORE_LINES = [
@@ -141,6 +161,80 @@ export class ProjectCreationService {
     }
   }
 
+  public async listProjectTemplates(options?: { sdkPath?: string; sdkVersion?: string }): Promise<ProjectTemplate[]> {
+    const sdk = await this.resolveSdkForAutomation(options);
+    if (!sdk) {
+      return [];
+    }
+
+    const cancellationSource = new vscode.CancellationTokenSource();
+    const templates = await this.discoverTemplates(sdk, cancellationSource.token);
+    cancellationSource.dispose();
+    return templates ?? [];
+  }
+
+  public async createProjectFromTemplate(
+    options: CreateProjectFromTemplateOptions
+  ): Promise<CreateProjectFromTemplateResult> {
+    try {
+      const sdk = await this.resolveSdkForAutomation(options);
+      if (!sdk) {
+        return {
+          success: false,
+          message: vscode.l10n.t('No valid SiFli SDKs found. Open SDK Manager first.'),
+        };
+      }
+
+      const template = await this.resolveTemplateForAutomation(sdk, options);
+      if (!template) {
+        return {
+          success: false,
+          message: vscode.l10n.t('Project template not found.'),
+        };
+      }
+
+      const pathValidationError = this.validateTargetPath(template.templateRootPath, options.targetPath);
+      if (pathValidationError) {
+        return {
+          success: false,
+          message: pathValidationError,
+        };
+      }
+
+      if (fs.existsSync(options.targetPath)) {
+        return {
+          success: false,
+          message: vscode.l10n.t('Target folder already exists.'),
+        };
+      }
+
+      this.copyTemplate(template.templateRootPath, options.targetPath);
+
+      let gitInitialized = false;
+      if (options.initializeGit) {
+        this.ensureGitignore(options.targetPath);
+        await this.initializeGitRepository(options.targetPath);
+        gitInitialized = true;
+      }
+
+      return {
+        success: true,
+        sdkPath: template.sdkPath,
+        sdkVersion: template.sdkVersion,
+        exampleId: template.exampleId,
+        targetPath: options.targetPath,
+        gitInitialized,
+        message: vscode.l10n.t('SiFli project created at {0}', options.targetPath),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        targetPath: options.targetPath,
+        message: this.getErrorMessage(error),
+      };
+    }
+  }
+
   private async selectSdk(): Promise<SdkVersion | undefined> {
     const sdkVersions = await this.sdkService.discoverSiFliSdks();
     this.configService.detectedSdkVersions = sdkVersions;
@@ -192,6 +286,39 @@ export class ProjectCreationService {
     await this.syncSelectedSdk(selectedItem.sdk);
 
     return selectedItem.sdk;
+  }
+
+  private async resolveSdkForAutomation(options?: {
+    sdkPath?: string;
+    sdkVersion?: string;
+  }): Promise<SdkVersion | undefined> {
+    const sdkVersions = await this.sdkService.discoverSiFliSdks();
+    this.configService.detectedSdkVersions = sdkVersions;
+
+    if (options?.sdkPath) {
+      return sdkVersions.find(sdk => sdk.path === options.sdkPath && sdk.valid);
+    }
+
+    if (options?.sdkVersion) {
+      return sdkVersions.find(sdk => sdk.version === options.sdkVersion && sdk.valid);
+    }
+
+    const currentSdkPath = this.configService.getCurrentSdkPath();
+    const currentSdk = sdkVersions.find(sdk => (sdk.path === currentSdkPath || sdk.current) && sdk.valid);
+    if (currentSdk) {
+      return currentSdk;
+    }
+
+    const validSdks = sdkVersions.filter(sdk => sdk.valid);
+    return validSdks.length === 1 ? validSdks[0] : undefined;
+  }
+
+  private async resolveTemplateForAutomation(
+    sdk: SdkVersion,
+    options: CreateProjectFromTemplateOptions
+  ): Promise<ProjectTemplate | undefined> {
+    const templates = await this.listProjectTemplates({ sdkPath: sdk.path });
+    return templates.find(template => template.exampleId === options.exampleId);
   }
 
   private async syncSelectedSdk(sdk: SdkVersion): Promise<void> {
@@ -327,6 +454,7 @@ export class ProjectCreationService {
         templates.push({
           sdkPath: sdk.path,
           sdkVersion: sdk.version,
+          exampleId: this.buildExampleId(relativeExamplePath),
           templateRootPath: directory,
           relativeExamplePath,
           displayName: relativeExamplePath.split(path.sep).join('/'),
@@ -373,6 +501,10 @@ export class ProjectCreationService {
 
   private shouldSkipScanDirectory(name: string): boolean {
     return SKIP_DIRECTORIES.has(name) || name.startsWith('build_') || name.startsWith('.');
+  }
+
+  private buildExampleId(relativeExamplePath: string): string {
+    return createHash('sha256').update(relativeExamplePath).digest('hex');
   }
 
   private validateProjectName(parentPath: string, value: string, templateRootPath: string): string | null {

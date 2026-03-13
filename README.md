@@ -17,3 +17,13 @@
 ## 使用方法
 
 请参考我们的[使用指南](https://docs.sifli.com/projects/codekit)以了解如何安装和使用该插件。
+
+## MCP Server
+
+从当前版本开始，CodeKit 内置了一个可选的 MCP Server，供其他 agent 工具或 IDE 通过 MCP 调用插件能力。
+
+- 在命令面板中执行 `Start SiFli MCP Server` 启动服务
+- 执行 `Show SiFli MCP Connection Info` 获取连接地址和 Bearer Token
+- 可通过设置 `sifli-sdk-codekit.mcp.autoStart` 让扩展激活时自动启动 MCP
+
+当前实现运行在 VS Code 扩展宿主内，因此外部客户端连接 MCP 时，需要本插件所在的 VS Code 实例保持运行。
