@@ -521,6 +521,8 @@ export class SdkService {
         canUpdateBranch,
         canRename: true,
         canUpdateTools: !!this.getInstallScriptPath(sdkPath),
+        canRemove: true,
+        canEditToolchain: true,
       },
     };
   }

@@ -41,6 +41,16 @@ interface RenameSdkDirectoryMessageData {
   newDirectoryName: string;
 }
 
+interface RemoveSdkMessageData {
+  sdkId: string;
+}
+
+interface EditToolchainMessageData {
+  sdkId: string;
+  source: ToolchainSource;
+  toolsPath: string;
+}
+
 interface ExistingSdkValidationResult {
   valid: boolean;
   message: string;
@@ -216,6 +226,14 @@ export class VueWebviewProvider {
           throw new Error('Missing sdkId.');
         }
         this.startRerunInstallScriptTask(message.sdkId, webview);
+        break;
+
+      case 'removeSdk':
+        this.startRemoveSdkTask(message.data as RemoveSdkMessageData, webview);
+        break;
+
+      case 'editToolchain':
+        this.startEditToolchainTask(message.data as EditToolchainMessageData, webview);
         break;
 
       case 'openInExplorer':
@@ -533,6 +551,60 @@ export class VueWebviewProvider {
       return {
         sdkId,
         path: detail.path,
+        ref: metadata.ref,
+        hash: metadata.hash,
+      };
+    });
+  }
+
+  private startRemoveSdkTask(data: RemoveSdkMessageData, webview: vscode.Webview): void {
+    const sdkPath = this.sdkService.decodeSdkId(data.sdkId);
+    const title = `移除 SDK ${path.basename(sdkPath)}`;
+    const task = this.createTask('remove-sdk', title, sdkPath);
+    this.postTaskStarted(task, webview);
+
+    void this.runTask(task, webview, async log => {
+      log(`准备从系统中彻底移除 SDK: ${sdkPath}`);
+
+      if (fs.existsSync(sdkPath)) {
+        log(`正在删除文件系统目录...`);
+        fs.rmSync(sdkPath, { recursive: true, force: true });
+        log(`文件系统目录删除完毕.`);
+      } else {
+        log(`目标目录不存在，跳过文件删除.`);
+      }
+
+      log(`清理工作区配置...`);
+      await this.sdkService.removeSdkPath(sdkPath);
+
+      log(`SDK 成功移除.`);
+      return {
+        path: sdkPath,
+      };
+    });
+  }
+
+  private startEditToolchainTask(data: EditToolchainMessageData, webview: vscode.Webview): void {
+    const sdkPath = this.sdkService.decodeSdkId(data.sdkId);
+    const task = this.createTask('edit-toolchain', `修改工具链配置 ${path.basename(sdkPath)}`, sdkPath);
+    this.postTaskStarted(task, webview);
+
+    void this.runTask(task, webview, async log => {
+      log(`正在更新此 SDK 的工具链源为: ${data.source}`);
+      await this.configService.setSdkToolchainSource(sdkPath, data.source);
+
+      if (data.toolsPath) {
+        log(`更新自定义关联工具环境路径为: ${data.toolsPath}`);
+        await this.sdkService.setSdkToolsPath(sdkPath, data.toolsPath);
+      } else {
+        log(`清除了自定义关联工具环境，系统将使用默认路径.`);
+        await this.configService.removeSdkToolsPath(sdkPath);
+      }
+
+      const metadata = await this.gitService.getSdkMetadata(sdkPath);
+      return {
+        sdkId: data.sdkId,
+        path: sdkPath,
         ref: metadata.ref,
         hash: metadata.hash,
       };

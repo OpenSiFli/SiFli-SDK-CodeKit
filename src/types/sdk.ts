@@ -7,7 +7,15 @@ export interface SdkVersion {
 
 export type ToolchainSource = 'github' | 'sifli';
 export type SdkRefType = 'branch' | 'tag' | 'detached' | 'unknown';
-export type SdkTaskKind = 'install' | 'import' | 'switch-ref' | 'update-branch' | 'rename-directory' | 'update-tools';
+export type SdkTaskKind =
+  | 'install'
+  | 'import'
+  | 'switch-ref'
+  | 'update-branch'
+  | 'rename-directory'
+  | 'update-tools'
+  | 'remove-sdk'
+  | 'edit-toolchain';
 
 export interface ManagedSdkActions {
   canActivate: boolean;
@@ -15,6 +23,8 @@ export interface ManagedSdkActions {
   canUpdateBranch: boolean;
   canRename: boolean;
   canUpdateTools: boolean;
+  canRemove: boolean;
+  canEditToolchain: boolean;
 }
 
 export interface ManagedSdkSummary {

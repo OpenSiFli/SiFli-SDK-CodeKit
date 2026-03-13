@@ -105,6 +105,24 @@
           <span class="text-sm font-medium text-vscode-foreground">更新工具</span>
           <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">重新执行此 SDK 的安装脚本</span>
         </button>
+
+        <button
+          v-if="sdk.actions.canEditToolchain"
+          class="flex flex-col items-start gap-1 rounded-2xl border border-vscode-panel-border bg-vscode-background p-4 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-vscode-focus-border hover:bg-vscode-input-background/50"
+          @click="editToolchainDialogOpen = true"
+        >
+          <span class="text-sm font-medium text-vscode-foreground">修改工具链</span>
+          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">修改关联工具环境及镜像源</span>
+        </button>
+
+        <button
+          v-if="sdk.actions.canRemove"
+          class="flex flex-col items-start gap-1 rounded-2xl border border-red-500/20 bg-red-500/5 p-4 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-red-500/50 hover:bg-red-500/10"
+          @click="removeSdkDialogOpen = true"
+        >
+          <span class="text-sm font-medium text-red-500">不再管理此 SDK</span>
+          <span class="text-xs text-red-500/70 mt-0.5 leading-relaxed">解除挂载并从本地物理文件系统删除</span>
+        </button>
       </div>
     </div>
 
@@ -124,6 +142,23 @@
       @close="renameDialogOpen = false"
       @confirm="handleRenameConfirm"
     />
+
+    <EditToolchainDialog
+      :open="editToolchainDialogOpen"
+      :initial-source="sdk.toolchainSource"
+      :initial-tools-path="sdk.toolsPath"
+      :busy="taskCenterStore.requestInFlight"
+      @close="editToolchainDialogOpen = false"
+      @confirm="handleEditToolchainConfirm"
+    />
+
+    <RemoveSdkDialog
+      :open="removeSdkDialogOpen"
+      :sdk-name="sdk.name"
+      :busy="taskCenterStore.requestInFlight"
+      @close="removeSdkDialogOpen = false"
+      @confirm="handleRemoveSdkConfirm"
+    />
   </section>
 
   <section
@@ -140,6 +175,8 @@ import { useRoute, useRouter } from 'vue-router';
 import BaseButton from '@/components/common/BaseButton.vue';
 import RenameSdkDialog from '@/components/dialogs/RenameSdkDialog.vue';
 import SwitchSdkRefDialog from '@/components/dialogs/SwitchSdkRefDialog.vue';
+import EditToolchainDialog from '@/components/dialogs/EditToolchainDialog.vue';
+import RemoveSdkDialog from '@/components/dialogs/RemoveSdkDialog.vue';
 import { postMessage } from '@/services/vscodeBridge';
 import { useSdkCatalogStore } from '@/stores/sdkCatalog';
 import { useSdkTargetsStore } from '@/stores/sdkTargets';
@@ -154,6 +191,8 @@ const taskCenterStore = useTaskCenterStore();
 
 const switchDialogOpen = ref(false);
 const renameDialogOpen = ref(false);
+const editToolchainDialogOpen = ref(false);
+const removeSdkDialogOpen = ref(false);
 
 const sdkId = computed(() => route.params.sdkId as string);
 const sdk = computed(() => catalogStore.getSdkDetailById(sdkId.value));
@@ -208,5 +247,35 @@ async function handleRenameConfirm(directoryName: string) {
       newDirectoryName: directoryName,
     },
   });
+}
+
+async function handleEditToolchainConfirm(payload: { source: string; toolsPath: string }) {
+  editToolchainDialogOpen.value = false;
+  await requestTask({
+    command: 'editToolchain',
+    data: {
+      sdkId: sdkId.value,
+      source: payload.source,
+      toolsPath: payload.toolsPath,
+    },
+  });
+}
+
+async function handleRemoveSdkConfirm() {
+  removeSdkDialogOpen.value = false;
+  try {
+    const taskId = await taskCenterStore.requestTask({
+      command: 'removeSdk',
+      data: {
+        sdkId: sdkId.value,
+      },
+    });
+
+    // Fire and forget redirect back to overview,
+    // as the current detail route will be invalid very soon
+    await router.push(`/tasks/${taskId}`);
+  } catch (error) {
+    catalogStore.setBanner(error instanceof Error ? error.message : String(error), 'error');
+  }
 }
 </script>
