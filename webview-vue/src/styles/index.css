@@ -2,468 +2,616 @@
 @tailwind components;
 @tailwind utilities;
 
-/* VS Code 主题变量 */
 :root {
-  font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  font-size: var(--vscode-font-size, 14px);
   color: var(--vscode-foreground);
-  background-color: var(--vscode-editor-background);
+  background:
+    radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--vscode-button-background) 18%, transparent),
+      transparent 32%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--vscode-editor-background) 92%, white 8%),
+      var(--vscode-editor-background)
+    );
+  font-family: var(--vscode-font-family, 'Segoe UI Variable', 'SF Pro Display', 'Segoe UI', sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  line-height: 1.5;
+  color-scheme: light dark;
 }
 
-/* 全局基础样式 */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
 body {
   margin: 0;
-  padding: 0;
-  line-height: 1.6;
+  color: var(--vscode-foreground);
+  background: transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* VS Code WebView 特定样式 */
-.vscode-webview-body {
-  background-color: var(--vscode-editor-background);
+button,
+input,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 28px 24px 32px;
+}
+
+.shell-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+  padding-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--vscode-foreground) 60%, transparent);
+}
+
+.shell-title,
+.page-header h2 {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.shell-subtitle,
+.page-description {
+  margin: 10px 0 0;
+  max-width: 740px;
+  color: color-mix(in srgb, var(--vscode-foreground) 72%, transparent);
+}
+
+.shell-status {
+  min-width: 220px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 80%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--vscode-editor-background) 92%, white 8%);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.status-label,
+.stat-label {
+  display: block;
+  margin-bottom: 8px;
+  color: color-mix(in srgb, var(--vscode-foreground) 60%, transparent);
+  font-size: 12px;
+}
+
+.status-meta {
+  display: block;
+  margin-top: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--vscode-foreground) 68%, transparent);
+}
+
+.shell-nav {
+  display: flex;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 82%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--vscode-editor-background) 92%, white 8%);
+}
+
+.shell-link {
+  padding: 10px 14px;
+  border-radius: 10px;
+  color: color-mix(in srgb, var(--vscode-foreground) 72%, transparent);
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.shell-link.active,
+.shell-link:hover {
+  color: var(--vscode-foreground);
+  background: color-mix(in srgb, var(--vscode-button-background) 18%, transparent);
+}
+
+.shell-main {
+  margin-top: 24px;
+}
+
+.page-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.stats-grid,
+.sdk-grid,
+.detail-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.sdk-grid {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.detail-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.stat-card,
+.sdk-card,
+.detail-card,
+.form-card,
+.task-log {
+  border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 82%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--vscode-editor-background) 94%, white 6%);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.12);
+}
+
+.stat-card,
+.sdk-card,
+.detail-card,
+.form-card {
+  padding: 18px;
+}
+
+.stat-card strong {
+  font-size: 26px;
+  letter-spacing: -0.04em;
+}
+
+.sdk-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sdk-card__header,
+.sdk-card__footer,
+.task-log__header,
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.sdk-card__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.sdk-card__title {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+
+.sdk-card__subtitle {
+  margin: 8px 0 0;
+  color: color-mix(in srgb, var(--vscode-foreground) 64%, transparent);
+}
+
+.sdk-card__meta,
+.detail-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.sdk-card__meta dt,
+.detail-list dt {
+  margin-bottom: 4px;
+  color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
+  font-size: 12px;
+}
+
+.sdk-card__meta dd,
+.detail-list dd {
+  margin: 0;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
+  color: color-mix(in srgb, var(--vscode-foreground) 78%, transparent);
+}
+
+.badge--accent {
+  background: color-mix(in srgb, var(--vscode-button-background) 18%, transparent);
+  color: var(--vscode-button-foreground);
+}
+
+.badge--danger {
+  background: rgba(220, 38, 38, 0.18);
+  color: #ffb4b4;
+}
+
+.badge--success {
+  background: rgba(22, 163, 74, 0.2);
+  color: #bdf5cd;
+}
+
+.badge--warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: #ffd89c;
+}
+
+.badge--neutral {
+  background: rgba(59, 130, 246, 0.14);
+  color: #b9d4ff;
+}
+
+.badge--muted {
+  background: color-mix(in srgb, var(--vscode-foreground) 8%, transparent);
+  color: color-mix(in srgb, var(--vscode-foreground) 65%, transparent);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field > span {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
+}
+
+.field-row {
+  display: flex;
+  gap: 10px;
+}
+
+.field--wide {
+  grid-column: 1 / -1;
+}
+
+.form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.summary-panel,
+.callout {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
+  background: color-mix(in srgb, var(--vscode-editor-background) 88%, white 12%);
+}
+
+.callout--danger {
+  border-color: rgba(220, 38, 38, 0.3);
+  color: #ffb4b4;
+}
+
+.empty-state {
+  padding: 42px 24px;
+  border: 1px dashed color-mix(in srgb, var(--vscode-panel-border) 80%, transparent);
+  border-radius: 18px;
+  text-align: center;
+  color: color-mix(in srgb, var(--vscode-foreground) 64%, transparent);
+}
+
+.tabs {
+  display: inline-flex;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 80%, transparent);
+  background: color-mix(in srgb, var(--vscode-editor-background) 92%, white 8%);
+}
+
+.tab-button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: color-mix(in srgb, var(--vscode-foreground) 72%, transparent);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tab-button.active {
+  color: var(--vscode-foreground);
+  background: color-mix(in srgb, var(--vscode-button-background) 16%, transparent);
+}
+
+.action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-card--log {
+  padding: 0;
+  overflow: hidden;
+}
+
+.task-log__header {
+  padding: 18px 18px 14px;
+}
+
+.task-log__header h3 {
+  margin: 0;
+}
+
+.task-log__body {
+  max-height: 460px;
+  overflow: auto;
+  padding: 0 18px 18px;
+  border-top: 1px solid color-mix(in srgb, var(--vscode-panel-border) 70%, transparent);
+}
+
+.task-log__line {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--vscode-panel-border) 52%, transparent);
+}
+
+.task-log__time {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: color-mix(in srgb, var(--vscode-foreground) 56%, transparent);
+  font-size: 12px;
+}
+
+.task-log__empty {
+  padding: 30px 0;
+  color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.dialog-panel {
+  width: min(100%, 520px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 80%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--vscode-editor-background) 96%, white 4%);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+}
+
+.dialog-header h3 {
+  margin: 0;
+}
+
+.icon-button {
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--vscode-foreground) 68%, transparent);
+  cursor: pointer;
+}
+
+.button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.button-base:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.button-base:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button-primary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground, var(--vscode-button-background));
+}
+
+.button-secondary {
+  background: color-mix(in srgb, var(--vscode-editor-background) 86%, white 14%);
+  border-color: color-mix(in srgb, var(--vscode-panel-border) 85%, transparent);
   color: var(--vscode-foreground);
 }
 
-/* 自定义组件样式 */
-@layer components {
-  .vscode-input {
-    @apply bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border;
-    @apply focus:border-vscode-focus-border focus:outline-none transition-all duration-300;
-    @apply placeholder:text-vscode-input-placeholder;
-    @apply hover:border-opacity-70;
-  }
-
-  .vscode-button {
-    @apply bg-vscode-button-background text-vscode-button-foreground;
-    @apply hover:bg-vscode-button-hover transform transition-all duration-200;
-    @apply focus:border-vscode-focus-border focus:outline-none;
-    @apply disabled:cursor-not-allowed;
-    @apply active:scale-95 hover:shadow-lg;
-    border: none !important;
-    outline: none !important;
-  }
-
-  /* 增强按钮对比度，特别是在浅色模式下 */
-  .vscode-button-primary {
-    background-color: #2563eb !important;
-    color: white !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-
-  .vscode-button-primary:hover {
-    background-color: #1d4ed8 !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  }
-
-  .vscode-button-primary:active {
-    background-color: #1e40af !important;
-  }
-
-  /* VS Code 主题按钮样式统一管理 */
-
-  /* Primary 按钮 - 深色主题 */
-  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-primary,
-  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-primary {
-    background-color: #0e639c !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-  }
-
-  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-primary:hover,
-  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-primary:hover {
-    background-color: #1177bb !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-  }
-
-  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-primary:active,
-  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-primary:active {
-    background-color: #094771 !important;
-  }
-
-  /* Secondary 按钮 - 深色主题 */
-  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-secondary,
-  body[data-vscode-theme-kind='vscode-dark'] .btn.vscode-button-secondary,
-  body[data-vscode-theme-kind='vscode-dark'] button.vscode-button-secondary,
-  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-secondary {
-    background-color: #2d2d30 !important;
-    color: #cccccc !important;
-    border: 1px solid #3e3e42 !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
-  }
-
-  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-secondary:hover,
-  body[data-vscode-theme-kind='vscode-dark'] .btn.vscode-button-secondary:hover,
-  body[data-vscode-theme-kind='vscode-dark'] button.vscode-button-secondary:hover,
-  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-secondary:hover {
-    background-color: #37373d !important;
-    border-color: #464647 !important;
-    color: #ffffff !important;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
-    transform: translateY(-1px) !important;
-  }
-
-  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-secondary:active,
-  body[data-vscode-theme-kind='vscode-dark'] .btn.vscode-button-secondary:active,
-  body[data-vscode-theme-kind='vscode-dark'] button.vscode-button-secondary:active,
-  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-secondary:active {
-    background-color: #252526 !important;
-    border-color: #3e3e42 !important;
-    transform: translateY(0px) !important;
-  }
-
-  /* Secondary 按钮 - 浅色主题 */
-  body[data-vscode-theme-kind='vscode-light'] .vscode-button-secondary,
-  body[data-vscode-theme-kind='vscode-light'] .btn.vscode-button-secondary,
-  body[data-vscode-theme-kind='vscode-light'] button.vscode-button-secondary,
-  body:not([data-vscode-theme-kind='vscode-dark']) .vscode-button-secondary,
-  body:not([data-vscode-theme-kind='vscode-dark']) .btn.vscode-button-secondary,
-  body:not([data-vscode-theme-kind='vscode-dark']) button.vscode-button-secondary {
-    background-color: #f3f4f6 !important;
-    color: #374151 !important;
-    border: 1px solid #d1d5db !important;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-  }
-
-  body[data-vscode-theme-kind='vscode-light'] .vscode-button-secondary:hover,
-  body[data-vscode-theme-kind='vscode-light'] .btn.vscode-button-secondary:hover,
-  body[data-vscode-theme-kind='vscode-light'] button.vscode-button-secondary:hover,
-  body:not([data-vscode-theme-kind='vscode-dark']) .vscode-button-secondary:hover,
-  body:not([data-vscode-theme-kind='vscode-dark']) .btn.vscode-button-secondary:hover,
-  body:not([data-vscode-theme-kind='vscode-dark']) button.vscode-button-secondary:hover {
-    background-color: #e5e7eb !important;
-    border-color: #9ca3af !important;
-    color: #1f2937 !important;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
-  }
-
-  /* 注意：Secondary 按钮样式已移动到上方主题统一管理区域 */
-
-  /* VS Code 深色主题检测 - 更温和协调的secondary按钮，使用更高优先级 */
-  /* 注意：深色主题 secondary 按钮样式已移动到上方统一管理区域 */
-
-  /* 禁用按钮样式 - 保持灰色但确保可见性 */
-  .vscode-button:disabled,
-  .vscode-button[disabled] {
-    opacity: 1 !important; /* 移除默认的透明度 */
-    cursor: not-allowed !important;
-    transform: none !important; /* 禁用悬停动画 */
-  }
-
-  /* 浅色模式下的禁用按钮 */
-  .vscode-button-secondary:disabled,
-  .vscode-button-secondary[disabled] {
-    background-color: #e2e8f0 !important;
-    color: #64748b !important;
-    border: 1px solid #cbd5e1 !important;
-    box-shadow: none !important;
-  }
-
-  /* 深色模式下的禁用按钮 - 更明显的灰色 */
-  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-secondary:disabled,
-  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-secondary[disabled],
-  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-secondary:disabled,
-  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-secondary[disabled] {
-    background-color: #374151 !important;
-    color: #9ca3af !important;
-    border: 1px solid #4b5563 !important;
-    box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.2) !important;
-  }
-
-  /* Primary 按钮禁用状态 */
-  .vscode-button-primary:disabled,
-  .vscode-button-primary[disabled] {
-    background-color: #94a3b8 !important;
-    color: #e2e8f0 !important;
-    box-shadow: none !important;
-  }
-
-  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-primary:disabled,
-  body[data-vscode-theme-kind='vscode-dark'] .vscode-button-primary[disabled],
-  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-primary:disabled,
-  body[data-vscode-theme-kind='vscode-high-contrast'] .vscode-button-primary[disabled] {
-    background-color: #374151 !important;
-    color: #6b7280 !important;
-    box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important;
-  }
-
-  .vscode-button-success {
-    background-color: #059669 !important;
-    color: white !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-
-  .vscode-button-success:hover {
-    background-color: #047857 !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  }
-
-  /* 深色模式下的 success 按钮增强 */
-  .dark .vscode-button-success,
-  [data-theme='dark'] .vscode-button-success {
-    background-color: #10b981 !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-  }
-
-  .dark .vscode-button-success:hover,
-  [data-theme='dark'] .vscode-button-success:hover {
-    background-color: #059669 !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-  }
-
-  .vscode-button-warning {
-    background-color: #f59e0b !important;
-    color: white !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-
-  .vscode-button-warning:hover {
-    background-color: #d97706 !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  }
-
-  /* 深色模式下的 warning 按钮增强 */
-  .dark .vscode-button-warning,
-  [data-theme='dark'] .vscode-button-warning {
-    background-color: #fbbf24 !important;
-    color: #1f2937 !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-  }
-
-  .dark .vscode-button-warning:hover,
-  [data-theme='dark'] .vscode-button-warning:hover {
-    background-color: #f59e0b !important;
-    color: #ffffff !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-  }
-
-  .vscode-button-error {
-    background-color: #dc2626 !important;
-    color: white !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-
-  .vscode-button-error:hover {
-    background-color: #b91c1c !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  }
-
-  /* 深色模式下的 error 按钮增强 */
-  .dark .vscode-button-error,
-  [data-theme='dark'] .vscode-button-error {
-    background-color: #ef4444 !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-  }
-
-  .dark .vscode-button-error:hover,
-  [data-theme='dark'] .vscode-button-error:hover {
-    background-color: #dc2626 !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-  }
-
-  .vscode-button-info {
-    background-color: #0284c7 !important;
-    color: white !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-
-  .vscode-button-info:hover {
-    background-color: #0369a1 !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  }
-
-  /* 深色模式下的 info 按钮增强 */
-  .dark .vscode-button-info,
-  [data-theme='dark'] .vscode-button-info {
-    background-color: #06b6d4 !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-  }
-
-  .dark .vscode-button-info:hover,
-  [data-theme='dark'] .vscode-button-info:hover {
-    background-color: #0284c7 !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-  }
-
-  .vscode-button:focus {
-    border: none !important;
-    outline: none !important;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
-  }
-
-  .vscode-button:hover {
-    border: none !important;
-  }
-
-  .vscode-button:active {
-    border: none !important;
-  }
-
-  .vscode-card {
-    @apply bg-vscode-background border border-vscode-panel-border;
-    @apply transition-all duration-300 hover:border-opacity-70;
-  }
-
-  .vscode-select {
-    @apply bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border;
-    @apply focus:border-vscode-focus-border focus:outline-none transition-all duration-300;
-    @apply hover:border-opacity-70 cursor-pointer;
-    @apply appearance-none bg-no-repeat bg-right bg-origin-content;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-    background-size: 16px 16px;
-    background-position: right 12px center;
-    padding-right: 40px;
-  }
-
-  .vscode-select:focus {
-    @apply ring-2 ring-vscode-focus-border ring-opacity-50;
-  }
+.button-secondary:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--vscode-button-background) 52%, transparent);
 }
 
-/* 加载动画 */
+.button-success {
+  background: rgba(22, 163, 74, 0.24);
+  color: #d1fadf;
+}
+
+.button-warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #ffe0a3;
+}
+
+.button-error {
+  background: rgba(220, 38, 38, 0.22);
+  color: #ffc1c1;
+}
+
+.button-info {
+  background: rgba(59, 130, 246, 0.2);
+  color: #c7d8ff;
+}
+
+.button-sm {
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+.button-lg {
+  min-height: 46px;
+  padding: 0 18px;
+}
+
+.button-block {
+  width: 100%;
+}
+
+.button-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: spin 0.8s linear infinite;
+}
+
+.input-base,
+.select-base {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--vscode-input-border) 92%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--vscode-input-background) 92%, white 8%);
+  color: var(--vscode-input-foreground);
+}
+
+.input-base::placeholder {
+  color: var(--vscode-input-placeholderForeground, var(--vscode-input-placeholder));
+}
+
+.input-base:focus,
+.select-base:focus {
+  outline: 2px solid color-mix(in srgb, var(--vscode-focusBorder) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.select-wrap {
+  position: relative;
+}
+
+.select-base {
+  appearance: none;
+  padding-right: 38px;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: color-mix(in srgb, var(--vscode-foreground) 60%, transparent);
+}
+
+.text-muted {
+  color: color-mix(in srgb, var(--vscode-foreground) 68%, transparent);
+}
+
+.text-danger {
+  color: #ffb4b4;
+}
+
+.text-warning {
+  color: #ffd89c;
+}
+
+.text-success {
+  color: #bdf5cd;
+}
+
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
+  to {
     transform: rotate(360deg);
   }
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
+@media (max-width: 900px) {
+  .app-shell {
+    padding: 20px 16px 28px;
   }
-  50% {
-    opacity: 0.5;
+
+  .shell-header,
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
   }
-}
 
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+  .field-row {
+    flex-direction: column;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.loading-spinner {
-  animation: spin 1s linear infinite;
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.animate-slide-in-up {
-  animation: slideInUp 0.5s ease-out;
-}
-
-.animate-fade-in-scale {
-  animation: fadeInScale 0.3s ease-out;
-}
-
-/* 过渡动画 */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.slide-enter-active,
-.slide-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-enter-from {
-  transform: translateY(-10px);
-  opacity: 0;
-}
-
-.slide-leave-to {
-  transform: translateY(10px);
-  opacity: 0;
-}
-
-/* 选择框悬停效果 */
-.select-container {
-  position: relative;
-}
-
-.select-container::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: 12px;
-  transform: translateY(-50%);
-  width: 0;
-  height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-top: 4px solid var(--vscode-input-foreground);
-  pointer-events: none;
-  transition: transform 0.2s ease;
-}
-
-.select-container:hover::after {
-  transform: translateY(-50%) rotate(180deg);
-}
-
-/* 表单项动画 */
-.form-item {
-  @apply transition-all duration-300;
-}
-
-.form-item:hover {
-  transform: translateX(2px);
-}
-
-/* 按钮涟漪效果 */
-.btn-ripple {
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-ripple::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  transition:
-    width 0.3s,
-    height 0.3s,
-    top 0.3s,
-    left 0.3s;
-  transform: translate(-50%, -50%);
-}
-
-.btn-ripple:active::before {
-  width: 300px;
-  height: 300px;
 }
