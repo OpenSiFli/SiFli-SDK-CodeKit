@@ -1,6 +1,22 @@
 import { ref, computed, watch } from 'vue';
 import { useVsCodeApi } from './useVsCodeApi';
-import type { SdkManagerState, SdkVersionInfo } from '@/types';
+import type {
+  SdkInstallRequestData,
+  SdkInstallVersionPayload,
+  SdkManagerState,
+  SdkRelease,
+  SdkVersionInfo,
+} from '@/types';
+
+const RELEASE_BRANCH_PREFIX = 'release/';
+
+function getBranchFolderName(branchRef: string): string {
+  const normalizedBranchRef = branchRef === 'latest' ? 'main' : branchRef;
+
+  return normalizedBranchRef.startsWith(RELEASE_BRANCH_PREFIX)
+    ? normalizedBranchRef.slice(RELEASE_BRANCH_PREFIX.length)
+    : normalizedBranchRef;
+}
 
 export function useSdkManager() {
   const { postMessage, onMessage } = useVsCodeApi();
@@ -10,6 +26,8 @@ export function useSdkManager() {
     sdkSource: 'github',
     downloadType: 'release',
     availableVersions: [], // 新的统一版本信息
+    availableReleases: [],
+    availableBranches: [],
     selectedVersion: '',
     selectedBranch: '',
     installPath: '',
@@ -39,33 +57,22 @@ export function useSdkManager() {
   const releases = computed(() => {
     return state.value.availableVersions
       .filter((v: SdkVersionInfo) => !v.type || v.type !== 'branch')
-      .map((v: SdkVersionInfo) => ({
-        tagName: v.version,
-        name: v.version,
-        supportedChips: v.supported_chips,
-      }));
+      .map(
+        (v: SdkVersionInfo): SdkRelease => ({
+          tagName: v.version,
+          name: v.version,
+          supportedChips: v.supported_chips,
+        })
+      );
   });
 
   const branches = computed(() => {
     return state.value.availableVersions
       .filter((v: SdkVersionInfo) => v.type === 'branch')
-      .map((v: SdkVersionInfo) => {
-        let branchName = v.version;
-
-        // 处理分支名称逻辑
-        if (v.version === 'latest') {
-          // latest 分支改为 main
-          branchName = 'main';
-        } else {
-          // 其他分支加上 release/ 前缀
-          branchName = `release/${v.version}`;
-        }
-
-        return {
-          name: branchName,
-          supportedChips: v.supported_chips,
-        };
-      });
+      .map((v: SdkVersionInfo) => ({
+        name: v.version === 'latest' ? 'main' : `${RELEASE_BRANCH_PREFIX}${v.version}`,
+        supportedChips: v.supported_chips,
+      }));
   });
 
   // 计算最终的安装路径
@@ -84,8 +91,8 @@ export function useSdkManager() {
 
     // 处理分支名称，移除 'release/' 前缀用于目录名
     let folderName = selectedName;
-    if (state.value.downloadType === 'branch' && selectedName.startsWith('release/')) {
-      folderName = selectedName.replace('release/', '');
+    if (state.value.downloadType === 'branch') {
+      folderName = getBranchFolderName(selectedName);
     }
 
     return `${basePath}/SiFli-SDK/${folderName}`;
@@ -143,49 +150,56 @@ export function useSdkManager() {
       };
 
       // 确定版本信息
-      const selectedVersionInfo =
-        state.value.downloadType === 'release'
-          ? state.value.availableVersions.find((v: SdkVersionInfo) => v.version === state.value.selectedVersion)
-          : state.value.availableVersions.find(
-              (v: SdkVersionInfo) =>
-                v.type === 'branch' &&
-                (v.version === 'latest' ? 'main' : `release/${v.version}`) === state.value.selectedBranch
-            );
+      let versionPayload: SdkInstallVersionPayload;
 
-      if (!selectedVersionInfo) {
-        throw new Error('未找到选择的版本信息');
+      if (state.value.downloadType === 'release') {
+        const selectedRelease = state.value.availableVersions.find(
+          (v: SdkVersionInfo) => v.version === state.value.selectedVersion && (!v.type || v.type !== 'branch')
+        );
+
+        if (!selectedRelease) {
+          throw new Error('未找到选择的版本信息');
+        }
+
+        const tagName = selectedRelease.version === 'latest' ? 'main' : selectedRelease.version;
+        versionPayload = {
+          name: tagName,
+          tagName,
+          type: 'release',
+        };
+      } else {
+        if (!state.value.selectedBranch) {
+          throw new Error('未找到选择的分支信息');
+        }
+
+        const gitRef = state.value.selectedBranch === 'latest' ? 'main' : state.value.selectedBranch;
+        versionPayload = {
+          name: getBranchFolderName(gitRef),
+          gitRef,
+          type: 'branch',
+        };
       }
 
       console.log('[useSdkManager] Starting SDK installation with data:', {
         sdkSource: state.value.sdkSource,
-        version: selectedVersionInfo,
+        version: versionPayload,
         installPath: state.value.installPath,
         toolchainSource: state.value.toolchainSource,
         toolsPath: state.value.toolsPath,
       });
 
-      // 确保前端也处理 'latest' 到 'main' 的转换
-      // 虽然后端也有这个转换逻辑，但在前端也进行转换可以确保一致性
-      let versionName = selectedVersionInfo.version;
-      if (versionName === 'latest') {
-        versionName = 'main';
-        console.log('[useSdkManager] Corrected version name from "latest" to "main"');
-      }
-
       // 发送安装请求
+      const installRequest: SdkInstallRequestData = {
+        sdkSource: state.value.sdkSource,
+        version: versionPayload,
+        installPath: state.value.installPath,
+        toolchainSource: state.value.toolchainSource,
+        toolsPath: state.value.toolsPath,
+      };
+
       postMessage({
         command: 'installSdk',
-        data: {
-          sdkSource: state.value.sdkSource,
-          version: {
-            name: versionName,
-            tagName: versionName,
-            type: selectedVersionInfo.type || 'release',
-          },
-          installPath: state.value.installPath,
-          toolchainSource: state.value.toolchainSource,
-          toolsPath: state.value.toolsPath,
-        },
+        data: installRequest,
       });
     } catch (error) {
       console.error('Installation failed:', error);
@@ -201,28 +215,22 @@ export function useSdkManager() {
   onMessage('displayVersions', (data: { versions: SdkVersionInfo[] }) => {
     console.log('[useSdkManager] Received versions:', data.versions);
     state.value.availableVersions = data.versions;
-
-    // 为兼容性更新旧数组
     state.value.availableReleases = data.versions
       .filter(v => !v.type || v.type !== 'branch')
-      .map(v => ({
-        tagName: v.version,
-        name: v.version,
-      }));
+      .map(
+        (v): SdkRelease => ({
+          tagName: v.version,
+          name: v.version,
+          supportedChips: v.supported_chips,
+        })
+      );
 
     state.value.availableBranches = data.versions
       .filter(v => v.type === 'branch')
-      .map(v => {
-        let displayName = v.version;
-        if (v.version === 'latest') {
-          displayName = 'main';
-        } else {
-          displayName = `release/${v.version}`;
-        }
-        return {
-          name: displayName,
-        };
-      });
+      .map(v => ({
+        name: v.version === 'latest' ? 'main' : `${RELEASE_BRANCH_PREFIX}${v.version}`,
+        supportedChips: v.supported_chips,
+      }));
 
     // 清空选择
     state.value.selectedVersion = '';

@@ -11,10 +11,12 @@ export interface SdkRelease {
   name?: string;
   publishedAt?: string;
   prerelease?: boolean;
+  supportedChips?: string[];
 }
 
 export interface SdkBranch {
   name: string;
+  supportedChips?: string[];
   commit?: {
     sha: string;
     url: string;
@@ -32,6 +34,21 @@ export type SdkSource = 'github' | 'gitee';
 export type ToolchainSource = 'github' | 'sifli';
 export type DownloadType = 'release' | 'branch';
 
+export interface SdkInstallVersionPayload {
+  name: string;
+  type: DownloadType;
+  tagName?: string;
+  gitRef?: string;
+}
+
+export interface SdkInstallRequestData {
+  sdkSource: SdkSource;
+  version: SdkInstallVersionPayload;
+  installPath: string;
+  toolchainSource: ToolchainSource;
+  toolsPath: string;
+}
+
 // 消息类型
 export interface WebviewMessage {
   command: string;
@@ -43,6 +60,8 @@ export interface SdkManagerState {
   sdkSource: SdkSource;
   downloadType: DownloadType;
   availableVersions: SdkVersionInfo[]; // 统一版本信息
+  availableReleases: SdkRelease[];
+  availableBranches: SdkBranch[];
   selectedVersion: string;
   selectedBranch: string;
   installPath: string;
