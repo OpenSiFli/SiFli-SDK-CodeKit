@@ -1,29 +1,14 @@
 <template>
   <section class="space-y-6">
-    <div class="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
-      <div class="rounded-[2rem] border border-vscode-panel-border bg-vscode-background px-6 py-6 shadow-sm">
-        <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">Overview</p>
-        <h2 class="mt-3 text-3xl font-semibold tracking-tight">已安装 SDK</h2>
-        <p class="mt-2 max-w-2xl text-sm text-vscode-input-placeholder">
-          在同一个视图中查看本地 SDK 的真实 Git 状态，直接执行激活、分支更新和工具更新。
-        </p>
-        <div class="mt-5 flex flex-wrap gap-3">
-          <BaseButton variant="primary" @click="catalogStore.fetchList()">刷新列表</BaseButton>
-          <BaseButton variant="secondary" @click="router.push('/install')">安装或导入 SDK</BaseButton>
-        </div>
-      </div>
-
-      <div class="rounded-[2rem] border border-vscode-panel-border bg-vscode-input-background/40 px-6 py-6 shadow-sm">
-        <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">Current</p>
-        <template v-if="catalogStore.currentSdk">
-          <h3 class="mt-3 text-xl font-semibold">{{ catalogStore.currentSdk.name }}</h3>
-          <p class="mt-2 break-all text-sm">{{ catalogStore.currentSdk.ref }}</p>
-          <p class="mt-3 break-all text-xs text-vscode-input-placeholder">{{ catalogStore.currentSdk.hash }}</p>
-        </template>
-        <template v-else>
-          <h3 class="mt-3 text-xl font-semibold">尚未激活 SDK</h3>
-          <p class="mt-2 text-sm text-vscode-input-placeholder">先安装或导入一个 SDK，然后在总览页或详情页中激活它。</p>
-        </template>
+    <div class="rounded-[2rem] border border-vscode-panel-border bg-vscode-background px-6 py-6 shadow-sm">
+      <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">Overview</p>
+      <h2 class="mt-3 text-3xl font-semibold tracking-tight">已安装 SDK</h2>
+      <p class="mt-2 text-sm text-vscode-input-placeholder">
+        在同一个视图中查看本地 SDK 的真实 Git 状态，直接执行激活、分支更新和工具更新。
+      </p>
+      <div class="mt-5 flex flex-wrap gap-3">
+        <BaseButton variant="primary" @click="catalogStore.fetchList()">刷新列表</BaseButton>
+        <BaseButton variant="secondary" @click="router.push('/install')">安装或导入 SDK</BaseButton>
       </div>
     </div>
 

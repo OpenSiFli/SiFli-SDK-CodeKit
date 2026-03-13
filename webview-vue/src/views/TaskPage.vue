@@ -34,10 +34,45 @@
       </div>
 
       <div
-        v-if="task.error"
-        class="mt-5 rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+        v-if="task.status === 'succeeded'"
+        class="mt-5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-4 flex items-center gap-3 text-emerald-200"
       >
-        {{ task.error }}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-6 w-6 shrink-0"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+          <h3 class="font-semibold text-base">操作已成功完成</h3>
+          <p class="text-sm mt-0.5 opacity-90">SDK 现在可以正常使用或在其详情页中进行管理。</p>
+        </div>
+      </div>
+
+      <div
+        v-else-if="task.status === 'failed'"
+        class="mt-5 rounded-xl border border-red-500/40 bg-red-500/10 px-5 py-4 flex items-start gap-3 text-red-200"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-6 w-6 shrink-0 mt-0.5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+          <h3 class="font-semibold text-base">操作失败</h3>
+          <p class="text-sm mt-0.5 opacity-90 whitespace-pre-wrap">
+            {{ task.error || '遇到未知错误，请查看下方日志排查问题。' }}
+          </p>
+        </div>
       </div>
     </div>
 

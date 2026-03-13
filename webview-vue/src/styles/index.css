@@ -4,17 +4,7 @@
 
 :root {
   color: var(--vscode-foreground);
-  background:
-    radial-gradient(
-      circle at top left,
-      color-mix(in srgb, var(--vscode-button-background) 18%, transparent),
-      transparent 32%
-    ),
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--vscode-editor-background) 92%, white 8%),
-      var(--vscode-editor-background)
-    );
+  background: var(--vscode-editor-background);
   font-family: var(--vscode-font-family, 'Segoe UI Variable', 'SF Pro Display', 'Segoe UI', sans-serif);
   font-size: var(--vscode-font-size, 13px);
   line-height: 1.5;
@@ -33,6 +23,7 @@ body,
 
 body {
   margin: 0;
+  padding: 0;
   color: var(--vscode-foreground);
   background: transparent;
   -webkit-font-smoothing: antialiased;
@@ -52,15 +43,15 @@ a {
 
 .app-shell {
   min-height: 100vh;
-  padding: 28px 24px 32px;
+  padding: 16px 20px;
 }
 
 .shell-header {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   align-items: flex-end;
-  padding-bottom: 20px;
+  padding-bottom: 16px;
 }
 
 .eyebrow {
@@ -143,13 +134,13 @@ a {
 .page-section {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   align-items: flex-start;
 }
 

@@ -94,10 +94,6 @@ export class SdkService {
     }
 
     sdks.sort((left, right) => {
-      if (left.isCurrent !== right.isCurrent) {
-        return left.isCurrent ? -1 : 1;
-      }
-
       return left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: 'base' });
     });
 

@@ -64,45 +64,49 @@
             <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">Toolchain Source</dt>
             <dd class="mt-1 text-sm">{{ sdk.toolchainSource || '未记录，按区域默认处理' }}</dd>
           </div>
-          <div class="flex flex-wrap gap-2 text-xs">
-            <span class="rounded-full border border-vscode-panel-border px-3 py-1">{{ sdk.refType }}</span>
-            <span class="rounded-full border border-vscode-panel-border px-3 py-1">{{
-              sdk.isDirty ? 'dirty' : 'clean'
-            }}</span>
-            <span class="rounded-full border border-vscode-panel-border px-3 py-1">{{
-              sdk.hasInstallScript ? 'install.sh/ps1' : 'no install'
-            }}</span>
-            <span class="rounded-full border border-vscode-panel-border px-3 py-1">{{
-              sdk.hasExportScript ? 'export ready' : 'no export'
-            }}</span>
-          </div>
         </dl>
       </article>
     </div>
 
-    <article class="rounded-3xl border border-vscode-panel-border bg-vscode-background p-6 shadow-sm">
-      <p class="text-xs uppercase tracking-[0.24em] text-vscode-input-placeholder">Actions</p>
-      <div class="mt-5 flex flex-wrap gap-3">
-        <BaseButton v-if="sdk.actions.canSwitchRef" variant="primary" @click="switchDialogOpen = true"
-          >切换版本</BaseButton
+    <div>
+      <p class="text-xs uppercase tracking-[0.24em] text-vscode-input-placeholder mb-4">Actions</p>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <button
+          v-if="sdk.actions.canSwitchRef"
+          class="flex flex-col items-start gap-1 rounded-2xl border border-vscode-panel-border bg-vscode-background p-4 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-vscode-focus-border hover:bg-vscode-input-background/50"
+          @click="switchDialogOpen = true"
         >
-        <BaseButton
+          <span class="text-sm font-medium text-vscode-foreground">切换版本</span>
+          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">切换到其他的分支或标签</span>
+        </button>
+
+        <button
           v-if="sdk.actions.canUpdateBranch"
-          variant="secondary"
+          class="flex flex-col items-start gap-1 rounded-2xl border border-vscode-panel-border bg-vscode-background p-4 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-vscode-focus-border hover:bg-vscode-input-background/50"
           @click="requestTask({ command: 'updateBranchSdk', sdkId: sdk.id })"
         >
-          更新分支
-        </BaseButton>
-        <BaseButton variant="secondary" @click="renameDialogOpen = true">重命名目录</BaseButton>
-        <BaseButton
+          <span class="text-sm font-medium text-vscode-foreground">更新分支</span>
+          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">拉取远程代码库的最新更改</span>
+        </button>
+
+        <button
+          class="flex flex-col items-start gap-1 rounded-2xl border border-vscode-panel-border bg-vscode-background p-4 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-vscode-focus-border hover:bg-vscode-input-background/50"
+          @click="renameDialogOpen = true"
+        >
+          <span class="text-sm font-medium text-vscode-foreground">重命名目录</span>
+          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">修改本地 SDK 的文件夹名称</span>
+        </button>
+
+        <button
           v-if="sdk.actions.canUpdateTools"
-          variant="secondary"
+          class="flex flex-col items-start gap-1 rounded-2xl border border-vscode-panel-border bg-vscode-background p-4 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-vscode-focus-border hover:bg-vscode-input-background/50"
           @click="requestTask({ command: 'rerunInstallScript', sdkId: sdk.id })"
         >
-          更新工具
-        </BaseButton>
+          <span class="text-sm font-medium text-vscode-foreground">更新工具</span>
+          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">重新执行此 SDK 的安装脚本</span>
+        </button>
       </div>
-    </article>
+    </div>
 
     <SwitchSdkRefDialog
       :open="switchDialogOpen"

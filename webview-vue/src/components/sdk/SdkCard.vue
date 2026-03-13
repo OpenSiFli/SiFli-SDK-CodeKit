@@ -1,16 +1,14 @@
 <template>
-  <article class="rounded-3xl border border-vscode-panel-border bg-vscode-background p-5 shadow-sm">
+  <article
+    class="rounded-3xl border p-5 shadow-sm cursor-pointer transition-transform hover:scale-[1.01] block w-full text-left sdk-card"
+    :class="sdk.isCurrent ? 'sdk-card--active' : 'border-vscode-panel-border bg-vscode-background'"
+    @click="$emit('view')"
+  >
     <div class="flex flex-col gap-4">
       <div class="flex items-start justify-between gap-3">
         <div>
           <div class="flex flex-wrap items-center gap-2">
             <h3 class="text-lg font-semibold">{{ sdk.name }}</h3>
-            <span
-              v-if="sdk.isCurrent"
-              class="rounded-full bg-vscode-button-background px-2.5 py-1 text-[11px] uppercase tracking-[0.24em] text-vscode-button-foreground"
-            >
-              Current
-            </span>
             <span
               v-if="!sdk.valid"
               class="rounded-full border border-red-500/50 bg-red-500/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.24em] text-red-200"
@@ -20,13 +18,6 @@
           </div>
           <p class="mt-1 text-sm text-vscode-input-placeholder">{{ sdk.version }}</p>
         </div>
-
-        <button
-          class="rounded-full border border-vscode-panel-border px-3 py-1.5 text-xs text-vscode-input-placeholder transition-colors hover:border-vscode-focus-border hover:text-vscode-foreground"
-          @click="$emit('view')"
-        >
-          查看详情
-        </button>
       </div>
 
       <dl class="grid gap-3 sm:grid-cols-2">
@@ -66,21 +57,8 @@
         </div>
       </dl>
 
-      <div class="flex flex-wrap gap-2">
-        <BaseButton
-          v-if="sdk.actions.canActivate && !sdk.isCurrent"
-          variant="primary"
-          size="sm"
-          @click="$emit('activate')"
-        >
-          设为当前
-        </BaseButton>
-        <BaseButton v-if="sdk.actions.canUpdateBranch" variant="secondary" size="sm" @click="$emit('update-branch')">
-          更新分支
-        </BaseButton>
-        <BaseButton v-if="sdk.actions.canUpdateTools" variant="secondary" size="sm" @click="$emit('update-tools')">
-          更新工具
-        </BaseButton>
+      <div v-if="sdk.actions.canActivate && !sdk.isCurrent" class="flex flex-wrap gap-2 mt-1">
+        <BaseButton variant="primary" size="sm" @click.stop="$emit('activate')"> 设为当前 </BaseButton>
       </div>
     </div>
   </article>
@@ -101,3 +79,10 @@ defineEmits<{
   'update-tools': [];
 }>();
 </script>
+
+<style scoped>
+.sdk-card--active {
+  background: color-mix(in srgb, var(--vscode-button-background) 12%, transparent);
+  border-color: color-mix(in srgb, var(--vscode-button-background) 40%, transparent);
+}
+</style>
