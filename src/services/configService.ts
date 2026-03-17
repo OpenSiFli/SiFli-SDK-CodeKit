@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { SiFliConfig, SdkVersion, SdkConfig, LegacySiFliConfig } from '../types';
+import { SiFliConfig, SdkVersion, SdkConfig, LegacySiFliConfig, ToolchainSource } from '../types';
 import { WorkspaceStateService } from './workspaceStateService';
 import { CONFIG_MIGRATION_VERSIONS } from '../constants';
 import { LogService } from './logService';
@@ -242,18 +242,33 @@ export class ConfigService {
     return this._config.sdkConfigs.map(config => config.path);
   }
 
+  public getSdkConfigs(): SdkConfig[] {
+    return [...this._config.sdkConfigs];
+  }
+
   /**
    * 添加SDK配置
    */
-  public async addSdkConfig(sdkPath: string, toolsPath?: string): Promise<void> {
+  public async addSdkConfig(sdkPath: string, toolsPath?: string, toolchainSource?: ToolchainSource): Promise<void> {
     const updatedConfigs = [...this._config.sdkConfigs];
     // 检查是否已存在
     const existingIndex = updatedConfigs.findIndex(config => config.path === sdkPath);
     if (existingIndex === -1) {
-      updatedConfigs.push({ path: sdkPath, toolsPath });
+      const nextConfig: SdkConfig = { path: sdkPath };
+      if (toolsPath !== undefined) {
+        nextConfig.toolsPath = toolsPath;
+      }
+      if (toolchainSource !== undefined) {
+        nextConfig.toolchainSource = toolchainSource;
+      }
+      updatedConfigs.push(nextConfig);
     } else {
       // 更新现有配置
-      updatedConfigs[existingIndex] = { ...updatedConfigs[existingIndex], toolsPath };
+      updatedConfigs[existingIndex] = {
+        ...updatedConfigs[existingIndex],
+        ...(toolsPath !== undefined ? { toolsPath } : {}),
+        ...(toolchainSource !== undefined ? { toolchainSource } : {}),
+      };
     }
     await this.updateConfigValue('sdkConfigs', updatedConfigs);
   }
@@ -302,6 +317,40 @@ export class ConfigService {
       // 移除工具链路径，但保留SDK配置
       updatedConfigs[existingIndex] = { ...updatedConfigs[existingIndex], toolsPath: undefined };
     }
+    await this.updateConfigValue('sdkConfigs', updatedConfigs);
+  }
+
+  public getSdkToolchainSource(sdkPath: string): ToolchainSource | undefined {
+    const config = this._config.sdkConfigs.find(item => item.path === sdkPath);
+    return config?.toolchainSource;
+  }
+
+  public async setSdkToolchainSource(sdkPath: string, toolchainSource: ToolchainSource): Promise<void> {
+    const updatedConfigs = [...this._config.sdkConfigs];
+    const existingIndex = updatedConfigs.findIndex(config => config.path === sdkPath);
+
+    if (existingIndex === -1) {
+      updatedConfigs.push({ path: sdkPath, toolchainSource });
+    } else {
+      updatedConfigs[existingIndex] = { ...updatedConfigs[existingIndex], toolchainSource };
+    }
+
+    await this.updateConfigValue('sdkConfigs', updatedConfigs);
+  }
+
+  public async renameSdkPath(oldPath: string, newPath: string): Promise<void> {
+    const updatedConfigs = [...this._config.sdkConfigs];
+    const existingIndex = updatedConfigs.findIndex(config => config.path === oldPath);
+
+    if (existingIndex === -1) {
+      return;
+    }
+
+    updatedConfigs[existingIndex] = {
+      ...updatedConfigs[existingIndex],
+      path: newPath,
+    };
+
     await this.updateConfigValue('sdkConfigs', updatedConfigs);
   }
 

@@ -1,15 +1,43 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawn, ChildProcess } from 'child_process';
+import { ChildProcess, spawn } from 'child_process';
 import axios from 'axios';
-import { SdkRelease, SdkBranch } from '../types';
+import { GitSdkMetadata, SdkBranch, SdkRelease } from '../types';
 import { GIT_REPOS } from '../constants';
+
+type ProgressSource = 'stdout' | 'stderr';
+
+interface GitCommandOptions {
+  cwd?: string;
+  timeoutMs?: number;
+  onProgress?: (line: string, source: ProgressSource) => void;
+}
+
+interface GitCommandResult {
+  stdout: string;
+  stderr: string;
+  code: number;
+}
+
+class GitCommandError extends Error {
+  public readonly code: number | null;
+  public readonly stdout: string;
+  public readonly stderr: string;
+
+  constructor(message: string, code: number | null, stdout: string, stderr: string) {
+    super(message);
+    this.name = 'GitCommandError';
+    this.code = code;
+    this.stdout = stdout;
+    this.stderr = stderr;
+  }
+}
 
 export class GitService {
   private static instance: GitService;
-  private gitOutputChannel: vscode.OutputChannel;
-  private activeProcesses: Map<string, ChildProcess> = new Map(); // 跟踪活跃的Git进程
+  private readonly gitOutputChannel: vscode.OutputChannel;
+  private readonly activeProcesses = new Map<string, ChildProcess>();
 
   private constructor() {
     this.gitOutputChannel = vscode.window.createOutputChannel('SiFli SDK Git Operations');
@@ -26,97 +54,44 @@ export class GitService {
     return this.gitOutputChannel;
   }
 
-  /**
-   * 终止所有活跃的Git进程
-   */
   public terminateAllProcesses(): void {
-    console.log(`[GitService] Terminating ${this.activeProcesses.size} active processes...`);
     this.gitOutputChannel.appendLine(`[Git] Terminating ${this.activeProcesses.size} active processes...`);
 
     for (const [processId, process] of this.activeProcesses) {
       try {
         if (!process.killed) {
-          console.log(`[GitService] Killing process ${processId}...`);
           this.gitOutputChannel.appendLine(`[Git] Killing process ${processId}...`);
           process.kill('SIGTERM');
 
-          // 如果进程在3秒内没有退出，使用SIGKILL强制终止
           setTimeout(() => {
             if (!process.killed) {
-              console.log(`[GitService] Force killing process ${processId}...`);
               this.gitOutputChannel.appendLine(`[Git] Force killing process ${processId}...`);
               process.kill('SIGKILL');
             }
           }, 3000);
         }
       } catch (error) {
-        console.error(`[GitService] Error terminating process ${processId}:`, error);
-        this.gitOutputChannel.appendLine(`[Git] Error terminating process ${processId}: ${error}`);
+        this.gitOutputChannel.appendLine(`[Git] Error terminating process ${processId}: ${String(error)}`);
       }
     }
 
     this.activeProcesses.clear();
   }
 
-  /**
-   * 移除已完成的进程
-   */
-  private removeProcess(processId: string): void {
-    this.activeProcesses.delete(processId);
-    console.log(`[GitService] Removed process ${processId}, ${this.activeProcesses.size} processes remaining`);
-  }
-
-  /**
-   * 检查 Git 是否已安装
-   */
   public async isGitInstalled(): Promise<boolean> {
     try {
-      return new Promise(resolve => {
-        const gitProcess = spawn('git', ['--version'], {
-          stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        // 为版本检查进程生成ID
-        const processId = `version-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        this.activeProcesses.set(processId, gitProcess);
-
-        gitProcess.on('close', code => {
-          this.removeProcess(processId);
-          resolve(code === 0);
-        });
-
-        gitProcess.on('error', () => {
-          this.removeProcess(processId);
-          resolve(false);
-        });
-
-        // 版本检查超时
-        setTimeout(() => {
-          if (this.activeProcesses.has(processId) && !gitProcess.killed) {
-            gitProcess.kill();
-            this.removeProcess(processId);
-            resolve(false);
-          }
-        }, 5000); // 5秒超时
-      });
-    } catch (error) {
-      console.error(`[GitService] Git is not installed or not in PATH: ${error}`);
-      this.gitOutputChannel.appendLine(`[GitService] Git is not installed: ${error}`);
+      await this.runGit(['--version'], { timeoutMs: 5000 });
+      return true;
+    } catch {
       return false;
     }
   }
 
-  /**
-   * 获取 SiFli SDK 发布版本列表
-   */
   public async fetchSiFliSdkReleases(source: 'github' | 'gitee'): Promise<SdkRelease[]> {
     try {
       const apiUrl =
         source === 'github' ? `${GIT_REPOS.GITHUB.API_BASE}/releases` : `${GIT_REPOS.GITEE.API_BASE}/releases`;
 
-      console.log(`[GitService] Fetching releases from: ${apiUrl}`);
-      this.gitOutputChannel.appendLine(`[GitService] Fetching releases from: ${apiUrl}`);
-
       const response = await axios.get(apiUrl, {
         timeout: 10000,
         headers: {
@@ -124,50 +99,31 @@ export class GitService {
         },
       });
 
-      console.log(`[GitService] Response status: ${response.status}, data length: ${response.data.length}`);
-      this.gitOutputChannel.appendLine(
-        `[GitService] Response status: ${response.status}, data length: ${response.data.length}`
-      );
-
       if (source === 'github') {
-        const releases = response.data.map((release: any) => ({
+        return response.data.map((release: any) => ({
           tagName: release.tag_name,
           name: release.name,
           publishedAt: release.published_at,
           prerelease: release.prerelease || false,
         }));
-        console.log(`[GitService] Processed ${releases.length} GitHub releases`);
-        this.gitOutputChannel.appendLine(`[GitService] Processed ${releases.length} GitHub releases`);
-        return releases;
-      } else {
-        // Gitee API format
-        const releases = response.data.map((release: any) => ({
-          tagName: release.tag_name,
-          name: release.name,
-          publishedAt: release.created_at,
-          prerelease: false,
-        }));
-        console.log(`[GitService] Processed ${releases.length} Gitee releases`);
-        this.gitOutputChannel.appendLine(`[GitService] Processed ${releases.length} Gitee releases`);
-        return releases;
       }
+
+      return response.data.map((release: any) => ({
+        tagName: release.tag_name,
+        name: release.name,
+        publishedAt: release.created_at,
+        prerelease: false,
+      }));
     } catch (error) {
-      console.error(`[GitService] Error fetching releases from ${source}:`, error);
-      this.gitOutputChannel.appendLine(`[GitService] Error fetching releases from ${source}: ${error}`);
-      throw new Error(`无法获取 ${source} 发布版本: ${error}`);
+      this.gitOutputChannel.appendLine(`[Git] Failed to fetch releases from ${source}: ${String(error)}`);
+      throw new Error(`无法获取 ${source} 发布版本: ${String(error)}`);
     }
   }
 
-  /**
-   * 获取 SiFli SDK 分支列表
-   */
   public async fetchSiFliSdkBranches(source: 'github' | 'gitee'): Promise<SdkBranch[]> {
     try {
       const apiUrl =
         source === 'github' ? `${GIT_REPOS.GITHUB.API_BASE}/branches` : `${GIT_REPOS.GITEE.API_BASE}/branches`;
-
-      console.log(`[GitService] Fetching branches from: ${apiUrl}`);
-      this.gitOutputChannel.appendLine(`[GitService] Fetching branches from: ${apiUrl}`);
 
       const response = await axios.get(apiUrl, {
         timeout: 10000,
@@ -176,32 +132,19 @@ export class GitService {
         },
       });
 
-      console.log(`[GitService] Response status: ${response.status}, data length: ${response.data.length}`);
-      this.gitOutputChannel.appendLine(
-        `[GitService] Response status: ${response.status}, data length: ${response.data.length}`
-      );
-
-      const branches = response.data.map((branch: any) => ({
+      return response.data.map((branch: any) => ({
         name: branch.name,
         commit: {
           sha: branch.commit.sha,
           url: branch.commit.url,
         },
       }));
-
-      console.log(`[GitService] Processed ${branches.length} branches`);
-      this.gitOutputChannel.appendLine(`[GitService] Processed ${branches.length} branches`);
-      return branches;
     } catch (error) {
-      console.error(`[GitService] Error fetching branches from ${source}:`, error);
-      this.gitOutputChannel.appendLine(`[GitService] Error fetching branches from ${source}: ${error}`);
-      throw new Error(`无法获取 ${source} 分支列表: ${error}`);
+      this.gitOutputChannel.appendLine(`[Git] Failed to fetch branches from ${source}: ${String(error)}`);
+      throw new Error(`无法获取 ${source} 分支列表: ${String(error)}`);
     }
   }
 
-  /**
-   * 使用原生 Git 命令克隆仓库（备用方案）
-   */
   public async cloneRepositoryNative(
     repoUrl: string,
     localPath: string,
@@ -211,111 +154,26 @@ export class GitService {
       onProgress?: (progress: string) => void;
     }
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      console.log(`[GitService] Using native git clone as fallback...`);
-      this.gitOutputChannel.appendLine(`[Git] Native clone: ${repoUrl} to ${localPath}`);
+    const args = ['clone', '--recursive', '--progress'];
 
-      // 构建 Git 命令
-      const args = ['clone', '--recursive', '--progress'];
+    if (options?.branch) {
+      args.push('--branch', options.branch);
+    }
 
-      if (options?.branch) {
-        args.push('--branch', options.branch);
-      }
+    if (options?.depth) {
+      args.push('--depth', options.depth.toString());
+    }
 
-      if (options?.depth) {
-        args.push('--depth', options.depth.toString());
-      }
+    args.push(repoUrl, localPath);
 
-      args.push(repoUrl, localPath);
-
-      console.log(`[GitService] Native git command: git ${args.join(' ')}`);
-      this.gitOutputChannel.appendLine(`[Git] Command: git ${args.join(' ')}`);
-
-      const gitProcess = spawn('git', args, {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-
-      // 生成进程ID并跟踪进程
-      const processId = `clone-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      this.activeProcesses.set(processId, gitProcess);
-      console.log(`[GitService] Started clone process ${processId}`);
-
-      let hasError = false;
-      let errorOutput = '';
-      let stdOutput = '';
-
-      gitProcess.stdout?.on('data', (data: Buffer) => {
-        const output = data.toString();
-        stdOutput += output;
-        console.log(`[GitService] Native clone stdout: ${output.trim()}`);
-        this.gitOutputChannel.append(output);
-        if (options?.onProgress) {
-          options.onProgress(output.trim());
-        }
-      });
-
-      gitProcess.stderr?.on('data', (data: Buffer) => {
-        const output = data.toString();
-        errorOutput += output;
-        console.log(`[GitService] Native clone stderr: ${output.trim()}`);
-        this.gitOutputChannel.append(output);
-
-        // Git 的进度信息通常通过 stderr 输出
-        if (output.toLowerCase().includes('error') || output.toLowerCase().includes('fatal')) {
-          hasError = true;
-        }
-
-        if (options?.onProgress) {
-          options.onProgress(output.trim());
-        }
-      });
-
-      gitProcess.on('close', (code: number) => {
-        console.log(`[GitService] Native clone process ${processId} exited with code: ${code}`);
-        this.gitOutputChannel.appendLine(`[Git] Process ${processId} exited with code: ${code}`);
-
-        // 从活跃进程列表中移除
-        this.removeProcess(processId);
-
-        if (code === 0 && !hasError) {
-          resolve();
-        } else {
-          const errorMessage = `Git clone 命令执行失败，退出代码: ${code}`;
-          const detailedError = errorOutput.trim() || stdOutput.trim() || '无详细错误信息';
-          console.error(`[GitService] Git clone failed. Error output: ${detailedError}`);
-          this.gitOutputChannel.appendLine(`[Git] Error details: ${detailedError}`);
-          reject(new Error(`${errorMessage}\n详细错误: ${detailedError}`));
-        }
-      });
-
-      gitProcess.on('error', (error: Error) => {
-        console.error(`[GitService] Native clone process ${processId} error:`, error);
-        this.gitOutputChannel.appendLine(`[Git] Process ${processId} error: ${error.message}`);
-
-        // 从活跃进程列表中移除
-        this.removeProcess(processId);
-        reject(error);
-      });
-
-      // 设置超时
-      setTimeout(
-        () => {
-          if (this.activeProcesses.has(processId) && !gitProcess.killed) {
-            console.log(`[GitService] Native clone timeout, killing process ${processId}...`);
-            this.gitOutputChannel.appendLine(`[Git] Process ${processId} timeout, killing...`);
-            gitProcess.kill();
-            this.removeProcess(processId);
-            reject(new Error('Git clone 操作超时'));
-          }
-        },
-        10 * 60 * 1000
-      ); // 10分钟超时
+    await this.runGit(args, {
+      onProgress: line => {
+        options?.onProgress?.(line);
+      },
+      timeoutMs: 10 * 60 * 1000,
     });
   }
 
-  /**
-   * 克隆仓库
-   */
   public async cloneRepository(
     repoUrl: string,
     localPath: string,
@@ -325,316 +183,78 @@ export class GitService {
       onProgress?: (progress: string) => void;
     }
   ): Promise<void> {
+    const parentDir = path.dirname(localPath);
+    if (!fs.existsSync(parentDir)) {
+      fs.mkdirSync(parentDir, { recursive: true });
+    }
+
+    if (fs.existsSync(localPath)) {
+      fs.rmSync(localPath, { recursive: true, force: true });
+    }
+
+    let finalBranchName = options?.branch;
+    if (finalBranchName === 'latest') {
+      finalBranchName = 'main';
+    }
+
     try {
-      console.log(`[GitService] Starting clone operation...`);
-      console.log(`[GitService] Repository URL: ${repoUrl}`);
-      console.log(`[GitService] Local path: ${localPath}`);
-      console.log(`[GitService] Options:`, options);
-
-      this.gitOutputChannel.appendLine(`[Git] Cloning repository: ${repoUrl} to ${localPath}`);
-
-      // 检查父目录是否存在，如果不存在则创建
-      const parentDir = path.dirname(localPath);
-      if (!fs.existsSync(parentDir)) {
-        console.log(`[GitService] Creating parent directory: ${parentDir}`);
-        fs.mkdirSync(parentDir, { recursive: true });
-      }
-
-      // 如果目标目录已存在，先删除它
-      if (fs.existsSync(localPath)) {
-        console.log(`[GitService] Target directory exists, removing: ${localPath}`);
-        this.gitOutputChannel.appendLine(`[Git] Removing existing directory: ${localPath}`);
-        fs.rmSync(localPath, { recursive: true, force: true });
-      }
-
-      // === 核心修改部分 ===
-      // 在调用 native Git 命令前，检查并修正分支名
-      let finalBranchName = options?.branch;
-      if (finalBranchName === 'latest') {
-        finalBranchName = 'main';
-        console.log(`[GitService] Correcting branch name from 'latest' to 'main' for git clone.`);
-        this.gitOutputChannel.appendLine(`[Git] Correcting branch name: 'latest' -> 'main'`);
-      }
-      // ====================
-
-      // 使用修正后的分支名来调用 native Git 命令
       await this.cloneRepositoryNative(repoUrl, localPath, {
         ...options,
         branch: finalBranchName,
       });
-
-      console.log(`[GitService] Clone operation completed successfully`);
-      this.gitOutputChannel.appendLine(`[Git] Successfully cloned repository to ${localPath}`);
-
-      // 验证克隆结果
-      if (fs.existsSync(localPath)) {
-        console.log(`[GitService] Clone verification: directory exists`);
-        const files = fs.readdirSync(localPath);
-        console.log(`[GitService] Clone verification: ${files.length} files/directories found`);
-        this.gitOutputChannel.appendLine(`[Git] Clone verification: ${files.length} items in directory`);
-      } else {
-        throw new Error('克隆完成但目标目录不存在');
-      }
     } catch (error) {
-      console.error(`[GitService] Clone operation failed:`, error);
-      this.gitOutputChannel.appendLine(`[Git] Clone failed: ${error}`);
-
-      // 提供更详细的错误信息
-      if (error instanceof Error) {
-        throw new Error(`克隆仓库失败: ${error.message}`);
-      } else {
-        throw new Error(`克隆仓库失败: ${String(error)}`);
-      }
+      throw new Error(`克隆仓库失败: ${this.formatError(error)}`);
     }
   }
 
-  /**
-   * 切换分支 - 使用 native Git 命令
-   */
   public async checkoutBranch(repoPath: string, branchName: string): Promise<void> {
     try {
-      this.gitOutputChannel.appendLine(`[Git] Checking out branch: ${branchName} in ${repoPath}`);
-
-      return new Promise((resolve, reject) => {
-        const gitProcess = spawn('git', ['checkout', branchName], {
-          cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        let errorOutput = '';
-
-        gitProcess.stderr?.on('data', (data: Buffer) => {
-          errorOutput += data.toString();
-        });
-
-        gitProcess.on('close', (code: number) => {
-          if (code === 0) {
-            this.gitOutputChannel.appendLine(`[Git] Successfully checked out branch: ${branchName}`);
-            resolve();
-          } else {
-            this.gitOutputChannel.appendLine(`[Git] Checkout failed: ${errorOutput}`);
-            reject(new Error(`切换分支失败: ${errorOutput}`));
-          }
-        });
-
-        gitProcess.on('error', (error: Error) => {
-          this.gitOutputChannel.appendLine(`[Git] Checkout process error: ${error.message}`);
-          reject(error);
-        });
-      });
+      await this.runGit(['checkout', branchName], { cwd: repoPath });
     } catch (error) {
-      this.gitOutputChannel.appendLine(`[Git] Checkout failed: ${error}`);
-      throw new Error(`切换分支失败: ${error}`);
+      throw new Error(this.formatError(error));
     }
   }
 
-  /**
-   * 拉取最新代码 - 使用 native Git 命令
-   */
   public async pullLatest(repoPath: string): Promise<void> {
     try {
-      this.gitOutputChannel.appendLine(`[Git] Pulling latest changes in ${repoPath}`);
-
-      return new Promise((resolve, reject) => {
-        const gitProcess = spawn('git', ['pull'], {
-          cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        let errorOutput = '';
-        let stdOutput = '';
-
-        gitProcess.stdout?.on('data', (data: Buffer) => {
-          stdOutput += data.toString();
-        });
-
-        gitProcess.stderr?.on('data', (data: Buffer) => {
-          errorOutput += data.toString();
-        });
-
-        gitProcess.on('close', (code: number) => {
-          if (code === 0) {
-            this.gitOutputChannel.appendLine(`[Git] Successfully pulled latest changes`);
-            resolve();
-          } else {
-            this.gitOutputChannel.appendLine(`[Git] Pull failed: ${errorOutput}`);
-            reject(new Error(`拉取代码失败: ${errorOutput}`));
-          }
-        });
-
-        gitProcess.on('error', (error: Error) => {
-          this.gitOutputChannel.appendLine(`[Git] Pull process error: ${error.message}`);
-          reject(error);
-        });
-      });
+      await this.runGit(['pull'], { cwd: repoPath });
     } catch (error) {
-      this.gitOutputChannel.appendLine(`[Git] Pull failed: ${error}`);
-      throw new Error(`拉取代码失败: ${error}`);
+      throw new Error(this.formatError(error));
     }
   }
 
-  /**
-   * 获取当前分支名 - 使用 native Git 命令
-   */
   public async getCurrentBranch(repoPath: string): Promise<string> {
-    try {
-      return new Promise((resolve, reject) => {
-        const gitProcess = spawn('git', ['branch', '--show-current'], {
-          cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        let stdOutput = '';
-        let errorOutput = '';
-
-        gitProcess.stdout?.on('data', (data: Buffer) => {
-          stdOutput += data.toString();
-        });
-
-        gitProcess.stderr?.on('data', (data: Buffer) => {
-          errorOutput += data.toString();
-        });
-
-        gitProcess.on('close', (code: number) => {
-          if (code === 0) {
-            const branchName = stdOutput.trim() || 'unknown';
-            resolve(branchName);
-          } else {
-            this.gitOutputChannel.appendLine(`[Git] Get current branch failed: ${errorOutput}`);
-            reject(new Error(`获取当前分支失败: ${errorOutput}`));
-          }
-        });
-
-        gitProcess.on('error', (error: Error) => {
-          this.gitOutputChannel.appendLine(`[Git] Get current branch process error: ${error.message}`);
-          reject(error);
-        });
-      });
-    } catch (error) {
-      this.gitOutputChannel.appendLine(`[Git] Get current branch failed: ${error}`);
-      throw new Error(`获取当前分支失败: ${error}`);
-    }
+    const result = await this.runGit(['branch', '--show-current'], { cwd: repoPath });
+    return result.stdout.trim() || 'unknown';
   }
 
-  /**
-   * 获取本地分支列表 - 使用 native Git 命令
-   */
   public async getLocalBranches(repoPath: string): Promise<string[]> {
-    try {
-      return new Promise((resolve, reject) => {
-        const gitProcess = spawn('git', ['branch', '--format=%(refname:short)'], {
-          cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        let stdOutput = '';
-        let errorOutput = '';
-
-        gitProcess.stdout?.on('data', (data: Buffer) => {
-          stdOutput += data.toString();
-        });
-
-        gitProcess.stderr?.on('data', (data: Buffer) => {
-          errorOutput += data.toString();
-        });
-
-        gitProcess.on('close', (code: number) => {
-          if (code === 0) {
-            const branches = stdOutput
-              .trim()
-              .split('\n')
-              .filter(branch => branch.length > 0);
-            resolve(branches);
-          } else {
-            this.gitOutputChannel.appendLine(`[Git] Get local branches failed: ${errorOutput}`);
-            reject(new Error(`获取本地分支失败: ${errorOutput}`));
-          }
-        });
-
-        gitProcess.on('error', (error: Error) => {
-          this.gitOutputChannel.appendLine(`[Git] Get local branches process error: ${error.message}`);
-          reject(error);
-        });
-      });
-    } catch (error) {
-      this.gitOutputChannel.appendLine(`[Git] Get local branches failed: ${error}`);
-      throw new Error(`获取本地分支失败: ${error}`);
-    }
+    const result = await this.runGit(['branch', '--format=%(refname:short)'], { cwd: repoPath });
+    return result.stdout
+      .trim()
+      .split('\n')
+      .map(item => item.trim())
+      .filter(Boolean);
   }
 
-  /**
-   * 获取远程分支列表 - 使用 native Git 命令
-   */
   public async getRemoteBranches(repoPath: string): Promise<string[]> {
-    try {
-      return new Promise((resolve, reject) => {
-        const gitProcess = spawn('git', ['branch', '-r', '--format=%(refname:short)'], {
-          cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        let stdOutput = '';
-        let errorOutput = '';
-
-        gitProcess.stdout?.on('data', (data: Buffer) => {
-          stdOutput += data.toString();
-        });
-
-        gitProcess.stderr?.on('data', (data: Buffer) => {
-          errorOutput += data.toString();
-        });
-
-        gitProcess.on('close', (code: number) => {
-          if (code === 0) {
-            const branches = stdOutput
-              .trim()
-              .split('\n')
-              .filter(branch => branch.length > 0 && !branch.includes('HEAD'));
-            resolve(branches);
-          } else {
-            this.gitOutputChannel.appendLine(`[Git] Get remote branches failed: ${errorOutput}`);
-            reject(new Error(`获取远程分支失败: ${errorOutput}`));
-          }
-        });
-
-        gitProcess.on('error', (error: Error) => {
-          this.gitOutputChannel.appendLine(`[Git] Get remote branches process error: ${error.message}`);
-          reject(error);
-        });
-      });
-    } catch (error) {
-      this.gitOutputChannel.appendLine(`[Git] Get remote branches failed: ${error}`);
-      throw new Error(`获取远程分支失败: ${error}`);
-    }
+    const result = await this.runGit(['branch', '-r', '--format=%(refname:short)'], { cwd: repoPath });
+    return result.stdout
+      .trim()
+      .split('\n')
+      .map(item => item.trim())
+      .filter(item => item.length > 0 && !item.includes('HEAD'));
   }
 
-  /**
-   * 检查仓库是否存在 - 使用 native Git 命令
-   */
   public async isRepository(repoPath: string): Promise<boolean> {
     try {
-      return new Promise(resolve => {
-        const gitProcess = spawn('git', ['status'], {
-          cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        gitProcess.on('close', (code: number) => {
-          resolve(code === 0);
-        });
-
-        gitProcess.on('error', () => {
-          resolve(false);
-        });
-      });
-    } catch (error) {
+      const result = await this.runGit(['rev-parse', '--is-inside-work-tree'], { cwd: repoPath });
+      return result.stdout.trim() === 'true';
+    } catch {
       return false;
     }
   }
 
-  /**
-   * 获取仓库状态 - 使用 native Git 命令
-   */
   public async getRepositoryStatus(repoPath: string): Promise<{
     current: string;
     ahead: number;
@@ -643,126 +263,303 @@ export class GitService {
     created: string[];
     deleted: string[];
   }> {
-    try {
-      // 获取当前分支
-      const currentBranch = await this.getCurrentBranch(repoPath);
+    const currentBranch = await this.getCurrentBranch(repoPath);
+    const result = await this.runGit(['status', '--porcelain'], { cwd: repoPath });
 
-      // 获取状态信息
-      return new Promise((resolve, reject) => {
-        const gitProcess = spawn('git', ['status', '--porcelain'], {
-          cwd: repoPath,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        });
+    const modified: string[] = [];
+    const created: string[] = [];
+    const deleted: string[] = [];
 
-        let stdOutput = '';
-        let errorOutput = '';
+    result.stdout
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .forEach(line => {
+        const status = line.substring(0, 2);
+        const filename = line.substring(3);
 
-        gitProcess.stdout?.on('data', (data: Buffer) => {
-          stdOutput += data.toString();
-        });
-
-        gitProcess.stderr?.on('data', (data: Buffer) => {
-          errorOutput += data.toString();
-        });
-
-        gitProcess.on('close', (code: number) => {
-          if (code === 0) {
-            const lines = stdOutput
-              .trim()
-              .split('\n')
-              .filter(line => line.length > 0);
-            const modified: string[] = [];
-            const created: string[] = [];
-            const deleted: string[] = [];
-
-            lines.forEach(line => {
-              const status = line.substring(0, 2);
-              const filename = line.substring(3);
-
-              if (status.includes('M')) {
-                modified.push(filename);
-              } else if (status.includes('A') || status.includes('?')) {
-                created.push(filename);
-              } else if (status.includes('D')) {
-                deleted.push(filename);
-              }
-            });
-
-            resolve({
-              current: currentBranch,
-              ahead: 0, // 简化实现，不计算 ahead/behind
-              behind: 0,
-              modified,
-              created,
-              deleted,
-            });
-          } else {
-            this.gitOutputChannel.appendLine(`[Git] Get repository status failed: ${errorOutput}`);
-            reject(new Error(`获取仓库状态失败: ${errorOutput}`));
-          }
-        });
-
-        gitProcess.on('error', (error: Error) => {
-          this.gitOutputChannel.appendLine(`[Git] Get repository status process error: ${error.message}`);
-          reject(error);
-        });
+        if (status.includes('M')) {
+          modified.push(filename);
+        } else if (status.includes('A') || status.includes('?')) {
+          created.push(filename);
+        } else if (status.includes('D')) {
+          deleted.push(filename);
+        }
       });
-    } catch (error) {
-      this.gitOutputChannel.appendLine(`[Git] Get repository status failed: ${error}`);
-      throw new Error(`获取仓库状态失败: ${error}`);
-    }
+
+    return {
+      current: currentBranch,
+      ahead: 0,
+      behind: 0,
+      modified,
+      created,
+      deleted,
+    };
   }
 
-  /**
-   * 执行自定义 Git 命令 - 使用 native Git
-   */
   public async executeGitCommand(command: string, args: string[], cwd: string): Promise<string> {
+    if (command !== 'git') {
+      throw new Error(`Unsupported git command executable: ${command}`);
+    }
+
+    const result = await this.runGit(args, { cwd });
+    return result.stdout;
+  }
+
+  public async getSdkMetadata(repoPath: string): Promise<GitSdkMetadata> {
+    const isGitRepo = await this.isRepository(repoPath);
+    if (!isGitRepo) {
+      return {
+        isGitRepo: false,
+        ref: 'non-git',
+        refType: 'unknown',
+        hash: '',
+        isDirty: false,
+      };
+    }
+
+    const branchName = await this.tryGetOutput(repoPath, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+    const exactTag = await this.tryGetOutput(repoPath, ['describe', '--tags', '--exact-match']);
+    const hash = (await this.runGit(['rev-parse', 'HEAD'], { cwd: repoPath })).stdout.trim();
+    const status = (await this.runGit(['status', '--porcelain'], { cwd: repoPath })).stdout.trim();
+    const trackedBranchRaw = await this.tryGetOutput(repoPath, [
+      'rev-parse',
+      '--abbrev-ref',
+      '--symbolic-full-name',
+      '@{u}',
+    ]);
+    const origin = await this.tryGetOutput(repoPath, ['remote', 'get-url', 'origin']);
+
+    let ref = 'detached';
+    let refType: GitSdkMetadata['refType'] = 'detached';
+
+    if (branchName) {
+      ref = branchName;
+      refType = 'branch';
+    } else if (exactTag) {
+      ref = exactTag;
+      refType = 'tag';
+    }
+
+    return {
+      isGitRepo: true,
+      ref,
+      refType,
+      hash,
+      isDirty: status.length > 0,
+      trackedBranch: trackedBranchRaw || undefined,
+      origin: origin || undefined,
+      branchName: branchName || undefined,
+      exactTag: exactTag || undefined,
+    };
+  }
+
+  public async localBranchExists(repoPath: string, branchName: string): Promise<boolean> {
     try {
-      this.gitOutputChannel.appendLine(`[Git] Executing: ${command} ${args.join(' ')}`);
-      this.gitOutputChannel.appendLine(`[Git] Working directory: ${cwd}`);
-
-      return new Promise((resolve, reject) => {
-        const gitProcess = spawn('git', args, {
-          cwd: cwd,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        let stdOutput = '';
-        let errorOutput = '';
-
-        gitProcess.stdout?.on('data', (data: Buffer) => {
-          stdOutput += data.toString();
-        });
-
-        gitProcess.stderr?.on('data', (data: Buffer) => {
-          errorOutput += data.toString();
-        });
-
-        gitProcess.on('close', (code: number) => {
-          if (code === 0) {
-            this.gitOutputChannel.appendLine(`[Git] Command completed successfully`);
-            resolve(stdOutput);
-          } else {
-            this.gitOutputChannel.appendLine(`[Git] Command failed: ${errorOutput}`);
-            reject(new Error(`Git 命令执行失败: ${errorOutput}`));
-          }
-        });
-
-        gitProcess.on('error', (error: Error) => {
-          this.gitOutputChannel.appendLine(`[Git] Command process error: ${error.message}`);
-          reject(error);
-        });
-      });
-    } catch (error) {
-      this.gitOutputChannel.appendLine(`[Git] Command failed: ${error}`);
-      throw new Error(`Git 命令执行失败: ${error}`);
+      await this.runGit(['show-ref', '--verify', '--quiet', `refs/heads/${branchName}`], { cwd: repoPath });
+      return true;
+    } catch {
+      return false;
     }
   }
 
-  /**
-   * 清理资源
-   */
+  public async fetchOrigin(
+    repoPath: string,
+    refspecs: string[] = [],
+    onProgress?: (line: string) => void
+  ): Promise<void> {
+    await this.runGit(['fetch', '--prune', '--tags', 'origin', ...refspecs], {
+      cwd: repoPath,
+      onProgress: line => onProgress?.(line),
+      timeoutMs: 10 * 60 * 1000,
+    });
+  }
+
+  public async checkoutRef(repoPath: string, ref: string, onProgress?: (line: string) => void): Promise<void> {
+    await this.runGit(['checkout', ref], {
+      cwd: repoPath,
+      onProgress: line => onProgress?.(line),
+      timeoutMs: 10 * 60 * 1000,
+    });
+  }
+
+  public async checkoutOrCreateTrackingBranch(
+    repoPath: string,
+    branchName: string,
+    onProgress?: (line: string) => void
+  ): Promise<void> {
+    const exists = await this.localBranchExists(repoPath, branchName);
+    const args = exists ? ['checkout', branchName] : ['checkout', '-b', branchName, '--track', `origin/${branchName}`];
+
+    await this.runGit(args, {
+      cwd: repoPath,
+      onProgress: line => onProgress?.(line),
+      timeoutMs: 10 * 60 * 1000,
+    });
+  }
+
+  public async mergeFastForward(repoPath: string, target: string, onProgress?: (line: string) => void): Promise<void> {
+    await this.runGit(['merge', '--ff-only', target], {
+      cwd: repoPath,
+      onProgress: line => onProgress?.(line),
+      timeoutMs: 10 * 60 * 1000,
+    });
+  }
+
+  public async syncSubmodules(repoPath: string, onProgress?: (line: string) => void): Promise<void> {
+    await this.runGit(['submodule', 'sync', '--recursive'], {
+      cwd: repoPath,
+      onProgress: line => onProgress?.(line),
+      timeoutMs: 10 * 60 * 1000,
+    });
+
+    await this.runGit(['submodule', 'update', '--init', '--recursive'], {
+      cwd: repoPath,
+      onProgress: line => onProgress?.(line),
+      timeoutMs: 10 * 60 * 1000,
+    });
+  }
+
+  public async updateBranchToLatest(
+    repoPath: string,
+    branchName: string,
+    onProgress?: (line: string) => void
+  ): Promise<void> {
+    const metadata = await this.getSdkMetadata(repoPath);
+    if (metadata.isDirty) {
+      throw new Error('本地工作区有未提交改动，无法更新分支。');
+    }
+
+    await this.fetchOrigin(repoPath, [branchName], onProgress);
+    await this.mergeFastForward(repoPath, 'FETCH_HEAD', onProgress);
+    await this.syncSubmodules(repoPath, onProgress);
+  }
+
+  public async switchToBranchRef(
+    repoPath: string,
+    branchName: string,
+    onProgress?: (line: string) => void
+  ): Promise<void> {
+    await this.fetchOrigin(repoPath, [], onProgress);
+    await this.checkoutOrCreateTrackingBranch(repoPath, branchName, onProgress);
+    await this.mergeFastForward(repoPath, `origin/${branchName}`, onProgress);
+    await this.syncSubmodules(repoPath, onProgress);
+  }
+
+  public async switchToTagRef(repoPath: string, tagRef: string, onProgress?: (line: string) => void): Promise<void> {
+    await this.fetchOrigin(repoPath, [], onProgress);
+
+    const normalizedTagRef = tagRef.startsWith('refs/tags/') ? tagRef : `refs/tags/${tagRef}`;
+    await this.checkoutRef(repoPath, normalizedTagRef, onProgress);
+    await this.syncSubmodules(repoPath, onProgress);
+  }
+
   public dispose(): void {
     this.gitOutputChannel.dispose();
+  }
+
+  private async runGit(args: string[], options: GitCommandOptions = {}): Promise<GitCommandResult> {
+    const processId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const timeoutMs = options.timeoutMs ?? 30_000;
+
+    this.gitOutputChannel.appendLine(`[Git] git ${args.join(' ')}${options.cwd ? ` (cwd: ${options.cwd})` : ''}`);
+
+    return new Promise((resolve, reject) => {
+      const gitProcess = spawn('git', args, {
+        cwd: options.cwd,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      this.activeProcesses.set(processId, gitProcess);
+
+      let stdout = '';
+      let stderr = '';
+      let settled = false;
+
+      const finish = (handler: () => void) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeout);
+        this.removeProcess(processId);
+        handler();
+      };
+
+      const pushOutput = (chunk: Buffer, source: ProgressSource) => {
+        const content = chunk.toString();
+
+        if (source === 'stdout') {
+          stdout += content;
+        } else {
+          stderr += content;
+        }
+
+        content
+          .split(/\r?\n/)
+          .map(line => line.trim())
+          .filter(Boolean)
+          .forEach(line => {
+            this.gitOutputChannel.appendLine(`[Git:${source}] ${line}`);
+            options.onProgress?.(line, source);
+          });
+      };
+
+      gitProcess.stdout?.on('data', (chunk: Buffer) => pushOutput(chunk, 'stdout'));
+      gitProcess.stderr?.on('data', (chunk: Buffer) => pushOutput(chunk, 'stderr'));
+
+      gitProcess.on('close', code => {
+        finish(() => {
+          if (code === 0) {
+            resolve({ stdout, stderr, code: code ?? 0 });
+            return;
+          }
+
+          const message = stderr.trim() || stdout.trim() || `git ${args.join(' ')} failed with exit code ${code}`;
+          reject(new GitCommandError(message, code, stdout, stderr));
+        });
+      });
+
+      gitProcess.on('error', error => {
+        finish(() => {
+          reject(new GitCommandError(error.message, null, stdout, stderr));
+        });
+      });
+
+      const timeout = setTimeout(() => {
+        if (!gitProcess.killed) {
+          gitProcess.kill('SIGTERM');
+        }
+
+        finish(() => {
+          reject(new GitCommandError(`git ${args.join(' ')} timed out after ${timeoutMs}ms`, null, stdout, stderr));
+        });
+      }, timeoutMs);
+    });
+  }
+
+  private removeProcess(processId: string): void {
+    this.activeProcesses.delete(processId);
+  }
+
+  private async tryGetOutput(repoPath: string, args: string[]): Promise<string> {
+    try {
+      const result = await this.runGit(args, { cwd: repoPath });
+      return result.stdout.trim();
+    } catch {
+      return '';
+    }
+  }
+
+  private formatError(error: unknown): string {
+    if (error instanceof GitCommandError) {
+      return error.stderr.trim() || error.stdout.trim() || error.message;
+    }
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return String(error);
   }
 }

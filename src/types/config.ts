@@ -1,6 +1,7 @@
 export interface SdkConfig {
   path: string; // SDK路径
   toolsPath?: string; // 工具链路径
+  toolchainSource?: 'github' | 'sifli'; // 工具链下载源
   // 后续可以添加其他SDK特定的配置项
   // customFlags?: string[];
   // buildOptions?: Record<string, any>;

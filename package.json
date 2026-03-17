@@ -599,6 +599,14 @@
                 "toolsPath": {
                   "type": "string",
                   "description": "%configuration.sifli.sdkConfigs.toolsPath.description%"
+                },
+                "toolchainSource": {
+                  "type": "string",
+                  "enum": [
+                    "github",
+                    "sifli"
+                  ],
+                  "description": "Toolchain download source for this SDK."
                 }
               },
               "required": [

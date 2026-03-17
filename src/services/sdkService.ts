@@ -1,19 +1,32 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { SdkVersion } from '../types';
+import {
+  GitSdkMetadata,
+  ManagedSdkDetail,
+  ManagedSdkSummary,
+  SdkConfig,
+  SdkTarget,
+  SdkVersion,
+  ToolchainSource,
+} from '../types';
 import { ConfigService } from './configService';
+import { GitService } from './gitService';
 import { TerminalService } from './terminalService';
 import { LogService } from './logService';
 
+const RELEASE_BRANCH_PREFIX = 'release/';
+
 export class SdkService {
   private static instance: SdkService;
-  private configService: ConfigService;
-  private terminalService: TerminalService;
-  private logService: LogService;
+  private readonly configService: ConfigService;
+  private readonly gitService: GitService;
+  private readonly terminalService: TerminalService;
+  private readonly logService: LogService;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
+    this.gitService = GitService.getInstance();
     this.terminalService = TerminalService.getInstance();
     this.logService = LogService.getInstance();
   }
@@ -25,202 +38,154 @@ export class SdkService {
     return SdkService.instance;
   }
 
-  /**
-   * 发现所有 SiFli SDK
-   * @param autoRemoveInvalid 是否自动移除不存在的 SDK 路径，默认为 true
-   */
   public async discoverSiFliSdks(autoRemoveInvalid = true): Promise<SdkVersion[]> {
-    this.logService.info('Starting SDK discovery...');
-    const sdkVersions: SdkVersion[] = [];
-    const installedSdkPaths = this.configService.getInstalledSdkPaths();
+    const managedSdks = await this.getManagedSdks(autoRemoveInvalid);
+    const legacySdks = managedSdks.map(sdk => ({
+      version: sdk.version,
+      path: sdk.path,
+      current: sdk.isCurrent,
+      valid: sdk.valid,
+    }));
+
+    this.configService.detectedSdkVersions = legacySdks;
+    return legacySdks;
+  }
+
+  public async getManagedSdks(autoRemoveInvalid = true): Promise<ManagedSdkSummary[]> {
+    this.logService.info('Starting managed SDK discovery...');
+
+    const sdkConfigs = this.configService.getSdkConfigs();
     const currentSdkPath = this.configService.getCurrentSdkPath();
+    const sdkMap = new Map<string, SdkConfig>();
     const invalidPaths: string[] = [];
 
-    this.logService.debug(`Configured SDK paths: ${installedSdkPaths.join(', ')}`);
-    this.logService.debug(`Current SDK path: ${currentSdkPath || 'None'}`);
+    for (const sdkConfig of sdkConfigs) {
+      sdkMap.set(sdkConfig.path, sdkConfig);
+    }
 
-    // 从配置的 SDK 路径列表中发现 SDK
-    for (const sdkPath of installedSdkPaths) {
+    if (currentSdkPath && !sdkMap.has(currentSdkPath)) {
+      sdkMap.set(currentSdkPath, { path: currentSdkPath });
+    }
+
+    const sdks: ManagedSdkSummary[] = [];
+
+    for (const sdkConfig of sdkMap.values()) {
       try {
-        if (fs.existsSync(sdkPath)) {
-          const version = this.extractVersionFromPath(sdkPath);
-          const isCurrent = currentSdkPath === sdkPath;
-          const isValid = this.validateSdkPath(sdkPath);
-
-          sdkVersions.push({
-            version,
-            path: sdkPath,
-            current: isCurrent,
-            valid: isValid,
-          });
-
-          this.logService.debug(`Found SDK: ${version} at ${sdkPath} (valid: ${isValid}, current: ${isCurrent})`);
-        } else {
-          this.logService.warn(`SDK path does not exist: ${sdkPath}`);
-          invalidPaths.push(sdkPath);
+        if (!fs.existsSync(sdkConfig.path)) {
+          invalidPaths.push(sdkConfig.path);
+          continue;
         }
+
+        sdks.push(await this.buildManagedSdkSummary(sdkConfig, sdkConfig.path === currentSdkPath));
       } catch (error) {
-        this.logService.error(`Error checking SDK path ${sdkPath}:`, error);
-        invalidPaths.push(sdkPath);
+        this.logService.error(`Failed to discover SDK at ${sdkConfig.path}`, error);
+        invalidPaths.push(sdkConfig.path);
       }
     }
 
-    // 自动移除无效的 SDK 路径
     if (autoRemoveInvalid && invalidPaths.length > 0) {
-      this.logService.info(`Removing ${invalidPaths.length} invalid SDK path(s) from configuration...`);
       for (const invalidPath of invalidPaths) {
         await this.configService.removeSdkConfig(invalidPath);
-        this.logService.debug(`Removed invalid SDK path: ${invalidPath}`);
       }
 
-      // 如果当前激活的 SDK 也是无效的，清除它
       if (currentSdkPath && invalidPaths.includes(currentSdkPath)) {
         await this.configService.setCurrentSdkPath('');
-        this.logService.info('Cleared invalid current SDK path');
       }
     }
 
-    // 如果当前配置的 SDK 路径不在列表中，也添加进去
-    if (currentSdkPath) {
-      const currentSdkRoot = this.extractSdkRootFromExportScript(currentSdkPath);
-      if (currentSdkRoot && !installedSdkPaths.includes(currentSdkRoot)) {
-        const version = this.extractVersionFromPath(currentSdkRoot);
-        const isValid = this.validateSdkPath(currentSdkRoot);
-        sdkVersions.push({
-          version,
-          path: currentSdkRoot,
-          current: true,
-          valid: isValid,
-        });
-        this.logService.debug(
-          `Added current SDK from export script: ${version} at ${currentSdkRoot} (valid: ${isValid})`
-        );
-      }
-    }
+    sdks.sort((left, right) => {
+      return left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
 
-    // 确保只有一个 SDK 被标记为 current
-    this.ensureSingleCurrentSdk(sdkVersions);
+    const legacySdks = sdks.map(sdk => ({
+      version: sdk.version,
+      path: sdk.path,
+      current: sdk.isCurrent,
+      valid: sdk.valid,
+    }));
+    this.configService.detectedSdkVersions = legacySdks;
 
-    // 按版本排序
-    sdkVersions.sort((a, b) => b.version.localeCompare(a.version));
-
-    this.logService.info(`SDK discovery completed. Found ${sdkVersions.length} SDK(s)`);
-    return sdkVersions;
+    return sdks;
   }
 
-  /**
-   * 从路径中提取版本号
-   */
-  private extractVersionFromPath(sdkPath: string): string {
-    const basename = path.basename(sdkPath);
+  public async getManagedSdkDetail(sdkId: string): Promise<ManagedSdkDetail> {
+    const sdkPath = this.decodeSdkId(sdkId);
+    const sdkConfig = this.configService.getSdkConfig(sdkPath) || { path: sdkPath };
+    const summary = await this.buildManagedSdkSummary(sdkConfig, sdkPath === this.configService.getCurrentSdkPath());
+    const metadata = summary.isGitRepo ? await this.gitService.getSdkMetadata(sdkPath) : this.createNonGitMetadata();
 
-    // 尝试从目录名中提取版本号
-    const versionMatch = basename.match(/(\d+\.\d+\.\d+)/);
-    if (versionMatch) {
-      return versionMatch[1];
-    }
-
-    // 尝试从 git tag 获取版本
-    try {
-      const gitHeadPath = path.join(sdkPath, '.git', 'HEAD');
-      if (fs.existsSync(gitHeadPath)) {
-        // 这里可以添加更复杂的 git 版本检测逻辑
-        return basename;
-      }
-    } catch (error) {
-      // Ignore git errors
-    }
-
-    return basename || 'Unknown';
+    return {
+      ...summary,
+      origin: metadata.origin,
+      trackedBranch: metadata.trackedBranch,
+      hasInstallScript: !!this.getInstallScriptPath(sdkPath),
+      hasExportScript: !!this.getActivationScriptForPlatform(sdkPath),
+      hasVersionFile: fs.existsSync(path.join(sdkPath, 'version.txt')),
+    };
   }
 
-  /**
-   * 从导出脚本路径中提取 SDK 根目录
-   */
-  private extractSdkRootFromExportScript(exportScriptPath: string): string | null {
-    try {
-      const scriptDir = path.dirname(exportScriptPath);
-      return scriptDir;
-    } catch (error) {
-      this.logService.error('Error extracting SDK root from export script:', error);
-      return null;
-    }
+  public encodeSdkId(sdkPath: string): string {
+    return Buffer.from(sdkPath, 'utf8').toString('base64url');
   }
 
-  /**
-   * 验证 SDK 路径是否有效
-   */
-  private validateSdkPath(sdkPath: string): boolean {
-    try {
-      // 检查必要的目录
-      const customerDir = path.join(sdkPath, 'customer');
-      if (!fs.existsSync(customerDir)) {
-        this.logService.debug(`SDK validation failed: customer directory not found at ${customerDir}`);
-        return false;
-      }
-
-      // 检查当前平台对应的导出脚本
-      const activationScript = this.getActivationScriptForPlatform(sdkPath);
-      const isValid = activationScript !== null;
-
-      if (!isValid) {
-        this.logService.debug(`SDK validation failed: no activation script found for current platform at ${sdkPath}`);
-      }
-
-      return isValid;
-    } catch (error) {
-      this.logService.error(`Error validating SDK path ${sdkPath}:`, error);
-      return false;
-    }
+  public decodeSdkId(sdkId: string): string {
+    return Buffer.from(sdkId, 'base64url').toString('utf8');
   }
 
-  /**
-   * 确保只有一个 SDK 被标记为当前
-   */
-  private ensureSingleCurrentSdk(sdkVersions: SdkVersion[]): void {
-    const currentSdks = sdkVersions.filter(sdk => sdk.current);
+  public normalizeSdkTargets(
+    rawTargets: Array<{ version: string; supported_chips: string[]; type?: 'branch' }>
+  ): SdkTarget[] {
+    return rawTargets.map(target => {
+      if (target.type === 'branch') {
+        const version = target.version === 'latest' ? 'main' : target.version;
+        const branchRef = version === 'main' ? 'main' : `${RELEASE_BRANCH_PREFIX}${version}`;
 
-    if (currentSdks.length > 1) {
-      // 如果有多个当前 SDK，只保留第一个
-      for (let i = 1; i < currentSdks.length; i++) {
-        currentSdks[i].current = false;
+        return {
+          kind: 'branch',
+          label: version,
+          ref: branchRef,
+          version: target.version,
+          defaultDirectoryName: version === 'main' ? 'main' : version,
+          supportedChips: target.supported_chips,
+        };
       }
-    }
+
+      return {
+        kind: 'tag',
+        label: target.version,
+        ref: `refs/tags/${target.version}`,
+        version: target.version,
+        defaultDirectoryName: target.version,
+        supportedChips: target.supported_chips,
+      };
+    });
   }
 
-  /**
-   * 切换 SDK 版本
-   */
   public async switchSdkVersion(): Promise<void> {
     try {
-      this.logService.info('Starting SDK version switch...');
       const sdkVersions = await this.discoverSiFliSdks();
 
       if (sdkVersions.length === 0) {
         const message = vscode.l10n.t('No SiFli SDKs found. Install one from the SDK Manager first.');
-        this.logService.warn(message);
         vscode.window.showWarningMessage(message);
         return;
       }
 
-      const quickPickItems = sdkVersions.map(sdk => ({
-        label: sdk.version,
-        description: sdk.current ? vscode.l10n.t('(current)') : '',
-        detail: vscode.l10n.t('Path: {0}{1}', sdk.path, sdk.valid ? '' : vscode.l10n.t(' (invalid)')),
-        sdk,
-      }));
+      const selectedItem = await vscode.window.showQuickPick(
+        sdkVersions.map(sdk => ({
+          label: sdk.version,
+          description: sdk.current ? vscode.l10n.t('(current)') : '',
+          detail: vscode.l10n.t('Path: {0}{1}', sdk.path, sdk.valid ? '' : vscode.l10n.t(' (invalid)')),
+          sdk,
+        })),
+        {
+          placeHolder: vscode.l10n.t('Select a SiFli SDK version to switch'),
+          canPickMany: false,
+        }
+      );
 
-      const selectedItem = await vscode.window.showQuickPick(quickPickItems, {
-        placeHolder: vscode.l10n.t('Select a SiFli SDK version to switch'),
-        canPickMany: false,
-      });
-
-      // if (selectedItem && !selectedItem.sdk.current) {
       if (selectedItem) {
-        this.logService.info(`User selected SDK: ${selectedItem.sdk.version} at ${selectedItem.sdk.path}`);
         await this.activateSdk(selectedItem.sdk);
-      } else {
-        this.logService.info('SDK version switch cancelled by user');
       }
     } catch (error) {
       this.logService.error('Error in switchSdkVersion:', error);
@@ -278,136 +243,51 @@ export class SdkService {
     }
   }
 
-  /**
-   * 获取当前平台对应的激活脚本信息
-   */
-  private getActivationScriptForPlatform(
-    sdkPath: string
-  ): { scriptPath: string; configPath: string; command: string } | null {
-    if (process.platform === 'win32') {
-      // Windows 平台
-      const ps1ScriptPath = path.join(sdkPath, 'export.ps1');
-      if (fs.existsSync(ps1ScriptPath)) {
-        return {
-          scriptPath: ps1ScriptPath,
-          configPath: ps1ScriptPath, // 配置中保存的路径
-          command: './export.ps1', // 在SDK目录下执行的相对命令
-        };
-      }
-    } else {
-      // Unix-like 系统 (macOS, Linux)
-      const shScriptPath = path.join(sdkPath, 'export.sh');
-      if (fs.existsSync(shScriptPath)) {
-        return {
-          scriptPath: shScriptPath,
-          configPath: shScriptPath, // 配置中保存的路径
-          command: '. ./export.sh', // 在SDK目录下执行的相对命令
-        };
-      }
-    }
-
-    return null;
+  public async registerSdk(
+    sdkPath: string,
+    toolsPath?: string,
+    toolchainSource?: ToolchainSource
+  ): Promise<ManagedSdkSummary> {
+    await this.configService.addSdkConfig(sdkPath, toolsPath, toolchainSource);
+    return this.buildManagedSdkSummary(this.configService.getSdkConfig(sdkPath) || { path: sdkPath }, false);
   }
 
-  /**
-   * 在终端中设置环境变量
-   */
-  private async setEnvironmentVariable(terminal: vscode.Terminal, name: string, value: string): Promise<void> {
-    this.logService.info(`Setting environment variable ${name}: ${value}`);
-
-    if (process.platform === 'win32') {
-      // Windows PowerShell 设置环境变量
-      terminal.sendText(`$env:${name}="${value}"`);
-    } else {
-      // Unix-like 系统设置环境变量
-      terminal.sendText(`export ${name}="${value}"`);
-    }
-  }
-
-  /**
-   * 在终端中执行 SDK 激活脚本
-   */
-  private async executeActivationScript(activationScript: {
-    scriptPath: string;
-    configPath: string;
-    command: string;
-  }): Promise<void> {
-    try {
-      this.logService.info(`Executing SDK activation script: ${activationScript.scriptPath}`);
-      const terminal = await this.terminalService.getOrCreateSiFliTerminalAndCdProject(false, { autoExport: false });
-
-      const scriptDir = path.dirname(activationScript.scriptPath);
-
-      // 获取当前SDK的工具链路径
-      const toolsPath = this.configService.getSdkToolsPath(scriptDir);
-
-      // 先设置 SIFLI_SDK_TOOLS_PATH 环境变量（如果有配置的话）
-      if (toolsPath && toolsPath.trim() !== '') {
-        await this.setEnvironmentVariable(terminal, 'SIFLI_SDK_TOOLS_PATH', toolsPath);
-      }
-
-      // 直接执行导出脚本的绝对路径
-      let executeCommand: string;
-      if (process.platform === 'win32') {
-        // Windows PowerShell 使用配置的 PowerShell 路径和 -ExecutionPolicy Bypass 执行脚本
-        const powershellPath = this.terminalService.getPowerShellExecutablePath();
-        executeCommand = `& "${activationScript.scriptPath}"`;
-      } else {
-        // Unix-like 系统执行脚本
-        executeCommand = `. "${activationScript.scriptPath}"`;
-      }
-
-      // 显示并聚焦终端
-      terminal.show();
-
-      // 发送命令到终端
-      terminal.sendText(executeCommand);
-
-      this.terminalService.markSdkEnvironmentPrepared();
-
-      this.logService.info(`SDK activation script executed successfully: ${executeCommand}`);
-    } catch (error) {
-      this.logService.error('Error executing activation script:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 获取当前激活的 SDK
-   */
-  public getCurrentSdk(): SdkVersion | undefined {
-    return this.configService.getCurrentSdk();
-  }
-
-  /**
-   * 根据 SDK 路径获取对应平台的 export 脚本路径
-   * @param sdkPath SDK 根目录路径，如果不传则使用当前激活的 SDK
-   * @returns export 脚本的完整路径，如果不存在则返回 undefined
-   */
-  public getExportScriptPath(sdkPath?: string): string | undefined {
-    const targetSdkPath = sdkPath || this.configService.getCurrentSdkPath();
-    if (!targetSdkPath) {
-      return undefined;
+  public async renameSdkDirectory(
+    sdkPath: string,
+    newDirectoryName: string
+  ): Promise<{ oldPath: string; newPath: string }> {
+    const sanitizedName = newDirectoryName.trim();
+    if (
+      !sanitizedName ||
+      sanitizedName === '.' ||
+      sanitizedName === '..' ||
+      sanitizedName.includes('/') ||
+      sanitizedName.includes('\\')
+    ) {
+      throw new Error('目录名称无效。');
     }
 
-    if (process.platform === 'win32') {
-      const ps1Path = path.join(targetSdkPath, 'export.ps1');
-      if (fs.existsSync(ps1Path)) {
-        return ps1Path;
-      }
-    } else {
-      const shPath = path.join(targetSdkPath, 'export.sh');
-      if (fs.existsSync(shPath)) {
-        return shPath;
-      }
+    const parentDir = path.dirname(sdkPath);
+    const newPath = path.join(parentDir, sanitizedName);
+
+    if (sdkPath === newPath) {
+      return { oldPath: sdkPath, newPath };
     }
 
-    return undefined;
+    if (fs.existsSync(newPath)) {
+      throw new Error(`目标目录已存在: ${newPath}`);
+    }
+
+    fs.renameSync(sdkPath, newPath);
+    await this.configService.renameSdkPath(sdkPath, newPath);
+
+    if (this.configService.getCurrentSdkPath() === sdkPath) {
+      await this.configService.setCurrentSdkPath(newPath);
+    }
+
+    return { oldPath: sdkPath, newPath };
   }
 
-  /**
-   * 添加 SDK 路径到配置
-   */
   public async addSdkPath(sdkPath: string): Promise<void> {
     const result = await this.addSdkPathDetailed(sdkPath);
     if (result.message) {
@@ -419,9 +299,6 @@ export class SdkService {
     }
   }
 
-  /**
-   * 移除 SDK 路径
-   */
   public async removeSdkPath(sdkPath: string): Promise<void> {
     const result = await this.removeSdkPathDetailed(sdkPath);
     if (result.message) {
@@ -433,9 +310,6 @@ export class SdkService {
     }
   }
 
-  /**
-   * 设置SDK的工具链路径
-   */
   public async setSdkToolsPath(sdkPath: string, toolsPath: string): Promise<void> {
     const result = await this.setSdkToolsPathDetailed(sdkPath, toolsPath);
     if (result.message) {
@@ -447,11 +321,45 @@ export class SdkService {
     }
   }
 
-  /**
-   * 获取SDK的工具链路径
-   */
   public getSdkToolsPath(sdkPath: string): string | undefined {
     return this.configService.getSdkToolsPath(sdkPath);
+  }
+
+  public getSdkToolchainSource(sdkPath: string): ToolchainSource | undefined {
+    return this.configService.getSdkToolchainSource(sdkPath);
+  }
+
+  public async setSdkToolchainSource(sdkPath: string, toolchainSource: ToolchainSource): Promise<void> {
+    await this.configService.setSdkToolchainSource(sdkPath, toolchainSource);
+  }
+
+  public getCurrentSdk(): SdkVersion | undefined {
+    return this.configService.getCurrentSdk();
+  }
+
+  public getExportScriptPath(sdkPath?: string): string | undefined {
+    const targetSdkPath = sdkPath || this.configService.getCurrentSdkPath();
+    if (!targetSdkPath) {
+      return undefined;
+    }
+
+    return this.getActivationScriptForPlatform(targetSdkPath)?.scriptPath;
+  }
+
+  public getInstallScriptPath(sdkPath: string): string | undefined {
+    if (process.platform === 'win32') {
+      const ps1Path = path.join(sdkPath, 'install.ps1');
+      if (fs.existsSync(ps1Path)) {
+        return ps1Path;
+      }
+    } else {
+      const shPath = path.join(sdkPath, 'install.sh');
+      if (fs.existsSync(shPath)) {
+        return shPath;
+      }
+    }
+
+    return undefined;
   }
 
   public async addSdkPathDetailed(
@@ -581,5 +489,131 @@ export class SdkService {
       }
       return { success: false, message };
     }
+  }
+
+  private async buildManagedSdkSummary(sdkConfig: SdkConfig, isCurrent: boolean): Promise<ManagedSdkSummary> {
+    const sdkPath = sdkConfig.path;
+    const valid = this.validateSdkPath(sdkPath);
+    const metadata = valid ? await this.gitService.getSdkMetadata(sdkPath) : this.createNonGitMetadata();
+    const name = path.basename(sdkPath);
+    const version = this.deriveSdkVersion(name, metadata);
+    const canUpdateBranch = valid && metadata.isGitRepo && metadata.refType === 'branch';
+
+    return {
+      id: this.encodeSdkId(sdkPath),
+      name,
+      version,
+      path: sdkPath,
+      current: isCurrent,
+      isCurrent,
+      valid,
+      isGitRepo: metadata.isGitRepo,
+      ref: metadata.ref,
+      refType: metadata.refType,
+      hash: metadata.hash,
+      isDirty: metadata.isDirty,
+      canUpdate: canUpdateBranch,
+      toolsPath: sdkConfig.toolsPath,
+      toolchainSource: sdkConfig.toolchainSource,
+      actions: {
+        canActivate: valid,
+        canSwitchRef: valid && metadata.isGitRepo,
+        canUpdateBranch,
+        canRename: true,
+        canUpdateTools: !!this.getInstallScriptPath(sdkPath),
+        canRemove: true,
+        canEditToolchain: true,
+      },
+    };
+  }
+
+  private deriveSdkVersion(directoryName: string, metadata: GitSdkMetadata): string {
+    if (metadata.refType === 'tag' && metadata.ref) {
+      return metadata.ref;
+    }
+
+    if (metadata.refType === 'branch' && metadata.ref) {
+      return metadata.ref;
+    }
+
+    return directoryName || 'Unknown';
+  }
+
+  private createNonGitMetadata(): GitSdkMetadata {
+    return {
+      isGitRepo: false,
+      ref: 'non-git',
+      refType: 'unknown',
+      hash: '',
+      isDirty: false,
+    };
+  }
+
+  private validateSdkPath(sdkPath: string): boolean {
+    try {
+      if (!fs.existsSync(path.join(sdkPath, 'customer'))) {
+        return false;
+      }
+
+      return this.getActivationScriptForPlatform(sdkPath) !== null;
+    } catch (error) {
+      this.logService.error(`Error validating SDK path ${sdkPath}:`, error);
+      return false;
+    }
+  }
+
+  private getActivationScriptForPlatform(
+    sdkPath: string
+  ): { scriptPath: string; configPath: string; command: string } | null {
+    if (process.platform === 'win32') {
+      const ps1ScriptPath = path.join(sdkPath, 'export.ps1');
+      if (fs.existsSync(ps1ScriptPath)) {
+        return {
+          scriptPath: ps1ScriptPath,
+          configPath: ps1ScriptPath,
+          command: './export.ps1',
+        };
+      }
+    } else {
+      const shScriptPath = path.join(sdkPath, 'export.sh');
+      if (fs.existsSync(shScriptPath)) {
+        return {
+          scriptPath: shScriptPath,
+          configPath: shScriptPath,
+          command: '. ./export.sh',
+        };
+      }
+    }
+
+    return null;
+  }
+
+  private async setEnvironmentVariable(terminal: vscode.Terminal, name: string, value: string): Promise<void> {
+    if (process.platform === 'win32') {
+      terminal.sendText(`$env:${name}="${value}"`);
+    } else {
+      terminal.sendText(`export ${name}="${value}"`);
+    }
+  }
+
+  private async executeActivationScript(activationScript: {
+    scriptPath: string;
+    configPath: string;
+    command: string;
+  }): Promise<void> {
+    const terminal = await this.terminalService.getOrCreateSiFliTerminalAndCdProject(false, { autoExport: false });
+    const scriptDir = path.dirname(activationScript.scriptPath);
+    const toolsPath = this.configService.getSdkToolsPath(scriptDir);
+
+    if (toolsPath && toolsPath.trim() !== '') {
+      await this.setEnvironmentVariable(terminal, 'SIFLI_SDK_TOOLS_PATH', toolsPath);
+    }
+
+    const executeCommand =
+      process.platform === 'win32' ? `& "${activationScript.scriptPath}"` : `. "${activationScript.scriptPath}"`;
+
+    terminal.show();
+    terminal.sendText(executeCommand);
+    this.terminalService.markSdkEnvironmentPrepared();
   }
 }
