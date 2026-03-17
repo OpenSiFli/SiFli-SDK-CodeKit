@@ -366,6 +366,7 @@ export class SdkDependencyExplorerManager {
   private readonly dependencyIndexService: SdkDependencyIndexService;
   private readonly buildCommands: BuildCommands;
   private fileWatcher?: vscode.FileSystemWatcher;
+  private compileCommandsWatcher?: vscode.FileSystemWatcher;
   private readonly attemptedAutoGenerateKeys = new Set<string>();
   private activeAutoGenerateKey?: string;
 
@@ -426,6 +427,7 @@ export class SdkDependencyExplorerManager {
 
     const visibilityListener = this.treeView.onDidChangeVisibility(event => {
       if (event.visible) {
+        void this.maybeAutoGenerate();
         void this.revealActiveEditor(vscode.window.activeTextEditor);
       }
     });
@@ -438,6 +440,7 @@ export class SdkDependencyExplorerManager {
 
   public dispose(): void {
     this.fileWatcher?.dispose();
+    this.compileCommandsWatcher?.dispose();
     this.treeView.dispose();
   }
 
@@ -483,6 +486,8 @@ export class SdkDependencyExplorerManager {
   private registerFileWatcher(context: vscode.ExtensionContext): void {
     this.fileWatcher?.dispose();
     this.fileWatcher = undefined;
+    this.compileCommandsWatcher?.dispose();
+    this.compileCommandsWatcher = undefined;
 
     const projectInfo = getProjectInfo();
     if (!projectInfo) {
@@ -499,5 +504,17 @@ export class SdkDependencyExplorerManager {
     watcher.onDidDelete(() => this.refresh(), undefined, context.subscriptions);
     this.fileWatcher = watcher;
     context.subscriptions.push(watcher);
+
+    const compileCommandsWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(
+        projectInfo.workspaceRoot,
+        `${projectInfo.projectEntryRelativePath}/build_*_hcpu/{,bootloader/}compile_commands.json`
+      )
+    );
+    compileCommandsWatcher.onDidCreate(() => this.refresh(), undefined, context.subscriptions);
+    compileCommandsWatcher.onDidChange(() => this.refresh(), undefined, context.subscriptions);
+    compileCommandsWatcher.onDidDelete(() => this.refresh(), undefined, context.subscriptions);
+    this.compileCommandsWatcher = compileCommandsWatcher;
+    context.subscriptions.push(compileCommandsWatcher);
   }
 }
