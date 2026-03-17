@@ -4,7 +4,7 @@
       <header v-if="route.path !== '/'" class="flex items-center gap-3">
         <button
           @click="$router.back()"
-          class="rounded-lg border border-vscode-panel-border bg-vscode-background px-3 py-1.5 text-xs text-vscode-foreground hover:bg-vscode-input-background transition-colors flex items-center gap-1 shadow-sm"
+          class="flex items-center gap-1.5 rounded-xl border border-vscode-panel-border bg-vscode-background px-4 py-2 text-base font-medium text-vscode-foreground shadow-sm transition-colors hover:bg-vscode-input-background"
         >
           ← 返回
         </button>
