@@ -6,6 +6,7 @@ import { isFile, readJsonFile } from '../utils/fileUtils';
 import { getProjectInfo } from '../utils/projectUtils';
 import { BoardService } from './boardService';
 import { ConfigService } from './configService';
+import { GitService } from './gitService';
 import { LogService } from './logService';
 
 export type SdkDependencyFileKind = 'source' | 'header';
@@ -15,6 +16,7 @@ export type SdkDependencySnapshotStatus =
   | 'board-not-selected'
   | 'sdk-not-selected'
   | 'sdk-invalid'
+  | 'unsupported'
   | 'index-missing'
   | 'index-invalid'
   | 'empty'
@@ -75,12 +77,14 @@ export interface SdkDependencySnapshot {
 }
 
 const PROJECT_ORDER = ['main', 'main.bootloader', 'main.ftab'];
+const MIN_SUPPORTED_MAIN_COMMIT = '670232c9cb7a003bd4009fba50cd426ef0d8e1f8';
 
 export class SdkDependencyIndexService {
   private static instance: SdkDependencyIndexService;
 
   private readonly boardService: BoardService;
   private readonly configService: ConfigService;
+  private readonly gitService: GitService;
   private readonly logService: LogService;
   private cachedKey?: string;
   private cachedSnapshot?: SdkDependencySnapshot;
@@ -88,6 +92,7 @@ export class SdkDependencyIndexService {
   private constructor() {
     this.boardService = BoardService.getInstance();
     this.configService = ConfigService.getInstance();
+    this.gitService = GitService.getInstance();
     this.logService = LogService.getInstance();
   }
 
@@ -138,6 +143,18 @@ export class SdkDependencyIndexService {
       return this.cacheAndReturn(`sdk-invalid:${projectInfo.workspaceRoot}:${boardName}:${currentSdkPath}`, {
         status: 'sdk-invalid',
         message: vscode.l10n.t('Selected SDK path is invalid: {0}', currentSdkPath),
+        boardName,
+        currentSdkPath,
+        workspaceRoot: projectInfo.workspaceRoot,
+        projects: [],
+      });
+    }
+
+    const compatibility = await this.getCompatibilityState(currentSdkPath);
+    if (!compatibility.supported) {
+      return this.cacheAndReturn(`unsupported:${projectInfo.workspaceRoot}:${boardName}:${currentSdkPath}`, {
+        status: 'unsupported',
+        message: compatibility.message,
         boardName,
         currentSdkPath,
         workspaceRoot: projectInfo.workspaceRoot,
@@ -373,6 +390,46 @@ export class SdkDependencyIndexService {
     this.cachedKey = cacheKey;
     this.cachedSnapshot = snapshot;
     return snapshot;
+  }
+
+  private async getCompatibilityState(currentSdkPath: string): Promise<{ supported: boolean; message: string }> {
+    const metadata = await this.gitService.getSdkMetadata(currentSdkPath);
+    if (!metadata.isGitRepo) {
+      return {
+        supported: false,
+        message: vscode.l10n.t(
+          'SDK dependency browser is only supported on the SiFli-SDK main branch at or after {0}.',
+          MIN_SUPPORTED_MAIN_COMMIT
+        ),
+      };
+    }
+
+    if (metadata.branchName !== 'main') {
+      return {
+        supported: false,
+        message: vscode.l10n.t(
+          'SDK dependency browser requires the current SDK to be on branch "main". Current branch: {0}.',
+          metadata.branchName || metadata.ref
+        ),
+      };
+    }
+
+    const isSupportedCommit = await this.gitService.isCommitAncestor(currentSdkPath, MIN_SUPPORTED_MAIN_COMMIT, 'HEAD');
+    if (!isSupportedCommit) {
+      return {
+        supported: false,
+        message: vscode.l10n.t(
+          'SDK dependency browser requires main branch commit {0} or later. Current commit: {1}.',
+          MIN_SUPPORTED_MAIN_COMMIT,
+          metadata.hash || vscode.l10n.t('unknown')
+        ),
+      };
+    }
+
+    return {
+      supported: true,
+      message: '',
+    };
   }
 
   private getFreshnessMarkerMtime(buildFolderPath: string): number | undefined {

@@ -454,6 +454,18 @@ export class GitService {
     await this.syncSubmodules(repoPath, onProgress);
   }
 
+  public async isCommitAncestor(repoPath: string, ancestorCommit: string, descendantRef = 'HEAD'): Promise<boolean> {
+    try {
+      await this.runGit(['merge-base', '--is-ancestor', ancestorCommit, descendantRef], { cwd: repoPath });
+      return true;
+    } catch (error) {
+      if (error instanceof GitCommandError && error.code === 1) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
   public dispose(): void {
     this.gitOutputChannel.dispose();
   }

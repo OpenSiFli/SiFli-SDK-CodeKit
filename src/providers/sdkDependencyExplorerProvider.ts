@@ -330,6 +330,17 @@ export class SdkDependencyExplorerProvider implements vscode.TreeDataProvider<De
           commandId: 'extension.switchSdkVersion',
           children: [],
         };
+      case 'unsupported':
+        return {
+          kind: 'state',
+          id: 'state:unsupported',
+          label: snapshot.message,
+          description: vscode.l10n.t('Open SDK Manager'),
+          tooltip: snapshot.message,
+          icon: 'warning',
+          commandId: 'extension.manageSiFliSdk',
+          children: [],
+        };
       case 'index-missing':
         return {
           kind: 'state',
