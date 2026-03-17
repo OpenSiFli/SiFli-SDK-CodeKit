@@ -75,6 +75,16 @@
         "title": "%command.listSerialPorts.title%"
       },
       {
+        "command": "extension.generateCodebaseIndex",
+        "title": "%command.generateCodebaseIndex.title%",
+        "icon": "$(symbol-file)"
+      },
+      {
+        "command": "extension.refreshSdkDependencies",
+        "title": "%command.refreshSdkDependencies.title%",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "extension.workflows.manage",
         "title": "%command.workflows.manage.title%"
       },
@@ -477,6 +487,13 @@
       }
     ],
     "views": {
+      "explorer": [
+        {
+          "id": "sifliSdkDependenciesExplorer",
+          "name": "%view.sifliSdkDependenciesExplorer.name%",
+          "when": "sifli.isProject"
+        }
+      ],
       "sifli-sidebar": [
         {
           "id": "sifliSdkManager",
@@ -496,6 +513,16 @@
     },
     "menus": {
       "view/title": [
+        {
+          "command": "extension.refreshSdkDependencies",
+          "when": "view == sifliSdkDependenciesExplorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "extension.generateCodebaseIndex",
+          "when": "view == sifliSdkDependenciesExplorer",
+          "group": "navigation@2"
+        },
         {
           "command": "sifliSidebar.refresh",
           "when": "view == sifliSdkManager",

@@ -263,6 +263,52 @@ export class BuildExecutionService {
     };
   }
 
+  public async executeGenerateCodebaseIndex(options?: {
+    waitForExit?: boolean;
+    showNotifications?: boolean;
+    runId?: string;
+  }): Promise<boolean> {
+    const result = await this.executeGenerateCodebaseIndexDetailed(options);
+    return result.success;
+  }
+
+  public async executeGenerateCodebaseIndexDetailed(options?: {
+    waitForExit?: boolean;
+    showNotifications?: boolean;
+    runId?: string;
+  }): Promise<BuildTaskExecutionResult> {
+    const showNotifications = options?.showNotifications ?? true;
+    const selectedBoardName = this.getSelectedBoardNameOrWarn(showNotifications);
+    if (!selectedBoardName) {
+      return {
+        success: false,
+        taskName: TASK_NAMES.GENERATE_CODEBASE_INDEX,
+        runId: options?.runId,
+        message: vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'),
+      };
+    }
+
+    const waitForExit = options?.waitForExit ?? true;
+    const command = await this.boardService.getGenerateCodebaseIndexCommand(selectedBoardName);
+    const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(
+      command,
+      TASK_NAMES.GENERATE_CODEBASE_INDEX,
+      {
+        waitForExit,
+        runId: options?.runId,
+      }
+    );
+
+    return {
+      success: exitCode === undefined || exitCode === 0,
+      taskName: TASK_NAMES.GENERATE_CODEBASE_INDEX,
+      exitCode,
+      command,
+      background: !waitForExit,
+      runId: options?.runId,
+    };
+  }
+
   private getSelectedBoardNameOrWarn(showNotification = true): string | undefined {
     const selectedBoardName = this.configService.getSelectedBoardName();
     if (!selectedBoardName || selectedBoardName === 'N/A') {

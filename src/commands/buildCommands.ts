@@ -1,14 +1,17 @@
 import * as vscode from 'vscode';
 import { BuildExecutionService } from '../services/buildExecutionService';
+import { ConfigService } from '../services/configService';
 import { StatusBarProvider } from '../providers/statusBarProvider';
 
 export class BuildCommands {
   private static instance: BuildCommands;
   private buildExecutionService: BuildExecutionService;
+  private configService: ConfigService;
   private statusBarProvider: StatusBarProvider;
 
   private constructor() {
     this.buildExecutionService = BuildExecutionService.getInstance();
+    this.configService = ConfigService.getInstance();
     this.statusBarProvider = StatusBarProvider.getInstance();
   }
 
@@ -98,6 +101,31 @@ export class BuildCommands {
     } catch (error) {
       console.error('[BuildCommands] Error in executeMenuconfigTask:', error);
       vscode.window.showErrorMessage(vscode.l10n.t('Failed to open Menuconfig: {0}', String(error)));
+    }
+  }
+
+  public async executeGenerateCodebaseIndexTask(): Promise<boolean> {
+    try {
+      const result = await this.buildExecutionService.executeGenerateCodebaseIndexDetailed({ waitForExit: true });
+      if (!result.success) {
+        const message =
+          result.message ??
+          vscode.l10n.t('Failed to generate codebase_index.json (exit code: {0}).', String(result.exitCode ?? '?'));
+        vscode.window.showErrorMessage(message);
+        return false;
+      }
+
+      vscode.window.showInformationMessage(
+        vscode.l10n.t(
+          'Generated codebase_index.json for board {0}.',
+          this.configService.getSelectedBoardName() || vscode.l10n.t('N/A')
+        )
+      );
+      return true;
+    } catch (error) {
+      console.error('[BuildCommands] Error in executeGenerateCodebaseIndexTask:', error);
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to generate codebase_index.json: {0}', String(error)));
+      return false;
     }
   }
 }
