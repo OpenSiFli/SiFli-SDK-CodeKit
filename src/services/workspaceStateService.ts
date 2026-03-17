@@ -52,6 +52,11 @@ const DEFAULT_VALUES: Required<WorkspaceState> = {
 export class WorkspaceStateService {
   private static instance: WorkspaceStateService;
   private context: vscode.ExtensionContext | null = null;
+  private readonly _onDidChangeState = new vscode.EventEmitter<{
+    key: keyof WorkspaceState;
+    value: WorkspaceState[keyof WorkspaceState] | undefined;
+  }>();
+  public readonly onDidChangeState = this._onDidChangeState.event;
 
   private constructor() {}
 
@@ -94,6 +99,7 @@ export class WorkspaceStateService {
   public async set<K extends keyof WorkspaceState>(key: K, value: WorkspaceState[K]): Promise<void> {
     const context = this.ensureInitialized();
     await context.workspaceState.update(key, value);
+    this._onDidChangeState.fire({ key, value });
   }
 
   /**
@@ -117,6 +123,7 @@ export class WorkspaceStateService {
   public async clear<K extends keyof WorkspaceState>(key: K): Promise<void> {
     const context = this.ensureInitialized();
     await context.workspaceState.update(key, undefined);
+    this._onDidChangeState.fire({ key, value: undefined });
   }
 
   /**
