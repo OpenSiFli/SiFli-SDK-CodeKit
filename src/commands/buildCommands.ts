@@ -8,6 +8,7 @@ export class BuildCommands {
   private buildExecutionService: BuildExecutionService;
   private configService: ConfigService;
   private statusBarProvider: StatusBarProvider;
+  private generateCodebaseIndexPromise?: Promise<boolean>;
 
   private constructor() {
     this.buildExecutionService = BuildExecutionService.getInstance();
@@ -343,28 +344,50 @@ export class BuildCommands {
     vscode.window.showInformationMessage(message);
   }
 
-  public async executeGenerateCodebaseIndexTask(): Promise<boolean> {
-    try {
-      const result = await this.buildExecutionService.executeGenerateCodebaseIndexDetailed({ waitForExit: true });
-      if (!result.success) {
-        const message =
-          result.message ??
-          vscode.l10n.t('Failed to generate codebase_index.json (exit code: {0}).', String(result.exitCode ?? '?'));
-        vscode.window.showErrorMessage(message);
-        return false;
-      }
-
-      vscode.window.showInformationMessage(
-        vscode.l10n.t(
-          'Generated codebase_index.json for board {0}.',
-          this.configService.getSelectedBoardName() || vscode.l10n.t('N/A')
-        )
-      );
-      return true;
-    } catch (error) {
-      console.error('[BuildCommands] Error in executeGenerateCodebaseIndexTask:', error);
-      vscode.window.showErrorMessage(vscode.l10n.t('Failed to generate codebase_index.json: {0}', String(error)));
-      return false;
+  public async executeGenerateCodebaseIndexTask(options?: {
+    showSuccessNotification?: boolean;
+    showFailureNotification?: boolean;
+  }): Promise<boolean> {
+    if (this.generateCodebaseIndexPromise) {
+      return this.generateCodebaseIndexPromise;
     }
+
+    const showSuccessNotification = options?.showSuccessNotification ?? true;
+    const showFailureNotification = options?.showFailureNotification ?? true;
+
+    this.generateCodebaseIndexPromise = (async () => {
+      try {
+        const result = await this.buildExecutionService.executeGenerateCodebaseIndexDetailed({ waitForExit: true });
+        if (!result.success) {
+          const message =
+            result.message ??
+            vscode.l10n.t('Failed to generate codebase_index.json (exit code: {0}).', String(result.exitCode ?? '?'));
+          if (showFailureNotification) {
+            vscode.window.showErrorMessage(message);
+          }
+          return false;
+        }
+
+        if (showSuccessNotification) {
+          vscode.window.showInformationMessage(
+            vscode.l10n.t(
+              'Generated codebase_index.json for board {0}.',
+              this.configService.getSelectedBoardName() || vscode.l10n.t('N/A')
+            )
+          );
+        }
+        return true;
+      } catch (error) {
+        console.error('[BuildCommands] Error in executeGenerateCodebaseIndexTask:', error);
+        if (showFailureNotification) {
+          vscode.window.showErrorMessage(vscode.l10n.t('Failed to generate codebase_index.json: {0}', String(error)));
+        }
+        return false;
+      } finally {
+        this.generateCodebaseIndexPromise = undefined;
+      }
+    })();
+
+    return this.generateCodebaseIndexPromise;
   }
 }

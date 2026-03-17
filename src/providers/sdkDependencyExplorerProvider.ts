@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { SIFLI_PROJECT_CONTEXT_KEY } from '../constants';
+import { BuildCommands } from '../commands/buildCommands';
 import {
   SdkDependencyEntry,
   SdkDependencyIndexService,
@@ -362,10 +363,16 @@ export class SdkDependencyExplorerManager {
   private static instance: SdkDependencyExplorerManager;
   private readonly provider: SdkDependencyExplorerProvider;
   private readonly treeView: vscode.TreeView<DependencyExplorerNode>;
+  private readonly dependencyIndexService: SdkDependencyIndexService;
+  private readonly buildCommands: BuildCommands;
   private fileWatcher?: vscode.FileSystemWatcher;
+  private readonly attemptedAutoGenerateKeys = new Set<string>();
+  private activeAutoGenerateKey?: string;
 
   private constructor() {
     this.provider = new SdkDependencyExplorerProvider();
+    this.dependencyIndexService = SdkDependencyIndexService.getInstance();
+    this.buildCommands = BuildCommands.getInstance();
     this.treeView = vscode.window.createTreeView('sifliSdkDependenciesExplorer', {
       treeDataProvider: this.provider,
       showCollapseAll: true,
@@ -381,6 +388,7 @@ export class SdkDependencyExplorerManager {
 
   public refresh(): void {
     this.provider.refresh();
+    void this.maybeAutoGenerate();
     void this.revealActiveEditor(vscode.window.activeTextEditor);
   }
 
@@ -424,6 +432,7 @@ export class SdkDependencyExplorerManager {
     context.subscriptions.push(visibilityListener);
 
     this.registerFileWatcher(context);
+    void this.maybeAutoGenerate();
     void this.revealActiveEditor(vscode.window.activeTextEditor);
   }
 
@@ -438,6 +447,37 @@ export class SdkDependencyExplorerManager {
     }
 
     await this.provider.revealFile(editor.document.uri.fsPath, this.treeView);
+  }
+
+  private async maybeAutoGenerate(): Promise<void> {
+    const snapshot = await this.dependencyIndexService.getSnapshot();
+    const autoGenerateKey = snapshot.autoGenerateKey;
+    if (!snapshot.shouldAutoGenerate || !autoGenerateKey) {
+      return;
+    }
+
+    if (this.activeAutoGenerateKey === autoGenerateKey || this.attemptedAutoGenerateKeys.has(autoGenerateKey)) {
+      return;
+    }
+
+    this.attemptedAutoGenerateKeys.add(autoGenerateKey);
+    this.activeAutoGenerateKey = autoGenerateKey;
+
+    try {
+      const succeeded = await this.buildCommands.executeGenerateCodebaseIndexTask({
+        showSuccessNotification: false,
+        showFailureNotification: true,
+      });
+      if (succeeded) {
+        this.attemptedAutoGenerateKeys.delete(autoGenerateKey);
+        this.provider.refresh();
+        await this.revealActiveEditor(vscode.window.activeTextEditor);
+      }
+    } finally {
+      if (this.activeAutoGenerateKey === autoGenerateKey) {
+        this.activeAutoGenerateKey = undefined;
+      }
+    }
   }
 
   private registerFileWatcher(context: vscode.ExtensionContext): void {
