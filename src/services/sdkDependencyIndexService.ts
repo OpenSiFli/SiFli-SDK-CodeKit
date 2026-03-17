@@ -69,6 +69,8 @@ export interface SdkDependencySnapshot {
   workspaceRoot?: string;
   indexPath?: string;
   manifestMtimeMs?: number;
+  shouldAutoGenerate?: boolean;
+  autoGenerateKey?: string;
   projects: SdkDependencyProjectEntries[];
 }
 
@@ -156,12 +158,17 @@ export class SdkDependencyIndexService {
         currentSdkPath,
         workspaceRoot: projectInfo.workspaceRoot,
         indexPath,
+        shouldAutoGenerate: true,
+        autoGenerateKey: `missing:${projectInfo.workspaceRoot}:${boardName}`,
         projects: [],
       });
     }
 
     const manifestMtimeMs = fs.statSync(indexPath).mtimeMs;
-    const cacheKey = `ready:${projectInfo.workspaceRoot}:${boardName}:${currentSdkPath}:${manifestMtimeMs}`;
+    const buildFolderPath = path.join(projectInfo.workspaceRoot, this.boardService.getBuildTargetFolder(boardName));
+    const freshnessMarkerMtimeMs = this.getFreshnessMarkerMtime(buildFolderPath);
+    const isStale = freshnessMarkerMtimeMs !== undefined && freshnessMarkerMtimeMs > manifestMtimeMs;
+    const cacheKey = `ready:${projectInfo.workspaceRoot}:${boardName}:${currentSdkPath}:${manifestMtimeMs}:${freshnessMarkerMtimeMs ?? 'none'}`;
     if (this.cachedKey === cacheKey && this.cachedSnapshot) {
       return this.cachedSnapshot;
     }
@@ -176,6 +183,8 @@ export class SdkDependencyIndexService {
         workspaceRoot: projectInfo.workspaceRoot,
         indexPath,
         manifestMtimeMs,
+        shouldAutoGenerate: true,
+        autoGenerateKey: `invalid:${projectInfo.workspaceRoot}:${boardName}:${manifestMtimeMs}`,
         projects: [],
       };
       return this.cacheSnapshot(cacheKey, snapshot);
@@ -210,6 +219,10 @@ export class SdkDependencyIndexService {
         workspaceRoot: projectInfo.workspaceRoot,
         indexPath,
         manifestMtimeMs,
+        shouldAutoGenerate: isStale,
+        autoGenerateKey: isStale
+          ? `stale:${projectInfo.workspaceRoot}:${boardName}:${manifestMtimeMs}:${freshnessMarkerMtimeMs}`
+          : undefined,
         projects,
       };
       return this.cacheSnapshot(cacheKey, snapshot);
@@ -223,6 +236,8 @@ export class SdkDependencyIndexService {
         workspaceRoot: projectInfo.workspaceRoot,
         indexPath,
         manifestMtimeMs,
+        shouldAutoGenerate: true,
+        autoGenerateKey: `read-error:${projectInfo.workspaceRoot}:${boardName}:${manifestMtimeMs}`,
         projects: [],
       };
       return this.cacheSnapshot(cacheKey, snapshot);
@@ -358,5 +373,25 @@ export class SdkDependencyIndexService {
     this.cachedKey = cacheKey;
     this.cachedSnapshot = snapshot;
     return snapshot;
+  }
+
+  private getFreshnessMarkerMtime(buildFolderPath: string): number | undefined {
+    const markerPaths = [
+      path.join(buildFolderPath, 'compile_commands.json'),
+      path.join(buildFolderPath, 'bootloader', 'compile_commands.json'),
+    ];
+
+    let latestMtimeMs: number | undefined;
+    for (const markerPath of markerPaths) {
+      if (!fs.existsSync(markerPath)) {
+        continue;
+      }
+      const stat = fs.statSync(markerPath);
+      if (latestMtimeMs === undefined || stat.mtimeMs > latestMtimeMs) {
+        latestMtimeMs = stat.mtimeMs;
+      }
+    }
+
+    return latestMtimeMs;
   }
 }
