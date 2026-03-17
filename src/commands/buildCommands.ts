@@ -18,7 +18,7 @@ export class BuildCommands {
     }
     return BuildCommands.instance;
   }
-  public async buildWithSaveCheck() {
+  public async buildWithSaveCheck(onlyCompile: boolean) {
     // 获取配置：检查构建前保存的方式
     const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
     const buildWithSaveCheck = config.get<string>('buildWithSaveCheck') ?? 'prompt';
@@ -144,8 +144,12 @@ export class BuildCommands {
     }
 
     console.log('[BuildCommands] buildWithSaveCheck called');
-    // 执行编译操作（不会被第二次弹窗阻塞）
-    await this.executeCompileTask();
+    if (onlyCompile) {
+      // 执行编译操作（不会被第二次弹窗阻塞）
+      await this.executeCompileTask();
+    } else {
+      await this.executeRebuildTask();
+    }
   }
 
   /**
