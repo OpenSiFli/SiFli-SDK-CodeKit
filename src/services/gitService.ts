@@ -454,6 +454,15 @@ export class GitService {
     await this.syncSubmodules(repoPath, onProgress);
   }
 
+  public async commitExists(repoPath: string, ref: string): Promise<boolean> {
+    try {
+      await this.runGit(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { cwd: repoPath });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   public async isCommitAncestor(repoPath: string, ancestorCommit: string, descendantRef = 'HEAD'): Promise<boolean> {
     try {
       await this.runGit(['merge-base', '--is-ancestor', ancestorCommit, descendantRef], { cwd: repoPath });
