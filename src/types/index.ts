@@ -11,6 +11,7 @@ export type TaskName =
   | 'SiFli: Menuconfig'
   | 'SiFli: Clean'
   | 'SiFli: Rebuild'
+  | 'SiFli: Generate Codebase Index'
   | 'SiFli: Workflow Shell';
 
 export type CommandId =
@@ -19,6 +20,8 @@ export type CommandId =
   | 'extension.clean'
   | 'extension.download'
   | 'extension.menuconfig'
+  | 'extension.generateCodebaseIndex'
+  | 'extension.refreshSdkDependencies'
   | 'extension.selectChipModule'
   | 'extension.selectDownloadPort'
   | 'extension.manageSiFliSdk'

@@ -21,6 +21,7 @@ import { McpCommands } from './commands/mcpCommands';
 import { StatusBarProvider } from './providers/statusBarProvider';
 import { VueWebviewProvider } from './providers/vueWebviewProvider';
 import { SifliSidebarManager } from './providers/sifliSidebarProvider';
+import { SdkDependencyExplorerManager } from './providers/sdkDependencyExplorerProvider';
 import { WorkflowService } from './services/workflowService';
 import { LanguageModelToolService } from './services/languageModelToolService';
 import { McpServerService } from './services/mcpServerService';
@@ -84,6 +85,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // 初始化侧边栏管理器
   const sidebarManager = SifliSidebarManager.getInstance();
+  const sdkDependencyExplorerManager = SdkDependencyExplorerManager.getInstance();
   const workflowService = WorkflowService.getInstance();
   const languageModelToolService = LanguageModelToolService.getInstance();
   const mcpServerService = McpServerService.getInstance();
@@ -167,9 +169,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const showMcpLogsCommand = vscode.commands.registerCommand(CMD_PREFIX + 'mcp.showLogs', async () => {
     await mcpCommands.showLogs();
   });
+  const refreshSdkDependenciesCommand = vscode.commands.registerCommand(CMD_PREFIX + 'refreshSdkDependencies', () => {
+    sdkDependencyExplorerManager.refresh();
+  });
+  const generateCodebaseIndexCommand = vscode.commands.registerCommand(
+    CMD_PREFIX + 'generateCodebaseIndex',
+    async () => {
+      const succeeded = await buildCommands.executeGenerateCodebaseIndexTask();
+      if (succeeded) {
+        sdkDependencyExplorerManager.refresh();
+      }
+    }
+  );
   context.subscriptions.push(
     manageSdkCommand,
     createProjectCommand,
+    refreshSdkDependenciesCommand,
+    generateCodebaseIndexCommand,
     startMcpCommand,
     stopMcpCommand,
     showMcpCommand,
@@ -179,6 +195,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     showMcpLogsCommand
   );
   logService.info('SDK management command registered');
+
+  sdkDependencyExplorerManager.register(context);
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async e => {
@@ -383,6 +401,9 @@ export async function deactivate(): Promise<void> {
   // 清理侧边栏
   const sidebarManager = SifliSidebarManager.getInstance();
   sidebarManager.dispose();
+
+  const sdkDependencyExplorerManager = SdkDependencyExplorerManager.getInstance();
+  sdkDependencyExplorerManager.dispose();
 
   // 清理终端
   const terminalService = TerminalService.getInstance();

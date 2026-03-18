@@ -155,23 +155,7 @@ export class BoardService {
    */
   public async getCompileCommand(boardName: string, threads: number): Promise<string> {
     const projectPath = this.getProjectFolderPath();
-
-    let boardSearchArg = '';
-    const availableBoards = await this.discoverBoards();
-    const currentBoard = availableBoards.find(b => b.name === boardName);
-
-    if (currentBoard) {
-      if (currentBoard.type === 'sdk') {
-        boardSearchArg = '';
-      } else if (currentBoard.type === 'project_local') {
-        const projectLocalBoardsDir = path.dirname(currentBoard.path);
-        const relativeToProject = path.relative(projectPath, projectLocalBoardsDir);
-        boardSearchArg = ` --board_search_path="${relativeToProject}"`;
-      } else if (currentBoard.type === 'custom') {
-        const relativeToProject = path.relative(projectPath, currentBoard.path);
-        boardSearchArg = ` --board_search_path="${path.dirname(relativeToProject)}"`;
-      }
-    }
+    const boardSearchArg = await this.getBoardSearchArg(boardName, projectPath);
 
     return `scons --board=${boardName}${boardSearchArg} -j${threads}`;
   }
@@ -181,23 +165,15 @@ export class BoardService {
    */
   public async getMenuconfigCommand(boardName: string): Promise<string> {
     const projectPath = this.getProjectFolderPath();
-
-    let boardSearchArg = '';
-    const availableBoards = await this.discoverBoards();
-    const currentBoard = availableBoards.find(b => b.name === boardName);
-
-    if (currentBoard && currentBoard.type !== 'sdk') {
-      if (currentBoard.type === 'project_local') {
-        const projectLocalBoardsDir = path.dirname(currentBoard.path);
-        const relativeToProject = path.relative(projectPath, projectLocalBoardsDir);
-        boardSearchArg = ` --board_search_path="${relativeToProject}"`;
-      } else if (currentBoard.type === 'custom') {
-        const relativeToProject = path.relative(projectPath, currentBoard.path);
-        boardSearchArg = ` --board_search_path="${path.dirname(relativeToProject)}"`;
-      }
-    }
+    const boardSearchArg = await this.getBoardSearchArg(boardName, projectPath);
 
     return `scons --board=${boardName}${boardSearchArg} --menuconfig`;
+  }
+
+  public async getGenerateCodebaseIndexCommand(boardName: string): Promise<string> {
+    const projectPath = this.getProjectFolderPath();
+    const boardSearchArg = await this.getBoardSearchArg(boardName, projectPath);
+    return `scons --board=${boardName}${boardSearchArg} --target=json`;
   }
 
   /**
@@ -306,5 +282,22 @@ export class BoardService {
   private isAutoAddressFile(filePath: string): boolean {
     const extension = path.extname(filePath).toLowerCase();
     return extension === '.hex' || extension === '.elf' || extension === '.axf';
+  }
+
+  private async getBoardSearchArg(boardName: string, projectPath: string): Promise<string> {
+    const availableBoards = await this.discoverBoards();
+    const currentBoard = availableBoards.find(board => board.name === boardName);
+    if (!currentBoard || currentBoard.type === 'sdk') {
+      return '';
+    }
+
+    if (currentBoard.type === 'project_local') {
+      const projectLocalBoardsDir = path.dirname(currentBoard.path);
+      const relativeToProject = path.relative(projectPath, projectLocalBoardsDir);
+      return ` --board_search_path="${relativeToProject}"`;
+    }
+
+    const relativeToProject = path.relative(projectPath, currentBoard.path);
+    return ` --board_search_path="${path.dirname(relativeToProject)}"`;
   }
 }

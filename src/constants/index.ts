@@ -12,6 +12,7 @@ export const PTAB_JSON_FILE = 'ptab.json';
 
 // sftool 参数文件常量
 export const SFTOOL_PARAM_JSON_FILE = 'sftool_param.json';
+export const CODEBASE_INDEX_JSON_FILE = 'codebase_index.json';
 
 // 任务名称常量
 export const TASK_NAMES = {
@@ -20,6 +21,7 @@ export const TASK_NAMES = {
   MENUCONFIG: 'SiFli: Menuconfig',
   CLEAN: 'SiFli: Clean',
   REBUILD: 'SiFli: Rebuild',
+  GENERATE_CODEBASE_INDEX: 'SiFli: Generate Codebase Index',
   WORKFLOW_SHELL: 'SiFli: Workflow Shell',
 } as const;
 
