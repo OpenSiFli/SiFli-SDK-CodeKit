@@ -334,7 +334,7 @@ export class SdkDependencyExplorerProvider implements vscode.TreeDataProvider<De
         return {
           kind: 'state',
           id: 'state:unsupported',
-          label: snapshot.message,
+          label: vscode.l10n.t('Current SDK version is not supported. Please use the latest main branch version.'),
           description: vscode.l10n.t('Open SDK Manager'),
           tooltip: snapshot.message,
           icon: 'warning',

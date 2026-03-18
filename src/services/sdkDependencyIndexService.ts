@@ -398,29 +398,33 @@ export class SdkDependencyIndexService {
       return {
         supported: false,
         message: vscode.l10n.t(
-          'SDK dependency browser is only supported on the SiFli-SDK main branch at or after {0}.',
+          'SDK dependency browser requires a newer OpenSiFli/SiFli-SDK based on the supported main history. Use the latest main branch or a newer release that contains commit {0}.',
           MIN_SUPPORTED_MAIN_COMMIT
         ),
       };
     }
 
-    if (metadata.branchName !== 'main') {
+    const hasMinimumCommit = await this.gitService.commitExists(currentSdkPath, MIN_SUPPORTED_MAIN_COMMIT);
+    if (!hasMinimumCommit) {
       return {
         supported: false,
         message: vscode.l10n.t(
-          'SDK dependency browser requires the current SDK to be on branch "main". Current branch: {0}.',
-          metadata.branchName || metadata.ref
+          'Current SDK ref {1} is not from the supported OpenSiFli/SiFli-SDK history. Use the latest main branch or a newer release that contains commit {0}.',
+          MIN_SUPPORTED_MAIN_COMMIT,
+          metadata.branchName || metadata.ref || vscode.l10n.t('unknown')
         ),
       };
     }
 
     const isSupportedCommit = await this.gitService.isCommitAncestor(currentSdkPath, MIN_SUPPORTED_MAIN_COMMIT, 'HEAD');
     if (!isSupportedCommit) {
+      const currentRef = metadata.branchName || metadata.ref || vscode.l10n.t('unknown');
       return {
         supported: false,
         message: vscode.l10n.t(
-          'SDK dependency browser requires main branch commit {0} or later. Current commit: {1}.',
+          'Current SDK is too old for dependency browsing. Use the latest main branch or a newer release that contains commit {0}. Current ref: {1}; current commit: {2}.',
           MIN_SUPPORTED_MAIN_COMMIT,
+          currentRef,
           metadata.hash || vscode.l10n.t('unknown')
         ),
       };
