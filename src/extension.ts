@@ -356,36 +356,45 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }
       ),
       vscode.commands.registerCommand(`${CMD_PREFIX}toggleBuildWithSaveCheck`, async () => {
+        const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+        const buildWithSaveCheck = config.get<string>('buildWithSaveCheck') ?? 'prompt';
         const savePrompt = vscode.l10n.t('Ask Every Time');
         const saveAllAction = vscode.l10n.t('Save All');
         const doNotSaveAction = vscode.l10n.t("Don't Save");
         const saveCurrentAction = vscode.l10n.t('Save Current File');
-        const options = [savePrompt, saveAllAction, saveCurrentAction, doNotSaveAction];
+        const optionMappings = [
+          { value: 'prompt', label: savePrompt },
+          { value: 'saveAll', label: saveAllAction },
+          { value: 'saveCurrent', label: saveCurrentAction },
+          { value: 'dontSave', label: doNotSaveAction },
+        ];
+        const options: vscode.QuickPickItem[] = optionMappings.map(item => {
+          if (item.value === buildWithSaveCheck) {
+            return {
+              label: item.label,
+              description: vscode.l10n.t('(current)'), // 可选：在描述栏显示当前值
+              picked: item.value === buildWithSaveCheck, // 核心：默认选中当前值对应的项
+            };
+          } else {
+            return {
+              label: item.label,
+            };
+          }
+        });
         // 此处需要可设置偏好 buildWithSaveCheck
         const firstResponse = await vscode.window.showQuickPick(options, {
-          placeHolder: vscode.l10n.t('Toggle build with save check'),
+          placeHolder: vscode.l10n.t('command.toggleBuildWithSaveCheck.title'),
           ignoreFocusOut: true,
         });
         if (firstResponse) {
-          let selectedAction: string;
-          switch (firstResponse) {
-            case saveAllAction:
-              selectedAction = 'saveAll';
-              break;
-            case saveCurrentAction:
-              selectedAction = 'saveCurrent';
-              break;
-            case doNotSaveAction:
-              selectedAction = 'doNotSave';
-              break;
-            default:
-              selectedAction = 'prompt'; // 兜底
+          const selectedValue = optionMappings.find(m => m.label === firstResponse.label);
+          if (selectedValue) {
+            const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+            config.update('buildWithSaveCheck', selectedValue.value, vscode.ConfigurationTarget.Global);
+            vscode.window.showInformationMessage(
+              vscode.l10n.t('Build with save check has been set to {0}', selectedValue.label)
+            );
           }
-          const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
-          config.update('buildWithSaveCheck', selectedAction, vscode.ConfigurationTarget.Global);
-          vscode.window.showInformationMessage(
-            vscode.l10n.t('Build with save check has been set to {0}', firstResponse)
-          );
         }
       }),
     ];
