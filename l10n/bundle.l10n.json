@@ -434,5 +434,6 @@
   "Not remember": "Not remember",
   "Do you want to remember this choice for future builds?": "Do you want to remember this choice for future builds?",
   "Some files could not be saved. Continue building anyway?": "Some files could not be saved. Continue building anyway?",
-  "Current file could not be saved. Continue building anyway?": "Current file could not be saved. Continue building anyway?"
+  "Current file could not be saved. Continue building anyway?": "Current file could not be saved. Continue building anyway?",
+  "Build with save check has been set to {0}": "Build with save check has been set to {0}"
 }

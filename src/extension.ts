@@ -355,6 +355,39 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           return statusBarProvider.executeStatusBarButton(buttonId);
         }
       ),
+      vscode.commands.registerCommand(`${CMD_PREFIX}toggleBuildWithSaveCheck`, async () => {
+        const savePrompt = vscode.l10n.t('Ask Every Time');
+        const saveAllAction = vscode.l10n.t('Save All');
+        const doNotSaveAction = vscode.l10n.t("Don't Save");
+        const saveCurrentAction = vscode.l10n.t('Save Current File');
+        const options = [savePrompt, saveAllAction, saveCurrentAction, doNotSaveAction];
+        // 此处需要可设置偏好 buildWithSaveCheck
+        const firstResponse = await vscode.window.showQuickPick(options, {
+          placeHolder: vscode.l10n.t('Toggle build with save check'),
+          ignoreFocusOut: true,
+        });
+        if (firstResponse) {
+          let selectedAction: string;
+          switch (firstResponse) {
+            case saveAllAction:
+              selectedAction = 'saveAll';
+              break;
+            case saveCurrentAction:
+              selectedAction = 'saveCurrent';
+              break;
+            case doNotSaveAction:
+              selectedAction = 'doNotSave';
+              break;
+            default:
+              selectedAction = 'prompt'; // 兜底
+          }
+          const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+          config.update('buildWithSaveCheck', selectedAction, vscode.ConfigurationTarget.Global);
+          vscode.window.showInformationMessage(
+            vscode.l10n.t('Build with save check has been set to {0}', firstResponse)
+          );
+        }
+      }),
     ];
 
     context.subscriptions.push(...commands);

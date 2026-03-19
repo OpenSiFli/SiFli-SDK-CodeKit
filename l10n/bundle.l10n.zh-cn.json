@@ -434,5 +434,6 @@
   "Not remember": "不记住",
   "Do you want to remember this choice for future builds?": "是否要记住此选择用于将来的构建？",
   "Some files could not be saved. Continue building anyway?": "某些文件无法保存。是否继续构建？",
-  "Current file could not be saved. Continue building anyway?": "当前文件无法保存。是否继续构建？"
+  "Current file could not be saved. Continue building anyway?": "当前文件无法保存。是否继续构建？",
+  "Build with save check has been set to {0}": "编译前保存偏好已设置为 {0}"
 }
