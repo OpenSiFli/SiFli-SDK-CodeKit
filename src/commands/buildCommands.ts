@@ -30,9 +30,9 @@ export class BuildCommands {
     }
 
     // 检查是否有未保存的文件（包括所有文本文档，不只是可见编辑器）
-    const hasDirtyDocs = vscode.workspace.textDocuments.some(doc => doc.isDirty);
+    const unsavedDocs = vscode.workspace.textDocuments.filter(doc => doc.isDirty);
 
-    if (hasDirtyDocs) {
+    if (unsavedDocs.length > 0) {
       let action: string | undefined = buildWithSaveCheck;
 
       // 如果当前配置是"prompt"，则执行二次提示逻辑
@@ -121,21 +121,68 @@ export class BuildCommands {
           }
         }
       } else if (action === 'saveCurrent') {
-        // 保存当前文件
-        const activeEditor = vscode.window.activeTextEditor;
-        if (activeEditor && activeEditor.document.isDirty) {
-          const saved = await activeEditor.document.save();
-          if (!saved) {
-            // 如果有文件保存失败（例如用户取消了"另存为"对话框）
-            const proceed = await vscode.window.showWarningMessage(
-              vscode.l10n.t('Current file could not be saved. Continue building anyway?'),
-              vscode.l10n.t('Continue'),
-              vscode.l10n.t('Cancel')
-            );
+        let targetDoc: vscode.TextDocument | undefined;
+        // 一个文件未保存
+        if (unsavedDocs.length === 1) {
+          targetDoc = unsavedDocs[0];
+          await vscode.window.showTextDocument(targetDoc, { preserveFocus: false });
+          // 保存当前文件
+          const activeEditor = vscode.window.activeTextEditor;
+          if (activeEditor && activeEditor.document.isDirty) {
+            const saved = await activeEditor.document.save();
+            if (!saved) {
+              // 如果有文件保存失败（例如用户取消了"另存为"对话框）
+              const proceed = await vscode.window.showWarningMessage(
+                vscode.l10n.t('Current file could not be saved. Continue building anyway?'),
+                vscode.l10n.t('Continue'),
+                vscode.l10n.t('Cancel')
+              );
 
-            if (proceed !== vscode.l10n.t('Continue')) {
-              return; // 取消编译
+              if (proceed !== vscode.l10n.t('Continue')) {
+                return; // 取消编译
+              }
             }
+          }
+        } else {
+          // 多个文件未保存
+          // 2. 构建多选选项列表
+          const options: vscode.QuickPickItem[] = unsavedDocs.map(doc => ({
+            label: vscode.workspace.asRelativePath(doc.fileName),
+            description: vscode.l10n.t('Unsaved changes'),
+            detail: doc.fileName,
+          }));
+
+          // 3. 开启多选的快速选择
+          const selected = await vscode.window.showQuickPick(options, {
+            placeHolder: vscode.l10n.t(
+              'Select unsaved file(s) to save before building (hold Ctrl/Cmd to multi-select)'
+            ),
+            ignoreFocusOut: true,
+            canPickMany: true, // 核心：开启多选
+          });
+          if (selected && selected?.length > 0) {
+            // 5. 批量保存选中的文件
+            const failedFiles: string[] = [];
+            for (const item of selected) {
+              const targetDoc = unsavedDocs.find(doc => vscode.workspace.asRelativePath(doc.fileName) === item.label);
+
+              if (targetDoc) {
+                let saved = false;
+                try {
+                  saved = await targetDoc.save();
+                } catch (error) {
+                  vscode.window.showErrorMessage(
+                    vscode.l10n.t('Error saving {0}: {1}', item.label, (error as Error).message)
+                  );
+                }
+                if (!saved) {
+                  failedFiles.push(item.label);
+                }
+              }
+            }
+          } else {
+            vscode.window.showWarningMessage(vscode.l10n.t('No files to save, ignored action'));
+            return;
           }
         }
       } else if (action === 'doNotSave') {

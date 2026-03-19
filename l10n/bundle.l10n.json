@@ -435,5 +435,9 @@
   "Do you want to remember this choice for future builds?": "Do you want to remember this choice for future builds?",
   "Some files could not be saved. Continue building anyway?": "Some files could not be saved. Continue building anyway?",
   "Current file could not be saved. Continue building anyway?": "Current file could not be saved. Continue building anyway?",
-  "Build with save check has been set to {0}": "Build with save check has been set to {0}"
+  "Build with save check has been set to {0}": "Build with save check has been set to {0}",
+  "Select unsaved file(s) to save before building (hold Ctrl/Cmd to multi-select)": "Select unsaved file(s) to save before building (hold Ctrl/Cmd to multi-select)",
+  "No files to save, ignored action": "No files to save, ignored action",
+  "Unsaved changes": "Unsaved changes",
+  "Error saving {0}: {1}": "Error saving {0}: {1}"
 }

@@ -435,5 +435,9 @@
   "Do you want to remember this choice for future builds?": "是否要记住此选择用于将来的构建？",
   "Some files could not be saved. Continue building anyway?": "某些文件无法保存。是否继续构建？",
   "Current file could not be saved. Continue building anyway?": "当前文件无法保存。是否继续构建？",
-  "Build with save check has been set to {0}": "编译前保存偏好已设置为 {0}"
+  "Build with save check has been set to {0}": "编译前保存偏好已设置为 {0}",
+  "Select unsaved file(s) to save before building (hold Ctrl/Cmd to multi-select)": "请选择需要保存的文件、继续构建？",
+  "No files to save, ignored action": "没有文件保存，已忽略操作",
+  "Unsaved changes": "未保存",
+  "Error saving {0}: {1}": "保存失败 {0}: {1}"
 }
