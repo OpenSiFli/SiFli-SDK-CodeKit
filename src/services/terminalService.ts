@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { randomUUID } from 'crypto';
-import { TERMINAL_NAME, PROJECT_SUBFOLDER } from '../constants';
+import { TERMINAL_NAME } from '../constants';
 import { TaskName } from '../types';
 import { ConfigService } from './configService';
 import { LogService } from './logService';

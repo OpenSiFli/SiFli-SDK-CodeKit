@@ -168,6 +168,32 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
           'statusBarGroup'
         )
       );
+      // MARK: 配置编译构建前保存操作
+      const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+      const buildWithSaveCheck = config.get<string>('buildWithSaveCheck') ?? 'prompt';
+      const buildWithSaveCheckText =
+        buildWithSaveCheck === 'saveAll'
+          ? vscode.l10n.t('configuration.sifli.buildWithSaveCheck.enum.saveAll')
+          : buildWithSaveCheck === 'saveCurrent'
+            ? vscode.l10n.t('configuration.sifli.buildWithSaveCheck.enum.saveCurrent')
+            : buildWithSaveCheck === 'doNotSave'
+              ? vscode.l10n.t('configuration.sifli.buildWithSaveCheck.enum.doNotSave')
+              : vscode.l10n.t('configuration.sifli.buildWithSaveCheck.enum.prompt');
+      items.push(
+        new SifliSidebarItem(
+          vscode.l10n.t('command.toggleBuildWithSaveCheck.title'),
+          vscode.TreeItemCollapsibleState.None,
+          {
+            command: 'extension.toggleBuildWithSaveCheck',
+            title: vscode.l10n.t('command.toggleBuildWithSaveCheck.title'),
+            arguments: [],
+          },
+          new vscode.ThemeIcon('settings-gear'),
+          vscode.l10n.t('configuration.sifli.buildWithSaveCheck.description'),
+          'buildWithSaveCheck',
+          buildWithSaveCheckText
+        )
+      );
     }
 
     return items;
@@ -270,7 +296,6 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
         'clangdConfig'
       )
     );
-
     return items;
   }
 

@@ -27,6 +27,7 @@ import { McpServerService } from './services/mcpServerService';
 import { McpServerDefinitionProviderService } from './services/mcpServerDefinitionProviderService';
 import { isSiFliProject } from './utils/projectUtils';
 import { registerProbeRsDebugger } from './probe-rs/extension';
+import { on } from 'events';
 
 /**
  * 扩展激活函数
@@ -251,8 +252,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // 注册命令（仅限 SiFli 项目）
     const commands = [
-      vscode.commands.registerCommand(CMD_PREFIX + 'compile', () => buildCommands.executeCompileTask()),
-      vscode.commands.registerCommand(CMD_PREFIX + 'rebuild', () => buildCommands.executeRebuildTask()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'compile', () => buildCommands.buildWithSaveCheck(true)),
+      vscode.commands.registerCommand(CMD_PREFIX + 'rebuild', () => buildCommands.buildWithSaveCheck(false)),
       vscode.commands.registerCommand(CMD_PREFIX + 'clean', () => buildCommands.executeCleanCommand()),
       vscode.commands.registerCommand(CMD_PREFIX + 'download', () => buildCommands.executeDownloadTask()),
       vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => buildCommands.executeMenuconfigTask()),
@@ -269,7 +270,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.commands.registerCommand(CMD_PREFIX + 'listSerialPorts', () => configCommands.listSerialPorts()),
       vscode.commands.registerCommand(CMD_PREFIX + 'configureClangd', () => configCommands.configureClangd()),
       vscode.commands.registerCommand(CMD_PREFIX + 'showLogs', () => {
-        logService.show();
         logService.info('Logs displayed by user request');
       }),
       vscode.commands.registerCommand(CMD_PREFIX + 'workflows.manage', () => workflowCommands.openManager()),
@@ -355,6 +355,48 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           return statusBarProvider.executeStatusBarButton(buttonId);
         }
       ),
+      vscode.commands.registerCommand(`${CMD_PREFIX}toggleBuildWithSaveCheck`, async () => {
+        const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+        const buildWithSaveCheck = config.get<string>('buildWithSaveCheck') ?? 'prompt';
+        const savePrompt = vscode.l10n.t('Ask Every Time');
+        const saveAllAction = vscode.l10n.t('Save All');
+        const doNotSaveAction = vscode.l10n.t("Don't Save");
+        const saveCurrentAction = vscode.l10n.t('Save Current File');
+        const optionMappings = [
+          { value: 'prompt', label: savePrompt },
+          { value: 'saveAll', label: saveAllAction },
+          { value: 'saveCurrent', label: saveCurrentAction },
+          { value: 'dontSave', label: doNotSaveAction },
+        ];
+        const options: vscode.QuickPickItem[] = optionMappings.map(item => {
+          if (item.value === buildWithSaveCheck) {
+            return {
+              label: item.label,
+              description: vscode.l10n.t('(current)'), // 可选：在描述栏显示当前值
+              picked: item.value === buildWithSaveCheck, // 核心：默认选中当前值对应的项
+            };
+          } else {
+            return {
+              label: item.label,
+            };
+          }
+        });
+        // 此处需要可设置偏好 buildWithSaveCheck
+        const firstResponse = await vscode.window.showQuickPick(options, {
+          placeHolder: vscode.l10n.t('command.toggleBuildWithSaveCheck.title'),
+          ignoreFocusOut: true,
+        });
+        if (firstResponse) {
+          const selectedValue = optionMappings.find(m => m.label === firstResponse.label);
+          if (selectedValue) {
+            const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+            config.update('buildWithSaveCheck', selectedValue.value, vscode.ConfigurationTarget.Global);
+            vscode.window.showInformationMessage(
+              vscode.l10n.t('Build with save check has been set to {0}', selectedValue.label)
+            );
+          }
+        }
+      }),
     ];
 
     context.subscriptions.push(...commands);
