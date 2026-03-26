@@ -30,6 +30,5 @@ async function checkFileExists(filePath: string): Promise<string> {
 }
 
 export async function probeRsInstalled(): Promise<boolean> {
-  const executableName = process.platform === 'win32' ? 'probe-rs.exe' : 'probe-rs';
-  return (await findExecutable(executableName)) !== null;
+  return (await findExecutable('probe-rs')) !== null;
 }
