@@ -54,7 +54,7 @@ export class ClangdService {
       `--compile-commands-dir=${compileCommandsDir}`,
     ];
 
-    await clangdConfig.update('arguments', nextArguments, vscode.ConfigurationTarget.WorkspaceFolder);
+    await clangdConfig.update('arguments', nextArguments, vscode.ConfigurationTarget.Workspace);
 
     return {
       success: true,
