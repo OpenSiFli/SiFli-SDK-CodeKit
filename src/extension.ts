@@ -229,6 +229,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       } catch (error) {
         logService.error('Error activating current SDK on startup:', error);
       }
+    } else {
+      // 如果没有当前 SDK ，并且只发现了一个 SDK，则自动激活它
+      const discoverSiFlisSdksResult = await sdkService.discoverSiFliSdks();
+      if (discoverSiFlisSdksResult.length === 1 && discoverSiFlisSdksResult[0].valid) {
+        console.log(
+          `Only one SDK discovered (${discoverSiFlisSdksResult[0].version} at ${discoverSiFlisSdksResult[0].path}), auto-activating it.`
+        );
+        sdkService.activateSdk(discoverSiFlisSdksResult[0]).catch(err => {
+          logService.error('Error activating the only discovered SDK:', err);
+        });
+      }
     }
     console.log('[SiFli Extension] SiFli project detected. Activating full extension features.');
 
