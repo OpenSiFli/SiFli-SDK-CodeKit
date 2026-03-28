@@ -235,7 +235,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const validSdks = discoveredSdks.filter(sdk => sdk.valid);
       if (validSdks.length === 1) {
         try {
-          logService.error(
+          logService.info(
             `Only one SDK discovered (${validSdks[0].version} at ${validSdks[0].path}), auto-activating it.`
           );
           await sdkService.activateSdk(validSdks[0]);
