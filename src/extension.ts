@@ -231,13 +231,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     } else {
       // 如果没有当前 SDK ，并且只发现了一个 SDK，则自动激活它
-      const discoverSiFlisSdksResult = await sdkService.discoverSiFliSdks();
-      if (discoverSiFlisSdksResult.length === 1 && discoverSiFlisSdksResult[0].valid) {
+      const discoveredSdks = await sdkService.discoverSiFliSdks();
+      const validSdks = discoveredSdks.filter(sdk => sdk.valid);
+      if (validSdks.length === 1) {
         try {
           logService.error(
-            `Only one SDK discovered (${discoverSiFlisSdksResult[0].version} at ${discoverSiFlisSdksResult[0].path}), auto-activating it.`
+            `Only one SDK discovered (${validSdks[0].version} at ${validSdks[0].path}), auto-activating it.`
           );
-          await sdkService.activateSdk(discoverSiFlisSdksResult[0]);
+          await sdkService.activateSdk(validSdks[0]);
         } catch (err) {
           logService.error('Error activating the only discovered SDK:', err);
         }
