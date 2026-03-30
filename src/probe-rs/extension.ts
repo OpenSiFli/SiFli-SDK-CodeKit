@@ -21,6 +21,17 @@ import { getAvailablePort } from './portUtils';
 const DEBUG_TYPE = 'sifli-probe-rs';
 const CONFIG_NAMESPACE = 'sifli-probe-rs';
 
+export type ProbeRsDidSendMessageListener = (session: vscode.DebugSession, message: unknown) => void;
+
+const probeRsDidSendMessageListeners = new Set<ProbeRsDidSendMessageListener>();
+
+export function onProbeRsDidSendMessage(listener: ProbeRsDidSendMessageListener): vscode.Disposable {
+  probeRsDidSendMessageListeners.add(listener);
+  return new vscode.Disposable(() => {
+    probeRsDidSendMessageListeners.delete(listener);
+  });
+}
+
 export function registerProbeRsDebugger(context: vscode.ExtensionContext): void {
   const descriptorFactory = new ProbeRSDebugAdapterServerDescriptorFactory();
   const configProvider = new ProbeRSConfigurationProvider();
@@ -615,7 +626,7 @@ function defaultExecutable(): string {
 
 class ProbeRsDebugAdapterTrackerFactory implements DebugAdapterTrackerFactory {
   createDebugAdapterTracker(session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
-    const tracker = new ProbeRsDebugAdapterTracker();
+    const tracker = new ProbeRsDebugAdapterTracker(session);
     return tracker;
   }
 }
@@ -653,6 +664,8 @@ class ProbeRSConfigurationProvider implements DebugConfigurationProvider {
 }
 
 class ProbeRsDebugAdapterTracker implements DebugAdapterTracker {
+  constructor(private readonly session: vscode.DebugSession) {}
+
   onWillStopSession(): void {
     logToConsole(`${ConsoleLogSources.console}: Closing sifli-probe-rs debug session`);
   }
@@ -670,6 +683,19 @@ class ProbeRsDebugAdapterTracker implements DebugAdapterTracker {
   // 		${JSON.stringify(message, null, 2)}`);
   //     }
   // }
+
+  onDidSendMessage(message: unknown): void {
+    for (const listener of probeRsDidSendMessageListeners) {
+      try {
+        listener(this.session, message);
+      } catch (error) {
+        logToConsole(
+          `${ConsoleLogSources.error}: Failed to notify probe-rs debug listeners: ${JSON.stringify(error)}`,
+          true
+        );
+      }
+    }
+  }
 
   onError(error: Error) {
     if (consoleLogLevel === toCamelCase(ConsoleLogSources.debug)) {
