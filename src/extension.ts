@@ -28,7 +28,7 @@ import { McpServerService } from './services/mcpServerService';
 import { McpServerDefinitionProviderService } from './services/mcpServerDefinitionProviderService';
 import { isSiFliProject } from './utils/projectUtils';
 import { registerProbeRsDebugger } from './probe-rs/extension';
-import { on } from 'events';
+import { disposePeripheralViewer, initPeripheralViewer } from './peripheral-viewer';
 
 /**
  * 扩展激活函数
@@ -41,6 +41,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Register SiFli probe-rs debugger contributions
   registerProbeRsDebugger(context);
+
+  // Initialize the built-in Peripheral Viewer before project-specific gating.
+  context.subscriptions.push(await initPeripheralViewer(context));
 
   // 初始化 WorkspaceStateService（必须在其他服务之前初始化）
   const workspaceStateService = WorkspaceStateService.getInstance();
@@ -449,6 +452,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 export async function deactivate(): Promise<void> {
   const logService = LogService.getInstance();
   logService.info('SiFli SDK CodeKit extension is deactivating...');
+
+  disposePeripheralViewer();
 
   // 清理状态栏
   const statusBarProvider = StatusBarProvider.getInstance();

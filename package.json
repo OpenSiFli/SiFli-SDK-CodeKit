@@ -85,6 +85,36 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "extension.peripheralViewer.updateNode",
+        "title": "%command.peripheralViewer.updateNode.title%",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "extension.peripheralViewer.copyValue",
+        "title": "%command.peripheralViewer.copyValue.title%",
+        "icon": "$(clippy)"
+      },
+      {
+        "command": "extension.peripheralViewer.setFormat",
+        "title": "%command.peripheralViewer.setFormat.title%",
+        "icon": "$(symbol-numeric)"
+      },
+      {
+        "command": "extension.peripheralViewer.forceRefresh",
+        "title": "%command.peripheralViewer.forceRefresh.title%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "extension.peripheralViewer.togglePin",
+        "title": "%command.peripheralViewer.togglePin.title%",
+        "icon": "$(pin)"
+      },
+      {
+        "command": "extension.peripheralViewer.refreshAll",
+        "title": "%command.peripheralViewer.refreshAll.title%",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "extension.workflows.manage",
         "title": "%command.workflows.manage.title%"
       },
@@ -491,6 +521,13 @@
       }
     ],
     "views": {
+      "debug": [
+        {
+          "id": "sifliPeripheralViewer",
+          "name": "%view.peripheralViewer.name%",
+          "when": "sifli.peripheralViewerEnabled && debugType == 'sifli-probe-rs'"
+        }
+      ],
       "explorer": [
         {
           "id": "sifliSdkDependenciesExplorer",
@@ -531,9 +568,39 @@
           "command": "sifliSidebar.refresh",
           "when": "view == sifliSdkManager",
           "group": "navigation"
+        },
+        {
+          "command": "extension.peripheralViewer.refreshAll",
+          "when": "view == sifliPeripheralViewer",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
+        {
+          "command": "extension.peripheralViewer.updateNode",
+          "when": "view == sifliPeripheralViewer && viewItem =~ /^peripheral-(register|field)-(rw|wo)$/",
+          "group": "inline@1"
+        },
+        {
+          "command": "extension.peripheralViewer.copyValue",
+          "when": "view == sifliPeripheralViewer && viewItem =~ /^peripheral-(register|field)-(rw|ro)$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "extension.peripheralViewer.setFormat",
+          "when": "view == sifliPeripheralViewer && viewItem =~ /^peripheral-(register|field)-/",
+          "group": "navigation@1"
+        },
+        {
+          "command": "extension.peripheralViewer.togglePin",
+          "when": "view == sifliPeripheralViewer && (viewItem == peripheral || viewItem == peripheral-pinned)",
+          "group": "inline@3"
+        },
+        {
+          "command": "extension.peripheralViewer.forceRefresh",
+          "when": "view == sifliPeripheralViewer && viewItem =~ /^peripheral($|-pinned|-cluster|-register-(rw|ro|wo)|-field-(rw|ro|wo|reserved))/",
+          "group": "navigation@2"
+        },
         {
           "command": "extension.workflows.run",
           "when": "view == sifliSdkManager && viewItem == workflowItem",
@@ -652,6 +719,20 @@
             "type": "string",
             "description": "%configuration.sifli.customBoardSearchPath.description%",
             "default": "",
+            "scope": "resource"
+          },
+          "sifli-sdk-codekit.peripheralViewer.svdFile": {
+            "type": "string",
+            "default": "",
+            "description": "%configuration.sifli.peripheralViewer.svdFile.description%",
+            "scope": "resource"
+          },
+          "sifli-sdk-codekit.peripheralViewer.addressGapThreshold": {
+            "type": "number",
+            "default": 16,
+            "minimum": 0,
+            "maximum": 32,
+            "description": "%configuration.sifli.peripheralViewer.addressGapThreshold.description%",
             "scope": "resource"
           },
           "sifli-sdk-codekit.workflows": {
@@ -1116,6 +1197,10 @@
                       "type": "string",
                       "description": "The path (relative to `cwd` or absolute) to the CMSIS-SVD file for your target core"
                     },
+                    "peripheralViewerSvdFile": {
+                      "type": "string",
+                      "description": "The path (relative to `cwd` or absolute) to the SVD file used by the built-in Peripheral Viewer."
+                    },
                     "rttEnabled": {
                       "type": "boolean",
                       "description": "If true, the debugger will open an RTT Terminal tab for each of the active channels on the target.",
@@ -1316,6 +1401,10 @@
                       "type": "string",
                       "description": "The path (relative to `cwd` or absolute) to the CMSIS-SVD file for your target core"
                     },
+                    "peripheralViewerSvdFile": {
+                      "type": "string",
+                      "description": "The path (relative to `cwd` or absolute) to the SVD file used by the built-in Peripheral Viewer."
+                    },
                     "rttEnabled": {
                       "type": "boolean",
                       "description": "If true, the debugger will open an RTT Terminal tab for each of the active channels on the target.",
@@ -1477,6 +1566,7 @@
   "devDependencies": {
     "@types/node": "^24.1.0",
     "@types/vscode": "^1.102.0",
+    "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vscode/vsce": "^3.6.0",
@@ -1489,6 +1579,7 @@
     "@modelcontextprotocol/sdk": "^1.27.1",
     "axios": "^1.10.0",
     "serialport": "^13.0.0",
+    "xml2js": "^0.6.2",
     "zod": "^3.25.0"
   }
 }
