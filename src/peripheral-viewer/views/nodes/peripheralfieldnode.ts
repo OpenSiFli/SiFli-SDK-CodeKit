@@ -209,6 +209,10 @@ export class PeripheralFieldNode extends PeripheralBaseNode {
     return this.parent.extractBits(this.offset, this.width);
   }
 
+  public getValue(): number {
+    return this.getCurrentValue();
+  }
+
   private getResetValue(): number {
     return this.parent.extractBitsFromReset(this.offset, this.width);
   }

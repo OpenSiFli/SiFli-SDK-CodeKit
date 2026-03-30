@@ -138,7 +138,11 @@ export class PeripheralNode extends PeripheralBaseNode {
   }
 
   public async updateData(): Promise<boolean> {
-    if (!this.expanded) {
+    return this.refreshData(false);
+  }
+
+  public async refreshData(force = true): Promise<boolean> {
+    if (!force && !this.expanded) {
       return false;
     }
 

@@ -1,5 +1,6 @@
 export const DEBUG_TYPE = 'sifli-probe-rs';
 export const VIEW_ID = 'sifliPeripheralViewer';
+export const ANALYSIS_VIEW_ID = 'sifliPeripheralAnalysis';
 export const CONTEXT_ENABLED = 'sifli.peripheralViewerEnabled';
 export const CONFLICT_EXTENSION_ID = 'mcu-debug.peripheral-viewer';
 
@@ -13,6 +14,8 @@ export const COMMAND_SET_FORMAT = 'extension.peripheralViewer.setFormat';
 export const COMMAND_FORCE_REFRESH = 'extension.peripheralViewer.forceRefresh';
 export const COMMAND_TOGGLE_PIN = 'extension.peripheralViewer.togglePin';
 export const COMMAND_REFRESH_ALL = 'extension.peripheralViewer.refreshAll';
+export const COMMAND_ANALYSIS_RUN_ALL = 'extension.peripheralAnalysis.runAll';
+export const COMMAND_ANALYSIS_RUN_GROUP = 'extension.peripheralAnalysis.runGroup';
 
 export const SESSION_STATE_KEY = 'sifli.peripheralViewer.layoutStates';
 export const ANALYSIS_RESULTS_KEY = 'sifli.peripheralViewer.analysisResults';

@@ -4,6 +4,7 @@ import { Commands } from './commands';
 import { onProbeRsDidSendMessage } from '../probe-rs/extension';
 import { CONFLICT_EXTENSION_ID, CONTEXT_ENABLED, DEBUG_TYPE } from './manifest';
 import { clearParsedSvdCache } from './peripherals-provider';
+import { PeripheralViewerSessionData } from './session-data';
 import { PeripheralTreeProvider } from './views/peripheral-tree-provider';
 
 class PeripheralViewerManager implements vscode.Disposable {
@@ -42,7 +43,7 @@ class PeripheralViewerManager implements vscode.Disposable {
       return;
     }
 
-    this.treeProvider = new PeripheralTreeProvider(context, this.analyzerRegistry);
+    this.treeProvider = new PeripheralTreeProvider(context);
     const commands = new Commands(this.treeProvider);
 
     this.disposables.push(
@@ -86,6 +87,14 @@ class PeripheralViewerManager implements vscode.Disposable {
     return this.analyzerRegistry;
   }
 
+  public getTreeProvider(): PeripheralTreeProvider | undefined {
+    return this.treeProvider;
+  }
+
+  public getActiveSessionData(): PeripheralViewerSessionData | undefined {
+    return this.treeProvider?.getActiveSessionData();
+  }
+
   public dispose(): void {
     for (const disposable of this.disposables.splice(0)) {
       disposable.dispose();
@@ -112,6 +121,10 @@ export function getPeripheralViewerAnalyzerRegistry(): SvdAnalyzerRegistry {
   }
 
   return peripheralViewerManager.getAnalyzerRegistry();
+}
+
+export function getActivePeripheralViewerSessionData(): PeripheralViewerSessionData | undefined {
+  return peripheralViewerManager?.getActiveSessionData();
 }
 
 export function registerPeripheralViewerAnalyzer(analyzer: ISvdAnalyzer): void {
