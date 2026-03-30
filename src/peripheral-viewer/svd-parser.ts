@@ -331,8 +331,7 @@ export class SVDParser {
         const offsetbase = parseInteger(r.addressOffset[0]);
         if (offsetbase === undefined || offsetbase < 0) {
           throw new Error(
-            `Unable to parse SVD file: register ${r.name[0]} has invalid addressOffset ` + r.addressOffset[0] ||
-              'undefined'
+            `Unable to parse SVD file: register ${r.name[0]} has invalid addressOffset ${r.addressOffset[0] ?? 'undefined'}`
           );
         }
 
@@ -409,7 +408,7 @@ export class SVDParser {
         baseOptions.size = parseInteger(c.size[0]) ?? 0;
       }
       if (c.resetValue) {
-        baseOptions.resetValue = parseInteger(c.resetValue) ?? 0;
+        baseOptions.resetValue = parseInteger(c.resetValue[0]) ?? 0;
       }
 
       if (c.dim) {

@@ -19,6 +19,10 @@ export interface LoadedPeripheralSet {
 
 const parsedSvdCache = new Map<string, ParsedSvdCacheEntry>();
 
+export function clearParsedSvdCache(): void {
+  parsedSvdCache.clear();
+}
+
 export class PeripheralsProvider {
   private readonly svdResolver = new SvdResolver();
 
@@ -43,7 +47,6 @@ export class PeripheralsProvider {
     }
 
     const uri = vscode.Uri.file(resolvedSvd.path);
-    await vscode.workspace.fs.stat(uri);
     const { svdData, deviceName } = await this.loadSvdData(uri);
 
     const parser = new SVDParser();
