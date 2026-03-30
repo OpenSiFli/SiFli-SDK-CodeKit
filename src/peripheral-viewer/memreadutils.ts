@@ -132,6 +132,9 @@ export class MemUtils {
   ): Promise<boolean> {
     const memoryReference = `0x${startAddr.toString(16)}`;
     const numBytes = length / 8;
+    if (!Number.isInteger(numBytes)) {
+      throw new Error(`Register size ${length} bits is not byte-aligned`);
+    }
     const bytes = new Uint8Array(numBytes);
 
     value = value >>> 0;

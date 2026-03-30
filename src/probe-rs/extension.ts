@@ -685,6 +685,11 @@ class ProbeRsDebugAdapterTracker implements DebugAdapterTracker {
   // }
 
   onDidSendMessage(message: unknown): void {
+    const debugMessage = message as { type?: string } | undefined;
+    if (debugMessage?.type !== 'event') {
+      return;
+    }
+
     for (const listener of probeRsDidSendMessageListeners) {
       try {
         listener(this.session, message);

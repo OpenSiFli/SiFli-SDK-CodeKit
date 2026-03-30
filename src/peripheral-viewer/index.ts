@@ -3,6 +3,7 @@ import { SvdAnalyzerRegistry, ISvdAnalyzer } from './analysis/analyzer';
 import { Commands } from './commands';
 import { onProbeRsDidSendMessage } from '../probe-rs/extension';
 import { CONFLICT_EXTENSION_ID, CONTEXT_ENABLED, DEBUG_TYPE } from './manifest';
+import { clearParsedSvdCache } from './peripherals-provider';
 import { PeripheralTreeProvider } from './views/peripheral-tree-provider';
 
 class PeripheralViewerManager implements vscode.Disposable {
@@ -89,6 +90,7 @@ class PeripheralViewerManager implements vscode.Disposable {
     for (const disposable of this.disposables.splice(0)) {
       disposable.dispose();
     }
+    clearParsedSvdCache();
     this.treeProvider = undefined;
   }
 }

@@ -141,7 +141,7 @@ class SessionPeripheralTree extends PeripheralBaseNode {
     const stored = this.context.workspaceState.get<PersistedAnalysisResults>(ANALYSIS_RESULTS_KEY, {});
     stored[this.session.id] = this.lastAnalysisResults.map(result => ({
       severity: result.severity,
-      node: result.node.name,
+      node: result.node.name ?? '(unknown)',
       message: result.message,
       detail: result.detail,
       suggestedValue: result.suggestedValue,
