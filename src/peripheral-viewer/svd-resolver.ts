@@ -1,15 +1,19 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { ConfigService } from '../services/configService';
 import { SETTINGS_NAMESPACE, SETTINGS_SVD_FILE } from './manifest';
 
 export interface ResolvedSvdFile {
   path: string;
-  source: 'launch' | 'workspace';
+  source: 'launch' | 'workspace' | 'default';
 }
 
 export class SvdResolverError extends Error {}
 
 export class SvdResolver {
+  private readonly configService = ConfigService.getInstance();
+
   public resolve(session: vscode.DebugSession): ResolvedSvdFile | undefined {
     const launchSvdFile = this.resolveLaunchOverride(session);
     if (launchSvdFile) {
@@ -21,7 +25,15 @@ export class SvdResolver {
 
     const workspaceSetting = this.getWorkspaceSvdSetting(session);
     if (!workspaceSetting) {
-      return undefined;
+      const defaultSvd = this.getDefaultSvdFromBoard();
+      if (!defaultSvd) {
+        return undefined;
+      }
+
+      return {
+        path: defaultSvd,
+        source: 'default',
+      };
     }
 
     return {
@@ -64,6 +76,33 @@ export class SvdResolver {
 
     const basePath = scope?.fsPath ?? this.getDebugCwd(session);
     return this.resolvePath(configured, basePath);
+  }
+
+  private getDefaultSvdFromBoard(): string | undefined {
+    const sdkRoot = this.configService.getCurrentSdkPath().trim();
+    const boardName = this.configService.getSelectedBoardName().trim();
+
+    if (!sdkRoot || !boardName || boardName === 'N/A') {
+      return undefined;
+    }
+
+    // Important: keep this regex intentionally narrow.
+    // We only derive a default SVD when the selected board name explicitly contains a known chip token
+    // such as SF32LB52 or SF32LB52X. If there is no match, do not guess a fallback SVD.
+    const chipMatch = boardName.match(/\b(SF32LB(?:52|56|58))(?:X)?\b/i);
+    if (!chipMatch) {
+      return undefined;
+    }
+
+    // SDK convention:
+    //   $SDK_ROOT/tools/svd_external/SF32LB52X/SF32LB52x.svd
+    const chipModel = chipMatch[1].toUpperCase();
+    const candidate = path.join(sdkRoot, 'tools', 'svd_external', `${chipModel}X`, `${chipModel}x.svd`);
+    if (!fs.existsSync(candidate)) {
+      return undefined;
+    }
+
+    return candidate;
   }
 
   private getDebugCwd(session: vscode.DebugSession): string | undefined {

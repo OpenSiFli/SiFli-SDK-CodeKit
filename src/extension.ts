@@ -42,13 +42,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Register SiFli probe-rs debugger contributions
   registerProbeRsDebugger(context);
 
-  // Initialize the built-in Peripheral Viewer before project-specific gating.
-  context.subscriptions.push(await initPeripheralViewer(context));
-
   // 初始化 WorkspaceStateService（必须在其他服务之前初始化）
   const workspaceStateService = WorkspaceStateService.getInstance();
   workspaceStateService.initialize(context);
   logService.info('WorkspaceStateService initialized');
+
+  // Initialize the built-in Peripheral Viewer before project-specific gating.
+  context.subscriptions.push(await initPeripheralViewer(context));
 
   // *** 仅在开发调试时使用：强制重置首次运行标志 ***
   // 这将使得每次"重新运行调试"时,Quick Pick 都会弹出。
