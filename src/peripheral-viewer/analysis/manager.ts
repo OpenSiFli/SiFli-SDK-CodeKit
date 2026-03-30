@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { PeripheralTreeProvider } from '../views/peripheral-tree-provider';
 import { COMMAND_ANALYSIS_RUN_ALL, COMMAND_ANALYSIS_RUN_GROUP, DEBUG_TYPE } from '../manifest';
+import { registerBuiltInPeripheralAnalyzers } from './rules';
 import { PeripheralAnalysisRuntime } from './runtime';
 import { PeripheralAnalysisViewProvider } from './view-provider';
 
@@ -11,6 +12,7 @@ export class PeripheralAnalysisManager implements vscode.Disposable {
 
   constructor(private readonly treeProvider: PeripheralTreeProvider) {
     this.runtime = new PeripheralAnalysisRuntime(treeProvider);
+    registerBuiltInPeripheralAnalyzers(this.runtime);
     this.viewProvider = new PeripheralAnalysisViewProvider(this.runtime);
   }
 

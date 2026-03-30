@@ -182,14 +182,15 @@ export class PeripheralAnalysisRuntime {
       chipModel,
       deviceName: sessionData.deviceName,
       readPeripheral: async name => {
-        if (snapshotCache.has(name)) {
-          return snapshotCache.get(name);
+        const normalizedName = name.trim().toUpperCase();
+        if (snapshotCache.has(normalizedName)) {
+          return snapshotCache.get(normalizedName);
         }
 
-        const refreshed = await this.treeProvider.refreshPeripheralByName(sessionId, name);
-        const peripheral = refreshed ?? this.treeProvider.findPeripheralByName(sessionId, name);
+        const refreshed = await this.treeProvider.refreshPeripheralByName(sessionId, normalizedName);
+        const peripheral = refreshed ?? this.treeProvider.findPeripheralByName(sessionId, normalizedName);
         const snapshot = peripheral ? this.buildPeripheralSnapshot(peripheral) : undefined;
-        snapshotCache.set(name, snapshot);
+        snapshotCache.set(normalizedName, snapshot);
         return snapshot;
       },
       getInstanceNum: (peripheralName, explicitGroupName) => {
