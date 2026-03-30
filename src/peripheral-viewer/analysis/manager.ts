@@ -44,6 +44,9 @@ export class PeripheralAnalysisManager implements vscode.Disposable {
       vscode.debug.onDidChangeActiveDebugSession(() => {
         this.viewProvider.refresh();
       }),
+      this.treeProvider.onDidChangeTreeData(() => {
+        this.viewProvider.refresh();
+      }),
       vscode.debug.onDidTerminateDebugSession(session => {
         if (session.type === DEBUG_TYPE) {
           this.runtime.clearSession(session.id);
