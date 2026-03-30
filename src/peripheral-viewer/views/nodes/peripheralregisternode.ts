@@ -221,6 +221,10 @@ export class PeripheralRegisterNode extends ClusterOrRegisterBaseNode {
     return this.children || [];
   }
 
+  public getValue(): number {
+    return this.currentValue;
+  }
+
   public setChildren(children: PeripheralFieldNode[]): void {
     this.children = children.slice(0, children.length);
     this.children.sort((f1, f2) => (f1.offset > f2.offset ? 1 : -1));

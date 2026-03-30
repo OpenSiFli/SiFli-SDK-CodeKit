@@ -1,10 +1,9 @@
 import * as vscode from 'vscode';
-import { AnalysisResult } from '../analysis/types';
-import { SvdAnalyzerRegistry } from '../analysis/analyzer';
 import { AddrRange } from '../addrranges';
 import { NodeSetting } from '../common';
-import { ANALYSIS_RESULTS_KEY, DEBUG_TYPE, SESSION_STATE_KEY, VIEW_ID } from '../manifest';
+import { DEBUG_TYPE, SESSION_STATE_KEY, VIEW_ID } from '../manifest';
 import { PeripheralsProvider } from '../peripherals-provider';
+import { PeripheralSessionExecutionState, PeripheralViewerSessionData } from '../session-data';
 import { BaseNode, PeripheralBaseNode } from './nodes/basenode';
 import { MessageNode } from './nodes/messagenode';
 import { PeripheralNode } from './nodes/peripheralnode';
@@ -12,18 +11,6 @@ import { PeripheralRegisterNode } from './nodes/peripheralregisternode';
 
 interface PersistedLayoutStates {
   [svdPath: string]: NodeSetting[];
-}
-
-interface AnalysisResultSnapshot {
-  severity: string;
-  node: string | undefined;
-  message: string;
-  detail?: string;
-  suggestedValue?: string;
-}
-
-interface PersistedAnalysisResults {
-  [sessionId: string]: AnalysisResultSnapshot[];
 }
 
 class SessionPeripheralTree extends PeripheralBaseNode {
@@ -34,13 +21,12 @@ class SessionPeripheralTree extends PeripheralBaseNode {
   private message = vscode.l10n.t('Loading peripheral definitions...');
   private svdPath?: string;
   private deviceName?: string;
-  private lastAnalysisResults: AnalysisResult[] = [];
+  private executionState: PeripheralSessionExecutionState = 'unknown';
 
   constructor(
     public readonly session: vscode.DebugSession,
     state: vscode.TreeItemCollapsibleState,
     private readonly context: vscode.ExtensionContext,
-    private readonly analyzerRegistry: SvdAnalyzerRegistry,
     private readonly fireChange: () => void
   ) {
     super();
@@ -85,7 +71,6 @@ class SessionPeripheralTree extends PeripheralBaseNode {
       await this.setSession(this.session);
       this.applySavedState();
       this.sortPeripherals();
-      await this.runAnalysis();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.peripherals = [];
@@ -102,7 +87,6 @@ class SessionPeripheralTree extends PeripheralBaseNode {
     }
 
     await Promise.allSettled(this.peripherals.map(peripheral => peripheral.updateData()));
-    await this.runAnalysis();
     this.fireChange();
     return true;
   }
@@ -137,28 +121,8 @@ class SessionPeripheralTree extends PeripheralBaseNode {
     await this.context.workspaceState.update(SESSION_STATE_KEY, allStates);
   }
 
-  public async persistAnalysisResults(): Promise<void> {
-    const stored = this.context.workspaceState.get<PersistedAnalysisResults>(ANALYSIS_RESULTS_KEY, {});
-    stored[this.session.id] = this.lastAnalysisResults.map(result => ({
-      severity: result.severity,
-      node: result.node.name ?? '(unknown)',
-      message: result.message,
-      detail: result.detail,
-      suggestedValue: result.suggestedValue,
-    }));
-    await this.context.workspaceState.update(ANALYSIS_RESULTS_KEY, stored);
-  }
-
-  public clearAnalysisResults(): Thenable<void> {
-    const stored = this.context.workspaceState.get<PersistedAnalysisResults>(ANALYSIS_RESULTS_KEY, {});
-    delete stored[this.session.id];
-    this.lastAnalysisResults = [];
-    return this.context.workspaceState.update(ANALYSIS_RESULTS_KEY, stored);
-  }
-
   public async sessionTerminated(): Promise<void> {
     await this.persistLayoutState();
-    await this.clearAnalysisResults();
   }
 
   public async setNodeFormat(node: PeripheralBaseNode, format: number): Promise<void> {
@@ -168,12 +132,11 @@ class SessionPeripheralTree extends PeripheralBaseNode {
 
   public async refreshNode(node: PeripheralBaseNode): Promise<void> {
     const peripheral = node.getPeripheral();
-    if (!peripheral) {
+    if (!(peripheral instanceof PeripheralNode)) {
       return;
     }
 
-    await peripheral.updateData();
-    await this.runAnalysis();
+    await peripheral.refreshData(true);
     this.fireChange();
   }
 
@@ -185,6 +148,51 @@ class SessionPeripheralTree extends PeripheralBaseNode {
 
   public getDeviceName(): string | undefined {
     return this.deviceName;
+  }
+
+  public getSvdPath(): string | undefined {
+    return this.svdPath;
+  }
+
+  public getPeripherals(): readonly PeripheralNode[] {
+    return this.peripherals;
+  }
+
+  public setExecutionState(state: PeripheralSessionExecutionState): void {
+    this.executionState = state;
+  }
+
+  public isStopped(): boolean {
+    return this.executionState === 'stopped';
+  }
+
+  public getSessionData(): PeripheralViewerSessionData | undefined {
+    if (!this.loaded) {
+      return undefined;
+    }
+
+    return {
+      session: this.session,
+      deviceName: this.deviceName,
+      svdPath: this.svdPath,
+      executionState: this.executionState,
+      peripherals: this.peripherals,
+    };
+  }
+
+  public findPeripheralByName(name: string): PeripheralNode | undefined {
+    return this.peripherals.find(peripheral => peripheral.name === name);
+  }
+
+  public async refreshPeripheralByName(name: string): Promise<PeripheralNode | undefined> {
+    const peripheral = this.findPeripheralByName(name);
+    if (!peripheral) {
+      return undefined;
+    }
+
+    await peripheral.refreshData(true);
+    this.fireChange();
+    return peripheral;
   }
 
   private applySavedState(): void {
@@ -222,20 +230,6 @@ class SessionPeripheralTree extends PeripheralBaseNode {
   private sortPeripherals(): void {
     this.peripherals.sort(PeripheralNode.compare);
   }
-
-  private async runAnalysis(): Promise<void> {
-    if (!this.loaded) {
-      this.lastAnalysisResults = [];
-      await this.clearAnalysisResults();
-      return;
-    }
-
-    this.lastAnalysisResults = await this.analyzerRegistry.runAll({
-      peripherals: this.peripherals,
-      deviceName: this.deviceName,
-    });
-    await this.persistAnalysisResults();
-  }
 }
 
 export class PeripheralTreeProvider implements vscode.TreeDataProvider<PeripheralBaseNode> {
@@ -249,10 +243,7 @@ export class PeripheralTreeProvider implements vscode.TreeDataProvider<Periphera
   private treeView?: vscode.TreeView<PeripheralBaseNode>;
   private activeSessionId?: string;
 
-  constructor(
-    private readonly context: vscode.ExtensionContext,
-    private readonly analyzerRegistry: SvdAnalyzerRegistry
-  ) {}
+  constructor(private readonly context: vscode.ExtensionContext) {}
 
   public activate(): vscode.Disposable {
     this.treeView = vscode.window.createTreeView(VIEW_ID, {
@@ -339,7 +330,7 @@ export class PeripheralTreeProvider implements vscode.TreeDataProvider<Periphera
         ? vscode.TreeItemCollapsibleState.Expanded
         : vscode.TreeItemCollapsibleState.Collapsed);
 
-    const sessionTree = new SessionPeripheralTree(session, previousState, this.context, this.analyzerRegistry, () => {
+    const sessionTree = new SessionPeripheralTree(session, previousState, this.context, () => {
       this.onDidChangeTreeDataEmitter.fire(undefined);
     });
 
@@ -448,7 +439,37 @@ export class PeripheralTreeProvider implements vscode.TreeDataProvider<Periphera
     await tree.persistLayoutState();
   }
 
+  public getActiveSessionId(): string | undefined {
+    return this.activeSessionId;
+  }
+
+  public getActiveSessionData(): PeripheralViewerSessionData | undefined {
+    return this.getActiveTree()?.getSessionData();
+  }
+
+  public getSessionData(sessionId: string): PeripheralViewerSessionData | undefined {
+    return this.sessionTrees.get(sessionId)?.getSessionData();
+  }
+
+  public isSessionStopped(sessionId: string): boolean {
+    return this.sessionTrees.get(sessionId)?.isStopped() ?? false;
+  }
+
+  public isActiveSessionStopped(): boolean {
+    const sessionId = this.activeSessionId;
+    return sessionId ? this.isSessionStopped(sessionId) : false;
+  }
+
+  public findPeripheralByName(sessionId: string, name: string): PeripheralNode | undefined {
+    return this.sessionTrees.get(sessionId)?.findPeripheralByName(name);
+  }
+
+  public async refreshPeripheralByName(sessionId: string, name: string): Promise<PeripheralNode | undefined> {
+    return this.sessionTrees.get(sessionId)?.refreshPeripheralByName(name);
+  }
+
   private onDebugStopped(session: vscode.DebugSession): void {
+    this.sessionTrees.get(session.id)?.setExecutionState('stopped');
     const existingTimer = this.stoppedTimers.get(session.id);
     if (existingTimer) {
       clearTimeout(existingTimer);
@@ -468,6 +489,7 @@ export class PeripheralTreeProvider implements vscode.TreeDataProvider<Periphera
   }
 
   private onDebugContinued(session: vscode.DebugSession): void {
+    this.sessionTrees.get(session.id)?.setExecutionState('running');
     const timer = this.stoppedTimers.get(session.id);
     if (!timer) {
       return;
