@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { SvdAnalyzerRegistry, ISvdAnalyzer } from './analysis/analyzer';
+import { PeripheralAnalysisManager } from './analysis/manager';
 import { Commands } from './commands';
 import { onProbeRsDidSendMessage } from '../probe-rs/extension';
 import { CONFLICT_EXTENSION_ID, CONTEXT_ENABLED, DEBUG_TYPE } from './manifest';
@@ -11,6 +12,7 @@ class PeripheralViewerManager implements vscode.Disposable {
   private readonly analyzerRegistry = new SvdAnalyzerRegistry();
   private readonly disposables: vscode.Disposable[] = [];
   private treeProvider?: PeripheralTreeProvider;
+  private analysisManager?: PeripheralAnalysisManager;
 
   public async activate(context: vscode.ExtensionContext): Promise<void> {
     await vscode.commands.executeCommand('setContext', CONTEXT_ENABLED, false);
@@ -44,10 +46,12 @@ class PeripheralViewerManager implements vscode.Disposable {
     }
 
     this.treeProvider = new PeripheralTreeProvider(context);
+    this.analysisManager = new PeripheralAnalysisManager(this.treeProvider);
     const commands = new Commands(this.treeProvider);
 
     this.disposables.push(
       this.treeProvider.activate(),
+      this.analysisManager.activate(context),
       commands.activate(context),
       vscode.debug.onDidStartDebugSession(session => {
         if (session.type === DEBUG_TYPE) {
@@ -100,6 +104,7 @@ class PeripheralViewerManager implements vscode.Disposable {
       disposable.dispose();
     }
     clearParsedSvdCache();
+    this.analysisManager = undefined;
     this.treeProvider = undefined;
   }
 }

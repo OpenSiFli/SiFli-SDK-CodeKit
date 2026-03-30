@@ -115,6 +115,16 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "extension.peripheralAnalysis.runAll",
+        "title": "%command.peripheralAnalysis.runAll.title%",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "extension.peripheralAnalysis.runGroup",
+        "title": "%command.peripheralAnalysis.runGroup.title%",
+        "icon": "$(play)"
+      },
+      {
         "command": "extension.workflows.manage",
         "title": "%command.workflows.manage.title%"
       },
@@ -526,6 +536,11 @@
           "id": "sifliPeripheralViewer",
           "name": "%view.peripheralViewer.name%",
           "when": "sifli.peripheralViewerEnabled && debugType == 'sifli-probe-rs'"
+        },
+        {
+          "id": "sifliPeripheralAnalysis",
+          "name": "%view.peripheralAnalysis.name%",
+          "when": "sifli.peripheralViewerEnabled && debugType == 'sifli-probe-rs'"
         }
       ],
       "explorer": [
@@ -573,6 +588,11 @@
           "command": "extension.peripheralViewer.refreshAll",
           "when": "view == sifliPeripheralViewer",
           "group": "navigation"
+        },
+        {
+          "command": "extension.peripheralAnalysis.runAll",
+          "when": "view == sifliPeripheralAnalysis && debugState == 'stopped'",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -600,6 +620,11 @@
           "command": "extension.peripheralViewer.forceRefresh",
           "when": "view == sifliPeripheralViewer && viewItem =~ /^peripheral($|-pinned|-cluster|-register-(rw|ro|wo)|-field-(rw|ro|wo|reserved))/",
           "group": "navigation@2"
+        },
+        {
+          "command": "extension.peripheralAnalysis.runGroup",
+          "when": "view == sifliPeripheralAnalysis && viewItem == peripheral-analysis-group && debugState == 'stopped'",
+          "group": "inline@1"
         },
         {
           "command": "extension.workflows.run",
