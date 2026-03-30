@@ -491,5 +491,17 @@
   "Peripheral Viewer Format": "Peripheral Viewer Format",
   "Enter a new register value. Prefix hexadecimal values with 0x and binary values with 0b.": "Enter a new register value. Prefix hexadecimal values with 0x and binary values with 0b.",
   "Enter a new field value. Prefix hexadecimal values with 0x and binary values with 0b.": "Enter a new field value. Prefix hexadecimal values with 0x and binary values with 0b.",
-  "Value entered is not a valid format.": "Value entered is not a valid format."
+  "Value entered is not a valid format.": "Value entered is not a valid format.",
+  "The current SVD device is not supported by the peripheral analyzer.": "The current SVD device is not supported by the peripheral analyzer.",
+  "No supported peripheral analyzers are available for the current chip.": "No supported peripheral analyzers are available for the current chip.",
+  "Analyzer failed: {0}": "Analyzer failed: {0}",
+  "Peripheral analysis is available when a sifli-probe-rs debug session is active.": "Peripheral analysis is available when a sifli-probe-rs debug session is active.",
+  "No peripheral analysis groups are available for the current session.": "No peripheral analysis groups are available for the current session.",
+  "No issues found.": "No issues found.",
+  "Not analyzed": "Not analyzed",
+  "OK": "OK",
+  "{0} findings": "{0} findings",
+  "Register": "Register",
+  "Peripheral analysis is available only during an active sifli-probe-rs debug session.": "Peripheral analysis is available only during an active sifli-probe-rs debug session.",
+  "Pause the target before running peripheral analysis.": "Pause the target before running peripheral analysis."
 }

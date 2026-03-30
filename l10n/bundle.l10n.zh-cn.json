@@ -491,5 +491,17 @@
   "Peripheral Viewer Format": "外设查看器格式",
   "Enter a new register value. Prefix hexadecimal values with 0x and binary values with 0b.": "请输入新的寄存器值。十六进制请使用 0x 前缀，二进制请使用 0b 前缀。",
   "Enter a new field value. Prefix hexadecimal values with 0x and binary values with 0b.": "请输入新的位域值。十六进制请使用 0x 前缀，二进制请使用 0b 前缀。",
-  "Value entered is not a valid format.": "输入的值格式无效。"
+  "Value entered is not a valid format.": "输入的值格式无效。",
+  "The current SVD device is not supported by the peripheral analyzer.": "当前 SVD 对应的芯片暂不受外设分析器支持。",
+  "No supported peripheral analyzers are available for the current chip.": "当前芯片没有可用的外设分析器。",
+  "Analyzer failed: {0}": "分析器执行失败：{0}",
+  "Peripheral analysis is available when a sifli-probe-rs debug session is active.": "只有在激活 sifli-probe-rs 调试会话时，外设分析才可用。",
+  "No peripheral analysis groups are available for the current session.": "当前会话没有可用的外设分析分组。",
+  "No issues found.": "未发现问题。",
+  "Not analyzed": "未分析",
+  "OK": "正常",
+  "{0} findings": "{0} 条结果",
+  "Register": "寄存器",
+  "Peripheral analysis is available only during an active sifli-probe-rs debug session.": "只有在活动的 sifli-probe-rs 调试会话中才能使用外设分析。",
+  "Pause the target before running peripheral analysis.": "运行外设分析前请先暂停目标。"
 }
