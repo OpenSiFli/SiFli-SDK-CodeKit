@@ -125,6 +125,26 @@
         "icon": "$(play)"
       },
       {
+        "command": "extension.peripheralAnalysis.openDashboard",
+        "title": "%command.peripheralAnalysis.openDashboard.title%",
+        "icon": "$(layout-panel)"
+      },
+      {
+        "command": "extension.peripheralAnalysis.setFilters",
+        "title": "%command.peripheralAnalysis.setFilters.title%",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "extension.peripheralAnalysis.switchView",
+        "title": "%command.peripheralAnalysis.switchView.title%",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "extension.peripheralAnalysis.resetFilters",
+        "title": "%command.peripheralAnalysis.resetFilters.title%",
+        "icon": "$(clear-all)"
+      },
+      {
         "command": "extension.workflows.manage",
         "title": "%command.workflows.manage.title%"
       },
@@ -593,6 +613,26 @@
           "command": "extension.peripheralAnalysis.runAll",
           "when": "view == sifliPeripheralAnalysis && debugState == 'stopped'",
           "group": "navigation"
+        },
+        {
+          "command": "extension.peripheralAnalysis.openDashboard",
+          "when": "view == sifliPeripheralAnalysis",
+          "group": "navigation@1"
+        },
+        {
+          "command": "extension.peripheralAnalysis.setFilters",
+          "when": "view == sifliPeripheralAnalysis",
+          "group": "navigation@2"
+        },
+        {
+          "command": "extension.peripheralAnalysis.switchView",
+          "when": "view == sifliPeripheralAnalysis",
+          "group": "navigation@3"
+        },
+        {
+          "command": "extension.peripheralAnalysis.resetFilters",
+          "when": "view == sifliPeripheralAnalysis",
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [
