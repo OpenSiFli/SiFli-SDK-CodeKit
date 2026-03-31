@@ -1,9 +1,25 @@
 import * as vscode from 'vscode';
 import { ANALYSIS_VIEW_ID } from '../manifest';
-import { AnalysisFinding, AnalysisGroupResult, AnalysisInstanceResult, AnalysisSessionState } from './types';
+import { ANALYSIS_FILTER_EMPTY_MESSAGE, buildAnalysisPresentation } from './presentation';
 import { PeripheralAnalysisRuntime } from './runtime';
+import {
+  AnalysisBucketId,
+  AnalysisBucketPresentation,
+  AnalysisFilterState,
+  AnalysisFindingPresentation,
+  AnalysisGroupPresentation,
+  AnalysisInstancePresentation,
+  AnalysisPresentationSnapshot,
+  AnalysisSeverity,
+} from './types';
+import { PeripheralAnalysisUiState } from './ui-state';
 
-type AnalysisTreeNode = AnalysisMessageNode | AnalysisGroupNode | AnalysisInstanceNode | AnalysisFindingNode;
+type AnalysisTreeNode =
+  | AnalysisMessageNode
+  | AnalysisBucketNode
+  | AnalysisGroupNode
+  | AnalysisInstanceNode
+  | AnalysisFindingNode;
 
 class AnalysisMessageNode {
   public readonly kind = 'message';
@@ -12,53 +28,61 @@ class AnalysisMessageNode {
   constructor(public readonly label: string) {}
 }
 
+class AnalysisBucketNode {
+  public readonly kind = 'bucket';
+  public readonly contextValue = 'peripheral-analysis-bucket';
+
+  constructor(public readonly bucket: AnalysisBucketPresentation) {}
+}
+
 class AnalysisGroupNode {
   public readonly kind = 'group';
   public readonly contextValue = 'peripheral-analysis-group';
 
-  constructor(public readonly result: AnalysisGroupResult) {}
+  constructor(public readonly group: AnalysisGroupPresentation) {}
 }
 
 class AnalysisInstanceNode {
   public readonly kind = 'instance';
   public readonly contextValue = 'peripheral-analysis-instance';
 
-  constructor(
-    public readonly groupName: string,
-    public readonly result: AnalysisInstanceResult
-  ) {}
+  constructor(public readonly instance: AnalysisInstancePresentation) {}
 }
 
 class AnalysisFindingNode {
   public readonly kind = 'finding';
   public readonly contextValue = 'peripheral-analysis-finding';
 
-  constructor(
-    public readonly peripheralName: string,
-    public readonly finding: AnalysisFinding
-  ) {}
+  constructor(public readonly finding: AnalysisFindingPresentation) {}
 }
 
 export class PeripheralAnalysisViewProvider implements vscode.TreeDataProvider<AnalysisTreeNode> {
   private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<AnalysisTreeNode | undefined | void>();
+  private view?: vscode.TreeView<AnalysisTreeNode>;
 
   public readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
 
-  constructor(private readonly runtime: PeripheralAnalysisRuntime) {}
+  constructor(
+    private readonly runtime: PeripheralAnalysisRuntime,
+    private readonly uiState: PeripheralAnalysisUiState
+  ) {}
 
   public activate(): vscode.Disposable {
-    const view = vscode.window.createTreeView(ANALYSIS_VIEW_ID, {
+    this.view = vscode.window.createTreeView(ANALYSIS_VIEW_ID, {
       treeDataProvider: this,
       showCollapseAll: true,
     });
+    this.updateViewMetadata();
 
     return new vscode.Disposable(() => {
-      view.dispose();
+      this.view?.dispose();
+      this.view = undefined;
       this.onDidChangeTreeDataEmitter.dispose();
     });
   }
 
   public refresh(): void {
+    this.updateViewMetadata();
     this.onDidChangeTreeDataEmitter.fire();
   }
 
@@ -69,149 +93,273 @@ export class PeripheralAnalysisViewProvider implements vscode.TreeDataProvider<A
       return item;
     }
 
+    if (element.kind === 'bucket') {
+      const item = new vscode.TreeItem(
+        element.bucket.label,
+        element.bucket.groups.length > 0
+          ? vscode.TreeItemCollapsibleState.Expanded
+          : vscode.TreeItemCollapsibleState.None
+      );
+      item.contextValue = element.contextValue;
+      item.description = this.describeCounts(element.bucket);
+      item.iconPath = new vscode.ThemeIcon(this.iconForBucket(element.bucket.id));
+      return item;
+    }
+
     if (element.kind === 'group') {
       const item = new vscode.TreeItem(
-        element.result.groupName,
-        element.result.instances.length > 0
+        element.group.groupName,
+        element.group.instances.length > 0
           ? vscode.TreeItemCollapsibleState.Collapsed
           : vscode.TreeItemCollapsibleState.None
       );
       item.contextValue = element.contextValue;
-      item.description = this.describeGroup(element.result);
-      item.iconPath = new vscode.ThemeIcon(this.iconForInstances(element.result.instances));
+      item.description = this.describeCounts(element.group);
+      item.iconPath = new vscode.ThemeIcon(this.iconForGroup(element.group));
       return item;
     }
 
     if (element.kind === 'instance') {
       const item = new vscode.TreeItem(
-        element.result.peripheralName,
-        element.result.findings.length > 0
+        element.instance.peripheralName,
+        element.instance.findings.length > 0
           ? vscode.TreeItemCollapsibleState.Collapsed
           : vscode.TreeItemCollapsibleState.None
       );
       item.contextValue = element.contextValue;
-      item.description = this.describeInstance(element.result);
-      item.iconPath = new vscode.ThemeIcon(this.iconForInstance(element.result));
+      item.description = this.describeCounts(element.instance);
+      item.iconPath = new vscode.ThemeIcon(this.iconForInstance(element.instance));
       return item;
     }
 
-    const item = new vscode.TreeItem(element.finding.message, vscode.TreeItemCollapsibleState.None);
+    const item = new vscode.TreeItem(this.labelForFinding(element.finding), vscode.TreeItemCollapsibleState.None);
     item.contextValue = element.contextValue;
-    item.description = element.finding.suggestion;
+    item.description = element.finding.relatedRegister ?? element.finding.peripheralName;
     item.tooltip = this.tooltipForFinding(element.finding);
     item.iconPath = new vscode.ThemeIcon(this.iconForFinding(element.finding));
     return item;
   }
 
   public getChildren(element?: AnalysisTreeNode): AnalysisTreeNode[] {
-    const state = this.runtime.getActiveSessionState();
-    if (!state) {
-      return [
-        new AnalysisMessageNode(
-          vscode.l10n.t('Peripheral analysis is available when a sifli-probe-rs debug session is active.')
-        ),
-      ];
-    }
-
-    if (state.message) {
-      return [new AnalysisMessageNode(state.message)];
-    }
-
+    const snapshot = this.getSnapshot();
     if (!element) {
-      if (state.groups.length === 0) {
-        return [
-          new AnalysisMessageNode(
-            vscode.l10n.t('No peripheral analysis groups are available for the current session.')
-          ),
-        ];
+      if (snapshot.message && snapshot.groups.length === 0 && snapshot.buckets.length === 0) {
+        return [new AnalysisMessageNode(snapshot.message)];
       }
-      return state.groups.map(group => new AnalysisGroupNode(group));
+
+      if (snapshot.viewMode === 'severity') {
+        return snapshot.buckets.map(bucket => new AnalysisBucketNode(bucket));
+      }
+
+      return snapshot.groups.map(group => new AnalysisGroupNode(group));
+    }
+
+    if (element.kind === 'bucket') {
+      return element.bucket.groups.map(group => new AnalysisGroupNode(group));
     }
 
     if (element.kind === 'group') {
-      return element.result.instances.map(instance => new AnalysisInstanceNode(element.result.groupName, instance));
+      return element.group.instances.map(instance => new AnalysisInstanceNode(instance));
     }
 
     if (element.kind === 'instance') {
-      if (element.result.findings.length === 0) {
-        return [new AnalysisMessageNode(vscode.l10n.t('No issues found.'))];
+      if (element.instance.findings.length === 0) {
+        if (element.instance.status === 'ok') {
+          return [new AnalysisMessageNode(vscode.l10n.t('No issues found.'))];
+        }
+        if (element.instance.status === 'not-analyzed') {
+          return [new AnalysisMessageNode(vscode.l10n.t('Run analysis to inspect this peripheral.'))];
+        }
       }
-      return element.result.findings.map(finding => new AnalysisFindingNode(element.result.peripheralName, finding));
+
+      return element.instance.findings.map(finding => new AnalysisFindingNode(finding));
     }
 
     return [];
   }
 
-  private describeGroup(group: AnalysisGroupResult): string {
-    const pending = group.instances.filter(instance => instance.status === 'not-analyzed').length;
-    const issues = group.instances.reduce((count, instance) => count + instance.findings.length, 0);
-    if (pending === group.instances.length) {
-      return vscode.l10n.t('Not analyzed');
-    }
-    if (issues === 0) {
-      return vscode.l10n.t('OK');
-    }
-    return vscode.l10n.t('{0} findings', String(issues));
+  private getSnapshot(): AnalysisPresentationSnapshot {
+    const sessionState = this.runtime.getActiveSessionState();
+    const filters = this.uiState.getFilters(sessionState);
+    return buildAnalysisPresentation(sessionState, this.uiState.getViewMode(), filters);
   }
 
-  private describeInstance(instance: AnalysisInstanceResult): string {
-    if (instance.status === 'not-analyzed') {
-      return vscode.l10n.t('Not analyzed');
+  private updateViewMetadata(): void {
+    if (!this.view) {
+      return;
     }
-    if (instance.findings.length === 0) {
-      return vscode.l10n.t('OK');
-    }
-    return vscode.l10n.t('{0} findings', String(instance.findings.length));
+
+    const snapshot = this.getSnapshot();
+    this.view.description = this.describeView(snapshot);
+    this.view.badge =
+      snapshot.summary.issueCount > 0
+        ? {
+            value: snapshot.summary.issueCount,
+            tooltip: vscode.l10n.t(
+              'Visible findings: {0} (errors: {1}, warnings: {2})',
+              String(snapshot.summary.issueCount),
+              String(snapshot.summary.errorCount),
+              String(snapshot.summary.warningCount)
+            ),
+          }
+        : undefined;
+    this.view.message =
+      snapshot.hasActiveSession &&
+      snapshot.summary.visibleGroups === 0 &&
+      snapshot.message === ANALYSIS_FILTER_EMPTY_MESSAGE
+        ? snapshot.message
+        : undefined;
   }
 
-  private iconForInstances(instances: AnalysisInstanceResult[]): string {
-    const severities = instances.flatMap(instance => instance.findings.map(finding => finding.severity));
-    if (severities.includes('error' as any)) {
-      return 'error';
+  private describeView(snapshot: AnalysisPresentationSnapshot): string | undefined {
+    if (!snapshot.hasActiveSession) {
+      return undefined;
     }
-    if (severities.includes('warning' as any)) {
-      return 'warning';
+
+    const parts: string[] = [this.describeFilters(snapshot.filters, snapshot.availableGroups)];
+    if (snapshot.summary.visibleGroups > 0) {
+      parts.push(vscode.l10n.t('{0} groups', String(snapshot.summary.visibleGroups)));
     }
-    if (instances.every(instance => instance.status === 'not-analyzed')) {
-      return 'circle-large-outline';
+
+    const counts = [];
+    if (snapshot.summary.errorCount > 0) {
+      counts.push(`E${snapshot.summary.errorCount}`);
     }
-    return 'pass';
+    if (snapshot.summary.warningCount > 0) {
+      counts.push(`W${snapshot.summary.warningCount}`);
+    }
+    if (snapshot.summary.cleanCount > 0 && snapshot.filters.severity === 'all') {
+      counts.push(`OK${snapshot.summary.cleanCount}`);
+    }
+    if (snapshot.summary.notAnalyzedCount > 0 && snapshot.filters.severity === 'all') {
+      counts.push(`P${snapshot.summary.notAnalyzedCount}`);
+    }
+
+    if (counts.length > 0) {
+      parts.push(counts.join(' '));
+    }
+
+    return parts.filter(part => part.length > 0).join(' | ') || undefined;
   }
 
-  private iconForInstance(instance: AnalysisInstanceResult): string {
-    if (instance.status === 'not-analyzed') {
-      return 'circle-large-outline';
+  private describeFilters(filters: AnalysisFilterState, availableGroups: string[]): string {
+    const parts: string[] = [];
+    if (filters.severity === AnalysisSeverity.Error) {
+      parts.push(vscode.l10n.t('Errors'));
+    } else if (filters.severity === AnalysisSeverity.Warning) {
+      parts.push(vscode.l10n.t('Warnings'));
+    } else {
+      parts.push(vscode.l10n.t('All'));
     }
-    return this.iconForFindings(instance.findings);
+
+    if (filters.status === 'issues') {
+      parts.push(vscode.l10n.t('Issues'));
+    } else if (filters.status === 'clean') {
+      parts.push(vscode.l10n.t('Clean'));
+    }
+
+    if (filters.groups.length > 0) {
+      parts.push(vscode.l10n.t('{0}/{1} groups', String(filters.groups.length), String(availableGroups.length)));
+    }
+
+    return parts.join(' · ');
   }
 
-  private iconForFindings(findings: AnalysisFinding[]): string {
-    if (findings.some(finding => finding.severity === 'error')) {
-      return 'error';
+  private describeCounts(entry: {
+    errorCount: number;
+    warningCount: number;
+    issueCount: number;
+    cleanCount: number;
+    notAnalyzedCount: number;
+  }): string {
+    const parts = [];
+    if (entry.errorCount > 0) {
+      parts.push(`E${entry.errorCount}`);
     }
-    if (findings.some(finding => finding.severity === 'warning')) {
-      return 'warning';
+    if (entry.warningCount > 0) {
+      parts.push(`W${entry.warningCount}`);
     }
-    if (findings.some(finding => finding.severity === 'info')) {
-      return 'info';
+    if (entry.issueCount === 0 && entry.cleanCount > 0 && entry.notAnalyzedCount === 0) {
+      parts.push(vscode.l10n.t('OK'));
     }
-    return 'pass';
+    if (entry.notAnalyzedCount > 0 && entry.issueCount === 0 && entry.cleanCount === 0) {
+      parts.push(vscode.l10n.t('Not analyzed'));
+    }
+    if (entry.cleanCount > 0 && entry.issueCount > 0) {
+      parts.push(`OK${entry.cleanCount}`);
+    }
+    if (entry.notAnalyzedCount > 0 && (entry.issueCount > 0 || entry.cleanCount > 0)) {
+      parts.push(`P${entry.notAnalyzedCount}`);
+    }
+
+    return parts.join(' ') || vscode.l10n.t('OK');
   }
 
-  private iconForFinding(finding: AnalysisFinding): string {
-    switch (finding.severity) {
+  private iconForBucket(bucketId: AnalysisBucketId): string {
+    switch (bucketId) {
       case 'error':
         return 'error';
       case 'warning':
+        return 'warning';
+      case 'clean':
+        return 'pass';
+      default:
+        return 'circle-large-outline';
+    }
+  }
+
+  private iconForGroup(group: AnalysisGroupPresentation): string {
+    if (group.errorCount > 0) {
+      return 'error';
+    }
+    if (group.warningCount > 0) {
+      return 'warning';
+    }
+    if (group.notAnalyzedCount > 0 && group.issueCount === 0 && group.cleanCount === 0) {
+      return 'circle-large-outline';
+    }
+    return 'pass';
+  }
+
+  private iconForInstance(instance: AnalysisInstancePresentation): string {
+    if (instance.errorCount > 0) {
+      return 'error';
+    }
+    if (instance.warningCount > 0) {
+      return 'warning';
+    }
+    if (instance.status === 'not-analyzed') {
+      return 'circle-large-outline';
+    }
+    return 'pass';
+  }
+
+  private iconForFinding(finding: AnalysisFindingPresentation): string {
+    switch (finding.severity) {
+      case AnalysisSeverity.Error:
+        return 'error';
+      case AnalysisSeverity.Warning:
         return 'warning';
       default:
         return 'info';
     }
   }
 
-  private tooltipForFinding(finding: AnalysisFinding): vscode.MarkdownString {
+  private labelForFinding(finding: AnalysisFindingPresentation): string {
+    const prefix =
+      finding.severity === AnalysisSeverity.Error
+        ? vscode.l10n.t('Error')
+        : finding.severity === AnalysisSeverity.Warning
+          ? vscode.l10n.t('Warning')
+          : vscode.l10n.t('Info');
+    return `${prefix}: ${finding.message}`;
+  }
+
+  private tooltipForFinding(finding: AnalysisFindingPresentation): vscode.MarkdownString {
     const markdown = new vscode.MarkdownString('', true);
-    markdown.appendMarkdown(`**${finding.message}**`);
+    markdown.appendMarkdown(`**${this.labelForFinding(finding)}**`);
+    markdown.appendMarkdown(`\n\n${vscode.l10n.t('Peripheral')}: \`${finding.peripheralName}\``);
+    markdown.appendMarkdown(`\n\n${vscode.l10n.t('Group')}: \`${finding.groupName}\``);
     if (finding.suggestion) {
       markdown.appendMarkdown(`\n\n${finding.suggestion}`);
     }

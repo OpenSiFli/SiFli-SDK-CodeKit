@@ -72,3 +72,81 @@ export interface AnalysisSessionState {
   groups: AnalysisGroupResult[];
   message?: string;
 }
+
+export type AnalysisViewMode = 'peripheral' | 'severity';
+export type AnalysisSeverityFilter = 'all' | AnalysisSeverity.Error | AnalysisSeverity.Warning;
+export type AnalysisStatusFilter = 'all' | 'issues' | 'clean';
+export type AnalysisBucketId = 'error' | 'warning' | 'clean' | 'not-analyzed';
+
+export interface AnalysisFilterState {
+  severity: AnalysisSeverityFilter;
+  status: AnalysisStatusFilter;
+  groups: string[];
+}
+
+export interface AnalysisSummary {
+  totalGroups: number;
+  visibleGroups: number;
+  totalInstances: number;
+  visibleInstances: number;
+  errorCount: number;
+  warningCount: number;
+  issueCount: number;
+  cleanCount: number;
+  notAnalyzedCount: number;
+}
+
+export interface AnalysisFindingPresentation extends AnalysisFinding {
+  id: string;
+  groupName: string;
+  peripheralName: string;
+}
+
+export interface AnalysisInstancePresentation {
+  id: string;
+  peripheralName: string;
+  groupName: string;
+  status: AnalysisInstanceStatus;
+  findings: AnalysisFindingPresentation[];
+  errorCount: number;
+  warningCount: number;
+  issueCount: number;
+  cleanCount: number;
+  notAnalyzedCount: number;
+}
+
+export interface AnalysisGroupPresentation {
+  id: string;
+  groupName: string;
+  instances: AnalysisInstancePresentation[];
+  errorCount: number;
+  warningCount: number;
+  issueCount: number;
+  cleanCount: number;
+  notAnalyzedCount: number;
+}
+
+export interface AnalysisBucketPresentation {
+  id: AnalysisBucketId;
+  label: string;
+  groups: AnalysisGroupPresentation[];
+  errorCount: number;
+  warningCount: number;
+  issueCount: number;
+  cleanCount: number;
+  notAnalyzedCount: number;
+}
+
+export interface AnalysisPresentationSnapshot {
+  hasActiveSession: boolean;
+  sessionId?: string;
+  chipModel?: SupportedChipModel;
+  deviceName?: string;
+  message?: string;
+  viewMode: AnalysisViewMode;
+  filters: AnalysisFilterState;
+  availableGroups: string[];
+  summary: AnalysisSummary;
+  groups: AnalysisGroupPresentation[];
+  buckets: AnalysisBucketPresentation[];
+}

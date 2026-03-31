@@ -4,6 +4,7 @@ import InstallPage from '@/views/InstallPage.vue';
 import ImportSdkPage from '@/views/ImportSdkPage.vue';
 import SdkDetailPage from '@/views/SdkDetailPage.vue';
 import TaskPage from '@/views/TaskPage.vue';
+import AnalysisPage from '@/views/AnalysisPage.vue';
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -34,6 +35,11 @@ export const router = createRouter({
       name: 'task',
       component: TaskPage,
       props: true,
+    },
+    {
+      path: '/analysis',
+      name: 'analysis',
+      component: AnalysisPage,
     },
     {
       path: '/:pathMatch(.*)*',

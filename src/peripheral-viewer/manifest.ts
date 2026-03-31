@@ -16,9 +16,14 @@ export const COMMAND_TOGGLE_PIN = 'extension.peripheralViewer.togglePin';
 export const COMMAND_REFRESH_ALL = 'extension.peripheralViewer.refreshAll';
 export const COMMAND_ANALYSIS_RUN_ALL = 'extension.peripheralAnalysis.runAll';
 export const COMMAND_ANALYSIS_RUN_GROUP = 'extension.peripheralAnalysis.runGroup';
+export const COMMAND_ANALYSIS_OPEN_DASHBOARD = 'extension.peripheralAnalysis.openDashboard';
+export const COMMAND_ANALYSIS_SET_FILTERS = 'extension.peripheralAnalysis.setFilters';
+export const COMMAND_ANALYSIS_SWITCH_VIEW = 'extension.peripheralAnalysis.switchView';
+export const COMMAND_ANALYSIS_RESET_FILTERS = 'extension.peripheralAnalysis.resetFilters';
 
 export const SESSION_STATE_KEY = 'sifli.peripheralViewer.layoutStates';
 export const ANALYSIS_RESULTS_KEY = 'sifli.peripheralViewer.analysisResults';
+export const ANALYSIS_UI_STATE_KEY = 'sifli.peripheralViewer.analysisUiState';
 
 export const DEFAULT_ADDR_GAP = 16;
 export const MAX_MEMORY_READ_CHUNK = 4 * 1024;
