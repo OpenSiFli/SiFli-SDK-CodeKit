@@ -73,8 +73,14 @@ export class PeripheralAnalysisViewProvider implements vscode.TreeDataProvider<A
       showCollapseAll: true,
     });
     this.updateViewMetadata();
+    const localeChangeListener = vscode.workspace.onDidChangeConfiguration(event => {
+      if (event.affectsConfiguration('locale')) {
+        this.refresh();
+      }
+    });
 
     return new vscode.Disposable(() => {
+      localeChangeListener.dispose();
       this.view?.dispose();
       this.view = undefined;
       this.onDidChangeTreeDataEmitter.dispose();
@@ -206,7 +212,7 @@ export class PeripheralAnalysisViewProvider implements vscode.TreeDataProvider<A
     this.view.message =
       snapshot.hasActiveSession &&
       snapshot.summary.visibleGroups === 0 &&
-      snapshot.message === ANALYSIS_FILTER_EMPTY_MESSAGE
+      snapshot.message === vscode.l10n.t(ANALYSIS_FILTER_EMPTY_MESSAGE)
         ? snapshot.message
         : undefined;
   }
@@ -280,7 +286,7 @@ export class PeripheralAnalysisViewProvider implements vscode.TreeDataProvider<A
       parts.push(`W${entry.warningCount}`);
     }
     if (entry.issueCount === 0 && entry.cleanCount > 0 && entry.notAnalyzedCount === 0) {
-      parts.push(vscode.l10n.t('OK'));
+      parts.push(vscode.l10n.t('Clean'));
     }
     if (entry.notAnalyzedCount > 0 && entry.issueCount === 0 && entry.cleanCount === 0) {
       parts.push(vscode.l10n.t('Not analyzed'));
@@ -292,7 +298,7 @@ export class PeripheralAnalysisViewProvider implements vscode.TreeDataProvider<A
       parts.push(`P${entry.notAnalyzedCount}`);
     }
 
-    return parts.join(' ') || vscode.l10n.t('OK');
+    return parts.join(' ') || vscode.l10n.t('Clean');
   }
 
   private iconForBucket(bucketId: AnalysisBucketId): string {

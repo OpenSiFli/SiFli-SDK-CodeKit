@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { PeripheralAnalysisRuntime } from '../runtime';
 import {
   AnalysisFinding,
@@ -50,16 +51,20 @@ export abstract class RuleBasedAnalyzer implements PeripheralGroupAnalyzer {
   protected async requirePeripheral(name: string): Promise<PeripheralSnapshot | undefined> {
     const peripheral = await this.readPeripheral(name);
     if (!peripheral) {
-      this.error(`无法读取 ${name} 的寄存器快照`);
+      this.error(this.text('Unable to read the register snapshot for {0}', name));
     }
     return peripheral;
+  }
+
+  protected text(template: string, ...args: Array<string | number>): string {
+    return vscode.l10n.t(template, ...args);
   }
 
   protected warn(message: string, suggestion?: string, relatedRegister?: string): void {
     this.findings.push({
       severity: AnalysisSeverity.Warning,
-      message,
-      suggestion,
+      message: vscode.l10n.t(message),
+      suggestion: suggestion ? vscode.l10n.t(suggestion) : undefined,
       relatedPeripheral: this.peripheralName,
       relatedRegister,
     });
@@ -68,11 +73,25 @@ export abstract class RuleBasedAnalyzer implements PeripheralGroupAnalyzer {
   protected error(message: string, suggestion?: string, relatedRegister?: string): void {
     this.findings.push({
       severity: AnalysisSeverity.Error,
-      message,
-      suggestion,
+      message: vscode.l10n.t(message),
+      suggestion: suggestion ? vscode.l10n.t(suggestion) : undefined,
       relatedPeripheral: this.peripheralName,
       relatedRegister,
     });
+  }
+
+  protected reportModuleClockDisabled(enableRegister: string): void {
+    this.error(
+      this.text('The {0} module clock is not enabled', this.peripheralName),
+      this.text('Set {0} to 1 to enable the module clock', enableRegister)
+    );
+  }
+
+  protected reportModuleResetAsserted(resetRegister: string): void {
+    this.error(
+      this.text('The {0} module is held in reset', this.peripheralName),
+      this.text('Set {0} to 0 to release the module reset', resetRegister)
+    );
   }
 }
 
