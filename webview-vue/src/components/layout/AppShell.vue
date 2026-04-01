@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen text-vscode-foreground p-0">
     <div class="mx-auto flex w-full max-w-6xl flex-col px-4 py-8 sm:px-6">
-      <header v-if="route.path !== '/'" class="flex items-center gap-3">
+      <header v-if="showBackButton" class="flex items-center gap-3">
         <button
           @click="$router.back()"
           class="flex items-center gap-1.5 rounded-xl border border-vscode-panel-border bg-vscode-background px-4 py-2 text-base font-medium text-vscode-foreground shadow-sm transition-colors hover:bg-vscode-input-background"
@@ -31,16 +31,16 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { useSdkCatalogStore } from '@/stores/sdkCatalog';
-import { useTaskCenterStore } from '@/stores/taskCenter';
 
 const route = useRoute();
 const catalogStore = useSdkCatalogStore();
-const taskCenterStore = useTaskCenterStore();
+const isAnalysisRoute = computed(() => route.name === 'analysis');
+const showBackButton = computed(() => route.path !== '/' && !isAnalysisRoute.value);
 
 onMounted(() => {
-  if (catalogStore.sdks.length === 0) {
+  if (!isAnalysisRoute.value && catalogStore.sdks.length === 0) {
     catalogStore.fetchList();
   }
 });

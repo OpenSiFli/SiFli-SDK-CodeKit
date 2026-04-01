@@ -1,0 +1,8 @@
+Source: https://github.com/mcu-debug/peripheral-viewer
+Version: 1.6.1
+Commit: c2d4b7d1909dc3a4f87268684fc55960e3ae0629
+License: MIT
+Description: SVD peripheral viewer for VS Code, originally extracted from cortex-debug.
+Modifications: Removed CMSIS pack support, debug-tracker-vscode dependency,
+  and browser build target. Adapted configuration namespace, view id, and
+  command ids. Added active-session tracking and analyzer registry integration.

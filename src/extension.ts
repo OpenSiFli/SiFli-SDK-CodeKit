@@ -28,7 +28,7 @@ import { McpServerService } from './services/mcpServerService';
 import { McpServerDefinitionProviderService } from './services/mcpServerDefinitionProviderService';
 import { isSiFliProject } from './utils/projectUtils';
 import { registerProbeRsDebugger } from './probe-rs/extension';
-import { on } from 'events';
+import { disposePeripheralViewer, initPeripheralViewer } from './peripheral-viewer';
 
 /**
  * 扩展激活函数
@@ -46,6 +46,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const workspaceStateService = WorkspaceStateService.getInstance();
   workspaceStateService.initialize(context);
   logService.info('WorkspaceStateService initialized');
+
+  // Initialize the built-in Peripheral Viewer before project-specific gating.
+  context.subscriptions.push(await initPeripheralViewer(context));
 
   // *** 仅在开发调试时使用：强制重置首次运行标志 ***
   // 这将使得每次"重新运行调试"时,Quick Pick 都会弹出。
@@ -449,6 +452,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 export async function deactivate(): Promise<void> {
   const logService = LogService.getInstance();
   logService.info('SiFli SDK CodeKit extension is deactivating...');
+
+  disposePeripheralViewer();
 
   // 清理状态栏
   const statusBarProvider = StatusBarProvider.getInstance();

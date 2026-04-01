@@ -157,5 +157,87 @@
   "downloadType": {
     "release": "Release",
     "branch": "Branch"
+  },
+  "analysis": {
+    "sectionLabel": "Peripheral Analysis",
+    "title": "Analysis Dashboard",
+    "actions": {
+      "run": "Run Analysis",
+      "reset": "Reset Filters"
+    },
+    "summary": {
+      "errors": "Errors",
+      "warnings": "Warnings",
+      "clean": "Clean",
+      "pending": "Pending",
+      "visibleScope": "Visible Scope",
+      "instances": "{visible} / {total} instances"
+    },
+    "view": {
+      "label": "View",
+      "peripheral": "By Peripheral",
+      "severity": "By Result Type"
+    },
+    "filters": {
+      "severity": {
+        "label": "Severity",
+        "all": "All severities",
+        "error": "Errors only",
+        "warning": "Warnings only"
+      },
+      "status": {
+        "label": "Status",
+        "all": "All statuses",
+        "issues": "Issues only",
+        "clean": "Clean only"
+      },
+      "groups": {
+        "label": "Groups",
+        "all": "All"
+      }
+    },
+    "group": "Group",
+    "bucket": "Bucket",
+    "details": "Details",
+    "peripheral": "Peripheral",
+    "register": "Register",
+    "suggestion": "Suggestion",
+    "notAvailable": "N/A",
+    "noSuggestion": "No extra suggestion is available for this item.",
+    "detailsPlaceholder": "Select an error or warning on the left to show the full suggestion and related register here.",
+    "instancesCount": "{count} instances",
+    "subtitle": {
+      "inactive": "No sifli-probe-rs debug session is currently available. Run analysis after the target is paused and the dashboard will mirror the latest errors and warnings.",
+      "chipModel": "Chip model {chipModel}",
+      "currentChip": "Current chip",
+      "deviceName": "Device {deviceName}",
+      "currentDevice": "Current device",
+      "active": "{chipText}, {deviceText}. The dashboard shares filter and view state with the debug sidebar."
+    },
+    "empty": {
+      "noSession": "No debug session is currently available. Start and pause a sifli-probe-rs session before reviewing analysis results.",
+      "noResults": "No results are visible with the current filters."
+    },
+    "buckets": {
+      "error": "Errors",
+      "warning": "Warnings",
+      "clean": "Clean",
+      "notAnalyzed": "Not analyzed"
+    },
+    "severityLabel": {
+      "error": "Error:",
+      "warning": "Warning:",
+      "info": "Info:"
+    },
+    "severityShort": {
+      "error": "Error",
+      "warning": "Warn",
+      "info": "Info"
+    },
+    "instanceStatus": {
+      "ok": "No issues were found in the current analysis.",
+      "notAnalyzed": "No analysis result has been produced for this instance yet.",
+      "issues": "This instance has configuration issues that require attention."
+    }
   }
 }

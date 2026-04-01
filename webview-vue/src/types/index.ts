@@ -116,6 +116,90 @@ export interface SdkTaskRecord {
   error?: string;
 }
 
+export type AnalysisViewMode = 'peripheral' | 'severity';
+export type AnalysisSeverity = 'info' | 'warning' | 'error';
+export type AnalysisSeverityFilter = 'all' | 'warning' | 'error';
+export type AnalysisStatusFilter = 'all' | 'issues' | 'clean';
+export type AnalysisBucketId = 'error' | 'warning' | 'clean' | 'not-analyzed';
+
+export interface AnalysisFilterState {
+  severity: AnalysisSeverityFilter;
+  status: AnalysisStatusFilter;
+  groups: string[];
+}
+
+export interface AnalysisSummary {
+  totalGroups: number;
+  visibleGroups: number;
+  totalInstances: number;
+  visibleInstances: number;
+  errorCount: number;
+  warningCount: number;
+  issueCount: number;
+  cleanCount: number;
+  notAnalyzedCount: number;
+}
+
+export interface AnalysisFindingPresentation {
+  id: string;
+  severity: AnalysisSeverity;
+  message: string;
+  suggestion?: string;
+  relatedPeripheral?: string;
+  relatedRegister?: string;
+  groupName: string;
+  peripheralName: string;
+}
+
+export interface AnalysisInstancePresentation {
+  id: string;
+  peripheralName: string;
+  groupName: string;
+  status: 'not-analyzed' | 'ok' | 'issues';
+  findings: AnalysisFindingPresentation[];
+  errorCount: number;
+  warningCount: number;
+  issueCount: number;
+  cleanCount: number;
+  notAnalyzedCount: number;
+}
+
+export interface AnalysisGroupPresentation {
+  id: string;
+  groupName: string;
+  instances: AnalysisInstancePresentation[];
+  errorCount: number;
+  warningCount: number;
+  issueCount: number;
+  cleanCount: number;
+  notAnalyzedCount: number;
+}
+
+export interface AnalysisBucketPresentation {
+  id: AnalysisBucketId;
+  label: string;
+  groups: AnalysisGroupPresentation[];
+  errorCount: number;
+  warningCount: number;
+  issueCount: number;
+  cleanCount: number;
+  notAnalyzedCount: number;
+}
+
+export interface AnalysisPresentationSnapshot {
+  hasActiveSession: boolean;
+  sessionId?: string;
+  chipModel?: string;
+  deviceName?: string;
+  message?: string;
+  viewMode: AnalysisViewMode;
+  filters: AnalysisFilterState;
+  availableGroups: string[];
+  summary: AnalysisSummary;
+  groups: AnalysisGroupPresentation[];
+  buckets: AnalysisBucketPresentation[];
+}
+
 export interface SdkInstallVersionPayload {
   name: string;
   type: DownloadType;

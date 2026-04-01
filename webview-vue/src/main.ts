@@ -2,7 +2,7 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
 import { i18n, initializeLocale, setupVSCodeMessageListener } from './i18n';
-import { getState, initializeVsCodeBridge, setState } from './services/vscodeBridge';
+import { getState, initializeVsCodeBridge, onMessage, setState } from './services/vscodeBridge';
 import { initializeVSCodeApi } from './utils/vsCodeApi';
 import { router } from './router';
 import './styles/index.css';
@@ -45,6 +45,12 @@ function detectAndSetVSCodeTheme() {
 
 async function bootstrap() {
   detectAndSetVSCodeTheme();
+
+  onMessage<{ route?: string }>('navigate', payload => {
+    if (payload.route && payload.route !== router.currentRoute.value.fullPath) {
+      void router.replace(payload.route);
+    }
+  });
 
   const savedState = getState<{ route?: string }>();
 

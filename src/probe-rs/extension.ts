@@ -20,6 +20,19 @@ import { getAvailablePort } from './portUtils';
 
 const DEBUG_TYPE = 'sifli-probe-rs';
 const CONFIG_NAMESPACE = 'sifli-probe-rs';
+const UART_CONSOLE_CHANNEL_NUMBER = 2048;
+const UART_CONSOLE_CHANNEL_NAME = 'uart';
+
+export type ProbeRsDidSendMessageListener = (session: vscode.DebugSession, message: unknown) => void;
+
+const probeRsDidSendMessageListeners = new Set<ProbeRsDidSendMessageListener>();
+
+export function onProbeRsDidSendMessage(listener: ProbeRsDidSendMessageListener): vscode.Disposable {
+  probeRsDidSendMessageListeners.add(listener);
+  return new vscode.Disposable(() => {
+    probeRsDidSendMessageListeners.delete(listener);
+  });
+}
 
 export function registerProbeRsDebugger(context: vscode.ExtensionContext): void {
   const descriptorFactory = new ProbeRSDebugAdapterServerDescriptorFactory();
@@ -27,10 +40,13 @@ export function registerProbeRsDebugger(context: vscode.ExtensionContext): void 
   const trackerFactory = new ProbeRsDebugAdapterTrackerFactory();
 
   context.subscriptions.push(
+    descriptorFactory,
     vscode.debug.registerDebugAdapterDescriptorFactory(DEBUG_TYPE, descriptorFactory),
     vscode.debug.registerDebugConfigurationProvider(DEBUG_TYPE, configProvider),
     vscode.debug.registerDebugAdapterTrackerFactory(DEBUG_TYPE, trackerFactory),
-    vscode.debug.onDidReceiveDebugSessionCustomEvent(descriptorFactory.receivedCustomEvent.bind(descriptorFactory))
+    vscode.debug.onDidReceiveDebugSessionCustomEvent(descriptorFactory.receivedCustomEvent, descriptorFactory),
+    vscode.debug.onDidTerminateDebugSession(descriptorFactory.onDidTerminateDebugSession, descriptorFactory),
+    vscode.window.onDidCloseTerminal(descriptorFactory.onDidCloseTerminal, descriptorFactory)
   );
 
   void (async () => {
@@ -142,86 +158,211 @@ function logToConsole(consoleMessage: string, fromDebugger: boolean = false) {
   }
 }
 
-class ProbeRSDebugAdapterServerDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
-  rttTerminals: [
-    channelNumber: number,
-    dataFormat: String,
-    rttTerminal: vscode.Terminal,
-    channelWriteEmitter: vscode.EventEmitter<string>,
-  ][] = [];
+interface ProbeRsTerminalEntry {
+  sessionId: string;
+  session: vscode.DebugSession;
+  sessionActive: boolean;
+  channelNumber: number;
+  channelName: string;
+  dataFormat: string;
+  terminal: vscode.Terminal;
+  channelWriteEmitter: vscode.EventEmitter<string>;
+  inputChannel: string | undefined;
+  inputEnabled: boolean;
+  reportedInputFailure: boolean;
+}
 
-  createRttTerminal(channelNumber: number, dataFormat: string, channelName: string) {
-    // Make sure we have a terminal window per channel, for RTT Logging
-    if (vscode.debug.activeDebugSession) {
-      let session = vscode.debug.activeDebugSession;
-      let channelWriteEmitter = new vscode.EventEmitter<string>();
-      let channelPty: vscode.Pseudoterminal = {
-        onDidWrite: channelWriteEmitter.event,
-        open: () => {
-          let windowIsOpen = true;
-          session.customRequest('rttWindowOpened', { channelNumber, windowIsOpen }).then(response => {
-            logToConsole(
-              `${ConsoleLogSources.console}: RTT Window opened, and ready to receive RTT data on channel ${JSON.stringify(
-                channelNumber,
-                null,
-                2
-              )}`
-            );
-          });
-        },
-        close: () => {
-          let windowIsOpen = false;
-          session.customRequest('rttWindowOpened', { channelNumber, windowIsOpen }).then(response => {
-            logToConsole(
-              `${ConsoleLogSources.console}: RTT Window closed, and can no longer receive RTT data on channel ${JSON.stringify(
-                channelNumber,
-                null,
-                2
-              )}`
-            );
-          });
-        },
-      };
-      let channelTerminalConfig: vscode.ExtensionTerminalOptions | undefined;
-      let channelTerminal: vscode.Terminal | undefined;
-      for (let reuseTerminal of vscode.window.terminals) {
-        if (reuseTerminal.name === channelName) {
-          channelTerminal = reuseTerminal;
-          channelTerminalConfig = channelTerminal.creationOptions as vscode.ExtensionTerminalOptions;
-          let windowIsOpen = true;
-          session.customRequest('rttWindowOpened', { channelNumber, windowIsOpen }).then(response => {
-            logToConsole(
-              `${ConsoleLogSources.console}: RTT Window reused, and ready to receive RTT data on channel ${JSON.stringify(
-                channelNumber,
-                null,
-                2
-              )}`
-            );
-          });
-          break;
-        }
-      }
-      if (channelTerminal === undefined) {
-        channelTerminalConfig = {
-          name: channelName,
-          pty: channelPty,
-        };
-        for (let index = 0; index < this.rttTerminals.length; index++) {
-          var [formerChannelNumber, , ,] = this.rttTerminals[index];
-          if (formerChannelNumber === channelNumber) {
-            this.rttTerminals.splice(+index, 1);
-            break;
-          }
-        }
-        channelTerminal = vscode.window.createTerminal(channelTerminalConfig);
-        vscode.debug.activeDebugConsole.appendLine(
-          `${ConsoleLogSources.console}: Opened a new RTT Terminal window named: ${channelName}`
+class ProbeRSDebugAdapterServerDescriptorFactory implements vscode.DebugAdapterDescriptorFactory, vscode.Disposable {
+  private readonly rttTerminals = new Map<string, ProbeRsTerminalEntry>();
+  private readonly terminalKeys = new Map<vscode.Terminal, string>();
+
+  private getTerminalKey(sessionId: string, channelNumber: number): string {
+    return `${sessionId}:${channelNumber}`;
+  }
+
+  private isUartConsoleChannel(channelNumber: number, channelName: string): boolean {
+    return channelNumber === UART_CONSOLE_CHANNEL_NUMBER || channelName === UART_CONSOLE_CHANNEL_NAME;
+  }
+
+  private shouldRevealTerminal(channelNumber: number, channelName: string): boolean {
+    return channelNumber === 0 || this.isUartConsoleChannel(channelNumber, channelName);
+  }
+
+  private supportsProbeRsChannelInput(_session: vscode.DebugSession): boolean {
+    return true;
+  }
+
+  private getInputChannel(
+    session: vscode.DebugSession,
+    channelNumber: number,
+    channelName: string
+  ): string | undefined {
+    if (this.isUartConsoleChannel(channelNumber, channelName) && this.supportsProbeRsChannelInput(session)) {
+      return UART_CONSOLE_CHANNEL_NAME;
+    }
+    return undefined;
+  }
+
+  private notifyRttWindowState(
+    entry: ProbeRsTerminalEntry,
+    windowIsOpen: boolean,
+    stateDescription: 'opened' | 'closed' | 'reused'
+  ): void {
+    if (!entry.sessionActive) {
+      return;
+    }
+
+    void entry.session.customRequest('rttWindowOpened', { channelNumber: entry.channelNumber, windowIsOpen }).then(
+      () => {
+        const detail = stateDescription === 'closed' ? 'can no longer receive RTT data' : 'ready to receive RTT data';
+        logToConsole(
+          `${ConsoleLogSources.console}: RTT Window ${stateDescription}, and ${detail} on channel ${JSON.stringify(
+            entry.channelNumber,
+            null,
+            2
+          )}`
         );
-        this.rttTerminals.push([+channelNumber, dataFormat, channelTerminal, channelWriteEmitter]);
+      },
+      (error: unknown) => {
+        logToConsole(
+          `${ConsoleLogSources.error}: ${ConsoleLogSources.console}: Failed to update RTT window state for channel ${JSON.stringify(
+            entry.channelNumber,
+            null,
+            2
+          )}: ${JSON.stringify(String(error))}`
+        );
       }
-      if (channelNumber === 0) {
-        channelTerminal.show(false);
+    );
+  }
+
+  private handleTerminalInput(entry: ProbeRsTerminalEntry, data: string): void {
+    if (data === '\x03') {
+      entry.terminal.dispose();
+      return;
+    }
+
+    if (!entry.sessionActive || !entry.inputEnabled || !entry.inputChannel) {
+      return;
+    }
+
+    void entry.session
+      .customRequest('channelInput', { channel: entry.inputChannel, data })
+      .then(undefined, (error: unknown) => {
+        if (entry.reportedInputFailure) {
+          return;
+        }
+
+        entry.reportedInputFailure = true;
+        entry.inputEnabled = false;
+        logToConsole(
+          `${ConsoleLogSources.error}: ${ConsoleLogSources.console}: Failed to forward input to channel ${JSON.stringify(
+            entry.inputChannel
+          )} on debug session ${JSON.stringify(entry.sessionId)}: ${JSON.stringify(String(error))}`
+        );
+      });
+  }
+
+  private deleteTerminalEntry(key: string): void {
+    const entry = this.rttTerminals.get(key);
+    if (!entry) {
+      return;
+    }
+
+    entry.sessionActive = false;
+    entry.inputEnabled = false;
+    entry.channelWriteEmitter.dispose();
+    this.rttTerminals.delete(key);
+    this.terminalKeys.delete(entry.terminal);
+  }
+
+  private cleanupSession(sessionId: string): void {
+    for (const [key, entry] of this.rttTerminals.entries()) {
+      if (entry.sessionId === sessionId) {
+        this.deleteTerminalEntry(key);
       }
+    }
+  }
+
+  onDidCloseTerminal(terminal: vscode.Terminal): void {
+    const key = this.terminalKeys.get(terminal);
+    if (!key) {
+      return;
+    }
+
+    this.deleteTerminalEntry(key);
+  }
+
+  onDidTerminateDebugSession(session: vscode.DebugSession): void {
+    if (session.type !== DEBUG_TYPE) {
+      return;
+    }
+
+    this.cleanupSession(session.id);
+  }
+
+  createRttTerminal(session: vscode.DebugSession, channelNumber: number, dataFormat: string, channelName: string) {
+    const key = this.getTerminalKey(session.id, channelNumber);
+    const existingEntry = this.rttTerminals.get(key);
+    if (existingEntry) {
+      existingEntry.session = session;
+      existingEntry.sessionActive = true;
+      existingEntry.channelName = channelName;
+      existingEntry.dataFormat = dataFormat;
+      existingEntry.inputChannel = this.getInputChannel(session, channelNumber, channelName);
+      existingEntry.inputEnabled = existingEntry.inputChannel !== undefined;
+      existingEntry.reportedInputFailure = false;
+      this.notifyRttWindowState(existingEntry, true, 'reused');
+      if (this.shouldRevealTerminal(channelNumber, channelName)) {
+        existingEntry.terminal.show(false);
+      }
+      return;
+    }
+
+    const channelWriteEmitter = new vscode.EventEmitter<string>();
+    let entry: ProbeRsTerminalEntry;
+    const channelPty: vscode.Pseudoterminal = {
+      onDidWrite: channelWriteEmitter.event,
+      open: () => {
+        this.notifyRttWindowState(entry, true, 'opened');
+      },
+      close: () => {
+        this.notifyRttWindowState(entry, false, 'closed');
+      },
+      handleInput: this.isUartConsoleChannel(channelNumber, channelName)
+        ? data => {
+            this.handleTerminalInput(entry, data);
+          }
+        : undefined,
+    };
+    const terminal = vscode.window.createTerminal({
+      name: channelName,
+      pty: channelPty,
+    });
+
+    entry = {
+      sessionId: session.id,
+      session,
+      sessionActive: true,
+      channelNumber,
+      channelName,
+      dataFormat,
+      terminal,
+      channelWriteEmitter,
+      inputChannel: this.getInputChannel(session, channelNumber, channelName),
+      inputEnabled: false,
+      reportedInputFailure: false,
+    };
+    entry.inputEnabled = entry.inputChannel !== undefined;
+
+    this.rttTerminals.set(key, entry);
+    this.terminalKeys.set(terminal, key);
+
+    vscode.debug.activeDebugConsole.appendLine(
+      `${ConsoleLogSources.console}: Opened a new RTT Terminal window named: ${channelName}`
+    );
+
+    if (this.shouldRevealTerminal(channelNumber, channelName)) {
+      terminal.show(false);
     }
   }
 
@@ -229,24 +370,25 @@ class ProbeRSDebugAdapterServerDescriptorFactory implements vscode.DebugAdapterD
     switch (customEvent.event) {
       case 'probe-rs-rtt-channel-config':
         this.createRttTerminal(
+          customEvent.session,
           +customEvent.body?.channelNumber,
-          customEvent.body?.dataFormat,
-          customEvent.body?.channelName
+          String(customEvent.body?.dataFormat ?? 'String'),
+          String(customEvent.body?.channelName ?? `rtt-${String(customEvent.body?.channelNumber ?? 'unknown')}`)
         );
         break;
       case 'probe-rs-rtt-data':
-        let incomingChannelNumber: number = +customEvent.body?.channelNumber;
-        for (var [channelNumber, dataFormat, , channelWriteEmitter] of this.rttTerminals) {
-          if (channelNumber === incomingChannelNumber) {
-            switch (dataFormat) {
-              case 'BinaryLE': //Don't mess with or filter this data
-                channelWriteEmitter.fire(customEvent.body?.data);
-                break;
-              default: //Replace newline characters with platform appropriate newline/carriage-return combinations
-                channelWriteEmitter.fire(formatText(customEvent.body?.data));
-            }
+        const incomingChannelNumber = +customEvent.body?.channelNumber;
+        const entry = this.rttTerminals.get(this.getTerminalKey(customEvent.session.id, incomingChannelNumber));
+        if (!entry) {
+          break;
+        }
+
+        switch (entry.dataFormat) {
+          case 'BinaryLE': //Don't mess with or filter this data
+            entry.channelWriteEmitter.fire(String(customEvent.body?.data ?? ''));
             break;
-          }
+          default: //Replace newline characters with platform appropriate newline/carriage-return combinations
+            entry.channelWriteEmitter.fire(formatText(String(customEvent.body?.data ?? '')));
         }
         break;
       case 'probe-rs-show-message':
@@ -278,7 +420,7 @@ class ProbeRSDebugAdapterServerDescriptorFactory implements vscode.DebugAdapterD
         }
         break;
       case `exited`:
-        this.dispose();
+        this.cleanupSession(customEvent.session.id);
         break;
       default:
         logToConsole(`${ConsoleLogSources.error}: ${ConsoleLogSources.console}: Received unknown custom event:
@@ -493,8 +635,9 @@ class ProbeRSDebugAdapterServerDescriptorFactory implements vscode.DebugAdapterD
   }
 
   dispose() {
-    // Attempting to write to the console here will loose messages, as the debug session has already been terminated.
-    // Instead we use the `onWillEndSession` event of the `DebugAdapterTracker` to handle this.
+    for (const key of Array.from(this.rttTerminals.keys())) {
+      this.deleteTerminalEntry(key);
+    }
   }
 }
 
@@ -615,7 +758,7 @@ function defaultExecutable(): string {
 
 class ProbeRsDebugAdapterTrackerFactory implements DebugAdapterTrackerFactory {
   createDebugAdapterTracker(session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
-    const tracker = new ProbeRsDebugAdapterTracker();
+    const tracker = new ProbeRsDebugAdapterTracker(session);
     return tracker;
   }
 }
@@ -653,6 +796,8 @@ class ProbeRSConfigurationProvider implements DebugConfigurationProvider {
 }
 
 class ProbeRsDebugAdapterTracker implements DebugAdapterTracker {
+  constructor(private readonly session: vscode.DebugSession) {}
+
   onWillStopSession(): void {
     logToConsole(`${ConsoleLogSources.console}: Closing sifli-probe-rs debug session`);
   }
@@ -670,6 +815,24 @@ class ProbeRsDebugAdapterTracker implements DebugAdapterTracker {
   // 		${JSON.stringify(message, null, 2)}`);
   //     }
   // }
+
+  onDidSendMessage(message: unknown): void {
+    const debugMessage = message as { type?: string } | undefined;
+    if (debugMessage?.type !== 'event') {
+      return;
+    }
+
+    for (const listener of probeRsDidSendMessageListeners) {
+      try {
+        listener(this.session, message);
+      } catch (error) {
+        logToConsole(
+          `${ConsoleLogSources.error}: Failed to notify probe-rs debug listeners: ${JSON.stringify(error)}`,
+          true
+        );
+      }
+    }
+  }
 
   onError(error: Error) {
     if (consoleLogLevel === toCamelCase(ConsoleLogSources.debug)) {

@@ -153,5 +153,87 @@
   "downloadType": {
     "release": "发布版",
     "branch": "分支"
+  },
+  "analysis": {
+    "sectionLabel": "外设分析",
+    "title": "分析结果仪表板",
+    "actions": {
+      "run": "运行分析",
+      "reset": "重置筛选"
+    },
+    "summary": {
+      "errors": "错误",
+      "warnings": "警告",
+      "clean": "正常",
+      "pending": "未分析",
+      "visibleScope": "可见范围",
+      "instances": "{visible} / {total} 个实例"
+    },
+    "view": {
+      "label": "视图",
+      "peripheral": "按外设",
+      "severity": "按结果类型"
+    },
+    "filters": {
+      "severity": {
+        "label": "严重级别",
+        "all": "全部严重级别",
+        "error": "仅错误",
+        "warning": "仅警告"
+      },
+      "status": {
+        "label": "状态",
+        "all": "全部状态",
+        "issues": "仅问题项",
+        "clean": "仅正常项"
+      },
+      "groups": {
+        "label": "分组",
+        "all": "全部"
+      }
+    },
+    "group": "分组",
+    "bucket": "结果分桶",
+    "details": "详情",
+    "peripheral": "外设",
+    "register": "寄存器",
+    "suggestion": "建议",
+    "notAvailable": "无",
+    "noSuggestion": "当前条目没有额外建议。",
+    "detailsPlaceholder": "从左侧选择一条错误或警告后，这里会显示完整建议和关联寄存器。",
+    "instancesCount": "{count} 个实例",
+    "subtitle": {
+      "inactive": "当前没有可用的 sifli-probe-rs 调试会话。进入暂停状态后运行分析，仪表板会同步显示错误和警告。",
+      "chipModel": "芯片模型 {chipModel}",
+      "currentChip": "当前芯片",
+      "deviceName": "设备 {deviceName}",
+      "currentDevice": "当前设备",
+      "active": "{chipText}，{deviceText}。仪表板与调试侧栏共享同一份筛选和视图状态。"
+    },
+    "empty": {
+      "noSession": "当前没有可用的调试会话。启动并暂停 sifli-probe-rs 会话后再查看分析结果。",
+      "noResults": "当前筛选条件下没有可显示的结果。"
+    },
+    "buckets": {
+      "error": "错误",
+      "warning": "警告",
+      "clean": "正常",
+      "notAnalyzed": "未分析"
+    },
+    "severityLabel": {
+      "error": "错误:",
+      "warning": "警告:",
+      "info": "信息:"
+    },
+    "severityShort": {
+      "error": "错误",
+      "warning": "警告",
+      "info": "信息"
+    },
+    "instanceStatus": {
+      "ok": "当前分析未发现问题。",
+      "notAnalyzed": "尚未运行到该实例的分析结果。",
+      "issues": "当前实例存在需要处理的配置问题。"
+    }
   }
 }
