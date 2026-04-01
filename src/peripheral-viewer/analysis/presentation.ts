@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import {
   AnalysisBucketId,
   AnalysisBucketPresentation,
@@ -302,24 +303,24 @@ function createBuckets(
   const definitions: Array<{ id: AnalysisBucketId; label: string; enabled: boolean }> = [
     {
       id: 'error',
-      label: 'Errors',
+      label: vscode.l10n.t('Errors'),
       enabled:
         filters.status !== 'clean' && (filters.severity === 'all' || filters.severity === AnalysisSeverity.Error),
     },
     {
       id: 'warning',
-      label: 'Warnings',
+      label: vscode.l10n.t('Warnings'),
       enabled:
         filters.status !== 'clean' && (filters.severity === 'all' || filters.severity === AnalysisSeverity.Warning),
     },
     {
       id: 'clean',
-      label: 'Clean',
+      label: vscode.l10n.t('Clean'),
       enabled: filters.severity === 'all' && filters.status !== 'issues',
     },
     {
       id: 'not-analyzed',
-      label: 'Not Analyzed',
+      label: vscode.l10n.t('Not analyzed'),
       enabled: filters.severity === 'all' && filters.status === 'all',
     },
   ];
@@ -384,7 +385,7 @@ export function buildAnalysisPresentation(
       summary: createSummary(undefined, []),
       groups: [],
       buckets: [],
-      message: 'Peripheral analysis is available when a sifli-probe-rs debug session is active.',
+      message: vscode.l10n.t('Peripheral analysis is available when a sifli-probe-rs debug session is active.'),
     };
   }
 
@@ -419,6 +420,6 @@ export function buildAnalysisPresentation(
     summary,
     groups,
     buckets,
-    message: groups.length === 0 ? ANALYSIS_FILTER_EMPTY_MESSAGE : undefined,
+    message: groups.length === 0 ? vscode.l10n.t(ANALYSIS_FILTER_EMPTY_MESSAGE) : undefined,
   };
 }

@@ -81,6 +81,7 @@ export class PeripheralAnalysisDashboardProvider implements vscode.Disposable {
           command: 'localeChanged',
           locale: this.getVSCodeLocale(),
         });
+        this.postSnapshot();
       }
     });
 
@@ -168,31 +169,31 @@ export class PeripheralAnalysisDashboardProvider implements vscode.Disposable {
     const cssUris = cssFiles.map(file => getResourceUri(`assets/${file}`)).filter((uri): uri is string => !!uri);
 
     if (!jsUri) {
-      return this.getErrorWebviewContent('Vue 应用脚本文件未找到，请运行 yarn build:webview');
+      return this.getErrorWebviewContent(
+        vscode.l10n.t('Vue application script file was not found. Run yarn build:webview.')
+      );
     }
 
     if (!fs.existsSync(templatePath)) {
-      return this.getErrorWebviewContent('Webview 模板文件未找到');
+      return this.getErrorWebviewContent(vscode.l10n.t('The webview template file was not found.'));
     }
 
     let html = fs.readFileSync(templatePath, 'utf8');
     const cssLinks = cssUris.map(uri => `<link rel="stylesheet" href="${uri}">`).join('\n  ');
     html = html.replace('{{VUE_SCRIPT_URI}}', jsUri);
     html = html.replace('</head>', `  ${cssLinks}\n</head>`);
-    return html.replace(
-      '<title>SiFli SDK 管理器</title>',
-      `<title>${vscode.l10n.t('Peripheral Analysis Dashboard')}</title>`
-    );
+    return html.replace(/<title>.*<\/title>/, `<title>${vscode.l10n.t('Peripheral Analysis Dashboard')}</title>`);
   }
 
   private getErrorWebviewContent(message: string): string {
+    const lang = this.getVSCodeLocale() === 'zh' ? 'zh-CN' : 'en';
     return `
       <!DOCTYPE html>
-      <html lang="zh-CN">
+      <html lang="${lang}">
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>错误</title>
+        <title>${vscode.l10n.t('Error')}</title>
       </head>
       <body>
         <div style="padding: 24px; font-family: sans-serif;">${message}</div>

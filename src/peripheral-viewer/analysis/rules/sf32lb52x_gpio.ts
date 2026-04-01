@@ -84,6 +84,8 @@ const PA_PINMUX = [
 
 const padIndex = (pin: number) => pin.toString().padStart(2, '0');
 const padPa = (pinmux: any, pin: number) => pinmux?.[`PAD_PA${padIndex(pin)}`];
+type PullState = 'none' | 'up' | 'down';
+type OutputState = 'disabled' | 'high' | 'low';
 
 class HpsysGpioAnalyzer52 extends RuleBasedAnalyzer {
   constructor() {
@@ -100,22 +102,22 @@ class HpsysGpioAnalyzer52 extends RuleBasedAnalyzer {
     }
 
     if (hpsysRcc.ENR2?.GPIO1 !== 1) {
-      this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR2_GPIO1置1以开启模块时钟');
+      this.reportModuleClockDisabled('HPSYS_RCC.ESR2_GPIO1');
     }
     if (hpsysRcc.RSTR2?.GPIO1 !== 0) {
-      this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR2_GPIO1置0以释放模块复位');
+      this.reportModuleResetAsserted('HPSYS_RCC.RSTR2_GPIO1');
     }
     if (hpsysRcc.ENR1?.PINMUX1 !== 1) {
-      this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_PINMUX1置1以开启模块时钟');
+      this.reportModuleClockDisabled('HPSYS_RCC.ESR1_PINMUX1');
     }
     if (hpsysRcc.RSTR1?.PINMUX1 !== 0) {
-      this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_PINMUX1置0以释放模块复位');
+      this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_PINMUX1');
     }
     if (hpsysRcc.ENR1?.SYSCFG1 !== 1) {
-      this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_SYSCFG1置1以开启模块时钟');
+      this.reportModuleClockDisabled('HPSYS_RCC.ESR1_SYSCFG1');
     }
     if (hpsysRcc.RSTR1?.SYSCFG1 !== 0) {
-      this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_SYSCFG1置0以释放模块复位');
+      this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_SYSCFG1');
     }
 
     for (let pin = 0; pin <= 44; pin += 1) {
@@ -143,13 +145,13 @@ class HpsysGpioAnalyzer52 extends RuleBasedAnalyzer {
         const mappings = this.checkI2cUart(hpsysCfg, pin);
         if (mappings.length === 0) {
           this.error(
-            `PA${padIndex(pin)}映射到I2C/UART，但是没有指定具体功能`,
-            `请在HPSYS_CFG中将对应功能的PINR指定到PA${padIndex(pin)}上`
+            this.text('PA{0} is mapped to I2C/UART, but no specific function is assigned', padIndex(pin)),
+            this.text('In HPSYS_CFG, assign the PINR for the target function to PA{0}', padIndex(pin))
           );
         } else if (mappings.length > 1) {
           this.error(
-            `PA${padIndex(pin)}映射到如下多个功能上:${mappings.join(',')}`,
-            '请在HPSYS_CFG中将多余功能的PINR映射到其它IO上，或者不需要映射时设置为0x3f'
+            this.text('PA{0} is mapped to multiple functions: {1}', padIndex(pin), mappings.join(',')),
+            'In HPSYS_CFG, move the extra PINR mappings to other IOs, or set them to 0x3f when no mapping is needed'
           );
         } else {
           resolvedFunction = mappings[0];
@@ -158,13 +160,13 @@ class HpsysGpioAnalyzer52 extends RuleBasedAnalyzer {
         const mappings = this.checkTim(hpsysCfg, pin);
         if (mappings.length === 0) {
           this.error(
-            `PA${padIndex(pin)}映射到TIM，但是没有指定具体功能`,
-            `请在HPSYS_CFG中将对应功能的PINR指定到PA${padIndex(pin)}上`
+            this.text('PA{0} is mapped to TIM, but no specific function is assigned', padIndex(pin)),
+            this.text('In HPSYS_CFG, assign the PINR for the target function to PA{0}', padIndex(pin))
           );
         } else if (mappings.length > 1) {
           this.error(
-            `PA${padIndex(pin)}映射到如下多个功能上:${mappings.join(',')}`,
-            '请在HPSYS_CFG中将多余功能的PINR映射到其它IO上，或者不需要映射时设置为0x3f'
+            this.text('PA{0} is mapped to multiple functions: {1}', padIndex(pin), mappings.join(',')),
+            'In HPSYS_CFG, move the extra PINR mappings to other IOs, or set them to 0x3f when no mapping is needed'
           );
         } else {
           resolvedFunction = mappings[0];
@@ -174,24 +176,42 @@ class HpsysGpioAnalyzer52 extends RuleBasedAnalyzer {
       this.checkPull(resolvedFunction, pinPe, pinPs, pinOe, pinOut);
 
       if (this.requireIe(resolvedFunction) && !pinIe) {
-        this.error(`${resolvedFunction}功能需要获取输入信号，但是输入使能未开启`, '请在HPSYS_PINMUX中将IE置1');
+        this.error(
+          this.text('{0} needs an input signal, but input enable is not turned on', resolvedFunction),
+          'Set IE to 1 in HPSYS_PINMUX'
+        );
       }
       if (!pinIe && pinIntEn) {
-        this.error('输入关闭，无法触发中断', '如需触发中断，请在HPSYS_PINMUX中将IE置1');
+        this.error(
+          'Interrupts cannot trigger because input is disabled',
+          'To trigger interrupts, set IE to 1 in HPSYS_PINMUX'
+        );
       }
       if (pinOe && pinIntEn) {
-        this.error('GPIO输出时，无法触发中断', '如需触发中断，请在HPSYS_GPIO中将对应OE置0');
+        this.error(
+          'GPIO interrupts cannot trigger while the pin is configured as an output',
+          'To trigger interrupts, clear the corresponding OE bit in HPSYS_GPIO'
+        );
       }
       if (pinIntEn && !pinIntType && pinIntPolH && pinIntPolL) {
-        this.warn('所有电平都会触发中断', '请确认中断需求');
+        this.warn('Interrupts will trigger on every level', 'Verify the interrupt requirement');
       }
       if (pinIntEn && !pinIntPolH && !pinIntPolL) {
-        this.warn('没有配置中断触发的电平或边沿，无法触发中断', '请确认中断需求');
+        this.warn(
+          'No interrupt-triggering edge or level is configured, so interrupts cannot trigger',
+          'Verify the interrupt requirement'
+        );
       }
       if (pin === 34 && pinIe && pinIn) {
-        this.warn('PA34输入为高,持续约10秒会复位芯片', '请确认PA34连接');
+        this.warn(
+          'If PA34 stays high on input for about 10 seconds, the chip will reset',
+          'Verify the PA34 connection'
+        );
       } else if (pin === 34 && pinOe && pinOut) {
-        this.error('PA34输出为高,持续约10秒会复位芯片', 'PA34应避免作为输出IO');
+        this.error(
+          'If PA34 is driven high for about 10 seconds, the chip will reset',
+          'Avoid using PA34 as an output IO'
+        );
       }
     }
   }
@@ -263,15 +283,21 @@ class HpsysGpioAnalyzer52 extends RuleBasedAnalyzer {
   }
 
   private checkPull(pinFunction: string, pinPe: number, pinPs: number, pinOe: number, pinOut: number): void {
-    const pullState = pinPe ? (pinPs ? '内部上拉' : '内部下拉') : '无上下拉';
-    const outputState = pinOe ? (pinOut ? '输出为高' : '输出为低') : '输出关闭';
+    const pullState: PullState = pinPe ? (pinPs ? 'up' : 'down') : 'none';
+    const outputState: OutputState = pinOe ? (pinOut ? 'high' : 'low') : 'disabled';
 
     if (pinFunction === 'GPIO') {
-      if (outputState === '输出为高' && pullState === '内部下拉') {
-        this.error('IO输出为高但是内部下拉电阻开启，会产生漏电', '可改为上拉或关闭上下拉');
+      if (outputState === 'high' && pullState === 'down') {
+        this.error(
+          'The IO is driving high while the internal pull-down is enabled, which can cause leakage',
+          'Switch to pull-up or disable the pull resistor'
+        );
       }
-      if (outputState === '输出为低' && pullState === '内部上拉') {
-        this.error('IO输出为低但是内部上拉电阻开启，会产生漏电', '可改为下拉或关闭上下拉');
+      if (outputState === 'low' && pullState === 'up') {
+        this.error(
+          'The IO is driving low while the internal pull-up is enabled, which can cause leakage',
+          'Switch to pull-down or disable the pull resistor'
+        );
       }
       return;
     }
@@ -285,8 +311,11 @@ class HpsysGpioAnalyzer52 extends RuleBasedAnalyzer {
       /^SD.*CMD$/,
       /^SPI.*CS$/,
     ];
-    if (highDefaultFunctions.some(pattern => pattern.test(pinFunction)) && pullState === '内部下拉') {
-      this.error(`${pinFunction}默认为高电平，当内部有下拉电阻时会产生漏电`, '可改为上拉或关闭上下拉');
+    if (highDefaultFunctions.some(pattern => pattern.test(pinFunction)) && pullState === 'down') {
+      this.error(
+        this.text('{0} defaults high, so the internal pull-down can cause leakage', pinFunction),
+        'Switch to pull-up or disable the pull resistor'
+      );
     }
   }
 

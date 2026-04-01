@@ -96,8 +96,13 @@ export interface AnalysisSummary {
   notAnalyzedCount: number;
 }
 
-export interface AnalysisFindingPresentation extends AnalysisFinding {
+export interface AnalysisFindingPresentation {
   id: string;
+  severity: AnalysisSeverity;
+  message: string;
+  suggestion?: string;
+  relatedPeripheral?: string;
+  relatedRegister?: string;
   groupName: string;
   peripheralName: string;
 }

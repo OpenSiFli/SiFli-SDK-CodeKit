@@ -3,41 +3,45 @@
     <div class="rounded-[2rem] border border-vscode-panel-border bg-vscode-background px-6 py-6 shadow-sm">
       <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">Peripheral Analysis</p>
-          <h2 class="mt-3 text-3xl font-semibold tracking-tight">分析结果仪表板</h2>
+          <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">
+            {{ t('analysis.sectionLabel') }}
+          </p>
+          <h2 class="mt-3 text-3xl font-semibold tracking-tight">{{ t('analysis.title') }}</h2>
           <p class="mt-2 max-w-3xl text-sm text-vscode-input-placeholder">
             {{ subtitle }}
           </p>
         </div>
 
         <div class="flex flex-wrap gap-3">
-          <BaseButton variant="primary" @click="runAnalysis">运行分析</BaseButton>
-          <BaseButton variant="secondary" @click="resetFilters">重置筛选</BaseButton>
+          <BaseButton variant="primary" @click="runAnalysis">{{ t('analysis.actions.run') }}</BaseButton>
+          <BaseButton variant="secondary" @click="resetFilters">{{ t('analysis.actions.reset') }}</BaseButton>
         </div>
       </div>
 
       <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <div class="rounded-2xl border border-red-500/25 bg-red-500/8 px-4 py-4">
-          <p class="text-xs uppercase tracking-[0.22em] text-red-200/80">Errors</p>
+          <p class="text-xs uppercase tracking-[0.22em] text-red-200/80">{{ t('analysis.summary.errors') }}</p>
           <p class="mt-3 text-3xl font-semibold text-red-100">{{ summary.errorCount }}</p>
         </div>
         <div class="rounded-2xl border border-amber-500/25 bg-amber-500/8 px-4 py-4">
-          <p class="text-xs uppercase tracking-[0.22em] text-amber-100/80">Warnings</p>
+          <p class="text-xs uppercase tracking-[0.22em] text-amber-100/80">{{ t('analysis.summary.warnings') }}</p>
           <p class="mt-3 text-3xl font-semibold text-amber-50">{{ summary.warningCount }}</p>
         </div>
         <div class="rounded-2xl border border-emerald-500/25 bg-emerald-500/8 px-4 py-4">
-          <p class="text-xs uppercase tracking-[0.22em] text-emerald-100/80">Clean</p>
+          <p class="text-xs uppercase tracking-[0.22em] text-emerald-100/80">{{ t('analysis.summary.clean') }}</p>
           <p class="mt-3 text-3xl font-semibold text-emerald-50">{{ summary.cleanCount }}</p>
         </div>
         <div class="rounded-2xl border border-slate-400/25 bg-slate-500/8 px-4 py-4">
-          <p class="text-xs uppercase tracking-[0.22em] text-slate-200/80">Pending</p>
+          <p class="text-xs uppercase tracking-[0.22em] text-slate-200/80">{{ t('analysis.summary.pending') }}</p>
           <p class="mt-3 text-3xl font-semibold text-slate-100">{{ summary.notAnalyzedCount }}</p>
         </div>
         <div class="rounded-2xl border border-vscode-panel-border bg-vscode-input-background/40 px-4 py-4">
-          <p class="text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">Visible Scope</p>
+          <p class="text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">
+            {{ t('analysis.summary.visibleScope') }}
+          </p>
           <p class="mt-3 text-3xl font-semibold">{{ summary.visibleGroups }}</p>
           <p class="mt-2 text-xs text-vscode-input-placeholder">
-            {{ summary.visibleInstances }} / {{ summary.totalInstances }} instances
+            {{ t('analysis.summary.instances', { visible: summary.visibleInstances, total: summary.totalInstances }) }}
           </p>
         </div>
       </div>
@@ -46,43 +50,51 @@
     <div class="rounded-[2rem] border border-vscode-panel-border bg-vscode-background px-6 py-6 shadow-sm">
       <div class="flex flex-col gap-5">
         <div class="flex flex-wrap items-center gap-3">
-          <span class="text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">View</span>
+          <span class="text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">
+            {{ t('analysis.view.label') }}
+          </span>
           <button
             class="rounded-full border px-4 py-2 text-sm transition-colors"
             :class="modeButtonClass(viewMode === 'peripheral')"
             @click="setViewMode('peripheral')"
           >
-            按外设
+            {{ t('analysis.view.peripheral') }}
           </button>
           <button
             class="rounded-full border px-4 py-2 text-sm transition-colors"
             :class="modeButtonClass(viewMode === 'severity')"
             @click="setViewMode('severity')"
           >
-            按结果类型
+            {{ t('analysis.view.severity') }}
           </button>
         </div>
 
         <div class="grid gap-4 xl:grid-cols-[220px_220px_1fr]">
           <div>
-            <p class="mb-2 text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">Severity</p>
+            <p class="mb-2 text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">
+              {{ t('analysis.filters.severity.label') }}
+            </p>
             <BaseSelect v-model="severityFilter" :options="severityOptions" />
           </div>
 
           <div>
-            <p class="mb-2 text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">Status</p>
+            <p class="mb-2 text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">
+              {{ t('analysis.filters.status.label') }}
+            </p>
             <BaseSelect v-model="statusFilter" :options="statusOptions" />
           </div>
 
           <div>
-            <p class="mb-2 text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">Groups</p>
+            <p class="mb-2 text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">
+              {{ t('analysis.filters.groups.label') }}
+            </p>
             <div class="flex flex-wrap gap-2">
               <button
                 class="rounded-full border px-3 py-2 text-sm transition-colors"
                 :class="groupButtonClass(filters.groups.length === 0)"
                 @click="selectAllGroups"
               >
-                全部
+                {{ t('analysis.filters.groups.all') }}
               </button>
               <button
                 v-for="groupName in availableGroups"
@@ -116,7 +128,9 @@
           >
             <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p class="text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">Group</p>
+                <p class="text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">
+                  {{ t('analysis.group') }}
+                </p>
                 <h3 class="mt-2 text-2xl font-semibold tracking-tight">{{ group.groupName }}</h3>
               </div>
               <div class="flex flex-wrap gap-2">
@@ -218,7 +232,9 @@
           >
             <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p class="text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">Bucket</p>
+                <p class="text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">
+                  {{ t('analysis.bucket') }}
+                </p>
                 <h3 class="mt-2 text-2xl font-semibold tracking-tight">{{ bucketLabel(bucket.id) }}</h3>
               </div>
               <div class="flex flex-wrap gap-2">
@@ -239,11 +255,13 @@
               >
                 <div class="flex items-center justify-between gap-3">
                   <div>
-                    <p class="text-sm uppercase tracking-[0.18em] text-vscode-input-placeholder">Group</p>
+                    <p class="text-sm uppercase tracking-[0.18em] text-vscode-input-placeholder">
+                      {{ t('analysis.group') }}
+                    </p>
                     <p class="mt-1 text-lg font-semibold">{{ group.groupName }}</p>
                   </div>
                   <p class="text-xs uppercase tracking-[0.18em] text-vscode-input-placeholder">
-                    {{ group.instances.length }} instances
+                    {{ t('analysis.instancesCount', { count: group.instances.length }) }}
                   </p>
                 </div>
 
@@ -290,23 +308,27 @@
         class="rounded-[2rem] border border-vscode-panel-border bg-vscode-background px-5 py-5 shadow-sm xl:sticky xl:top-6 xl:self-start"
       >
         <template v-if="selectedFinding">
-          <p class="text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">Details</p>
+          <p class="text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">{{ t('analysis.details') }}</p>
           <h3 class="mt-3 text-2xl font-semibold tracking-tight">
             {{ severityLabel(selectedFinding.severity) }} {{ selectedFinding.message }}
           </h3>
 
           <div class="mt-5 space-y-3">
             <div class="rounded-2xl border border-vscode-panel-border bg-vscode-input-background/35 px-4 py-4">
-              <p class="text-xs uppercase tracking-[0.18em] text-vscode-input-placeholder">Peripheral</p>
+              <p class="text-xs uppercase tracking-[0.18em] text-vscode-input-placeholder">
+                {{ t('analysis.peripheral') }}
+              </p>
               <p class="mt-2 text-sm">{{ selectedFinding.peripheralName }}</p>
             </div>
             <div class="rounded-2xl border border-vscode-panel-border bg-vscode-input-background/35 px-4 py-4">
-              <p class="text-xs uppercase tracking-[0.18em] text-vscode-input-placeholder">Group</p>
+              <p class="text-xs uppercase tracking-[0.18em] text-vscode-input-placeholder">{{ t('analysis.group') }}</p>
               <p class="mt-2 text-sm">{{ selectedFinding.groupName }}</p>
             </div>
             <div class="rounded-2xl border border-vscode-panel-border bg-vscode-input-background/35 px-4 py-4">
-              <p class="text-xs uppercase tracking-[0.18em] text-vscode-input-placeholder">Register</p>
-              <p class="mt-2 break-all text-sm">{{ selectedFinding.relatedRegister || 'N/A' }}</p>
+              <p class="text-xs uppercase tracking-[0.18em] text-vscode-input-placeholder">
+                {{ t('analysis.register') }}
+              </p>
+              <p class="mt-2 break-all text-sm">{{ selectedFinding.relatedRegister || t('analysis.notAvailable') }}</p>
             </div>
           </div>
 
@@ -314,7 +336,9 @@
             v-if="selectedFinding.suggestion"
             class="mt-5 rounded-2xl border border-vscode-panel-border bg-vscode-input-background/35 px-4 py-4"
           >
-            <p class="text-xs uppercase tracking-[0.18em] text-vscode-input-placeholder">Suggestion</p>
+            <p class="text-xs uppercase tracking-[0.18em] text-vscode-input-placeholder">
+              {{ t('analysis.suggestion') }}
+            </p>
             <p class="mt-3 whitespace-pre-wrap text-sm leading-6">{{ selectedFinding.suggestion }}</p>
           </div>
 
@@ -322,16 +346,16 @@
             v-else
             class="mt-5 rounded-2xl border border-dashed border-vscode-panel-border px-4 py-4 text-sm text-vscode-input-placeholder"
           >
-            当前条目没有额外建议。
+            {{ t('analysis.noSuggestion') }}
           </div>
         </template>
 
         <template v-else>
-          <p class="text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">Details</p>
+          <p class="text-xs uppercase tracking-[0.22em] text-vscode-input-placeholder">{{ t('analysis.details') }}</p>
           <div
             class="mt-4 rounded-2xl border border-dashed border-vscode-panel-border px-4 py-8 text-sm text-vscode-input-placeholder"
           >
-            从左侧选择一条错误或警告后，这里会显示完整建议和关联寄存器。
+            {{ t('analysis.detailsPlaceholder') }}
           </div>
         </template>
       </aside>
@@ -341,6 +365,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import BaseButton from '@/components/common/BaseButton.vue';
 import BaseSelect from '@/components/common/BaseSelect.vue';
 import { onMessage, postMessage } from '@/services/vscodeBridge';
@@ -355,6 +380,7 @@ import type {
   AnalysisViewMode,
 } from '@/types';
 
+const { t } = useI18n();
 const snapshot = ref<AnalysisPresentationSnapshot | null>(null);
 const selectedFindingId = ref<string | null>(null);
 const disposers: Array<() => void> = [];
@@ -394,20 +420,24 @@ const hasContent = computed(() => {
 
 const subtitle = computed(() => {
   if (!snapshot.value?.hasActiveSession) {
-    return '当前没有可用的 sifli-probe-rs 调试会话。进入暂停状态后运行分析，仪表板会同步显示错误和警告。';
+    return t('analysis.subtitle.inactive');
   }
 
-  const chipText = snapshot.value.chipModel ? `芯片模型 ${snapshot.value.chipModel}` : '当前芯片';
-  const deviceText = snapshot.value.deviceName ? `设备 ${snapshot.value.deviceName}` : '当前设备';
-  return `${chipText}，${deviceText}。仪表板与调试侧栏共享同一份筛选和视图状态。`;
+  const chipText = snapshot.value.chipModel
+    ? t('analysis.subtitle.chipModel', { chipModel: snapshot.value.chipModel })
+    : t('analysis.subtitle.currentChip');
+  const deviceText = snapshot.value.deviceName
+    ? t('analysis.subtitle.deviceName', { deviceName: snapshot.value.deviceName })
+    : t('analysis.subtitle.currentDevice');
+  return t('analysis.subtitle.active', { chipText, deviceText });
 });
 
 const emptyMessage = computed(() => {
   if (!snapshot.value?.hasActiveSession) {
-    return '当前没有可用的调试会话。启动并暂停 sifli-probe-rs 会话后再查看分析结果。';
+    return t('analysis.empty.noSession');
   }
 
-  return snapshot.value.message || '当前筛选条件下没有可显示的结果。';
+  return snapshot.value.message || t('analysis.empty.noResults');
 });
 
 const findingMap = computed(() => {
@@ -441,17 +471,17 @@ const selectedFinding = computed(() => {
   return findingMap.value.get(selectedFindingId.value) ?? null;
 });
 
-const severityOptions = [
-  { value: 'all', label: '全部严重级别' },
-  { value: 'error', label: '仅错误' },
-  { value: 'warning', label: '仅警告' },
-];
+const severityOptions = computed(() => [
+  { value: 'all', label: t('analysis.filters.severity.all') },
+  { value: 'error', label: t('analysis.filters.severity.error') },
+  { value: 'warning', label: t('analysis.filters.severity.warning') },
+]);
 
-const statusOptions = [
-  { value: 'all', label: '全部状态' },
-  { value: 'issues', label: '仅问题项' },
-  { value: 'clean', label: '仅正常项' },
-];
+const statusOptions = computed(() => [
+  { value: 'all', label: t('analysis.filters.status.all') },
+  { value: 'issues', label: t('analysis.filters.status.issues') },
+  { value: 'clean', label: t('analysis.filters.status.clean') },
+]);
 
 const severityFilter = computed({
   get: () => filters.value.severity,
@@ -578,13 +608,13 @@ function bucketChipClass(bucketId: AnalysisBucketId) {
 function bucketLabel(bucketId: AnalysisBucketId) {
   switch (bucketId) {
     case 'error':
-      return '错误';
+      return t('analysis.buckets.error');
     case 'warning':
-      return '警告';
+      return t('analysis.buckets.warning');
     case 'clean':
-      return '正常';
+      return t('analysis.buckets.clean');
     default:
-      return '未分析';
+      return t('analysis.buckets.notAnalyzed');
   }
 }
 
@@ -604,33 +634,33 @@ function bucketMetric(bucket: AnalysisBucketPresentation) {
 function severityLabel(severity: AnalysisSeverity) {
   switch (severity) {
     case 'error':
-      return '错误:';
+      return t('analysis.severityLabel.error');
     case 'warning':
-      return '警告:';
+      return t('analysis.severityLabel.warning');
     default:
-      return '信息:';
+      return t('analysis.severityLabel.info');
   }
 }
 
 function severityShortLabel(severity: AnalysisSeverity) {
   switch (severity) {
     case 'error':
-      return 'Error';
+      return t('analysis.severityShort.error');
     case 'warning':
-      return 'Warn';
+      return t('analysis.severityShort.warning');
     default:
-      return 'Info';
+      return t('analysis.severityShort.info');
   }
 }
 
 function instanceStatusLabel(status: 'not-analyzed' | 'ok' | 'issues') {
   switch (status) {
     case 'ok':
-      return '当前分析未发现问题。';
+      return t('analysis.instanceStatus.ok');
     case 'not-analyzed':
-      return '尚未运行到该实例的分析结果。';
+      return t('analysis.instanceStatus.notAnalyzed');
     default:
-      return '当前实例存在需要处理的配置问题。';
+      return t('analysis.instanceStatus.issues');
   }
 }
 

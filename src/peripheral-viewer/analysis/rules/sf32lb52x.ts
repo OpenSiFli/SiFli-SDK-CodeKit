@@ -231,66 +231,78 @@ class RccAnalyzer52 extends Sf32lb52xAnalyzer {
 
       const clocks = getHpsysClocks(hpsysRcc);
       if (hpsysRcc.CSR?.SEL_SYS_LP) {
-        this.error('系统时钟被误切换到clk_wdt', '需将HPSYS_RCC的CSR.SEL_SYS_LP置0');
+        this.error('The system clock was switched to clk_wdt unexpectedly', 'Set HPSYS_RCC.CSR.SEL_SYS_LP to 0');
       }
       if (hpsysRcc.CSR?.SEL_SYS === 2) {
-        this.error('系统时钟被误切换到源2', 'HPSYS_RCC的CSR.SEL_SYS有效值为0,1,3');
+        this.error(
+          'The system clock was switched to source 2 unexpectedly',
+          'Valid values of HPSYS_RCC.CSR.SEL_SYS are 0, 1, and 3'
+        );
       }
       if (hpsysRcc.CSR?.SEL_SYS === 3 && hpsysCfg.SYSCR?.LDO_VSEL) {
-        this.error('基础工作模式不能使用clk_dll1', '基础工作模式下,HPSYS_RCC的CSR.SEL_SYS有效值为0,1');
+        this.error(
+          'clk_dll1 cannot be used in basic operating mode',
+          'In basic operating mode, valid values of HPSYS_RCC.CSR.SEL_SYS are 0 and 1'
+        );
       }
       if (clocks.clkHpsys !== 999) {
         if (hpsysCfg.SYSCR?.LDO_VSEL && clocks.clkHpsys > 48) {
-          this.error(`clk_hpsys ${clocks.clkHpsys}MHz,超出48MHz频率上限`);
+          this.error(this.text('{0} {1} MHz exceeds the {2} MHz limit', 'clk_hpsys', clocks.clkHpsys, 48));
         } else if (clocks.clkHpsys > 240) {
-          this.error(`clk_hpsys ${clocks.clkHpsys}MHz,超出240MHz频率上限`);
+          this.error(this.text('{0} {1} MHz exceeds the {2} MHz limit', 'clk_hpsys', clocks.clkHpsys, 240));
         }
       } else {
-        this.error('clk_hpsys频率获取异常');
+        this.error(this.text('Failed to read the {0} frequency', 'clk_hpsys'));
       }
       if (clocks.hclkHpsys !== 999) {
         if (hpsysCfg.SYSCR?.LDO_VSEL && clocks.hclkHpsys > 48) {
-          this.error(`hclk_hpsys ${clocks.hclkHpsys}MHz,超出48MHz频率上限`);
+          this.error(this.text('{0} {1} MHz exceeds the {2} MHz limit', 'hclk_hpsys', clocks.hclkHpsys, 48));
         } else if (clocks.hclkHpsys > 240) {
-          this.error(`hclk_hpsys ${clocks.hclkHpsys}MHz,超出240MHz频率上限`);
+          this.error(this.text('{0} {1} MHz exceeds the {2} MHz limit', 'hclk_hpsys', clocks.hclkHpsys, 240));
         }
       } else {
-        this.error('hclk_hpsys频率获取异常');
+        this.error(this.text('Failed to read the {0} frequency', 'hclk_hpsys'));
       }
       if (clocks.pclkHpsys !== 999) {
         if (hpsysCfg.SYSCR?.LDO_VSEL && clocks.pclkHpsys > 48) {
-          this.error(`pclk_hpsys ${clocks.pclkHpsys}MHz,超出48MHz频率上限`);
+          this.error(this.text('{0} {1} MHz exceeds the {2} MHz limit', 'pclk_hpsys', clocks.pclkHpsys, 48));
         } else if (clocks.pclkHpsys > 120) {
-          this.error(`pclk_hpsys ${clocks.pclkHpsys}MHz,超出120MHz频率上限`);
+          this.error(this.text('{0} {1} MHz exceeds the {2} MHz limit', 'pclk_hpsys', clocks.pclkHpsys, 120));
         }
       } else {
-        this.error('pclk_hpsys频率获取异常');
+        this.error(this.text('Failed to read the {0} frequency', 'pclk_hpsys'));
       }
       if (clocks.pclk2Hpsys !== 999) {
         if (hpsysCfg.SYSCR?.LDO_VSEL && clocks.pclk2Hpsys > 6) {
-          this.error(`pclk2_hpsys ${clocks.pclk2Hpsys}MHz,超出6MHz频率上限`);
+          this.error(this.text('{0} {1} MHz exceeds the {2} MHz limit', 'pclk2_hpsys', clocks.pclk2Hpsys, 6));
         } else if (clocks.pclk2Hpsys > 7.5) {
-          this.error(`pclk2_hpsys ${clocks.pclk2Hpsys}MHz,超出7.5MHz频率上限`);
+          this.error(this.text('{0} {1} MHz exceeds the {2} MHz limit', 'pclk2_hpsys', clocks.pclk2Hpsys, 7.5));
         }
       } else {
-        this.error('pclk2_hpsys频率获取异常');
+        this.error(this.text('Failed to read the {0} frequency', 'pclk2_hpsys'));
       }
       if (hpsysRcc.ENR2?.MPI1) {
         if (![0, 1, 2].includes(hpsysRcc.CSR?.SEL_MPI1 ?? -1)) {
-          this.error('MPI1的功能时钟选择错误', 'HPSYS_RCC的CSR.SEL_MPI1有效值为0,1,2');
+          this.error(
+            'MPI1 functional clock selection is incorrect',
+            'Valid values of HPSYS_RCC.CSR.SEL_MPI1 are 0, 1, and 2'
+          );
         } else if (hpsysRcc.CSR?.SEL_MPI1 === 1 && clocks.clkDll1 === 0) {
-          this.warn('clk_dll1未开启，MPI1无法工作');
+          this.warn('clk_dll1 is not enabled, so MPI1 cannot operate');
         } else if (hpsysRcc.CSR?.SEL_MPI1 === 2 && clocks.clkDll2 === 0) {
-          this.warn('clk_dll2未开启，MPI1无法工作');
+          this.warn('clk_dll2 is not enabled, so MPI1 cannot operate');
         }
       }
       if (hpsysRcc.ENR2?.MPI2) {
         if (![0, 1, 2].includes(hpsysRcc.CSR?.SEL_MPI2 ?? -1)) {
-          this.error('MPI2的功能时钟选择错误', 'HPSYS_RCC的CSR.SEL_MPI2有效值为0,1,2');
+          this.error(
+            'MPI2 functional clock selection is incorrect',
+            'Valid values of HPSYS_RCC.CSR.SEL_MPI2 are 0, 1, and 2'
+          );
         } else if (hpsysRcc.CSR?.SEL_MPI2 === 1 && clocks.clkDll1 === 0) {
-          this.warn('clk_dll1未开启，MPI2无法工作');
+          this.warn('clk_dll1 is not enabled, so MPI2 cannot operate');
         } else if (hpsysRcc.CSR?.SEL_MPI2 === 2 && clocks.clkDll2 === 0) {
-          this.warn('clk_dll2未开启，MPI2无法工作');
+          this.warn('clk_dll2 is not enabled, so MPI2 cannot operate');
         }
       }
       return;
@@ -303,27 +315,30 @@ class RccAnalyzer52 extends Sf32lb52xAnalyzer {
       return;
     }
     if (!hpsysAon.ISSR?.LP_ACTIVE) {
-      this.error(`LPSYS处于睡眠状态，无法访问${this.peripheralName}`, '需将LPSYS唤醒后才能访问LPSYS_RCC');
+      this.error(
+        this.text('LPSYS is asleep, so {0} cannot be accessed', this.peripheralName),
+        'Wake LPSYS before accessing LPSYS_RCC'
+      );
       return;
     }
     if (lpsysRcc.CSR?.SEL_SYS_LP) {
-      this.error('系统时钟被误切换到clk_wdt', '需将LPSYS_RCC的CSR.SEL_SYS_LP置0');
+      this.error('The system clock was switched to clk_wdt unexpectedly', 'Set LPSYS_RCC.CSR.SEL_SYS_LP to 0');
     }
     const clocks = getLpsysClocks(hpsysAon, lpsysRcc);
     if (!clocks) {
-      this.error('LPSYS处于睡眠状态，无法获取LPSYS时钟');
+      this.error('LPSYS is asleep, so its clock tree cannot be read');
       return;
     }
     if (!lpsysCfg.SYSCR?.LDO_VSEL && clocks.hclkLpsys > 24) {
-      this.error(`hclk_lpsys ${clocks.hclkLpsys}MHz,超出24MHz频率上限`);
+      this.error(this.text('{0} {1} MHz exceeds the {2} MHz limit', 'hclk_lpsys', clocks.hclkLpsys, 24));
     }
     if (!lpsysCfg.SYSCR?.LDO_VSEL && clocks.pclkLpsys > 24) {
-      this.error(`pclk_lpsys ${clocks.pclkLpsys}MHz,超出24MHz频率上限`);
+      this.error(this.text('{0} {1} MHz exceeds the {2} MHz limit', 'pclk_lpsys', clocks.pclkLpsys, 24));
     }
     if (lpsysCfg.SYSCR?.LDO_VSEL && clocks.pclk2Lpsys > 6) {
-      this.error(`pclk2_lpsys ${clocks.pclk2Lpsys}MHz,超出6MHz频率上限`);
+      this.error(this.text('{0} {1} MHz exceeds the {2} MHz limit', 'pclk2_lpsys', clocks.pclk2Lpsys, 6));
     } else if (!lpsysCfg.SYSCR?.LDO_VSEL && clocks.pclk2Lpsys > 3) {
-      this.error(`pclk2_lpsys ${clocks.pclk2Lpsys}MHz,超出3MHz频率上限`);
+      this.error(this.text('{0} {1} MHz exceeds the {2} MHz limit', 'pclk2_lpsys', clocks.pclk2Lpsys, 3));
     }
   }
 }
@@ -342,32 +357,35 @@ class TsenAnalyzer52 extends Sf32lb52xAnalyzer {
     }
 
     if (hpsysRcc.ENR2?.TSEN !== 1) {
-      this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ENR2_TSEN置1以开启模块时钟');
+      this.reportModuleClockDisabled('HPSYS_RCC.ENR2_TSEN');
     }
     if (hpsysRcc.RSTR2?.TSEN !== 0) {
-      this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR2_TSEN置0以释放模块复位');
+      this.reportModuleResetAsserted('HPSYS_RCC.RSTR2_TSEN');
     }
     if (hpsysCfg.ANAU_CR?.EN_BG !== 1) {
-      this.error('Bandgap 没有打开', 'TSEN工作时应将HPSYS_CFG.ANAU_CR.EN_BG设为1');
+      this.error('Bandgap is not enabled', 'Set HPSYS_CFG.ANAU_CR.EN_BG to 1 while TSEN is running');
     }
     if (tsen.TSEN_CTRL_REG?.ANAU_TSEN_EN !== 1) {
-      this.error('TSEN模块没有使能', 'TSEN工作时应将TSEN.TSEN_CTRL_REG.ANAU_TSEN_EN设为1');
+      this.error('TSEN is not enabled', 'Set TSEN.TSEN_CTRL_REG.ANAU_TSEN_EN to 1 while TSEN is running');
     }
     if (tsen.TSEN_CTRL_REG?.ANAU_TSEN_RSTB !== 1) {
-      this.warn('TSEN RSTB错误', 'TSEN工作时，TSEN.TSEN_CTRL_REG.ANAU_TSEN_RSTB先置0后置1，最后应为1');
+      this.warn(
+        'TSEN RSTB setting is incorrect',
+        'When TSEN is running, toggle TSEN.TSEN_CTRL_REG.ANAU_TSEN_RSTB from 0 to 1 and leave it at 1'
+      );
     }
     if (tsen.TSEN_CTRL_REG?.ANAU_TSEN_PU !== 1) {
-      this.warn('TSEN PU错误', 'TSEN工作时，TSEN.TSEN_CTRL_REG.ANAU_TSEN_PU应为1');
+      this.warn('TSEN PU setting is incorrect', 'TSEN.TSEN_CTRL_REG.ANAU_TSEN_PU must be 1 while TSEN is running');
     }
     if (tsen.TSEN_CTRL_REG?.ANAU_TSEN_RUN !== 1) {
-      this.warn('TSEN RUN错误', 'TSEN工作时，TSEN.TSEN_CTRL_REG.ANAU_TSEN_RUN应为1');
+      this.warn('TSEN RUN setting is incorrect', 'TSEN.TSEN_CTRL_REG.ANAU_TSEN_RUN must be 1 while TSEN is running');
     }
 
     const clocks = getHpsysClocks(hpsysRcc);
     const clkDiv = Math.max(1, tsen.TSEN_CTRL_REG?.ANAU_TSEN_CLK_DIV ?? 1);
     const tsenFreq = clocks.pclkHpsys / clkDiv;
     if (tsenFreq > 2) {
-      this.error('TSEN时钟频率高于最高频率2MHz');
+      this.error('TSEN clock frequency exceeds the 2 MHz limit');
     }
   }
 }
@@ -384,44 +402,61 @@ class ExtdmaAnalyzer52 extends Sf32lb52xAnalyzer {
       return;
     }
     if (hpsysRcc.ENR1?.EXTDMA !== 1) {
-      this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_EXTDMA置1以开启模块时钟');
+      this.reportModuleClockDisabled('HPSYS_RCC.ESR1_EXTDMA');
     }
     if (hpsysRcc.RSTR1?.EXTDMA !== 0) {
-      this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_EXTDMA置0以释放模块复位');
+      this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_EXTDMA');
     }
     if (extdma.CCR?.SRCSIZE !== 2) {
-      this.error('源数据类型不是四字节', 'CCR.SRCSIZE必须为2');
+      this.error('The source data width is not 4 bytes', 'CCR.SRCSIZE must be 2');
     }
     if (extdma.CCR?.DSTSIZE !== 2) {
-      this.error('目的数据类型不是四字节', 'CCR.DSTSIZE必须为2');
+      this.error('The destination data width is not 4 bytes', 'CCR.DSTSIZE must be 2');
     }
     if ((extdma.SRCAR?.value ?? 0) !== 0 || (extdma.DSTAR?.value ?? 0) !== 0) {
       if ((extdma.SRCAR?.value ?? 0) & 3) {
         this.error(
-          `源地址0x${(extdma.SRCAR?.value ?? 0).toString(16).padStart(8, '0')}不是四字节对齐`,
-          '源地址必须为四字节对齐'
+          this.text(
+            'Source address 0x{0} is not 4-byte aligned',
+            (extdma.SRCAR?.value ?? 0).toString(16).padStart(8, '0')
+          ),
+          'The source address must be 4-byte aligned'
         );
       }
       if ((extdma.DSTAR?.value ?? 0) & 3) {
         this.error(
-          `目的地址0x${(extdma.DSTAR?.value ?? 0).toString(16).padStart(8, '0')}不是四字节对齐`,
-          '目的地址必须为四字节对齐'
+          this.text(
+            'Destination address 0x{0} is not 4-byte aligned',
+            (extdma.DSTAR?.value ?? 0).toString(16).padStart(8, '0')
+          ),
+          'The destination address must be 4-byte aligned'
         );
       }
       if (this.isIllegalExtdmaAddress(extdma.SRCAR?.value ?? 0)) {
         this.error(
-          `源地址0x${(extdma.SRCAR?.value ?? 0).toString(16).padStart(8, '0')}处于${this.peripheralName}无法访问的区间`,
-          '请检查地址设置'
+          this.text(
+            'Source address 0x{0} is in an address range that {1} cannot access',
+            (extdma.SRCAR?.value ?? 0).toString(16).padStart(8, '0'),
+            this.peripheralName
+          ),
+          'Check the configured addresses'
         );
       }
       if (this.isIllegalExtdmaAddress(extdma.DSTAR?.value ?? 0)) {
         this.error(
-          `目的地址0x${(extdma.DSTAR?.value ?? 0).toString(16).padStart(8, '0')}处于${this.peripheralName}无法访问区间`,
-          '请检查地址设置'
+          this.text(
+            'Destination address 0x{0} is in an address range that {1} cannot access',
+            (extdma.DSTAR?.value ?? 0).toString(16).padStart(8, '0'),
+            this.peripheralName
+          ),
+          'Check the configured addresses'
         );
       }
       if ((extdma.CCR?.TCIE ?? 0) === 0 && (extdma.CCR?.HTIE ?? 0) === 0) {
-        this.warn('传输完成中断(TCIE)与传输过半中断(HTIE)均未使能', '请将TCIE或HTIE置1使能中断');
+        this.warn(
+          'Neither the transfer-complete interrupt (TCIE) nor the half-transfer interrupt (HTIE) is enabled',
+          'Set TCIE or HTIE to 1 to enable interrupts'
+        );
       }
     }
   }
@@ -457,19 +492,19 @@ class BtimAnalyzer52 extends Sf32lb52xAnalyzer {
 
     if (instNum === 1) {
       if (hpsysRcc.ENR1?.BTIM1 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_BTIM1置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR1_BTIM1');
       }
       if (hpsysRcc.RSTR1?.BTIM1 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_BTIM1置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_BTIM1');
       }
       return;
     }
     if (instNum === 2) {
       if (hpsysRcc.ENR1?.BTIM2 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_BTIM2置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR1_BTIM2');
       }
       if (hpsysRcc.RSTR1?.BTIM2 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_BTIM2置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_BTIM2');
       }
       return;
     }
@@ -480,22 +515,25 @@ class BtimAnalyzer52 extends Sf32lb52xAnalyzer {
       return;
     }
     if (!hpsysAon.ISSR?.LP_ACTIVE) {
-      this.error(`LPSYS处于睡眠状态，无法访问${this.peripheralName}`, `需将LPSYS唤醒后才能访问${this.peripheralName}`);
+      this.error(
+        this.text('LPSYS is asleep, so {0} cannot be accessed', this.peripheralName),
+        this.text('Wake LPSYS before accessing {0}', this.peripheralName)
+      );
       return;
     }
     if (instNum === 3) {
       if (lpsysRcc.ENR1?.BTIM3 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将LPSYS_RCC的ESR1_BTIM3置1以开启模块时钟');
+        this.reportModuleClockDisabled('LPSYS_RCC.ESR1_BTIM3');
       }
       if (lpsysRcc.RSTR1?.BTIM3 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将LPSYS_RCC的RSTR1_BTIM3置0以释放模块复位');
+        this.reportModuleResetAsserted('LPSYS_RCC.RSTR1_BTIM3');
       }
     } else if (instNum === 4) {
       if (lpsysRcc.ENR1?.BTIM4 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将LPSYS_RCC的ESR1_BTIM4置1以开启模块时钟');
+        this.reportModuleClockDisabled('LPSYS_RCC.ESR1_BTIM4');
       }
       if (lpsysRcc.RSTR1?.BTIM4 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将LPSYS_RCC的RSTR1_BTIM4置0以释放模块复位');
+        this.reportModuleResetAsserted('LPSYS_RCC.RSTR1_BTIM4');
       }
     }
   }
@@ -513,33 +551,40 @@ class PdmAnalyzer52 extends Sf32lb52xAnalyzer {
       return;
     }
     if (hpsysRcc.ENR1?.PDM1 !== 1) {
-      this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_PDM1置1以开启模块时钟');
+      this.reportModuleClockDisabled('HPSYS_RCC.ESR1_PDM1');
     }
     if (hpsysRcc.RSTR1?.PDM1 !== 0) {
-      this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_PDM1置0以释放模块复位');
+      this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_PDM1');
     }
 
     const clkPin = this.findPinByFsel(hpsysPinmux, [7, 22], 3);
     if (clkPin === undefined) {
-      this.error('未找到CLK分配的IO', '可分配IO为PA7,PA22');
+      this.error('No IO assignment was found for CLK', 'Available IOs: PA7,PA22');
     } else if (padPa(hpsysPinmux, clkPin)?.PE === 1) {
       this.warn(
-        `CLK ${formatPa(clkPin)}内部上下拉开启，可能产生漏电`,
-        `可将HPSYS_PINMUX->PAD_${formatPa(clkPin)}.PE设为0以关闭内部上下拉电阻`
+        this.text('{0} {1} has an internal pull resistor enabled, which may cause leakage', 'CLK', formatPa(clkPin)),
+        this.text('Set HPSYS_PINMUX->PAD_{0}.PE to 0 to disable the internal pull resistor', formatPa(clkPin))
       );
     }
 
     const dataPin = this.findPinByFsel(hpsysPinmux, [8, 23], 3);
     if (dataPin === undefined) {
-      this.warn('未找到DATA分配的IO', '可分配IO为PA8,PA23');
+      this.warn('No IO assignment was found for DATA', 'Available IOs: PA8,PA23');
     } else {
       if (padPa(hpsysPinmux, dataPin)?.IE !== 1) {
-        this.error(`DATA ${formatPa(dataPin)}输入未使能`, `将HPSYS_PINMUX->PAD_${formatPa(dataPin)}.IE设为1`);
+        this.error(
+          this.text('{0} {1} input is not enabled', 'DATA', formatPa(dataPin)),
+          this.text('Set HPSYS_PINMUX->PAD_{0}.IE to 1', formatPa(dataPin))
+        );
       }
       if (padPa(hpsysPinmux, dataPin)?.PE === 1) {
         this.warn(
-          `DATA ${formatPa(dataPin)}内部上下拉开启，可能产生漏电`,
-          `可将HPSYS_PINMUX->PAD_${formatPa(dataPin)}.PE设为0以关闭内部上下拉电阻`
+          this.text(
+            '{0} {1} has an internal pull resistor enabled, which may cause leakage',
+            'DATA',
+            formatPa(dataPin)
+          ),
+          this.text('Set HPSYS_PINMUX->PAD_{0}.PE to 0 to disable the internal pull resistor', formatPa(dataPin))
         );
       }
     }
@@ -564,10 +609,10 @@ class GpadcAnalyzer52 extends Sf32lb52xAnalyzer {
       return;
     }
     if (hpsysRcc.ENR2?.GPADC !== 1) {
-      this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ENR2_GPADC置1以开启模块时钟');
+      this.reportModuleClockDisabled('HPSYS_RCC.ENR2_GPADC');
     }
     if (hpsysRcc.RSTR2?.GPADC !== 0) {
-      this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR2_GPADC置0以释放模块复位');
+      this.reportModuleResetAsserted('HPSYS_RCC.RSTR2_GPADC');
     }
 
     for (let slotNum = 0; slotNum < 8; slotNum += 1) {
@@ -582,31 +627,40 @@ class GpadcAnalyzer52 extends Sf32lb52xAnalyzer {
           continue;
         }
         if (padPa(hpsysPinmux, pin)?.FSEL !== 7) {
-          this.error('ADC CH配置错误，未选择GPADC功能', `应将HPSYS_PINMUX->PAD_${formatPa(pin)}.FSEL设为7`);
+          this.error(
+            'ADC CH is configured for the wrong function; GPADC is not selected',
+            this.text('Set HPSYS_PINMUX->PAD_{0}.FSEL to {1}', formatPa(pin), 7)
+          );
         }
         if (padPa(hpsysPinmux, pin)?.PE === 1) {
           this.error(
-            'ADC CHANNEL内部上下拉开启，测量会出错',
-            `应将HPSYS_PINMUX->PAD_${formatPa(pin)}.PE设为0以关闭内部上下拉电阻`
+            'Internal pull resistors are enabled on ADC CHANNEL, which can break measurements',
+            this.text('Set HPSYS_PINMUX->PAD_{0}.PE to 0 to disable the internal pull resistor', formatPa(pin))
           );
         }
       }
     }
 
     if (hpsysCfg.ANAU_CR?.EN_BG !== 1) {
-      this.error('Bandgap 没有打开', 'GPADC工作时应将HPSYS_CFG.ANAU_CR.EN_BG设为1');
+      this.error('Bandgap is not enabled', 'Set HPSYS_CFG.ANAU_CR.EN_BG to 1 while GPADC is running');
     }
     if (gpadc.ADC_CFG_REG1?.ANAU_GPADC_LDOREF_EN !== 1) {
-      this.warn('GPADC参考电压没有打开', 'GPADC工作时应将PADC.ADC_CFG_REG1.ANAU_GPADC_LDOREF_EN设为1');
+      this.warn(
+        'GPADC reference voltage is not enabled',
+        'Set PADC.ADC_CFG_REG1.ANAU_GPADC_LDOREF_EN to 1 while GPADC is running'
+      );
     }
     if (gpadc.ADC_CFG_REG1?.ANAU_GPADC_MUTE === 1) {
-      this.error('MUTE模式已打开', 'GPADC工作时应将GPADC.ADC_CFG_REG1.ANAU_GPADC_MUTE设为0');
+      this.error('MUTE mode is enabled', 'Set GPADC.ADC_CFG_REG1.ANAU_GPADC_MUTE to 0 while GPADC is running');
     }
     if (gpadc.ADC_CFG_REG1?.ANAU_GPADC_P_INT_EN === 1) {
-      this.error('P_INT_EN设置错误', 'GPADC工作时应将GPADC.ADC_CFG_REG1.ANAU_GPADC_P_INT_EN设为0');
+      this.error(
+        'P_INT_EN is configured incorrectly',
+        'Set GPADC.ADC_CFG_REG1.ANAU_GPADC_P_INT_EN to 0 while GPADC is running'
+      );
     }
     if (gpadc.ADC_CFG_REG1?.ANAU_GPADC_SE !== 1) {
-      this.warn('GPADC处于差分输入模式');
+      this.warn('GPADC is configured for differential input mode');
     }
 
     const clocks = getHpsysClocks(hpsysRcc);
@@ -615,13 +669,16 @@ class GpadcAnalyzer52 extends Sf32lb52xAnalyzer {
     const dataDly = gpadc.ADC_CTRL_REG?.DATA_SAMP_DLY ?? 0;
     const gpadcFreq = (clocks.pclkHpsys / Math.max(1, convWidth + sampWidth + dataDly + 2)) * 1000;
     if (gpadcFreq > 4000) {
-      this.error('采样频率超过4MHz最高采样频率', '请重新配置采样频率');
+      this.error('The sampling frequency exceeds the 4 MHz maximum', 'Reconfigure the sampling frequency');
     }
 
     if ((gpadc.ADC_CTRL_REG?.DMA_EN ?? 0) === 1 && (gpadc.ADC_CTRL_REG?.ADC_OP_MODE ?? 0) === 0) {
-      this.warn('GPADC的DMA使能且处于单次采样模式', '如果使用DMA取数，GPADC应工作在连续采样模式，即ADC_OP_MODE设为1');
+      this.warn(
+        'GPADC DMA is enabled while GPADC is still in single-sample mode',
+        'If DMA is used to fetch samples, GPADC should run in continuous conversion mode with ADC_OP_MODE = 1'
+      );
       if ((gpadc.ADC_CTRL_REG?.DMA_DATA_SEL ?? 0) === 1) {
-        this.error('DMA数据源选择错误', '正常使用时DMA_DATA_SEL应设为0');
+        this.error('DMA data source selection is incorrect', 'Set DMA_DATA_SEL to 0 for normal operation');
       }
     }
   }
@@ -643,10 +700,10 @@ class I2sAnalyzer52 extends Sf32lb52xAnalyzer {
       return;
     }
     if (hpsysRcc.ENR1?.I2S1 !== 1) {
-      this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_I2S1置1以开启模块时钟');
+      this.reportModuleClockDisabled('HPSYS_RCC.ESR1_I2S1');
     }
     if (hpsysRcc.RSTR1?.I2S1 !== 0) {
-      this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_I2S1置0以释放模块复位');
+      this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_I2S1');
     }
 
     this.checkMappedI2sPin(hpsysPinmux, 'BCK', [5, 29], true, false);
@@ -666,19 +723,28 @@ class I2sAnalyzer52 extends Sf32lb52xAnalyzer {
     const pin = candidates.find(candidate => padPa(pinmux, candidate)?.FSEL === 3);
     if (pin === undefined) {
       if (required) {
-        this.error(`未找到${label}分配的IO`, `可分配IO为PA${candidates.join(',PA')}`);
+        this.error(
+          this.text('No IO assignment was found for {0}', label),
+          this.text('Available IOs: PA{0}', candidates.join(',PA'))
+        );
       } else {
-        this.warn(`未找到${label}分配的IO`, `可分配IO为PA${candidates.join(',PA')}`);
+        this.warn(
+          this.text('No IO assignment was found for {0}', label),
+          this.text('Available IOs: PA{0}', candidates.join(',PA'))
+        );
       }
       return;
     }
     if (requiresInput && padPa(pinmux, pin)?.IE !== 1) {
-      this.error(`${label} ${formatPa(pin)}输入未使能`, `将HPSYS_PINMUX->PAD_${formatPa(pin)}.IE设为1`);
+      this.error(
+        this.text('{0} {1} input is not enabled', label, formatPa(pin)),
+        this.text('Set HPSYS_PINMUX->PAD_{0}.IE to 1', formatPa(pin))
+      );
     }
     if (padPa(pinmux, pin)?.PE === 1) {
       this.warn(
-        `${label} ${formatPa(pin)}内部上下拉开启，可能产生漏电`,
-        `可将HPSYS_PINMUX->PAD_${formatPa(pin)}.PE设为0以关闭内部上下拉电阻`
+        this.text('{0} {1} has an internal pull resistor enabled, which may cause leakage', label, formatPa(pin)),
+        this.text('Set HPSYS_PINMUX->PAD_{0}.PE to 0 to disable the internal pull resistor', formatPa(pin))
       );
     }
   }
@@ -704,17 +770,17 @@ class SpiAnalyzer52 extends Sf32lb52xAnalyzer {
     let diPin = 25;
     if (instNum === 1) {
       if (hpsysRcc.ENR1?.SPI1 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_SPI1置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR1_SPI1');
       }
       if (hpsysRcc.RSTR1?.SPI1 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_SPI1置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_SPI1');
       }
     } else if (instNum === 2) {
       if (hpsysRcc.ENR1?.SPI2 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_SPI2置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR1_SPI2');
       }
       if (hpsysRcc.RSTR1?.SPI2 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_SPI2置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_SPI2');
       }
       clkPin = 39;
       csPin = 40;
@@ -724,67 +790,76 @@ class SpiAnalyzer52 extends Sf32lb52xAnalyzer {
 
     if (padPa(hpsysPinmux, clkPin)?.FSEL !== 2) {
       this.error(
-        `CLK ${formatPa(clkPin)}功能错误，未选择SPI功能`,
-        `应将HPSYS_PINMUX->PAD_${formatPa(clkPin)}.FSEL设为2`
+        this.text('{0} {1} is configured for the wrong function; {2} is not selected', 'CLK', formatPa(clkPin), 'SPI'),
+        this.text('Set HPSYS_PINMUX->PAD_{0}.FSEL to {1}', formatPa(clkPin), 2)
       );
     }
     if (padPa(hpsysPinmux, clkPin)?.PE === 1) {
       this.warn(
-        `CLK ${formatPa(clkPin)}内部上下拉开启，可能产生漏电`,
-        `应将HPSYS_PINMUX->PAD_${formatPa(clkPin)}.PE设为0以关闭内部上下拉电阻`
+        this.text('{0} {1} has an internal pull resistor enabled, which may cause leakage', 'CLK', formatPa(clkPin)),
+        this.text('Set HPSYS_PINMUX->PAD_{0}.PE to 0 to disable the internal pull resistor', formatPa(clkPin))
       );
     }
     if (padPa(hpsysPinmux, csPin)?.FSEL !== 2) {
-      this.error(`CS ${formatPa(csPin)}功能错误，未选择SPI功能`, `应将HPSYS_PINMUX->PAD_${formatPa(csPin)}.FSEL设为2`);
+      this.error(
+        this.text('{0} {1} is configured for the wrong function; {2} is not selected', 'CS', formatPa(csPin), 'SPI'),
+        this.text('Set HPSYS_PINMUX->PAD_{0}.FSEL to {1}', formatPa(csPin), 2)
+      );
     }
     if (padPa(hpsysPinmux, csPin)?.PE === 1 && padPa(hpsysPinmux, csPin)?.PS === 0) {
       this.error(
-        `CS ${formatPa(csPin)}内部下拉开启，会产生漏电`,
-        `应将HPSYS_PINMUX->PAD_${formatPa(csPin)}.PS设为1改成内部上拉`
+        this.text('{0} {1} has the internal pull-down enabled, which can cause leakage', 'CS', formatPa(csPin)),
+        this.text('Set HPSYS_PINMUX->PAD_{0}.PS to 1 to switch to an internal pull-up', formatPa(csPin))
       );
     }
     if (padPa(hpsysPinmux, dioPin)?.FSEL !== 2) {
       this.error(
-        `DIO ${formatPa(dioPin)}功能错误，未选择SPI功能`,
-        `应将HPSYS_PINMUX->PAD_${formatPa(dioPin)}.FSEL设为2`
+        this.text('{0} {1} is configured for the wrong function; {2} is not selected', 'DIO', formatPa(dioPin), 'SPI'),
+        this.text('Set HPSYS_PINMUX->PAD_{0}.FSEL to {1}', formatPa(dioPin), 2)
       );
     }
     if (padPa(hpsysPinmux, dioPin)?.IE !== 1 && spi.TRIWIRE_CTRL?.SPI_TRI_WIRE_EN === 1) {
       this.warn(
-        `DIO ${formatPa(dioPin)}输入未使能`,
-        `SPI三线模式需开启DIO输入使能，将HPSYS_PINMUX->PAD_${formatPa(dioPin)}.IE设为1`
+        this.text('{0} {1} input is not enabled', 'DIO', formatPa(dioPin)),
+        this.text('Enable DIO input in three-wire SPI mode by setting HPSYS_PINMUX->PAD_{0}.IE to 1', formatPa(dioPin))
       );
     }
     if (padPa(hpsysPinmux, diPin)?.FSEL !== 2) {
       this.warn(
-        `DI ${formatPa(diPin)}未选择SPI功能`,
-        `SPI四线模式下，将HPSYS_PINMUX->PAD_${formatPa(diPin)}.FSEL设为2`
+        this.text('{0} {1} does not select the {2} function', 'DI', formatPa(diPin), 'SPI'),
+        this.text('In four-wire SPI mode, set HPSYS_PINMUX->PAD_{0}.FSEL to {1}', formatPa(diPin), 2)
       );
     }
     if (padPa(hpsysPinmux, diPin)?.IE !== 1 && spi.TRIWIRE_CTRL?.SPI_TRI_WIRE_EN === 1) {
       this.warn(
-        `DI ${formatPa(diPin)}输入未使能`,
-        `SPI四线模式需开启DI输入使能，将HPSYS_PINMUX->PAD_${formatPa(diPin)}.IE设为1`
+        this.text('{0} {1} input is not enabled', 'DI', formatPa(diPin)),
+        this.text('Enable DI input in four-wire SPI mode by setting HPSYS_PINMUX->PAD_{0}.IE to 1', formatPa(diPin))
       );
     }
 
     if (spi.TOP_CTRL?.SSE !== 1) {
-      this.error('SSE设置错误，未使能SPI', '正常工作时应将SSE设为1');
+      this.error('SSE is configured incorrectly; SPI is not enabled', 'Set SSE to 1 for normal operation');
     }
     if (spi.TOP_CTRL?.FRF === 3) {
-      this.error('SPI协议设置错误，配置为RSVD', '正常工作时应将FRF设为0/1/2中的一个');
+      this.error(
+        'SPI protocol selection is invalid; FRF is configured as RSVD',
+        'Set FRF to 0, 1, or 2 for normal operation'
+      );
     }
     if (spi.CLK_CTRL?.CLK_SSP_EN !== 1) {
-      this.error('SPI时钟设置错误，没有使能', '正常工作应将CLK_SSP_EN设为1');
+      this.error(
+        'SPI clock configuration is incorrect; the clock is not enabled',
+        'Set CLK_SSP_EN to 1 for normal operation'
+      );
     }
     if (spi.TRIWIRE_CTRL?.SPI_TRI_WIRE_EN === 1 && spi.CLK_CTRL?.SPI_DI_SEL !== 1) {
-      this.error('SPI三线设置错误', '三线时SPI_DI_SEL应设为1');
+      this.error('SPI three-wire configuration is incorrect', 'Set SPI_DI_SEL to 1 in three-wire mode');
     }
     if (spi.STATUS?.ROR === 1) {
-      this.error('RXFIFO 发生溢出！', '请检查RXFIFO读数流程');
+      this.error('RXFIFO overflow occurred', 'Check the RXFIFO read flow');
     }
     if (spi.STATUS?.TUR === 1) {
-      this.error('TXFIFO 发生下溢！', '请检查向TXFIFO送数流程');
+      this.error('TXFIFO underflow occurred', 'Check the TXFIFO write flow');
     }
   }
 }
@@ -812,7 +887,7 @@ class UsartAnalyzer52 extends Sf32lb52xAnalyzer {
 
     if (instNum === 1) {
       if (hpsysRcc.RSTR1?.USART1 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_USART1置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_USART1');
       }
       ctsPin = hpsysCfg.USART1_PINR?.CTS_PIN;
       rtsPin = hpsysCfg.USART1_PINR?.RTS_PIN;
@@ -820,10 +895,10 @@ class UsartAnalyzer52 extends Sf32lb52xAnalyzer {
       txdPin = hpsysCfg.USART1_PINR?.TXD_PIN;
     } else if (instNum === 2) {
       if (hpsysRcc.ENR1?.USART2 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_USART2置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR1_USART2');
       }
       if (hpsysRcc.RSTR1?.USART2 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_USART2置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_USART2');
       }
       ctsPin = hpsysCfg.USART2_PINR?.CTS_PIN;
       rtsPin = hpsysCfg.USART2_PINR?.RTS_PIN;
@@ -831,10 +906,10 @@ class UsartAnalyzer52 extends Sf32lb52xAnalyzer {
       txdPin = hpsysCfg.USART2_PINR?.TXD_PIN;
     } else if (instNum === 3) {
       if (hpsysRcc.ENR2?.USART3 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR2_USART3置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR2_USART3');
       }
       if (hpsysRcc.RSTR2?.USART3 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR2_USART3置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR2_USART3');
       }
       ctsPin = hpsysCfg.USART3_PINR?.CTS_PIN;
       rtsPin = hpsysCfg.USART3_PINR?.RTS_PIN;
@@ -849,8 +924,8 @@ class UsartAnalyzer52 extends Sf32lb52xAnalyzer {
       }
       if (!hpsysAon.ISSR?.LP_ACTIVE) {
         this.error(
-          `LPSYS处于睡眠状态，无法访问${this.peripheralName}`,
-          `需将LPSYS唤醒后才能访问${this.peripheralName}`
+          this.text('LPSYS is asleep, so {0} cannot be accessed', this.peripheralName),
+          this.text('Wake LPSYS before accessing {0}', this.peripheralName)
         );
         return;
       }
@@ -859,10 +934,10 @@ class UsartAnalyzer52 extends Sf32lb52xAnalyzer {
       maxPin = 3;
       if (instNum === 4) {
         if (lpsysRcc.ENR1?.USART4 !== 1) {
-          this.error(`${this.peripheralName}模块时钟未开启`, '需将LPSYS_RCC的ESR1_USART4置1以开启模块时钟');
+          this.reportModuleClockDisabled('LPSYS_RCC.ESR1_USART4');
         }
         if (lpsysRcc.RSTR1?.USART4 !== 0) {
-          this.error(`${this.peripheralName}模块被复位`, '需将LPSYS_RCC的RSTR1_USART4置0以释放模块复位');
+          this.reportModuleResetAsserted('LPSYS_RCC.RSTR1_USART4');
         }
         ctsPin = lpsysCfg.USART4_PINR?.CTS_PIN;
         rtsPin = lpsysCfg.USART4_PINR?.RTS_PIN;
@@ -870,10 +945,10 @@ class UsartAnalyzer52 extends Sf32lb52xAnalyzer {
         txdPin = lpsysCfg.USART4_PINR?.TXD_PIN;
       } else if (instNum === 5) {
         if (lpsysRcc.ENR1?.USART5 !== 1) {
-          this.error(`${this.peripheralName}模块时钟未开启`, '需将LPSYS_RCC的ESR1_USART5置1以开启模块时钟');
+          this.reportModuleClockDisabled('LPSYS_RCC.ESR1_USART5');
         }
         if (lpsysRcc.RSTR1?.USART5 !== 0) {
-          this.error(`${this.peripheralName}模块被复位`, '需将LPSYS_RCC的RSTR1_USART5置0以释放模块复位');
+          this.reportModuleResetAsserted('LPSYS_RCC.RSTR1_USART5');
         }
         ctsPin = lpsysCfg.USART5_PINR?.CTS_PIN;
         rtsPin = lpsysCfg.USART5_PINR?.RTS_PIN;
@@ -909,12 +984,18 @@ class UsartAnalyzer52 extends Sf32lb52xAnalyzer {
     const prefix = hpsysPins ? 'PA' : 'PB';
     if (pin === noAssignValue) {
       if (warnOnMissing) {
-        this.warn(`${label}没有分配IO`, `需将${this.peripheralName.toUpperCase()}_PINR.${label}_PIN配置到对应IO`);
+        this.warn(
+          this.text('No IO is assigned to {0}', label),
+          this.text('Assign {0}_PINR.{1}_PIN to the required IO', this.peripheralName.toUpperCase(), label)
+        );
       }
       return;
     }
     if (pin > maxPin) {
-      this.error(`${label}分配的${prefix}${padIndex(pin)}不存在`, `可分配IO为${prefix}00~${prefix}${padIndex(maxPin)}`);
+      this.error(
+        this.text('Assigned pin {0}{1} for {2} does not exist', prefix, padIndex(pin), label),
+        this.text('Available IOs: {0}00~{0}{1}', prefix, padIndex(maxPin))
+      );
     }
   }
 
@@ -938,29 +1019,59 @@ class UsartAnalyzer52 extends Sf32lb52xAnalyzer {
     const expectedFsel = hpsysPins ? 4 : 1;
     if (checkFsel && pad?.FSEL !== expectedFsel) {
       this.error(
-        `${label} ${prefix}${padIndex(pin)}功能错误，未选择UART功能`,
-        `应将${hpsysPins ? 'HPSYS' : 'LPSYS'}_PINMUX->PAD_${prefix}${padIndex(pin)}.FSEL设为${expectedFsel}`
+        this.text(
+          '{0} {1}{2} is configured for the wrong function; {3} is not selected',
+          label,
+          prefix,
+          padIndex(pin),
+          'UART'
+        ),
+        this.text(
+          'Set {0}_PINMUX->PAD_{1}{2}.FSEL to {3}',
+          hpsysPins ? 'HPSYS' : 'LPSYS',
+          prefix,
+          padIndex(pin),
+          expectedFsel
+        )
       );
     }
     if (checkIe && pad?.IE !== 1) {
       this.error(
-        `${label} ${prefix}${padIndex(pin)}输入未使能`,
-        `应将${hpsysPins ? 'HPSYS' : 'LPSYS'}_PINMUX->PAD_${prefix}${padIndex(pin)}.IE设为1`
+        this.text('{0} {1}{2} input is not enabled', label, prefix, padIndex(pin)),
+        this.text('Set {0}_PINMUX->PAD_{1}{2}.IE to 1', hpsysPins ? 'HPSYS' : 'LPSYS', prefix, padIndex(pin))
       );
     }
     if (warnPullUp && pad?.PE === 1 && pad?.PS === 1) {
       this.warn(
-        `${label} ${prefix}${padIndex(pin)}内部上拉开启，可能产生漏电`,
-        `可将${hpsysPins ? 'HPSYS' : 'LPSYS'}_PINMUX->PAD_${prefix}${padIndex(pin)}.${
-          label === 'RTS' ? 'PE设为0以关闭内部上拉' : 'PS设为0改为内部下拉'
-        }`
+        this.text('{0} {1}{2} has the internal pull-up enabled, which may cause leakage', label, prefix, padIndex(pin)),
+        label === 'RTS'
+          ? this.text(
+              'Set {0}_PINMUX->PAD_{1}{2}.PE to 0 to disable the internal pull-up',
+              hpsysPins ? 'HPSYS' : 'LPSYS',
+              prefix,
+              padIndex(pin)
+            )
+          : this.text(
+              'Set {0}_PINMUX->PAD_{1}{2}.PS to 0 to switch to an internal pull-down',
+              hpsysPins ? 'HPSYS' : 'LPSYS',
+              prefix,
+              padIndex(pin)
+            )
       );
     }
     if (!warnPullUp && pad?.PE === 1 && pad?.PS === 0) {
-      const suggestion = errorPullDown
-        ? `可将${hpsysPins ? 'HPSYS' : 'LPSYS'}_PINMUX->PAD_${prefix}${padIndex(pin)}.PE设为0以关闭内部下拉`
-        : `可将${hpsysPins ? 'HPSYS' : 'LPSYS'}_PINMUX->PAD_${prefix}${padIndex(pin)}.PE设为0以关闭内部下拉`;
-      const message = `${label} ${prefix}${padIndex(pin)}内部下拉开启，可能产生漏电`;
+      const suggestion = this.text(
+        'Set {0}_PINMUX->PAD_{1}{2}.PE to 0 to disable the internal pull-down',
+        hpsysPins ? 'HPSYS' : 'LPSYS',
+        prefix,
+        padIndex(pin)
+      );
+      const message = this.text(
+        '{0} {1}{2} has the internal pull-down enabled, which may cause leakage',
+        label,
+        prefix,
+        padIndex(pin)
+      );
       if (errorPullDown) {
         this.error(message, suggestion);
       } else {
@@ -990,40 +1101,40 @@ class I2cAnalyzer52 extends Sf32lb52xAnalyzer {
     let dmaIndex = 22;
     if (instNum === 1) {
       if (hpsysRcc.ENR1?.I2C1 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_I2C1置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR1_I2C1');
       }
       if (hpsysRcc.RSTR1?.I2C1 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_I2C1置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_I2C1');
       }
       sclPin = hpsysCfg.I2C1_PINR?.SCL_PIN;
       sdaPin = hpsysCfg.I2C1_PINR?.SDA_PIN;
       dmaIndex = 22;
     } else if (instNum === 2) {
       if (hpsysRcc.ENR1?.I2C2 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_I2C2置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR1_I2C2');
       }
       if (hpsysRcc.RSTR1?.I2C2 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_I2C2置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_I2C2');
       }
       sclPin = hpsysCfg.I2C2_PINR?.SCL_PIN;
       sdaPin = hpsysCfg.I2C2_PINR?.SDA_PIN;
       dmaIndex = 23;
     } else if (instNum === 3) {
       if (hpsysRcc.ENR2?.I2C3 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR2_I2C3置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR2_I2C3');
       }
       if (hpsysRcc.RSTR2?.I2C3 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR2_I2C3置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR2_I2C3');
       }
       sclPin = hpsysCfg.I2C3_PINR?.SCL_PIN;
       sdaPin = hpsysCfg.I2C3_PINR?.SDA_PIN;
       dmaIndex = 24;
     } else if (instNum === 4) {
       if (hpsysRcc.ENR2?.I2C4 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR2_I2C4置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR2_I2C4');
       }
       if (hpsysRcc.RSTR2?.I2C4 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR2_I2C4置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR2_I2C4');
       }
       sclPin = hpsysCfg.I2C4_PINR?.SCL_PIN;
       sdaPin = hpsysCfg.I2C4_PINR?.SDA_PIN;
@@ -1037,39 +1148,54 @@ class I2cAnalyzer52 extends Sf32lb52xAnalyzer {
     this.checkI2cPinmux('SDA', sdaPin, hpsysPinmux);
 
     if ((i2c.CR?.MODE ?? 0) > 1) {
-      this.warn('I2C为高速模式，需使用专用格式访问', '请确认是否需要3.4M高速模式(HS-mode)');
+      this.warn(
+        'I2C is in high-speed mode and must be accessed with the dedicated format',
+        'Confirm whether 3.4 MHz high-speed mode (HS-mode) is actually required'
+      );
     }
     if (i2c.CR?.UR === 1) {
-      this.warn('I2C处于复位状态', `将I2C${instNum}->CR.UR置0以解除复位`);
+      this.warn('I2C is still held in reset', this.text('Clear I2C{0}->CR.UR to release reset', instNum));
     }
     if (i2c.CR?.SCLE === 0) {
-      this.warn('SCL输出关闭', `将I2C${instNum}->CR.SCLE置1使能SCL输出`);
+      this.warn('SCL output is disabled', this.text('Set I2C{0}->CR.SCLE to 1 to enable SCL output', instNum));
     }
     if (i2c.CR?.IUE === 0) {
-      this.warn('I2C未开始工作', `将I2C${instNum}->CR.IUE置1开始I2C工作`);
+      this.warn('I2C has not started running', this.text('Set I2C{0}->CR.IUE to 1 to start I2C', instNum));
     }
     if (i2c.SR?.SAD === 1) {
-      this.warn('I2C作为slave被寻址成功', `如果${this.peripheralName}只需作为master，应将I2C${instNum}->CR.SLVEN置0`);
+      this.warn(
+        'I2C has been addressed successfully as a slave',
+        this.text('If {0} only needs to operate as a master, clear I2C{1}->CR.SLVEN', this.peripheralName, instNum)
+      );
     }
     if (i2c.SR?.UB === 1) {
-      this.warn('I2C传输未结束', `如果传输长时间无法结束，怀疑I2C挂死，可将I2C${instNum}->CR.BRGRST置1复位I2C`);
+      this.warn(
+        'The I2C transfer has not finished',
+        this.text('If the transfer never finishes, I2C may be stuck; set I2C{0}->CR.BRGRST to 1 to reset it', instNum)
+      );
     }
     if (i2c.SR?.UF === 1) {
-      this.warn('FIFO下溢出', '请检查总线频率与DMAC状态');
+      this.warn('FIFO underflow occurred', 'Check the bus frequency and the DMAC status');
     }
     if (i2c.SR?.OF === 1) {
-      this.warn('FIFO溢出', '请检查总线频率与DMAC状态');
+      this.warn('FIFO overflow occurred', 'Check the bus frequency and the DMAC status');
     }
     if (i2c.BMR?.SCL === 0) {
       this.warn(
-        'SCL被拉低',
-        `如果当前未处于传输状态，可能是SCL上拉电阻失效，或者外设挂死,请尝试发送总线复位(I2C${instNum}->CR.RSTREQ置1)`
+        'SCL is being held low',
+        this.text(
+          'If no transfer is in progress, the SCL pull-up may be failing or the device may be stuck; try a bus reset with I2C{0}->CR.RSTREQ = 1',
+          instNum
+        )
       );
     }
     if (i2c.BMR?.SDA === 0) {
       this.warn(
-        'SDA被拉低',
-        `如果当前未处于传输状态，可能是SDA上拉电阻失效，或者外设挂死,请尝试发送总线复位(I2C${instNum}->CR.RSTREQ置1)`
+        'SDA is being held low',
+        this.text(
+          'If no transfer is in progress, the SDA pull-up may be failing or the device may be stuck; try a bus reset with I2C{0}->CR.RSTREQ = 1',
+          instNum
+        )
       );
     }
 
@@ -1078,12 +1204,12 @@ class I2cAnalyzer52 extends Sf32lb52xAnalyzer {
       const channel = dmac1 ? findDmac1Mapping(dmac1, dmaIndex) : 0;
       if (channel === 0) {
         this.error(
-          `${this.peripheralName}没有映射到DMAC1的任何通道上`,
-          `请检查DMAC1对应通道的CSELR1/2_CxS配置，应配置为${dmaIndex}`
+          this.text('{0} is not mapped to any DMAC1 channel', this.peripheralName),
+          this.text('Check the DMAC1 CSELR1/2.CxS setting for the mapped channel; it should be {0}', dmaIndex)
         );
       }
       if (i2c.CR?.ADC_OP_MODE === 0 && i2c.CR?.DMA_DATA_SEL === 1) {
-        this.error('DMA数据源选择错误', '正常使用时DMA_DATA_SEL应设为0');
+        this.error('DMA data source selection is incorrect', 'Set DMA_DATA_SEL to 0 for normal operation');
       }
     }
   }
@@ -1091,13 +1217,16 @@ class I2cAnalyzer52 extends Sf32lb52xAnalyzer {
   private checkI2cAssignedPin(label: string, pin: number): void {
     if (pin === 0x3f) {
       this.error(
-        `${label}没有分配IO`,
-        `需将HPSYS_CFG->${this.peripheralName.toUpperCase()}_PINR.${label}_PIN配置到对应IO`
+        this.text('No IO is assigned to {0}', label),
+        this.text('Assign HPSYS_CFG->{0}_PINR.{1}_PIN to the required IO', this.peripheralName.toUpperCase(), label)
       );
       return;
     }
     if (pin > 44) {
-      this.error(`${label}分配的PA${padIndex(pin)}不存在`, '可分配IO为PA00~PA44');
+      this.error(
+        this.text('Assigned pin PA{0} for {1} does not exist', padIndex(pin), label),
+        'Available IOs: PA00~PA44'
+      );
     }
   }
 
@@ -1108,17 +1237,23 @@ class I2cAnalyzer52 extends Sf32lb52xAnalyzer {
     const pad = padPa(pinmux, pin);
     if (pad?.FSEL !== 4) {
       this.error(
-        `${label} PA${padIndex(pin)}功能错误，未选择I2C功能`,
-        `应将HPSYS_PINMUX->PAD_PA${padIndex(pin)}.FSEL设为4`
+        this.text('{0} PA{1} is configured for the wrong function; {2} is not selected', label, padIndex(pin), 'I2C'),
+        this.text('Set HPSYS_PINMUX->PAD_PA{0}.FSEL to {1}', padIndex(pin), 4)
       );
     }
     if (pad?.IE !== 1) {
-      this.error(`${label} PA${padIndex(pin)}输入未使能`, `应将HPSYS_PINMUX->PAD_PA${padIndex(pin)}.IE设为1`);
+      this.error(
+        this.text('{0} PA{1} input is not enabled', label, padIndex(pin)),
+        this.text('Set HPSYS_PINMUX->PAD_PA{0}.IE to 1', padIndex(pin))
+      );
     }
     if (pad?.PE === 1 && pad?.PS === 0) {
       this.error(
-        `${label} PA${padIndex(pin)}内部下拉开启，会产生漏电`,
-        `应将HPSYS_PINMUX->PAD_PA${padIndex(pin)}.PE设为0以关闭内部下拉，同时芯片外部应有上拉电阻`
+        this.text('{0} PA{1} has the internal pull-down enabled, which can cause leakage', label, padIndex(pin)),
+        this.text(
+          'Set HPSYS_PINMUX->PAD_PA{0}.PE to 0 to disable the internal pull-down, and ensure an external pull-up resistor is present',
+          padIndex(pin)
+        )
       );
     }
   }
@@ -1137,10 +1272,10 @@ class DmacAnalyzer52 extends Sf32lb52xAnalyzer {
     }
     if (instNum === 1) {
       if (hpsysRcc.ENR1?.DMAC1 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_DMAC1置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR1_DMAC1');
       }
       if (hpsysRcc.RSTR1?.DMAC1 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_DMAC1置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_DMAC1');
       }
     } else if (instNum === 2) {
       const hpsysAon = await this.requirePeripheral('HPSYS_AON');
@@ -1149,14 +1284,14 @@ class DmacAnalyzer52 extends Sf32lb52xAnalyzer {
         return;
       }
       if (!hpsysAon.ISSR?.LP_ACTIVE) {
-        this.error('LPSYS处于睡眠状态，无法访问DMAC2', '需将LPSYS唤醒后才能访问');
+        this.error('LPSYS is asleep, so DMAC2 cannot be accessed', 'Wake LPSYS before accessing the peripheral');
         return;
       }
       if (lpsysRcc.ENR1?.DMAC2 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将LPSYS_RCC的ESR1_DMAC2置1以开启模块时钟');
+        this.reportModuleClockDisabled('LPSYS_RCC.ESR1_DMAC2');
       }
       if (lpsysRcc.RSTR1?.DMAC2 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将LPSYS_RCC的RSTR1_DMAC2置0以释放模块复位');
+        this.reportModuleResetAsserted('LPSYS_RCC.RSTR1_DMAC2');
       }
     }
 
@@ -1188,44 +1323,71 @@ class DmacAnalyzer52 extends Sf32lb52xAnalyzer {
       if (!chM2m) {
         const request = instNum === 1 ? (DMAC1_SELECT[chSel] ?? 'NONE') : (DMAC2_SELECT[chSel] ?? 'NONE');
         if (request === 'NONE') {
-          this.error(`通道${chNum}为外设模式,但没有配置正确的外设请求`, '请正确配置CSELR1/2.CxS寄存器');
+          this.error(
+            this.text('Channel {0} is in peripheral mode, but the peripheral request selection is incorrect', chNum),
+            'Configure the CSELR1/2.CxS registers correctly'
+          );
         } else {
           this.checkPeripheralTargetAddress(request, chSrcAddr, chDstAddr);
         }
       } else if (ccr.CIRC) {
-        this.warn('循环存储器搬运', '罕见用法，请检查需求是否合理');
+        this.warn(
+          'Circular memory transfer is enabled',
+          'This is an uncommon usage pattern; verify that it is intentional'
+        );
       }
 
       if (chSrcSize === 2 && chSrcAddr & 3) {
         this.error(
-          `四字节搬运时，源地址0x${chSrcAddr.toString(16).padStart(8, '0')}不是四字节对齐`,
-          '源数据类型四字节时源地址必须为四字节对齐'
+          this.text(
+            'For 4-byte transfers, source address 0x{0} is not 4-byte aligned',
+            chSrcAddr.toString(16).padStart(8, '0')
+          ),
+          'The source address must be 4-byte aligned when the source data width is 4 bytes'
         );
       } else if (chSrcSize === 1 && chSrcAddr & 1) {
         this.error(
-          `双字节搬运时，源地址0x${chSrcAddr.toString(16).padStart(8, '0')}不是双字节对齐`,
-          '源数据类型双字节时源地址必须为双字节对齐'
+          this.text(
+            'For 2-byte transfers, source address 0x{0} is not 2-byte aligned',
+            chSrcAddr.toString(16).padStart(8, '0')
+          ),
+          'The source address must be 2-byte aligned when the source data width is 2 bytes'
         );
       }
       if (chDstSize === 2 && chDstAddr & 3) {
         this.error(
-          `四字节搬运时，目的地址0x${chDstAddr.toString(16).padStart(8, '0')}不是四字节对齐`,
-          '目的数据类型四字节时目的地址必须为四字节对齐'
+          this.text(
+            'For 4-byte transfers, destination address 0x{0} is not 4-byte aligned',
+            chDstAddr.toString(16).padStart(8, '0')
+          ),
+          'The destination address must be 4-byte aligned when the destination data width is 4 bytes'
         );
       } else if (chDstSize === 1 && chDstAddr & 1) {
         this.error(
-          `双字节搬运时，目的地址0x${chDstAddr.toString(16).padStart(8, '0')}不是双字节对齐`,
-          '目的数据类型双字节时目的地址必须为双字节对齐'
+          this.text(
+            'For 2-byte transfers, destination address 0x{0} is not 2-byte aligned',
+            chDstAddr.toString(16).padStart(8, '0')
+          ),
+          'The destination address must be 2-byte aligned when the destination data width is 2 bytes'
         );
       }
       if (this.isIllegalDmacAddress(instNum, chSrcAddr)) {
-        this.error(`源地址0x${chSrcAddr.toString(16).padStart(8, '0')}处于非法区间`, '请检查地址设置');
+        this.error(
+          this.text('Source address 0x{0} is in an invalid range', chSrcAddr.toString(16).padStart(8, '0')),
+          'Check the configured addresses'
+        );
       }
       if (this.isIllegalDmacAddress(instNum, chDstAddr)) {
-        this.error(`目的地址0x${chDstAddr.toString(16).padStart(8, '0')}处于非法区间`, '请检查地址设置');
+        this.error(
+          this.text('Destination address 0x{0} is in an invalid range', chDstAddr.toString(16).padStart(8, '0')),
+          'Check the configured addresses'
+        );
       }
       if (ccr.TCIE === 0 && ccr.HTIE === 0) {
-        this.warn('传输完成中断(TCIE)与传输过半中断(HTIE)均未使能', `请将CCR${chNum}.TCIE或HTIE置1使能中断`);
+        this.warn(
+          'Neither the transfer-complete interrupt (TCIE) nor the half-transfer interrupt (HTIE) is enabled',
+          this.text('Set CCR{0}.TCIE or HTIE to 1 to enable interrupts', chNum)
+        );
       }
     }
   }
@@ -1238,18 +1400,23 @@ class DmacAnalyzer52 extends Sf32lb52xAnalyzer {
 
     if (target.target === 'dst' && dstAddr !== target.addr) {
       this.error(
-        `${request}的目的地址0x${dstAddr.toString(16).padStart(8, '0')}错误`,
-        `应当为0x${target.addr.toString(16).padStart(8, '0')}`
+        this.text('Destination address 0x{0} for {1} is incorrect', dstAddr.toString(16).padStart(8, '0'), request),
+        this.text('Expected 0x{0}', target.addr.toString(16).padStart(8, '0'))
       );
     } else if (target.target === 'src' && srcAddr !== target.addr) {
       this.error(
-        `${request}的源地址0x${srcAddr.toString(16).padStart(8, '0')}错误`,
-        `应当为0x${target.addr.toString(16).padStart(8, '0')}`
+        this.text('Source address 0x{0} for {1} is incorrect', srcAddr.toString(16).padStart(8, '0'), request),
+        this.text('Expected 0x{0}', target.addr.toString(16).padStart(8, '0'))
       );
     } else if (target.target === 'any' && srcAddr !== target.addr && dstAddr !== target.addr) {
       this.error(
-        `${request}的地址0x${srcAddr.toString(16).padStart(8, '0')}或0x${dstAddr.toString(16).padStart(8, '0')}错误`,
-        `应当为0x${target.addr.toString(16).padStart(8, '0')}`
+        this.text(
+          'Address 0x{0} or 0x{1} for {2} is incorrect',
+          srcAddr.toString(16).padStart(8, '0'),
+          dstAddr.toString(16).padStart(8, '0'),
+          request
+        ),
+        this.text('Expected 0x{0}', target.addr.toString(16).padStart(8, '0'))
       );
     }
   }
@@ -1318,19 +1485,19 @@ class GptimAnalyzer52 extends Sf32lb52xAnalyzer {
     let etrPin = 0x3f;
     if (instNum === 1) {
       if (hpsysRcc.ENR1?.GPTIM1 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_GPTIM1置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR1_GPTIM1');
       }
       if (hpsysRcc.RSTR1?.GPTIM1 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_GPTIM1置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_GPTIM1');
       }
       pinRecord = hpsysCfg.GPTIM1_PINR;
       etrPin = hpsysCfg.ETR_PINR?.ETR1_PIN;
     } else if (instNum === 2) {
       if (hpsysRcc.ENR1?.GPTIM2 !== 1) {
-        this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR1_GPTIM2置1以开启模块时钟');
+        this.reportModuleClockDisabled('HPSYS_RCC.ESR1_GPTIM2');
       }
       if (hpsysRcc.RSTR1?.GPTIM2 !== 0) {
-        this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR1_GPTIM2置0以释放模块复位');
+        this.reportModuleResetAsserted('HPSYS_RCC.RSTR1_GPTIM2');
       }
       pinRecord = hpsysCfg.GPTIM2_PINR;
       etrPin = hpsysCfg.ETR_PINR?.ETR2_PIN;
@@ -1347,7 +1514,10 @@ class GptimAnalyzer52 extends Sf32lb52xAnalyzer {
     ] as const;
     for (const [label, pin] of pins) {
       if (pin !== 0x3f && pin > 44) {
-        this.error(`${label}分配的PA${padIndex(pin)}不存在`, '可分配IO为PA00~PA44');
+        this.error(
+          this.text('Assigned pin PA{0} for {1} does not exist', padIndex(pin), label),
+          'Available IOs: PA00~PA44'
+        );
       }
     }
 
@@ -1359,16 +1529,16 @@ class GptimAnalyzer52 extends Sf32lb52xAnalyzer {
     for (const [label, pin] of pins) {
       if (pin !== 0x3f && pin <= 44 && padPa(pinmux, pin)?.FSEL !== 5) {
         this.error(
-          `${label} PA${padIndex(pin)}功能错误，未选择TIM功能`,
-          `应将HPSYS_PINMUX->PAD_PA${padIndex(pin)}.FSEL设为5`
+          this.text('{0} PA{1} is configured for the wrong function; {2} is not selected', label, padIndex(pin), 'TIM'),
+          this.text('Set HPSYS_PINMUX->PAD_PA{0}.FSEL to {1}', padIndex(pin), 5)
         );
       }
     }
 
     if ((gptim.CR1?.CMS ?? 0) !== 0 && (gptim.CR1?.OPM ?? 0) === 1 && ((gptim.RCR?.REP ?? 0) & 1) === 0) {
       this.warn(
-        '重复进行中心对齐计数时,最后一个周期当上升计数完成后就停止',
-        '如果最后一个周期需要完整计数，需要将重复次数(GPTIM.RCR.REP+1)配置为偶数'
+        'In repeated center-aligned counting, the last cycle stops immediately after the up-count phase completes',
+        'If the final cycle must complete fully, configure the repetition count (GPTIM.RCR.REP+1) as an even number'
       );
     }
 
@@ -1376,7 +1546,7 @@ class GptimAnalyzer52 extends Sf32lb52xAnalyzer {
       const ccmr = chNum < 3 ? gptim.CCMR1 : gptim.CCMR2;
       const ocm = ccmr?.[`OC${chNum}M`];
       if ((ocm === 14 || ocm === 15) && (gptim.CR1?.CMS ?? 0) === 0) {
-        this.error('非对称PWM应采用中心对齐计数', '请检查配置');
+        this.error('Asymmetric PWM should use center-aligned counting', 'Check the configuration');
       }
     }
   }
@@ -1398,10 +1568,10 @@ class AtimAnalyzer52 extends Sf32lb52xAnalyzer {
       return;
     }
     if (hpsysRcc.ENR2?.ATIM1 !== 1) {
-      this.error(`${this.peripheralName}模块时钟未开启`, '需将HPSYS_RCC的ESR2_ATIM1置1以开启模块时钟');
+      this.reportModuleClockDisabled('HPSYS_RCC.ESR2_ATIM1');
     }
     if (hpsysRcc.RSTR2?.ATIM1 !== 0) {
-      this.error(`${this.peripheralName}模块被复位`, '需将HPSYS_RCC的RSTR2_ATIM1置0以释放模块复位');
+      this.reportModuleResetAsserted('HPSYS_RCC.RSTR2_ATIM1');
     }
 
     const pins = [
@@ -1418,7 +1588,10 @@ class AtimAnalyzer52 extends Sf32lb52xAnalyzer {
     ] as const;
     for (const [label, pin] of pins) {
       if (pin !== 0x3f && pin > 44) {
-        this.error(`${label}分配的PA${padIndex(pin)}不存在`, '可分配IO为PA00~PA44');
+        this.error(
+          this.text('Assigned pin PA{0} for {1} does not exist', padIndex(pin), label),
+          'Available IOs: PA00~PA44'
+        );
       }
     }
 
@@ -1430,25 +1603,28 @@ class AtimAnalyzer52 extends Sf32lb52xAnalyzer {
     for (const [label, pin] of pins) {
       if (pin !== 0x3f && pin <= 44 && padPa(pinmux, pin)?.FSEL !== 5) {
         this.error(
-          `${label} PA${padIndex(pin)}功能错误，未选择TIM功能`,
-          `应将HPSYS_PINMUX->PAD_PA${padIndex(pin)}.FSEL设为5`
+          this.text('{0} PA{1} is configured for the wrong function; {2} is not selected', label, padIndex(pin), 'TIM'),
+          this.text('Set HPSYS_PINMUX->PAD_PA{0}.FSEL to {1}', padIndex(pin), 5)
         );
       }
     }
     if ((atim.CR1?.CMS ?? 0) !== 0 && (atim.CR1?.OPM ?? 0) === 1 && ((atim.RCR?.REP ?? 0) & 1) === 0) {
       this.warn(
-        '重复进行中心对齐计数时,最后一个周期当上升计数完成后就停止',
-        '如果最后一个周期需要完整计数，需要将重复次数(ATIM.RCR.REP+1)配置为偶数'
+        'In repeated center-aligned counting, the last cycle stops immediately after the up-count phase completes',
+        'If the final cycle must complete fully, configure the repetition count (ATIM.RCR.REP+1) as an even number'
       );
     }
     if ((atim.AF1?.LOCK ?? 0) !== 0) {
-      this.warn(`已开启${atim.AF1?.LOCK}级寄存器锁,部分寄存器无法改写`, '复位后才能进行修改');
+      this.warn(
+        this.text('Register lock level {0} is enabled, so some registers cannot be modified', atim.AF1?.LOCK ?? 0),
+        'These registers can be modified only after a reset'
+      );
     }
     for (let chNum = 1; chNum <= 4; chNum += 1) {
       const ccmr = chNum < 3 ? atim.CCMR1 : atim.CCMR2;
       const ocm = ccmr?.[`OC${chNum}M`];
       if ((ocm === 14 || ocm === 15) && (atim.CR1?.CMS ?? 0) === 0) {
-        this.error('非对称PWM应采用中心对齐计数', '请检查配置');
+        this.error('Asymmetric PWM should use center-aligned counting', 'Check the configuration');
       }
     }
   }
