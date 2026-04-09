@@ -2,10 +2,17 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Board, BoardDiscoveryResult, SftoolParam } from '../types';
-import { CUSTOMER_BOARDS_SUBFOLDER, HCPU_SUBFOLDER, PTAB_JSON_FILE, SFTOOL_PARAM_JSON_FILE } from '../constants';
+import {
+  CUSTOMER_BOARDS_SUBFOLDER,
+  HCPU_SUBFOLDER,
+  PROJECT_SUBFOLDER,
+  PTAB_JSON_FILE,
+  SFTOOL_PARAM_JSON_FILE,
+} from '../constants';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
 import { getProjectInfo } from '../utils/projectUtils';
+import { buildBoardSearchArg } from '../utils/boardSearchPathUtils';
 
 export class BoardService {
   private static instance: BoardService;
@@ -116,6 +123,20 @@ export class BoardService {
     return projectInfo?.projectEntryRelativePath || 'project';
   }
 
+  private getProjectEntryAbsolutePath(): string | null {
+    const projectInfo = getProjectInfo();
+    if (projectInfo?.projectEntryPath) {
+      return projectInfo.projectEntryPath;
+    }
+
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!workspaceRoot) {
+      return null;
+    }
+
+    return path.join(workspaceRoot, PROJECT_SUBFOLDER);
+  }
+
   /**
    * 获取构建目标文件夹
    */
@@ -154,8 +175,7 @@ export class BoardService {
    * 生成编译命令
    */
   public async getCompileCommand(boardName: string, threads: number): Promise<string> {
-    const projectPath = this.getProjectFolderPath();
-    const boardSearchArg = await this.getBoardSearchArg(boardName, projectPath);
+    const boardSearchArg = await this.getBoardSearchArg(boardName);
 
     return `scons --board=${boardName}${boardSearchArg} -j${threads}`;
   }
@@ -164,15 +184,13 @@ export class BoardService {
    * 生成 Menuconfig 命令
    */
   public async getMenuconfigCommand(boardName: string): Promise<string> {
-    const projectPath = this.getProjectFolderPath();
-    const boardSearchArg = await this.getBoardSearchArg(boardName, projectPath);
+    const boardSearchArg = await this.getBoardSearchArg(boardName);
 
     return `scons --board=${boardName}${boardSearchArg} --menuconfig`;
   }
 
   public async getGenerateCodebaseIndexCommand(boardName: string): Promise<string> {
-    const projectPath = this.getProjectFolderPath();
-    const boardSearchArg = await this.getBoardSearchArg(boardName, projectPath);
+    const boardSearchArg = await this.getBoardSearchArg(boardName);
     return `scons --board=${boardName}${boardSearchArg} --target=json`;
   }
 
@@ -284,20 +302,19 @@ export class BoardService {
     return extension === '.hex' || extension === '.elf' || extension === '.axf';
   }
 
-  private async getBoardSearchArg(boardName: string, projectPath: string): Promise<string> {
+  private async getBoardSearchArg(boardName: string): Promise<string> {
     const availableBoards = await this.discoverBoards();
     const currentBoard = availableBoards.find(board => board.name === boardName);
-    if (!currentBoard || currentBoard.type === 'sdk') {
+    if (!currentBoard) {
       return '';
     }
 
-    if (currentBoard.type === 'project_local') {
-      const projectLocalBoardsDir = path.dirname(currentBoard.path);
-      const relativeToProject = path.relative(projectPath, projectLocalBoardsDir);
-      return ` --board_search_path="${relativeToProject}"`;
+    const projectEntryPath = this.getProjectEntryAbsolutePath();
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!projectEntryPath) {
+      return '';
     }
 
-    const relativeToProject = path.relative(projectPath, currentBoard.path);
-    return ` --board_search_path="${path.dirname(relativeToProject)}"`;
+    return buildBoardSearchArg(currentBoard, projectEntryPath, workspaceRoot);
   }
 }
