@@ -1617,7 +1617,9 @@
     "dev": "tsc -watch -p ./ --preserveWatchOutput",
     "pretest": "yarn run compile && yarn run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js",
+    "test": "yarn run test:unit",
+    "test:unit": "mocha \"out/test/**/*.test.js\"",
+    "test:watch": "mocha --watch \"out/test/**/*.test.js\"",
     "format": "prettier . --write",
     "package": "vsce package",
     "package:pre-release": "vsce package --pre-release",
@@ -1629,6 +1631,7 @@
     "setup-debug": "node scripts/setup-debug-extensions.js"
   },
   "devDependencies": {
+    "@types/mocha": "^10.0.10",
     "@types/node": "^24.1.0",
     "@types/vscode": "^1.102.0",
     "@types/xml2js": "^0.4.14",
@@ -1637,6 +1640,7 @@
     "@vscode/vsce": "^3.6.0",
     "eslint": "^8.57.0",
     "lefthook": "^1.13.6",
+    "mocha": "^11.7.5",
     "prettier": "^3.3.2",
     "typescript": "^5.8.3"
   },
