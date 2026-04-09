@@ -119,6 +119,6 @@
   "lmTool.closeMonitor.displayName": "Close device monitor",
   "lmTool.closeMonitor.modelDescription": "Close the active serial monitor session.",
   "configuration.probeRs.title": "SiFli probe-rs Debugger",
-  "configuration.probeRs.debuggerExecutable.markdownDescription": "Path to the `probe-rs` executable. If unset, the extension expects `probe-rs` (or `probe-rs.exe`) to be available on the system PATH.\n\nNote: Setting `runtimeExecutable` in 'launch.json' overrides this setting.",
+  "configuration.probeRs.debuggerExecutable.markdownDescription": "Path to the `probe-rs` executable. If unset, the extension first uses the bundled SiFli `probe-rs` managed by the extension, then falls back to `probe-rs` on the system PATH.\n\nNote: Setting `runtimeExecutable` in 'launch.json' overrides this setting.",
   "debugger.probeRs.label": "SiFli probe-rs Debugger"
 }

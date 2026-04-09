@@ -15,13 +15,14 @@ import {
   ProviderResult,
   WorkspaceFolder,
 } from 'vscode';
-import { probeRsInstalled } from './utils';
 import { getAvailablePort } from './portUtils';
+import { ProbeRsService } from '../services/probeRsService';
 
 const DEBUG_TYPE = 'sifli-probe-rs';
 const CONFIG_NAMESPACE = 'sifli-probe-rs';
 const UART_CONSOLE_CHANNEL_NUMBER = 2048;
 const UART_CONSOLE_CHANNEL_NAME = 'uart';
+const RUNTIME_EXECUTABLE_EXPLICIT_KEY = '__sifliRuntimeExecutableExplicit';
 
 export type ProbeRsDidSendMessageListener = (session: vscode.DebugSession, message: unknown) => void;
 
@@ -48,20 +49,6 @@ export function registerProbeRsDebugger(context: vscode.ExtensionContext): void 
     vscode.debug.onDidTerminateDebugSession(descriptorFactory.onDidTerminateDebugSession, descriptorFactory),
     vscode.window.onDidCloseTerminal(descriptorFactory.onDidCloseTerminal, descriptorFactory)
   );
-
-  void (async () => {
-    if (!(await probeRsInstalled())) {
-      const installLabel = vscode.l10n.t('Install');
-      const resp = await vscode.window.showInformationMessage(
-        vscode.l10n.t("probe-rs doesn't seem to be installed. Do you want to install it automatically now?"),
-        installLabel
-      );
-
-      if (resp === installLabel) {
-        await installProbeRs();
-      }
-    }
-  })();
 }
 
 // Cleanup inconsistent line breaks in String data
@@ -515,10 +502,24 @@ class ProbeRSDebugAdapterServerDescriptorFactory implements vscode.DebugAdapterD
 
       var command = '';
       if (!executable) {
-        if (session.configuration.hasOwnProperty('runtimeExecutable')) {
+        const runtimeExecutable =
+          typeof session.configuration.runtimeExecutable === 'string'
+            ? session.configuration.runtimeExecutable.trim()
+            : '';
+        const runtimeExecutableExplicit = session.configuration[RUNTIME_EXECUTABLE_EXPLICIT_KEY] === true;
+        const configuredDebuggerExecutable = getConfiguredDebuggerExecutablePath();
+
+        if (runtimeExecutableExplicit && runtimeExecutable !== '') {
           command = session.configuration.runtimeExecutable;
+        } else if (configuredDebuggerExecutable) {
+          command = configuredDebuggerExecutable;
         } else {
-          command = debuggerExecutablePath();
+          const probeRsService = ProbeRsService.getInstance();
+          const resolvedProbeRs = await probeRsService.ensureCompatibleProbeRsAvailable();
+          if (!resolvedProbeRs) {
+            return Promise.reject('Failed to locate a compatible SiFli probe-rs executable.');
+          }
+          command = resolvedProbeRs;
         }
       } else {
         command = executable.command;
@@ -664,96 +665,13 @@ function startDebugServer(
   });
 }
 
-/// Installs probe-rs if it is not present.
-function installProbeRs() {
-  let windows = process.platform === 'win32';
-  let done = false;
-
-  vscode.window.withProgress(
-    {
-      location: vscode.ProgressLocation.Window,
-      cancellable: false,
-      title: vscode.l10n.t('Installing probe-rs...'),
-    },
-    async progress => {
-      progress.report({ increment: 0 });
-
-      const launchedDebugAdapter = childProcess.exec(
-        windows
-          ? `powershell.exe -encodedCommand ${Buffer.from(
-              'irm https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-tools-installer.ps1 | iex',
-              'utf16le'
-            ).toString('base64')}`
-          : "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-tools-installer.sh | sh",
-        (error, stdout, stderr) => {
-          if (error) {
-            console.error(`exec error: ${error}`);
-            done = true;
-            return;
-          }
-          console.log(`stdout: ${stdout}`);
-          console.log(`stderr: ${stderr}`);
-        }
-      );
-
-      const errorListener = (error: Error) => {
-        vscode.window.showInformationMessage(
-          vscode.l10n.t('Installation failed: {0}. Check the logs for more info.', error.message),
-          vscode.l10n.t('OK')
-        );
-        console.error(error);
-        done = true;
-      };
-
-      const exitListener = (code: number | null, signal: NodeJS.Signals | null) => {
-        let message;
-        if (code === 0) {
-          message = vscode.l10n.t('Installation successful.');
-        } else if (signal) {
-          message = vscode.l10n.t('Installation aborted.');
-        } else {
-          message = vscode.l10n.t(
-            'Installation failed. Go to https://probe.rs for setup and troubleshooting instructions.'
-          );
-        }
-        console.error(message);
-        vscode.window.showInformationMessage(message, vscode.l10n.t('OK'));
-        done = true;
-      };
-
-      launchedDebugAdapter.on('error', errorListener);
-      launchedDebugAdapter.on('exit', exitListener);
-
-      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-      while (!done) {
-        await delay(100);
-      }
-
-      launchedDebugAdapter.removeListener('error', errorListener);
-      launchedDebugAdapter.removeListener('exit', exitListener);
-
-      progress.report({ increment: 100 });
-    }
-  );
-}
-
-// Get the name of the debugger executable
-//
-// This takes the value from configuration, if set, or
-// falls back to the default name.
-function debuggerExecutablePath(): string {
+function getConfiguredDebuggerExecutablePath(): string | undefined {
   const configuration = vscode.workspace.getConfiguration(CONFIG_NAMESPACE);
-  const configuredPath: string = configuration.get('debuggerExecutable') || defaultExecutable();
-  return configuredPath;
-}
-
-function defaultExecutable(): string {
-  switch (os.platform()) {
-    case 'win32':
-      return 'probe-rs.exe';
-    default:
-      return 'probe-rs';
+  const configuredPath = configuration.get<string>('debuggerExecutable');
+  if (!configuredPath || configuredPath.trim() === '') {
+    return undefined;
   }
+  return configuredPath.trim();
 }
 
 class ProbeRsDebugAdapterTrackerFactory implements DebugAdapterTrackerFactory {
@@ -790,6 +708,8 @@ class ProbeRSConfigurationProvider implements DebugConfigurationProvider {
     if (!config.cwd) {
       config.cwd = '${workspaceFolder}';
     }
+
+    config[RUNTIME_EXECUTABLE_EXPLICIT_KEY] = Object.prototype.hasOwnProperty.call(config, 'runtimeExecutable');
 
     return config;
   }

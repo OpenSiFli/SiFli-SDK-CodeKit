@@ -9,6 +9,7 @@ import { SerialPortService } from './services/serialPortService';
 import { TerminalService } from './services/terminalService';
 import { PythonService } from './services/pythonService';
 import { MinGitService } from './services/minGitService';
+import { ProbeRsService } from './services/probeRsService';
 import { LogService } from './services/logService';
 import { RegionService } from './services/regionService';
 import { WorkspaceStateService } from './services/workspaceStateService';
@@ -39,9 +40,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   logService.info('SiFli SDK CodeKit extension is activating...');
 
-  // Register SiFli probe-rs debugger contributions
-  registerProbeRsDebugger(context);
-
   // 初始化 WorkspaceStateService（必须在其他服务之前初始化）
   const workspaceStateService = WorkspaceStateService.getInstance();
   workspaceStateService.initialize(context);
@@ -68,10 +66,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const terminalService = TerminalService.getInstance();
   const pythonService = PythonService.getInstance();
   const minGitService = MinGitService.getInstance();
+  const probeRsService = ProbeRsService.getInstance();
   const regionService = RegionService.getInstance();
   pythonService.setContext(context);
   minGitService.setContext(context);
+  probeRsService.setContext(context);
+  probeRsService.prepareManagedEnvironment();
   regionService.prewarm(); // 异步预热区域检测结果
+
+  // Register SiFli probe-rs debugger contributions
+  registerProbeRsDebugger(context);
 
   // 初始化命令处理器
   const buildCommands = BuildCommands.getInstance();
@@ -101,6 +105,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 在插件激活时立即读取配置
   await configService.updateConfiguration();
   logService.info('Configuration loaded successfully');
+
+  probeRsService.checkAndPromptForCompatibleProbeRsOnStartup().catch(err => {
+    logService.error('Error checking/installing probe-rs on startup:', err);
+  });
 
   const refreshProjectContext = async (): Promise<void> => {
     await vscode.commands.executeCommand('setContext', SIFLI_PROJECT_CONTEXT_KEY, isSiFliProject());
