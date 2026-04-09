@@ -257,6 +257,7 @@ async function startDownload() {
   }
 
   try {
+    const containerPath = installPath.value.trim();
     const taskId = await taskCenterStore.requestTask({
       command: 'installSdk',
       data: {
@@ -264,7 +265,7 @@ async function startDownload() {
         targetRef: selectedTarget.value.ref,
         targetKind: selectedTarget.value.kind,
         directoryName: directoryName.value.trim(),
-        installPath: `${installPath.value.trim()}/SiFli-SDK`,
+        installPath: containerPath,
         toolchainSource: downloadToolchainSource.value,
         toolsPath: downloadToolsPath.value.trim(),
       },

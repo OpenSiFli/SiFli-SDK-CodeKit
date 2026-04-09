@@ -77,6 +77,13 @@ function stripTagRef(tagRef: string): string {
   return tagRef.startsWith('refs/tags/') ? tagRef.slice('refs/tags/'.length) : tagRef;
 }
 
+function resolveSdkInstallBasePath(installPath: string): string {
+  const normalizedInstallPath = path.normalize(installPath.trim());
+  return path.basename(normalizedInstallPath) === 'SiFli-SDK'
+    ? normalizedInstallPath
+    : path.join(normalizedInstallPath, 'SiFli-SDK');
+}
+
 export class VueWebviewProvider {
   private static instance: VueWebviewProvider;
   private readonly terminalService: TerminalService;
@@ -368,12 +375,17 @@ export class VueWebviewProvider {
       const toolchainSource = data.toolchainSource ?? (await this.getDefaultToolchainSource());
       const toolsPath = data.toolsPath?.trim() || undefined;
       const directoryName = data.directoryName.trim();
+      const installContainerPath = data.installPath.trim();
 
       if (!directoryName) {
         throw new Error('目录名称不能为空。');
       }
 
-      const sdkBasePath = path.join(data.installPath, 'SiFli-SDK');
+      if (!installContainerPath) {
+        throw new Error('SDK 安装目录不能为空。');
+      }
+
+      const sdkBasePath = resolveSdkInstallBasePath(installContainerPath);
       const fullInstallPath = path.join(sdkBasePath, directoryName);
 
       if (fs.existsSync(fullInstallPath)) {
