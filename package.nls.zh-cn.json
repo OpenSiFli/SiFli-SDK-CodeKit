@@ -119,6 +119,6 @@
   "lmTool.closeMonitor.displayName": "关闭设备监视器",
   "lmTool.closeMonitor.modelDescription": "关闭当前活动的串口监视会话。",
   "configuration.probeRs.title": "SiFli probe-rs 调试器",
-  "configuration.probeRs.debuggerExecutable.markdownDescription": "probe-rs 可执行文件路径。如未设置，扩展将使用系统 PATH 中的 `probe-rs`（或 `probe-rs.exe`）。\n\n注意：在 launch.json 中设置 `runtimeExecutable` 会覆盖此项。",
+  "configuration.probeRs.debuggerExecutable.markdownDescription": "probe-rs 可执行文件路径。如未设置，扩展会优先使用自身管理的内置 SiFli `probe-rs`，然后才回退到系统 PATH 中的 `probe-rs`（或 `probe-rs.exe`）。\n\n注意：在 launch.json 中设置 `runtimeExecutable` 会覆盖此项。",
   "debugger.probeRs.label": "SiFli probe-rs 调试器"
 }

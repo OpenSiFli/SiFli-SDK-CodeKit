@@ -9,6 +9,7 @@ import { ConfigService } from './configService';
 import { LogService } from './logService';
 import { PythonService } from './pythonService';
 import { MinGitService } from './minGitService';
+import { ProbeRsService } from './probeRsService';
 import { SdkService } from './sdkService';
 import { getProjectInfo } from '../utils/projectUtils';
 
@@ -153,6 +154,7 @@ export class TerminalService {
       return;
     }
     await this.setupPythonEnvironment(terminal);
+    await this.setupProbeRsEnvironment(terminal);
     await this.setupGitEnvironment(terminal);
     this.envInjectedTerminals.add(terminal);
   }
@@ -231,6 +233,24 @@ export class TerminalService {
 
     this.logService.info(`Injecting MinGit path: ${gitCmdDir}`);
     terminal.sendText(`$env:Path = "${gitCmdDir};" + $env:Path`);
+  }
+
+  /**
+   * 设置 probe-rs 环境
+   */
+  private async setupProbeRsEnvironment(terminal: vscode.Terminal): Promise<void> {
+    const probeRsDir = ProbeRsService.getInstance().getManagedExecutableDir();
+    if (!probeRsDir) {
+      this.logService.debug('Managed probe-rs not available; skipping PATH injection.');
+      return;
+    }
+
+    this.logService.info(`Injecting managed probe-rs path: ${probeRsDir}`);
+    if (process.platform === 'win32') {
+      terminal.sendText(`$env:Path = "${probeRsDir};" + $env:Path`);
+    } else {
+      terminal.sendText(`export PATH="${probeRsDir}:$PATH"`);
+    }
   }
 
   /**

@@ -4,7 +4,7 @@ import { promises as fs } from 'fs';
 /**
  * Try to locate an executable in the current PATH.
  */
-async function findExecutable(executableName: string): Promise<string | null> {
+export async function findExecutable(executableName: string): Promise<string | null> {
   const envPath = process.env.PATH || '';
   const envExt = process.platform === 'win32' ? process.env.PATHEXT || '.EXE;.CMD;.BAT;.COM' : '';
   const pathDirs = envPath.replace(/["]+/g, '').split(path.delimiter).filter(Boolean);
