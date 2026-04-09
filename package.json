@@ -1552,46 +1552,38 @@
         "initialConfigurations": [
           {
             "type": "sifli-probe-rs",
-            "request": "launch",
+            "request": "attach",
             "name": "SiFli probe-rs Test",
-            "cwd": "${workspaceFolder}",
-            "connectUnderReset": true,
-            "chip": "STM32H745ZITx",
-            "flashingConfig": {
-              "flashingEnabled": true,
-              "verifyBeforeFlashing": true,
-              "verifyAfterFlashing": true,
-              "haltAfterReset": true
+            "env": {
+              "SIFLI_UART_DEBUG": "1"
             },
+            "cwd": "${workspaceFolder}",
+            "chip": "SF32LB52",
             "coreConfigs": [
               {
                 "coreIndex": 0,
-                "programBinary": "./build/${workspaceFolderBasename}.elf"
+                "programBinary": "${workspaceFolder}/build_<board>_hcpu/main.elf"
               }
             ]
           }
         ],
         "configurationSnippets": [
           {
-            "label": "SiFli probe-rs Debug: Launch",
-            "description": "A new configuration for embedded debugging of a user selected rust file with probe-rs.",
+            "label": "SiFli probe-rs Debug: Attach",
+            "description": "A new configuration for embedded attach debugging with probe-rs.",
             "body": {
               "type": "sifli-probe-rs",
-              "request": "launch",
+              "request": "attach",
               "name": "SiFli probe-rs Test",
-              "cwd": "${workspaceFolder}",
-              "connectUnderReset": false,
-              "chip": "STM32H745ZITx",
-              "flashingConfig": {
-                "flashingEnabled": true,
-                "verifyBeforeFlashing": true,
-                "verifyAfterFlashing": true,
-                "haltAfterReset": true
+              "env": {
+                "SIFLI_UART_DEBUG": "1"
               },
+              "cwd": "${workspaceFolder}",
+              "chip": "SF32LB52",
               "coreConfigs": [
                 {
                   "coreIndex": 0,
-                  "programBinary": "./build/${workspaceFolderBasename}.elf"
+                  "programBinary": "${workspaceFolder}/build_<board>_hcpu/main.elf"
                 }
               ]
             }
