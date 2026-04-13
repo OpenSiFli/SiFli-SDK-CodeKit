@@ -7,6 +7,7 @@ import { spawn } from 'child_process';
 import { LogService } from './logService';
 import { ConfigService } from './configService';
 import { findExecutable } from '../probe-rs/utils';
+import { resolvePowerShellExecutable } from '../utils/powerShellUtils';
 
 type SupportedPlatform = 'win32' | 'darwin' | 'linux';
 type SupportedArch = 'x64' | 'arm64';
@@ -406,11 +407,10 @@ export class ProbeRsService {
   }
 
   private async runPowerShellCommand(command: string): Promise<void> {
-    const configuredPath = this.configService.config.powershellPath;
-    const powershellPath = configuredPath && configuredPath.trim() !== '' ? configuredPath : 'powershell.exe';
+    const powerShell = resolvePowerShellExecutable(this.configService.config.powershellPath);
 
     await this.runCommand(
-      powershellPath,
+      powerShell.executablePath,
       ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
       { timeoutMs: 60_000 }
     );

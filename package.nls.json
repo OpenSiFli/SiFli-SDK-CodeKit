@@ -68,7 +68,7 @@
   "view.sifliSdkManager.name": "SDK Manager",
   "viewsContainer.sifli-sidebar.title": "SiFli SDK",
   "configuration.sifli.title": "SiFli Extension Configuration",
-  "configuration.sifli.powershellPath.description": "Path to PowerShell executable. (e.g., C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe)",
+  "configuration.sifli.powershellPath.description": "Path to PowerShell executable. Leave empty to auto-detect `pwsh` first, then fall back to Windows PowerShell. (e.g., C:\\Program Files\\PowerShell\\7\\pwsh.exe)",
   "configuration.sifli.embeddedPythonPath.description": "Path to the embedded Python directory. If set, the extension will use this Python environment.",
   "configuration.sifli.useEmbeddedPython.description": "Whether to use the embedded Python environment provided by SiFli (Windows only).",
   "configuration.sifli.sdkConfigs.path.description": "SDK installation path",

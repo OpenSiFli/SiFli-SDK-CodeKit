@@ -10,6 +10,7 @@ import { SdkService } from '../services/sdkService';
 import { TerminalService } from '../services/terminalService';
 import { GIT_REPOS } from '../constants';
 import { SdkTaskKind, SdkTaskRecord, TaskLogEntry, ToolchainSource } from '../types';
+import { formatInstallScriptFailure } from '../utils/powerShellUtils';
 
 const RELEASE_BRANCH_PREFIX = 'release/';
 
@@ -790,6 +791,7 @@ export class VueWebviewProvider {
     log: TaskLogger
   ): Promise<void> {
     let pythonDir: string | undefined;
+    const powerShell = process.platform === 'win32' ? this.terminalService.getPowerShellExecutableInfo() : undefined;
     if (process.platform === 'win32') {
       try {
         const { PythonService } = await import('../services/pythonService');
@@ -804,7 +806,7 @@ export class VueWebviewProvider {
       let args: string[];
 
       if (process.platform === 'win32') {
-        command = this.terminalService.getPowerShellExecutablePath();
+        command = powerShell?.executablePath ?? this.terminalService.getPowerShellExecutablePath();
         args = ['-ExecutionPolicy', 'Bypass', '-File', scriptPath];
       } else {
         command = 'bash';
@@ -829,6 +831,9 @@ export class VueWebviewProvider {
       }
 
       log(`执行脚本: ${command} ${args.join(' ')}`);
+      if (powerShell) {
+        log(`PowerShell: ${powerShell.kind} (${powerShell.source})`);
+      }
       if (toolsPath) {
         log(`SIFLI_SDK_TOOLS_PATH=${toolsPath}`);
       }
@@ -882,12 +887,13 @@ export class VueWebviewProvider {
             return;
           }
 
-          reject(new Error(stderr.trim() || stdout.trim() || `install script exited with code ${code}`));
+          const message = stderr.trim() || stdout.trim() || `install script exited with code ${code}`;
+          reject(new Error(this.formatInstallScriptError(message, powerShell?.kind)));
         });
       });
 
       child.on('error', error => {
-        finish(() => reject(error));
+        finish(() => reject(new Error(this.formatInstallScriptError(this.getErrorMessage(error), powerShell?.kind))));
       });
 
       const timeout = setTimeout(
@@ -918,11 +924,23 @@ export class VueWebviewProvider {
       return;
     }
 
-    const terminal = vscode.window.createTerminal({
+    const terminalOptions: vscode.TerminalOptions = {
       name: vscode.l10n.t('SiFli SDK'),
       cwd: targetPath,
-    });
+    };
+    if (process.platform === 'win32') {
+      terminalOptions.shellPath = this.terminalService.getPowerShellExecutablePath();
+    }
+    const terminal = vscode.window.createTerminal(terminalOptions);
     terminal.show();
+  }
+
+  private formatInstallScriptError(message: string, powerShellKind: 'pwsh' | 'powershell' | undefined): string {
+    return formatInstallScriptFailure(
+      message,
+      powerShellKind,
+      vscode.l10n.t('install.ps1 failed under Windows PowerShell. Please update to PowerShell 7 and try again.')
+    );
   }
 
   private async sendRegionDefaults(webview: vscode.Webview): Promise<void> {

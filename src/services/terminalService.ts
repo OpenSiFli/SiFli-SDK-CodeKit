@@ -12,6 +12,7 @@ import { MinGitService } from './minGitService';
 import { ProbeRsService } from './probeRsService';
 import { SdkService } from './sdkService';
 import { getProjectInfo } from '../utils/projectUtils';
+import { ResolvedPowerShellExecutable, resolvePowerShellExecutable } from '../utils/powerShellUtils';
 
 export class TerminalService {
   private static instance: TerminalService;
@@ -55,18 +56,6 @@ export class TerminalService {
       TerminalService.instance = new TerminalService();
     }
     return TerminalService.instance;
-  }
-
-  /**
-   * 获取 PowerShell 可执行文件路径
-   */
-  private getPowerShellPath(): string {
-    if (process.platform !== 'win32') {
-      return 'powershell.exe'; // 非 Windows 平台返回默认值（实际不会使用）
-    }
-
-    const configuredPath = this.configService.config.powershellPath;
-    return configuredPath && configuredPath.trim() !== '' ? configuredPath : 'powershell.exe';
   }
 
   /**
@@ -135,9 +124,11 @@ export class TerminalService {
 
     // 在 Windows 平台强制使用 PowerShell
     if (process.platform === 'win32') {
-      const shellPath = this.getPowerShellPath();
-      terminalOptions.shellPath = shellPath;
-      this.logService.debug(`Creating Windows terminal with PowerShell: ${shellPath}`);
+      const shellInfo = this.getPowerShellExecutableInfo();
+      terminalOptions.shellPath = shellInfo.executablePath;
+      this.logService.debug(
+        `Creating Windows terminal with PowerShell (${shellInfo.kind}, ${shellInfo.source}): ${shellInfo.executablePath}`
+      );
     } else {
       // macOS 和 Linux 使用默认 shell
       this.logService.debug(`Creating terminal with default shell on ${process.platform}`);
@@ -254,10 +245,17 @@ export class TerminalService {
   }
 
   /**
+   * 获取 PowerShell 可执行文件信息（公共方法）
+   */
+  public getPowerShellExecutableInfo(): ResolvedPowerShellExecutable {
+    return resolvePowerShellExecutable(this.configService.config.powershellPath);
+  }
+
+  /**
    * 获取 PowerShell 可执行文件路径（公共方法）
    */
   public getPowerShellExecutablePath(): string {
-    return this.getPowerShellPath();
+    return this.getPowerShellExecutableInfo().executablePath;
   }
 
   /**

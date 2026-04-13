@@ -7,6 +7,7 @@ import { spawn } from 'child_process';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
 import { RegionService } from './regionService';
+import { resolvePowerShellExecutable } from '../utils/powerShellUtils';
 
 export class PythonService {
   private static instance: PythonService;
@@ -249,13 +250,16 @@ export class PythonService {
   }
 
   private async runPowerShellCommand(command: string): Promise<void> {
-    const configuredPath = this.configService.config.powershellPath;
-    const powershellPath = configuredPath && configuredPath.trim() !== '' ? configuredPath : 'powershell.exe';
+    const powerShell = resolvePowerShellExecutable(this.configService.config.powershellPath);
 
     return new Promise((resolve, reject) => {
-      const proc = spawn(powershellPath, ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command], {
-        windowsHide: true,
-      });
+      const proc = spawn(
+        powerShell.executablePath,
+        ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
+        {
+          windowsHide: true,
+        }
+      );
 
       let stderrOutput = '';
 

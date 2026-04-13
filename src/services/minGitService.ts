@@ -5,6 +5,7 @@ import axios from 'axios';
 import { spawn } from 'child_process';
 import { LogService } from './logService';
 import { ConfigService } from './configService';
+import { resolvePowerShellExecutable } from '../utils/powerShellUtils';
 
 /**
  * 在 Windows 上自动下载并配置 MinGit 以提供 git 命令。
@@ -156,13 +157,16 @@ export class MinGitService {
   }
 
   private async runPowerShellCommand(command: string): Promise<void> {
-    const configuredPath = this.configService.config.powershellPath;
-    const powershellPath = configuredPath && configuredPath.trim() !== '' ? configuredPath : 'powershell.exe';
+    const powerShell = resolvePowerShellExecutable(this.configService.config.powershellPath);
 
     return new Promise((resolve, reject) => {
-      const proc = spawn(powershellPath, ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command], {
-        windowsHide: true,
-      });
+      const proc = spawn(
+        powerShell.executablePath,
+        ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
+        {
+          windowsHide: true,
+        }
+      );
 
       let stderrOutput = '';
       proc.stderr?.on('data', (data: Buffer) => {

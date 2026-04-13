@@ -68,7 +68,7 @@
   "view.sifliSdkManager.name": "SDK 管理",
   "viewsContainer.sifli-sidebar.title": "SiFli SDK",
   "configuration.sifli.title": "SiFli 扩展设置",
-  "configuration.sifli.powershellPath.description": "PowerShell 可执行文件路径。（例如：C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe）",
+  "configuration.sifli.powershellPath.description": "PowerShell 可执行文件路径。留空时会优先自动检测 `pwsh`，找不到再回退到 Windows PowerShell。（例如：C:\\Program Files\\PowerShell\\7\\pwsh.exe）",
   "configuration.sifli.embeddedPythonPath.description": "嵌入式 Python 目录路径。设置后将使用该 Python 环境。",
   "configuration.sifli.useEmbeddedPython.description": "是否使用 SiFli 提供的嵌入式 Python 环境（仅 Windows）。",
   "configuration.sifli.sdkConfigs.path.description": "SDK 安装路径",
