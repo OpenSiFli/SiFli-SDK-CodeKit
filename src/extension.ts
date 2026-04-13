@@ -10,6 +10,7 @@ import { TerminalService } from './services/terminalService';
 import { PythonService } from './services/pythonService';
 import { MinGitService } from './services/minGitService';
 import { ProbeRsService } from './services/probeRsService';
+import { UvService } from './services/uvService';
 import { LogService } from './services/logService';
 import { RegionService } from './services/regionService';
 import { WorkspaceStateService } from './services/workspaceStateService';
@@ -67,11 +68,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const pythonService = PythonService.getInstance();
   const minGitService = MinGitService.getInstance();
   const probeRsService = ProbeRsService.getInstance();
+  const uvService = UvService.getInstance();
   const regionService = RegionService.getInstance();
   pythonService.setContext(context);
   minGitService.setContext(context);
   probeRsService.setContext(context);
+  uvService.setContext(context);
   probeRsService.prepareManagedEnvironment();
+  uvService.prepareManagedEnvironment();
   regionService.prewarm(); // 异步预热区域检测结果
 
   // Register SiFli probe-rs debugger contributions

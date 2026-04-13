@@ -8,6 +8,7 @@ import { LogService } from '../services/logService';
 import { RegionService } from '../services/regionService';
 import { SdkService } from '../services/sdkService';
 import { TerminalService } from '../services/terminalService';
+import { UvService } from '../services/uvService';
 import { GIT_REPOS } from '../constants';
 import { SdkTaskKind, SdkTaskRecord, TaskLogEntry, ToolchainSource } from '../types';
 import { formatInstallScriptFailure } from '../utils/powerShellUtils';
@@ -791,8 +792,16 @@ export class VueWebviewProvider {
     log: TaskLogger
   ): Promise<void> {
     let pythonDir: string | undefined;
+    let uvDir: string | undefined;
     const powerShell = process.platform === 'win32' ? this.terminalService.getPowerShellExecutableInfo() : undefined;
     if (process.platform === 'win32') {
+      log('正在准备内置 uv...');
+      await UvService.getInstance().ensureUvAvailable();
+      uvDir = UvService.getInstance().getManagedExecutableDir();
+      if (!uvDir) {
+        throw new Error(vscode.l10n.t('Failed to locate uv executable after extraction.'));
+      }
+
       try {
         const { PythonService } = await import('../services/pythonService');
         pythonDir = PythonService.getInstance().getPythonDir();
@@ -821,6 +830,11 @@ export class VueWebviewProvider {
         env.PATH = `${pythonDir};${pythonScriptsDir};${currentPath}`;
       }
 
+      if (process.platform === 'win32' && uvDir) {
+        const currentPath = env.PATH || env.Path || '';
+        env.PATH = `${uvDir};${currentPath}`;
+      }
+
       if (toolsPath) {
         env.SIFLI_SDK_TOOLS_PATH = toolsPath;
       }
@@ -833,6 +847,9 @@ export class VueWebviewProvider {
       log(`执行脚本: ${command} ${args.join(' ')}`);
       if (powerShell) {
         log(`PowerShell: ${powerShell.kind} (${powerShell.source})`);
+      }
+      if (uvDir) {
+        log(`内置 uv: ${uvDir}`);
       }
       if (toolsPath) {
         log(`SIFLI_SDK_TOOLS_PATH=${toolsPath}`);

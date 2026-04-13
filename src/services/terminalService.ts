@@ -10,6 +10,7 @@ import { LogService } from './logService';
 import { PythonService } from './pythonService';
 import { MinGitService } from './minGitService';
 import { ProbeRsService } from './probeRsService';
+import { UvService } from './uvService';
 import { SdkService } from './sdkService';
 import { getProjectInfo } from '../utils/projectUtils';
 import { ResolvedPowerShellExecutable, resolvePowerShellExecutable } from '../utils/powerShellUtils';
@@ -145,6 +146,7 @@ export class TerminalService {
       return;
     }
     await this.setupPythonEnvironment(terminal);
+    await this.setupUvEnvironment(terminal);
     await this.setupProbeRsEnvironment(terminal);
     await this.setupGitEnvironment(terminal);
     this.envInjectedTerminals.add(terminal);
@@ -206,6 +208,24 @@ export class TerminalService {
     this.logService.info(`Injecting embedded Python path: ${pythonDir}; Scripts: ${scriptsPath}`);
     // 将 Python 及 Scripts 路径添加到 PATH 的最前面
     terminal.sendText(`$env:Path = "${pythonDir};${scriptsPath};" + $env:Path`);
+  }
+
+  /**
+   * 设置 uv 环境 (仅限 Windows)
+   */
+  private async setupUvEnvironment(terminal: vscode.Terminal): Promise<void> {
+    if (process.platform !== 'win32') {
+      return;
+    }
+
+    const uvDir = UvService.getInstance().getManagedExecutableDir();
+    if (!uvDir) {
+      this.logService.debug('Managed uv not available; skipping PATH injection.');
+      return;
+    }
+
+    this.logService.info(`Injecting managed uv path: ${uvDir}`);
+    terminal.sendText(`$env:Path = "${uvDir};" + $env:Path`);
   }
 
   /**
