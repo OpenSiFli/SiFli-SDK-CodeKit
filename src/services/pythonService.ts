@@ -7,12 +7,14 @@ import { spawn } from 'child_process';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
 import { RegionService } from './regionService';
-import { resolvePowerShellExecutable } from '../utils/powerShellUtils';
+import { ManagedToolSupport } from './managedToolSupport';
 
 export class PythonService {
   private static instance: PythonService;
-  private configService: ConfigService;
-  private logService: LogService;
+  private readonly configService: ConfigService;
+  private readonly logService: LogService;
+  private readonly toolSupport: ManagedToolSupport;
+  private readonly installPromises = new Map<string, Promise<void>>();
   private context?: vscode.ExtensionContext;
 
   private static readonly PYTHON_URLS = {
@@ -25,6 +27,7 @@ export class PythonService {
   private constructor() {
     this.configService = ConfigService.getInstance();
     this.logService = LogService.getInstance();
+    this.toolSupport = new ManagedToolSupport(this.logService, this.configService);
   }
 
   public static getInstance(): PythonService {
@@ -65,25 +68,17 @@ export class PythonService {
    * 优先使用配置的嵌入式 Python，其次检查默认安装位置，最后回退到系统 Python
    */
   public getPythonPath(): string {
-    // 1. 检查配置的路径
     const configuredPath = this.configService.config.embeddedPythonPath;
-    if (configuredPath && fs.existsSync(configuredPath)) {
-      const pythonExe = path.join(configuredPath, 'python.exe');
-      if (fs.existsSync(pythonExe)) {
-        return pythonExe;
-      }
+    const configuredPython = this.getEmbeddedPythonExecutablePath(configuredPath);
+    if (configuredPython) {
+      return configuredPython;
     }
 
-    // 2. 检查默认安装位置 (Global Storage)
-    if (this.context) {
-      const defaultInstallDir = path.join(this.context.globalStorageUri.fsPath, 'python-embed');
-      const defaultPythonExe = path.join(defaultInstallDir, 'python.exe');
-      if (fs.existsSync(defaultPythonExe)) {
-        return defaultPythonExe;
-      }
+    const defaultPython = this.getEmbeddedPythonExecutablePath(this.getDefaultInstallDir());
+    if (defaultPython) {
+      return defaultPython;
     }
 
-    // 3. 回退到系统 Python
     return 'python';
   }
 
@@ -106,7 +101,6 @@ export class PythonService {
       return;
     }
 
-    // 检查配置是否启用了嵌入式 Python
     if (!this.configService.config.useEmbeddedPython) {
       this.logService.info('Embedded Python is disabled by configuration.');
       return;
@@ -115,7 +109,6 @@ export class PythonService {
     const configuredDir = this.configService.config.embeddedPythonPath;
     const defaultDir = this.getDefaultInstallDir();
 
-    // 如果已有可用的嵌入式 Python，直接返回
     if (this.isEmbeddedPythonReady(configuredDir)) {
       this.logService.info(`Using embedded Python at configured path: ${configuredDir}`);
       return;
@@ -134,7 +127,6 @@ export class PythonService {
       return;
     }
 
-    // 如果没有找到嵌入式 Python，提示用户并自动安装
     vscode.window.showInformationMessage(
       vscode.l10n.t('SiFli embedded Python is not installed. Downloading and installing...')
     );
@@ -150,132 +142,85 @@ export class PythonService {
       return;
     }
 
-    // 确保目录存在
-    if (!fs.existsSync(installDir)) {
-      fs.mkdirSync(installDir, { recursive: true });
+    const existingPromise = this.installPromises.get(installDir);
+    if (existingPromise) {
+      return existingPromise;
     }
 
-    const arch = os.arch();
-    let downloadUrl = PythonService.PYTHON_URLS.x64; // 默认 x64
-    if (arch === 'arm64') {
-      downloadUrl = PythonService.PYTHON_URLS.arm64;
-    } else if (arch === 'ia32') {
-      downloadUrl = PythonService.PYTHON_URLS.ia32;
-    }
-
-    const zipPath = path.join(installDir, 'python-embed.zip');
-
+    const installPromise = this.installEmbeddedPythonInternal(installDir);
+    this.installPromises.set(installDir, installPromise);
     try {
-      await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Window,
-          title: vscode.l10n.t('Installing embedded Python...'),
-          cancellable: false,
-        },
-        async progress => {
-          // 1. 下载
-          this.logService.info(`Downloading Python from ${downloadUrl} to ${zipPath}`);
-          const response = await axios({
-            method: 'GET',
-            url: downloadUrl,
-            responseType: 'stream',
-          });
-
-          const totalLength = response.headers['content-length'];
-          const writer = fs.createWriteStream(zipPath);
-
-          let downloadedLength = 0;
-          response.data.on('data', (chunk: any) => {
-            downloadedLength += chunk.length;
-            if (totalLength) {
-              const percentage = Math.round((downloadedLength / totalLength) * 100);
-              // 状态栏进度不显示具体进度条，仅简单提示
-              progress.report({ message: vscode.l10n.t('Downloaded {0}%', String(percentage)) });
-            }
-          });
-
-          await new Promise<void>((resolve, reject) => {
-            writer.on('finish', () => resolve());
-            writer.on('error', reject);
-            response.data.on('error', reject);
-            response.data.pipe(writer);
-          });
-
-          // 2. 解压
-          progress.report({ message: vscode.l10n.t('Extracting...') });
-          this.logService.info(`Extracting Python to ${installDir}`);
-
-          // 使用 PowerShell 解压
-          const command = `Expand-Archive -Path "${zipPath}" -DestinationPath "${installDir}" -Force`;
-          await this.runPowerShellCommand(command);
-
-          // 3. 清理
-          fs.unlinkSync(zipPath);
-
-          // 4. 移除 ._pth 文件以允许正常导入 site-packages
-          const pthFile = path.join(installDir, 'python313._pth');
-          if (fs.existsSync(pthFile)) {
-            try {
-              fs.unlinkSync(pthFile);
-              this.logService.info('Removed python313._pth to enable site-packages and dynamic imports.');
-            } catch (err) {
-              this.logService.warn('Failed to remove python313._pth', err);
-            }
-          }
-
-          // 5. 安装 pip (下载 get-pip.py 并执行)，不影响整体流程
-          try {
-            progress.report({ message: vscode.l10n.t('Installing pip...'), increment: 0 });
-            await this.installPip(installDir);
-          } catch (err) {
-            this.logService.warn('Failed to install pip for embedded Python', err);
-          }
-
-          // 6. 更新配置
-          await this.configService.updateConfigValue('embeddedPythonPath', installDir);
-
-          this.logService.info('Embedded Python installed successfully.');
-        }
-      );
-
-      vscode.window.showInformationMessage(vscode.l10n.t('Embedded Python installed successfully.'));
-    } catch (error) {
-      this.logService.error('Error installing embedded Python:', error);
-      vscode.window.showErrorMessage(vscode.l10n.t('Failed to install embedded Python: {0}', String(error)));
-      // 清理可能残留的文件
-      if (fs.existsSync(zipPath)) {
-        fs.unlinkSync(zipPath);
-      }
+      await installPromise;
+    } finally {
+      this.installPromises.delete(installDir);
     }
   }
 
-  private async runPowerShellCommand(command: string): Promise<void> {
-    const powerShell = resolvePowerShellExecutable(this.configService.config.powershellPath);
+  private async installEmbeddedPythonInternal(installDir: string): Promise<void> {
+    const executablePath = await this.toolSupport.installManagedArchiveTool({
+      toolLabel: 'embedded Python',
+      installDir,
+      asset: {
+        fileName: 'python-embed.zip',
+        downloadUrl: this.getPythonDownloadUrl(),
+        archiveType: 'zip',
+      },
+      installingTitle: vscode.l10n.t('Installing embedded Python...'),
+      downloadingMessage: vscode.l10n.t('Downloading bundled embedded Python...'),
+      extractingMessage: vscode.l10n.t('Extracting...'),
+      missingExecutableMessage: vscode.l10n.t('Embedded Python executable not found.'),
+      successMessage: vscode.l10n.t('Embedded Python installed successfully.'),
+      failureMessage: error =>
+        vscode.l10n.t('Failed to install embedded Python: {0}', error instanceof Error ? error.message : String(error)),
+      resolveExecutablePath: () => this.getEmbeddedPythonExecutablePath(installDir),
+      injectPathOnSuccess: false,
+      afterExtract: async ({ installDir: extractedInstallDir, progress }) => {
+        this.removePythonPthFile(extractedInstallDir);
 
-    return new Promise((resolve, reject) => {
-      const proc = spawn(
-        powerShell.executablePath,
-        ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
-        {
-          windowsHide: true,
+        try {
+          progress.report({ message: vscode.l10n.t('Installing pip...'), increment: 0 });
+          await this.installPip(extractedInstallDir);
+        } catch (err) {
+          this.logService.warn('Failed to install pip for embedded Python', err);
         }
-      );
 
-      let stderrOutput = '';
-
-      proc.stderr?.on('data', (data: Buffer) => {
-        stderrOutput += data.toString();
-      });
-
-      proc.on('error', (err: Error) => reject(err));
-      proc.on('close', (code: number) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`PowerShell exited with code ${code}${stderrOutput ? `: ${stderrOutput.trim()}` : ''}`));
-        }
-      });
+        await this.configService.updateConfigValue('embeddedPythonPath', extractedInstallDir);
+        this.logService.info('Embedded Python installed successfully.');
+      },
     });
+
+    if (!executablePath) {
+      throw new Error(vscode.l10n.t('Embedded Python executable not found.'));
+    }
+  }
+
+  private getEmbeddedPythonExecutablePath(dir: string | undefined): string | undefined {
+    return this.toolSupport.resolveExecutablePath(dir, { exactRelativePath: 'python.exe' });
+  }
+
+  private getPythonDownloadUrl(): string {
+    const arch = os.arch();
+    if (arch === 'arm64') {
+      return PythonService.PYTHON_URLS.arm64;
+    }
+    if (arch === 'ia32') {
+      return PythonService.PYTHON_URLS.ia32;
+    }
+    return PythonService.PYTHON_URLS.x64;
+  }
+
+  private removePythonPthFile(installDir: string): void {
+    const pthFile = path.join(installDir, 'python313._pth');
+    if (!fs.existsSync(pthFile)) {
+      return;
+    }
+
+    try {
+      fs.unlinkSync(pthFile);
+      this.logService.info('Removed python313._pth to enable site-packages and dynamic imports.');
+    } catch (err) {
+      this.logService.warn('Failed to remove python313._pth', err);
+    }
   }
 
   /**
@@ -289,7 +234,6 @@ export class PythonService {
       throw new Error('Embedded Python executable not found.');
     }
 
-    // 下载 get-pip.py
     this.logService.info(`Downloading get-pip.py from ${PythonService.GET_PIP_URL} to ${getPipPath}`);
     const response = await axios({
       method: 'GET',
@@ -305,7 +249,6 @@ export class PythonService {
       response.data.pipe(writer);
     });
 
-    // 使用嵌入式 Python 安装 pip
     this.logService.info('Installing pip using embedded Python...');
     const pipEnv = { ...process.env };
     try {
@@ -339,11 +282,9 @@ export class PythonService {
       });
     });
 
-    // 清理 get-pip.py
     try {
       fs.unlinkSync(getPipPath);
     } catch {
-      // 忽略清理错误
       this.logService.warn('Failed to delete get-pip.py after installation.');
     }
 

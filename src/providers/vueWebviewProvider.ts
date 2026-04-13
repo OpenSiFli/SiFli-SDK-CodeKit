@@ -9,6 +9,7 @@ import { RegionService } from '../services/regionService';
 import { SdkService } from '../services/sdkService';
 import { TerminalService } from '../services/terminalService';
 import { UvService } from '../services/uvService';
+import { WindowsManagedEnvService } from '../services/windowsManagedEnvService';
 import { GIT_REPOS } from '../constants';
 import { SdkTaskKind, SdkTaskRecord, TaskLogEntry, ToolchainSource } from '../types';
 import { formatInstallScriptFailure } from '../utils/powerShellUtils';
@@ -791,8 +792,8 @@ export class VueWebviewProvider {
     toolchainSource: ToolchainSource,
     log: TaskLogger
   ): Promise<void> {
-    let pythonDir: string | undefined;
     let uvDir: string | undefined;
+    let managedWindowsPathEntries: string[] = [];
     const powerShell = process.platform === 'win32' ? this.terminalService.getPowerShellExecutableInfo() : undefined;
     if (process.platform === 'win32') {
       log('正在准备内置 uv...');
@@ -800,13 +801,6 @@ export class VueWebviewProvider {
       uvDir = UvService.getInstance().getManagedExecutableDir();
       if (!uvDir) {
         throw new Error(vscode.l10n.t('Failed to locate uv executable after extraction.'));
-      }
-
-      try {
-        const { PythonService } = await import('../services/pythonService');
-        pythonDir = PythonService.getInstance().getPythonDir();
-      } catch (error) {
-        this.logService.error('Failed to load PythonService for install script', error);
       }
     }
 
@@ -824,15 +818,8 @@ export class VueWebviewProvider {
 
       const env = { ...process.env };
 
-      if (process.platform === 'win32' && pythonDir) {
-        const pythonScriptsDir = path.join(pythonDir, 'Scripts');
-        const currentPath = env.PATH || env.Path || '';
-        env.PATH = `${pythonDir};${pythonScriptsDir};${currentPath}`;
-      }
-
-      if (process.platform === 'win32' && uvDir) {
-        const currentPath = env.PATH || env.Path || '';
-        env.PATH = `${uvDir};${currentPath}`;
+      if (process.platform === 'win32') {
+        managedWindowsPathEntries = WindowsManagedEnvService.getInstance().applyInstallScriptEnvironment(env);
       }
 
       if (toolsPath) {
@@ -850,6 +837,9 @@ export class VueWebviewProvider {
       }
       if (uvDir) {
         log(`内置 uv: ${uvDir}`);
+      }
+      if (managedWindowsPathEntries.length > 0) {
+        log(`Windows managed PATH: ${managedWindowsPathEntries.join(';')}`);
       }
       if (toolsPath) {
         log(`SIFLI_SDK_TOOLS_PATH=${toolsPath}`);

@@ -7,11 +7,9 @@ import { TERMINAL_NAME } from '../constants';
 import { TaskName } from '../types';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
-import { PythonService } from './pythonService';
-import { MinGitService } from './minGitService';
 import { ProbeRsService } from './probeRsService';
-import { UvService } from './uvService';
 import { SdkService } from './sdkService';
+import { WindowsManagedEnvService } from './windowsManagedEnvService';
 import { getProjectInfo } from '../utils/projectUtils';
 import { ResolvedPowerShellExecutable, resolvePowerShellExecutable } from '../utils/powerShellUtils';
 
@@ -145,10 +143,11 @@ export class TerminalService {
     if (this.envInjectedTerminals.has(terminal)) {
       return;
     }
-    await this.setupPythonEnvironment(terminal);
-    await this.setupUvEnvironment(terminal);
-    await this.setupProbeRsEnvironment(terminal);
-    await this.setupGitEnvironment(terminal);
+    if (process.platform === 'win32') {
+      await this.setupManagedWindowsEnvironment(terminal);
+    } else {
+      await this.setupProbeRsEnvironment(terminal);
+    }
     this.envInjectedTerminals.add(terminal);
   }
 
@@ -189,61 +188,22 @@ export class TerminalService {
     this.exportPrepared.set(terminal, scriptPath);
   }
 
-  /**
-   * 设置 Python 环境 (仅限 Windows)
-   */
-  private async setupPythonEnvironment(terminal: vscode.Terminal): Promise<void> {
-    if (process.platform !== 'win32') {
-      return;
-    }
-    const pythonService = PythonService.getInstance();
-    const pythonDir = pythonService.getPythonDir();
-
-    if (!pythonDir) {
-      this.logService.debug('Embedded Python not available; skipping PATH injection.');
+  private async setupManagedWindowsEnvironment(terminal: vscode.Terminal): Promise<void> {
+    const envService = WindowsManagedEnvService.getInstance();
+    const pathEntries = envService.buildTerminalPathEntries();
+    if (pathEntries.length === 0) {
+      this.logService.debug('Managed Windows tool paths unavailable; skipping PATH injection.');
       return;
     }
 
-    const scriptsPath = path.join(pythonDir, 'Scripts');
-    this.logService.info(`Injecting embedded Python path: ${pythonDir}; Scripts: ${scriptsPath}`);
-    // 将 Python 及 Scripts 路径添加到 PATH 的最前面
-    terminal.sendText(`$env:Path = "${pythonDir};${scriptsPath};" + $env:Path`);
-  }
-
-  /**
-   * 设置 uv 环境 (仅限 Windows)
-   */
-  private async setupUvEnvironment(terminal: vscode.Terminal): Promise<void> {
-    if (process.platform !== 'win32') {
+    const pathCommand = envService.buildTerminalPathCommand(pathEntries);
+    if (!pathCommand) {
+      this.logService.debug('Managed Windows PATH command is empty; skipping PATH injection.');
       return;
     }
 
-    const uvDir = UvService.getInstance().getManagedExecutableDir();
-    if (!uvDir) {
-      this.logService.debug('Managed uv not available; skipping PATH injection.');
-      return;
-    }
-
-    this.logService.info(`Injecting managed uv path: ${uvDir}`);
-    terminal.sendText(`$env:Path = "${uvDir};" + $env:Path`);
-  }
-
-  /**
-   * 设置 MinGit 环境 (仅限 Windows)
-   */
-  private async setupGitEnvironment(terminal: vscode.Terminal): Promise<void> {
-    if (process.platform !== 'win32') {
-      return;
-    }
-    const minGitService = MinGitService.getInstance();
-    const gitCmdDir = minGitService.getGitCmdDir();
-    if (!gitCmdDir) {
-      this.logService.debug('MinGit path unavailable; skipping PATH injection.');
-      return;
-    }
-
-    this.logService.info(`Injecting MinGit path: ${gitCmdDir}`);
-    terminal.sendText(`$env:Path = "${gitCmdDir};" + $env:Path`);
+    this.logService.info(`Injecting managed Windows tool paths: ${pathEntries.join(';')}`);
+    terminal.sendText(pathCommand);
   }
 
   /**

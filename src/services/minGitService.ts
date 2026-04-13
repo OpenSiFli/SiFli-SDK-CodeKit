@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import axios from 'axios';
 import { spawn } from 'child_process';
 import { LogService } from './logService';
 import { ConfigService } from './configService';
-import { resolvePowerShellExecutable } from '../utils/powerShellUtils';
+import { ManagedToolSupport } from './managedToolSupport';
 
 /**
  * 在 Windows 上自动下载并配置 MinGit 以提供 git 命令。
@@ -13,8 +12,10 @@ import { resolvePowerShellExecutable } from '../utils/powerShellUtils';
 export class MinGitService {
   private static instance: MinGitService;
   private context?: vscode.ExtensionContext;
-  private logService: LogService;
-  private configService: ConfigService;
+  private readonly logService: LogService;
+  private readonly configService: ConfigService;
+  private readonly toolSupport: ManagedToolSupport;
+  private installPromise?: Promise<string>;
   private gitCmdDir?: string;
 
   private static readonly MINGIT_URLS = {
@@ -26,6 +27,7 @@ export class MinGitService {
   private constructor() {
     this.logService = LogService.getInstance();
     this.configService = ConfigService.getInstance();
+    this.toolSupport = new ManagedToolSupport(this.logService, this.configService);
   }
 
   public static getInstance(): MinGitService {
@@ -43,6 +45,19 @@ export class MinGitService {
    * 返回 MinGit cmd 目录（若尚未安装则返回 undefined）
    */
   public getGitCmdDir(): string | undefined {
+    if (this.gitCmdDir && fs.existsSync(path.join(this.gitCmdDir, 'git.exe'))) {
+      return this.gitCmdDir;
+    }
+
+    const installDir = this.getInstallDir();
+    const gitExe = this.toolSupport.resolveExecutablePath(installDir, {
+      exactRelativePath: path.join('cmd', 'git.exe'),
+    });
+    if (!gitExe) {
+      return undefined;
+    }
+
+    this.gitCmdDir = path.dirname(gitExe);
     return this.gitCmdDir;
   }
 
@@ -54,9 +69,15 @@ export class MinGitService {
       return;
     }
 
-    // 如果系统已有 git 则直接返回
     if (await this.isGitOnPath()) {
       this.logService.info('System git found on PATH.');
+      return;
+    }
+
+    const existingCmdDir = this.getGitCmdDir();
+    if (existingCmdDir) {
+      this.logService.info(`Using existing MinGit at ${path.join(existingCmdDir, 'git.exe')}`);
+      this.injectPath(existingCmdDir);
       return;
     }
 
@@ -66,33 +87,15 @@ export class MinGitService {
       return;
     }
 
-    const cmdDir = path.join(installDir, 'cmd');
-    const gitExe = path.join(cmdDir, 'git.exe');
-
-    // 已安装的 MinGit
-    if (fs.existsSync(gitExe)) {
-      this.logService.info(`Using existing MinGit at ${gitExe}`);
-      this.injectPath(cmdDir);
-      this.gitCmdDir = cmdDir;
-      return;
-    }
-
-    // 未安装则下载
     try {
       vscode.window.showInformationMessage(vscode.l10n.t('System Git not found. Downloading MinGit...'));
-      await this.downloadAndExtractMinGit(installDir);
-      if (fs.existsSync(gitExe)) {
-        this.injectPath(cmdDir);
-        this.gitCmdDir = cmdDir;
-        this.logService.info(`MinGit installed at ${cmdDir}`);
-      } else {
-        throw new Error('MinGit git.exe not found after extraction.');
-      }
+      const gitExe = await this.installManagedMinGit(installDir);
+      const cmdDir = path.dirname(gitExe);
+      this.injectPath(cmdDir);
+      this.gitCmdDir = cmdDir;
+      this.logService.info(`MinGit installed at ${cmdDir}`);
     } catch (error) {
       this.logService.error('Failed to install MinGit:', error);
-      vscode.window.showErrorMessage(
-        vscode.l10n.t('Failed to install MinGit: {0}', error instanceof Error ? error.message : String(error))
-      );
     }
   }
 
@@ -101,6 +104,43 @@ export class MinGitService {
       return undefined;
     }
     return path.join(this.context.globalStorageUri.fsPath, 'mingit');
+  }
+
+  private async installManagedMinGit(installDir: string): Promise<string> {
+    if (this.installPromise) {
+      return this.installPromise;
+    }
+
+    this.installPromise = this.installManagedMinGitInternal(installDir);
+    try {
+      return await this.installPromise;
+    } finally {
+      this.installPromise = undefined;
+    }
+  }
+
+  private async installManagedMinGitInternal(installDir: string): Promise<string> {
+    const arch = process.arch === 'arm64' ? 'arm64' : process.arch === 'ia32' ? 'ia32' : 'x64';
+    const downloadUrl = MinGitService.MINGIT_URLS[arch];
+
+    return this.toolSupport.installManagedArchiveTool({
+      toolLabel: 'MinGit',
+      installDir,
+      asset: {
+        fileName: 'mingit.zip',
+        downloadUrl,
+        archiveType: 'zip',
+      },
+      installingTitle: vscode.l10n.t('Installing MinGit...'),
+      downloadingMessage: vscode.l10n.t('Downloading bundled MinGit...'),
+      extractingMessage: vscode.l10n.t('Extracting MinGit...'),
+      missingExecutableMessage: 'MinGit git.exe not found after extraction.',
+      failureMessage: error =>
+        vscode.l10n.t('Failed to install MinGit: {0}', error instanceof Error ? error.message : String(error)),
+      resolveExecutablePath: () =>
+        this.toolSupport.resolveExecutablePath(installDir, { exactRelativePath: path.join('cmd', 'git.exe') }),
+      injectPathOnSuccess: false,
+    });
   }
 
   private async isGitOnPath(): Promise<boolean> {
@@ -119,76 +159,7 @@ export class MinGitService {
     });
   }
 
-  private async downloadAndExtractMinGit(installDir: string): Promise<void> {
-    const arch = process.arch === 'arm64' ? 'arm64' : process.arch === 'ia32' ? 'ia32' : 'x64';
-    const downloadUrl = MinGitService.MINGIT_URLS[arch];
-    const zipPath = path.join(installDir, 'mingit.zip');
-
-    // 确保目录存在
-    fs.mkdirSync(installDir, { recursive: true });
-
-    this.logService.info(`Downloading MinGit (${arch}) from ${downloadUrl} to ${zipPath}`);
-
-    const response = await axios({
-      method: 'GET',
-      url: downloadUrl,
-      responseType: 'stream',
-    });
-
-    await new Promise<void>((resolve, reject) => {
-      const writer = fs.createWriteStream(zipPath);
-      response.data.on('error', reject);
-      writer.on('error', reject);
-      writer.on('finish', resolve);
-      response.data.pipe(writer);
-    });
-
-    // 解压
-    const command = `Expand-Archive -Path "${zipPath}" -DestinationPath "${installDir}" -Force`;
-    this.logService.info(`Extracting MinGit to ${installDir}`);
-    await this.runPowerShellCommand(command);
-
-    // 清理
-    try {
-      fs.unlinkSync(zipPath);
-    } catch {
-      // ignore cleanup errors
-    }
-  }
-
-  private async runPowerShellCommand(command: string): Promise<void> {
-    const powerShell = resolvePowerShellExecutable(this.configService.config.powershellPath);
-
-    return new Promise((resolve, reject) => {
-      const proc = spawn(
-        powerShell.executablePath,
-        ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
-        {
-          windowsHide: true,
-        }
-      );
-
-      let stderrOutput = '';
-      proc.stderr?.on('data', (data: Buffer) => {
-        stderrOutput += data.toString();
-      });
-
-      proc.on('error', (err: Error) => reject(err));
-      proc.on('close', (code: number) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`PowerShell exited with code ${code}${stderrOutput ? `: ${stderrOutput.trim()}` : ''}`));
-        }
-      });
-    });
-  }
-
   private injectPath(cmdDir: string): void {
-    const current = process.env.PATH || '';
-    if (!current.toLowerCase().includes(cmdDir.toLowerCase())) {
-      process.env.PATH = `${cmdDir};${current}`;
-      this.logService.info(`Injected MinGit PATH: ${cmdDir}`);
-    }
+    this.toolSupport.injectProcessPath(cmdDir, 'MinGit');
   }
 }
