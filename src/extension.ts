@@ -29,6 +29,7 @@ import { LanguageModelToolService } from './services/languageModelToolService';
 import { McpServerService } from './services/mcpServerService';
 import { McpServerDefinitionProviderService } from './services/mcpServerDefinitionProviderService';
 import { isSiFliProject } from './utils/projectUtils';
+import { getReleaseNotesNotificationAction } from './utils/releaseNotesUtils';
 import { registerProbeRsDebugger } from './probe-rs/extension';
 import { disposePeripheralViewer, initPeripheralViewer } from './peripheral-viewer';
 
@@ -143,7 +144,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
 
   // 如版本更新，提示查看 Release Notes
-  await showReleaseNotesIfUpdated(context);
+  void notifyReleaseNotesIfUpdated(context).catch(err => {
+    logService.error('Error showing release notes notification:', err);
+  });
 
   // 初始化串口服务（恢复之前保存的串口选择）
   await serialPortService.initialize();
@@ -495,22 +498,25 @@ export async function deactivate(): Promise<void> {
   logService.dispose();
 }
 
-async function showReleaseNotesIfUpdated(context: vscode.ExtensionContext): Promise<void> {
+async function notifyReleaseNotesIfUpdated(context: vscode.ExtensionContext): Promise<void> {
   const currentVersion = vscode.extensions.getExtension('SiFli.sifli-sdk-codekit')?.packageJSON.version as
     | string
     | undefined;
-  if (!currentVersion) {
-    return;
-  }
-
   const previousVersion = context.globalState.get<string>(LAST_VERSION_KEY);
-
-  // 始次安装或版本未变更
-  if (!previousVersion) {
-    await context.globalState.update(LAST_VERSION_KEY, currentVersion);
+  const action = getReleaseNotesNotificationAction(previousVersion, currentVersion);
+  if (!currentVersion || action === 'skip') {
     return;
   }
-  if (previousVersion === currentVersion) {
+
+  const logService = LogService.getInstance();
+
+  try {
+    await context.globalState.update(LAST_VERSION_KEY, currentVersion);
+  } catch (err) {
+    logService.error('Failed to persist current extension version during activation:', err);
+  }
+
+  if (action === 'recordOnly') {
     return;
   }
 
@@ -525,22 +531,26 @@ async function showReleaseNotesIfUpdated(context: vscode.ExtensionContext): Prom
         vscode.window.showWarningMessage(vscode.l10n.t('Offline Release Notes file not found.'));
       }
     } catch (err) {
-      const logService = LogService.getInstance();
       logService.error('Failed to open Release Notes:', err);
     }
   };
 
   const viewNotes = vscode.l10n.t('View release notes');
   const viewLater = vscode.l10n.t('Later');
-  const choice = await vscode.window.showInformationMessage(
-    vscode.l10n.t('SiFli SDK CodeKit updated to {0}. View release notes?', currentVersion),
-    viewNotes,
-    viewLater
-  );
-
-  if (choice === viewNotes) {
-    await openReleaseNotes();
-  }
-
-  await context.globalState.update(LAST_VERSION_KEY, currentVersion);
+  void vscode.window
+    .showInformationMessage(
+      vscode.l10n.t('SiFli SDK CodeKit updated to {0}. View release notes?', currentVersion),
+      viewNotes,
+      viewLater
+    )
+    .then(
+      async choice => {
+        if (choice === viewNotes) {
+          await openReleaseNotes();
+        }
+      },
+      (err: unknown) => {
+        logService.error('Failed to show release notes update notification:', err);
+      }
+    );
 }
