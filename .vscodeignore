@@ -12,6 +12,9 @@ vsc-extension-quickstart.md
 yarn.lock
 **/*.vsix
 .github/**
+**/.github/**
+**/.gitlab-ci.yml
+**/.gitignore
 update_plan.md
 issues_image/**
 *.md
@@ -22,6 +25,9 @@ issues_image/**
 !images/readme/SiFli.png
 extension.js.backup
 WebView/**
+SiliconSchema/README.md
+SiliconSchema/docs/**
+SiliconSchema/src/**
 
 # Vue 开发文件优化 - 只保留构建后的文件
 webview-vue/**
