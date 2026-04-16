@@ -70,6 +70,13 @@ interface ExistingSdkValidationResult {
 }
 
 type TaskLogger = (message: string, level?: TaskLogEntry['level']) => void;
+type WebviewPanelKind = 'sdkManager' | 'debugSnapshot';
+
+interface WebviewPanelConfig {
+  viewType: string;
+  title: string;
+  initialRoute?: string;
+}
 
 function normalizeBranchGitRef(branchRef: string): string {
   if (branchRef === 'latest' || branchRef === 'main') {
@@ -98,8 +105,8 @@ export class VueWebviewProvider {
   private readonly configService: ConfigService;
   private readonly logService: LogService;
   private readonly tasks = new Map<string, SdkTaskRecord>();
-  private currentPanel?: vscode.WebviewPanel;
-  private pendingRoute?: string;
+  private sdkManagerPanel?: vscode.WebviewPanel;
+  private debugSnapshotPanel?: vscode.WebviewPanel;
 
   private constructor() {
     this.terminalService = TerminalService.getInstance();
@@ -117,12 +124,22 @@ export class VueWebviewProvider {
   }
 
   public async createSdkManagementWebview(context: vscode.ExtensionContext): Promise<void> {
-    if (this.currentPanel) {
-      this.currentPanel.reveal(vscode.ViewColumn.One);
+    this.openPanel('sdkManager', context);
+  }
+
+  public async openDebugSnapshotWebview(context: vscode.ExtensionContext): Promise<void> {
+    this.openPanel('debugSnapshot', context);
+  }
+
+  private openPanel(kind: WebviewPanelKind, context: vscode.ExtensionContext): void {
+    const existingPanel = this.getPanel(kind);
+    if (existingPanel) {
+      existingPanel.reveal(existingPanel.viewColumn ?? vscode.ViewColumn.One);
       return;
     }
 
-    const panel = vscode.window.createWebviewPanel('sifliSdkManagerVue', 'SiFli SDK 管理器', vscode.ViewColumn.One, {
+    const panelConfig = this.getPanelConfig(kind);
+    const panel = vscode.window.createWebviewPanel(panelConfig.viewType, panelConfig.title, vscode.ViewColumn.One, {
       enableScripts: true,
       retainContextWhenHidden: true,
       enableCommandUris: true,
@@ -144,9 +161,8 @@ export class VueWebviewProvider {
 
           await this.sendRegionDefaults(panel.webview);
 
-          if (this.pendingRoute) {
-            panel.webview.postMessage({ command: 'navigate', route: this.pendingRoute });
-            this.pendingRoute = undefined;
+          if (panelConfig.initialRoute) {
+            panel.webview.postMessage({ command: 'navigate', route: panelConfig.initialRoute });
           }
           return;
         }
@@ -176,21 +192,51 @@ export class VueWebviewProvider {
 
     panel.onDidDispose(() => {
       configChangeListener.dispose();
-      this.gitService.terminateAllProcesses();
-      this.currentPanel = undefined;
+      this.clearPanel(kind, panel);
     });
 
-    this.currentPanel = panel;
+    this.setPanel(kind, panel);
   }
 
-  public async openDebugSnapshotWebview(context: vscode.ExtensionContext): Promise<void> {
-    if (this.currentPanel) {
-      this.currentPanel.reveal(vscode.ViewColumn.One);
-      this.currentPanel.webview.postMessage({ command: 'navigate', route: '/debug-snapshot' });
-    } else {
-      this.pendingRoute = '/debug-snapshot';
-      await this.createSdkManagementWebview(context);
+  private getPanel(kind: WebviewPanelKind): vscode.WebviewPanel | undefined {
+    return kind === 'sdkManager' ? this.sdkManagerPanel : this.debugSnapshotPanel;
+  }
+
+  private setPanel(kind: WebviewPanelKind, panel: vscode.WebviewPanel): void {
+    if (kind === 'sdkManager') {
+      this.sdkManagerPanel = panel;
+      return;
     }
+
+    this.debugSnapshotPanel = panel;
+  }
+
+  private clearPanel(kind: WebviewPanelKind, panel: vscode.WebviewPanel): void {
+    if (this.getPanel(kind) !== panel) {
+      return;
+    }
+
+    if (kind === 'sdkManager') {
+      this.sdkManagerPanel = undefined;
+      return;
+    }
+
+    this.debugSnapshotPanel = undefined;
+  }
+
+  private getPanelConfig(kind: WebviewPanelKind): WebviewPanelConfig {
+    if (kind === 'debugSnapshot') {
+      return {
+        viewType: 'sifliDebugSnapshotVue',
+        title: '调试现场导出',
+        initialRoute: '/debug-snapshot',
+      };
+    }
+
+    return {
+      viewType: 'sifliSdkManagerVue',
+      title: 'SiFli SDK 管理器',
+    };
   }
 
   private async handleWebviewMessage(message: any, webview: vscode.Webview): Promise<void> {

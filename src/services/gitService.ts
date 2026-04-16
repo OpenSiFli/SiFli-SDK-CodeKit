@@ -476,6 +476,7 @@ export class GitService {
   }
 
   public dispose(): void {
+    this.terminateAllProcesses();
     this.gitOutputChannel.dispose();
   }
 

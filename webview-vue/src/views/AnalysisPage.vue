@@ -376,6 +376,7 @@ import type {
   AnalysisFindingPresentation,
   AnalysisPresentationSnapshot,
   AnalysisSeverity,
+  AnalysisSeverityFilter,
   AnalysisStatusFilter,
   AnalysisViewMode,
 } from '@/types';
@@ -483,21 +484,21 @@ const statusOptions = computed(() => [
   { value: 'clean', label: t('analysis.filters.status.clean') },
 ]);
 
-const severityFilter = computed({
+const severityFilter = computed<string>({
   get: () => filters.value.severity,
-  set: value => {
+  set: (value: string) => {
     postMessage({
       command: 'updateAnalysisFilters',
       filters: {
-        severity: value,
+        severity: value as AnalysisSeverityFilter,
       },
     });
   },
 });
 
-const statusFilter = computed({
+const statusFilter = computed<string>({
   get: () => filters.value.status,
-  set: value => {
+  set: (value: string) => {
     postMessage({
       command: 'updateAnalysisFilters',
       filters: {
