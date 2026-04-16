@@ -31,7 +31,11 @@ import { McpServerDefinitionProviderService } from './services/mcpServerDefiniti
 import { isSiFliProject } from './utils/projectUtils';
 import { getReleaseNotesNotificationAction } from './utils/releaseNotesUtils';
 import { registerProbeRsDebugger } from './probe-rs/extension';
-import { disposePeripheralViewer, initPeripheralViewer } from './peripheral-viewer';
+import {
+  disposePeripheralViewer,
+  initPeripheralViewer,
+  runPeripheralViewerDebugSnapshotExport,
+} from './peripheral-viewer';
 
 /**
  * 扩展激活函数
@@ -164,6 +168,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const createProjectCommand = vscode.commands.registerCommand(CMD_PREFIX + 'createNewSiFliProject', () =>
     projectCommands.createNewSiFliProject()
   );
+  const exportDebugSnapshotQuickPickCommand = vscode.commands.registerCommand(
+    CMD_PREFIX + 'debugSnapshot.export',
+    async () => {
+      const handled = await runPeripheralViewerDebugSnapshotExport();
+      if (!handled) {
+        void vscode.window.showErrorMessage(
+          vscode.l10n.t(
+            'Debug snapshot export is unavailable because the built-in Peripheral Viewer is not active. Check for conflicting peripheral viewer extensions and ensure a sifli-probe-rs session is available.'
+          )
+        );
+      }
+    }
+  );
   const startMcpCommand = vscode.commands.registerCommand(CMD_PREFIX + 'mcp.start', async () => {
     await mcpCommands.startServer();
   });
@@ -206,6 +223,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     manageSdkCommand,
     createProjectCommand,
+    exportDebugSnapshotQuickPickCommand,
     refreshSdkDependenciesCommand,
     generateCodebaseIndexCommand,
     exportDebugSnapshotCommand,

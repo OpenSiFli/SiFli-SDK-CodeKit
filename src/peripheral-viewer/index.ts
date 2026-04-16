@@ -105,6 +105,15 @@ class PeripheralViewerManager implements vscode.Disposable {
     return this.commands?.getDebugSnapshotBackend();
   }
 
+  public async runDebugSnapshotExport(): Promise<boolean> {
+    if (!this.commands) {
+      return false;
+    }
+
+    await this.commands.runDebugSnapshotExport();
+    return true;
+  }
+
   public dispose(): void {
     for (const disposable of this.disposables.splice(0)) {
       disposable.dispose();
@@ -158,6 +167,14 @@ export function disposePeripheralViewer(): void {
 
 export function getPeripheralViewerDebugSnapshotBackend(): DebugSnapshotBackend | undefined {
   return peripheralViewerManager?.getDebugSnapshotBackend();
+}
+
+export async function runPeripheralViewerDebugSnapshotExport(): Promise<boolean> {
+  if (!peripheralViewerManager) {
+    return false;
+  }
+
+  return peripheralViewerManager.runDebugSnapshotExport();
 }
 
 export * from './types';

@@ -23,6 +23,10 @@ export class Commands {
     return this.debugSnapshotBackend;
   }
 
+  public async runDebugSnapshotExport(): Promise<void> {
+    await this.exportDebugSnapshot();
+  }
+
   public activate(context: vscode.ExtensionContext): vscode.Disposable {
     this.debugSnapshotBackend ??= new DebugSnapshotBackend(context, this.peripheralProvider);
 
@@ -43,7 +47,6 @@ export class Commands {
         this.peripheralsTogglePin(node)
       ),
       vscode.commands.registerCommand(COMMAND_REFRESH_ALL, () => this.peripheralsForceRefresh()),
-      vscode.commands.registerCommand(COMMAND_DEBUG_SNAPSHOT_EXPORT, () => this.exportDebugSnapshot()),
     ];
 
     const disposable = new vscode.Disposable(() => {
