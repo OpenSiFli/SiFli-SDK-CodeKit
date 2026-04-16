@@ -134,6 +134,21 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
       )
     );
 
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Debug Snapshot'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.debugSnapshot.openWebview',
+          title: vscode.l10n.t('Debug Snapshot'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('browser'),
+        vscode.l10n.t('Open the Debug Snapshot webview page.'),
+        'debugSnapshot'
+      )
+    );
+
     // 只有在 SiFli 项目中才显示项目配置
     if (isSiFliProject()) {
       items.push(

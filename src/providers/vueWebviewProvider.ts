@@ -12,6 +12,9 @@ import { UvService } from '../services/uvService';
 import { WindowsManagedEnvService } from '../services/windowsManagedEnvService';
 import { GIT_REPOS } from '../constants';
 import { SdkTaskKind, SdkTaskRecord, TaskLogEntry, ToolchainSource } from '../types';
+import { DebugSnapshotRequest } from '../types/debugSnapshot';
+import { DebugSnapshotBackend } from '../peripheral-viewer/export/debugSnapshotBackend';
+import { getPeripheralViewerDebugSnapshotBackend } from '../peripheral-viewer';
 import { formatInstallScriptFailure } from '../utils/powerShellUtils';
 
 const RELEASE_BRANCH_PREFIX = 'release/';
@@ -95,6 +98,8 @@ export class VueWebviewProvider {
   private readonly configService: ConfigService;
   private readonly logService: LogService;
   private readonly tasks = new Map<string, SdkTaskRecord>();
+  private currentPanel?: vscode.WebviewPanel;
+  private pendingRoute?: string;
 
   private constructor() {
     this.terminalService = TerminalService.getInstance();
@@ -112,6 +117,11 @@ export class VueWebviewProvider {
   }
 
   public async createSdkManagementWebview(context: vscode.ExtensionContext): Promise<void> {
+    if (this.currentPanel) {
+      this.currentPanel.reveal(vscode.ViewColumn.One);
+      return;
+    }
+
     const panel = vscode.window.createWebviewPanel('sifliSdkManagerVue', 'SiFli SDK 管理器', vscode.ViewColumn.One, {
       enableScripts: true,
       retainContextWhenHidden: true,
@@ -133,6 +143,11 @@ export class VueWebviewProvider {
           });
 
           await this.sendRegionDefaults(panel.webview);
+
+          if (this.pendingRoute) {
+            panel.webview.postMessage({ command: 'navigate', route: this.pendingRoute });
+            this.pendingRoute = undefined;
+          }
           return;
         }
 
@@ -162,7 +177,20 @@ export class VueWebviewProvider {
     panel.onDidDispose(() => {
       configChangeListener.dispose();
       this.gitService.terminateAllProcesses();
+      this.currentPanel = undefined;
     });
+
+    this.currentPanel = panel;
+  }
+
+  public async openDebugSnapshotWebview(context: vscode.ExtensionContext): Promise<void> {
+    if (this.currentPanel) {
+      this.currentPanel.reveal(vscode.ViewColumn.One);
+      this.currentPanel.webview.postMessage({ command: 'navigate', route: '/debug-snapshot' });
+    } else {
+      this.pendingRoute = '/debug-snapshot';
+      await this.createSdkManagementWebview(context);
+    }
   }
 
   private async handleWebviewMessage(message: any, webview: vscode.Webview): Promise<void> {
@@ -256,6 +284,30 @@ export class VueWebviewProvider {
 
       case 'closeManager':
         await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+        break;
+
+      case 'getDebugSnapshotBootstrap':
+        await this.handleDebugSnapshotBootstrap(webview);
+        break;
+
+      case 'buildDebugSnapshotPlan':
+        await this.handleBuildDebugSnapshotPlan(message.partNumber, webview);
+        break;
+
+      case 'browseDebugSnapshotOutputRoot':
+        await this.handleBrowseDebugSnapshotOutputRoot(webview);
+        break;
+
+      case 'startDebugSnapshotExport':
+        await this.handleStartDebugSnapshotExport(message.request as DebugSnapshotRequest, webview);
+        break;
+
+      case 'getDebugSnapshotTask':
+        this.handleGetDebugSnapshotTask(message.taskId, webview);
+        break;
+
+      case 'cancelDebugSnapshotTask':
+        await this.handleCancelDebugSnapshotTask(message.taskId, webview);
         break;
 
       default:
@@ -1043,5 +1095,85 @@ export class VueWebviewProvider {
     }
 
     return String(error);
+  }
+
+  // --- Debug Snapshot handlers ---
+
+  private getDebugSnapshotBackend(): DebugSnapshotBackend | undefined {
+    return getPeripheralViewerDebugSnapshotBackend();
+  }
+
+  private async handleDebugSnapshotBootstrap(webview: vscode.Webview): Promise<void> {
+    const backend = this.getDebugSnapshotBackend();
+    if (!backend) {
+      webview.postMessage({
+        command: 'debugSnapshotBootstrap',
+        bootstrap: {
+          session: { executionState: 'unknown', canExport: false },
+          chipOptions: [],
+          warnings: ['Debug snapshot backend is not available. Please start a debug session first.'],
+        },
+      });
+      return;
+    }
+
+    const bootstrap = await backend.getDebugSnapshotBootstrap();
+    webview.postMessage({ command: 'debugSnapshotBootstrap', bootstrap });
+  }
+
+  private async handleBuildDebugSnapshotPlan(partNumber: string, webview: vscode.Webview): Promise<void> {
+    const backend = this.getDebugSnapshotBackend();
+    if (!backend) {
+      throw new Error('Debug snapshot backend is not available.');
+    }
+
+    const plan = await backend.buildDebugSnapshotPlan(partNumber);
+    webview.postMessage({ command: 'debugSnapshotPlan', plan });
+  }
+
+  private async handleBrowseDebugSnapshotOutputRoot(webview: vscode.Webview): Promise<void> {
+    const backend = this.getDebugSnapshotBackend();
+    if (!backend) {
+      throw new Error('Debug snapshot backend is not available.');
+    }
+
+    const selection = await backend.browseDebugSnapshotOutputRoot();
+    webview.postMessage({ command: 'debugSnapshotOutputRootSelected', selection });
+  }
+
+  private async handleStartDebugSnapshotExport(request: DebugSnapshotRequest, webview: vscode.Webview): Promise<void> {
+    const backend = this.getDebugSnapshotBackend();
+    if (!backend) {
+      throw new Error('Debug snapshot backend is not available.');
+    }
+
+    const eventDisposable = backend.onDidEmitEvent(event => {
+      webview.postMessage(event);
+    });
+
+    try {
+      const task = await backend.startDebugSnapshotExport(request);
+      webview.postMessage({ command: 'debugSnapshotTaskStarted', task });
+
+      // Clean up the event listener after the task completes
+      void backend.waitForTaskCompletion(task.taskId).finally(() => {
+        eventDisposable.dispose();
+      });
+    } catch (error) {
+      eventDisposable.dispose();
+      throw error;
+    }
+  }
+
+  private handleGetDebugSnapshotTask(taskId: string, webview: vscode.Webview): void {
+    const backend = this.getDebugSnapshotBackend();
+    const task = backend?.getDebugSnapshotTask(taskId);
+    webview.postMessage({ command: 'debugSnapshotTaskSnapshot', task });
+  }
+
+  private async handleCancelDebugSnapshotTask(taskId: string, webview: vscode.Webview): Promise<void> {
+    const backend = this.getDebugSnapshotBackend();
+    const task = await backend?.cancelDebugSnapshotTask(taskId);
+    webview.postMessage({ command: 'debugSnapshotTaskSnapshot', task });
   }
 }

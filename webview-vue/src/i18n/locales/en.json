@@ -11,7 +11,9 @@
     "success": "Success",
     "error": "Error",
     "retry": "Retry",
-    "continue": "Continue"
+    "continue": "Continue",
+    "yes": "Yes",
+    "no": "No"
   },
   "welcome": {
     "title": "SiFli SDK",
@@ -238,6 +240,77 @@
       "ok": "No issues were found in the current analysis.",
       "notAnalyzed": "No analysis result has been produced for this instance yet.",
       "issues": "This instance has configuration issues that require attention."
+    }
+  },
+  "debugSnapshot": {
+    "sectionLabel": "Debug Snapshot",
+    "title": "Debug Snapshot Export",
+    "subtitle": "Export memory regions and peripheral registers from the current debug session for offline analysis.",
+    "session": {
+      "label": "Debug Session",
+      "name": "Session",
+      "state": "Execution State",
+      "canExport": "Export Ready",
+      "noSession": "No active session",
+      "notExportable": "Export is not available for the current session.",
+      "executionState": {
+        "unknown": "Unknown",
+        "running": "Running",
+        "stopped": "Stopped"
+      }
+    },
+    "chip": {
+      "label": "Chip Selection",
+      "placeholder": "Select a chip part number…"
+    },
+    "plan": {
+      "label": "Export Items",
+      "loading": "Building export plan…",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "selectedCount": "{count} of {total} items selected"
+    },
+    "source": {
+      "baseTemplate": "Base Template",
+      "partTemplate": "Part Template",
+      "dynamicPsram": "Dynamic PSRAM",
+      "svdExtra": "SVD Peripherals"
+    },
+    "table": {
+      "name": "Name",
+      "kind": "Type",
+      "address": "Address",
+      "size": "Size",
+      "fileName": "File Name"
+    },
+    "output": {
+      "label": "Output Directory",
+      "placeholder": "Click Browse to select an output directory…"
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "startExport": "Start Export",
+      "exporting": "Exporting…",
+      "dismiss": "Dismiss"
+    },
+    "task": {
+      "label": "Export Progress",
+      "outputDir": "Output Directory",
+      "files": "Exported Files",
+      "logs": "Logs",
+      "fileStatus": "Status",
+      "clear": "Clear",
+      "status": {
+        "running": "Running",
+        "succeeded": "Succeeded",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "fileStatusValue": {
+        "written": "Written",
+        "skipped": "Skipped",
+        "failed": "Failed"
+      }
     }
   }
 }

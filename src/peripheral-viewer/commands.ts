@@ -19,6 +19,10 @@ export class Commands {
 
   constructor(private readonly peripheralProvider: PeripheralTreeProvider) {}
 
+  public getDebugSnapshotBackend(): DebugSnapshotBackend | undefined {
+    return this.debugSnapshotBackend;
+  }
+
   public activate(context: vscode.ExtensionContext): vscode.Disposable {
     this.debugSnapshotBackend ??= new DebugSnapshotBackend(context, this.peripheralProvider);
 

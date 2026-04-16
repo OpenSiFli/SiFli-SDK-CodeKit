@@ -120,6 +120,11 @@
         "icon": "$(export)"
       },
       {
+        "command": "extension.debugSnapshot.openWebview",
+        "title": "%command.debugSnapshot.openWebview.title%",
+        "icon": "$(browser)"
+      },
+      {
         "command": "extension.peripheralAnalysis.runAll",
         "title": "%command.peripheralAnalysis.runAll.title%",
         "icon": "$(beaker)"
@@ -610,6 +615,11 @@
           "group": "navigation"
         },
         {
+          "command": "extension.debugSnapshot.openWebview",
+          "when": "view == sifliSdkManager",
+          "group": "navigation@1"
+        },
+        {
           "command": "extension.peripheralViewer.refreshAll",
           "when": "view == sifliPeripheralViewer",
           "group": "navigation"
@@ -618,6 +628,11 @@
           "command": "extension.debugSnapshot.export",
           "when": "view == sifliPeripheralViewer && debugState == 'stopped'",
           "group": "navigation@1"
+        },
+        {
+          "command": "extension.debugSnapshot.openWebview",
+          "when": "view == sifliPeripheralViewer && debugState == 'stopped'",
+          "group": "navigation@2"
         },
         {
           "command": "extension.peripheralAnalysis.runAll",

@@ -23,6 +23,7 @@
   "command.peripheralViewer.togglePin.title": "Pin Peripheral",
   "command.peripheralViewer.refreshAll.title": "Refresh All Peripherals",
   "command.debugSnapshot.export.title": "Export Debug Snapshot",
+  "command.debugSnapshot.openWebview.title": "Export Debug Snapshot (Webview)",
   "command.peripheralAnalysis.runAll.title": "Run Peripheral Analysis",
   "command.peripheralAnalysis.runGroup.title": "Run Group Analysis",
   "command.peripheralAnalysis.openDashboard.title": "Open Peripheral Analysis Dashboard",

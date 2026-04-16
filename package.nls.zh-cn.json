@@ -23,6 +23,7 @@
   "command.peripheralViewer.togglePin.title": "固定外设",
   "command.peripheralViewer.refreshAll.title": "刷新全部外设",
   "command.debugSnapshot.export.title": "导出调试现场",
+  "command.debugSnapshot.openWebview.title": "导出调试现场 (Webview)",
   "command.peripheralAnalysis.runAll.title": "运行外设分析",
   "command.peripheralAnalysis.runGroup.title": "分析该分组",
   "command.peripheralAnalysis.openDashboard.title": "打开外设分析仪表板",

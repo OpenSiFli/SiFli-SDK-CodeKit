@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { SvdAnalyzerRegistry, ISvdAnalyzer } from './analysis/analyzer';
 import { PeripheralAnalysisManager } from './analysis/manager';
 import { Commands } from './commands';
+import { DebugSnapshotBackend } from './export/debugSnapshotBackend';
 import { onProbeRsDidSendMessage } from '../probe-rs/extension';
 import { CONFLICT_EXTENSION_ID, CONTEXT_ENABLED, DEBUG_TYPE } from './manifest';
 import { clearParsedSvdCache } from './peripherals-provider';
@@ -13,6 +14,7 @@ class PeripheralViewerManager implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private treeProvider?: PeripheralTreeProvider;
   private analysisManager?: PeripheralAnalysisManager;
+  private commands?: Commands;
 
   public async activate(context: vscode.ExtensionContext): Promise<void> {
     await vscode.commands.executeCommand('setContext', CONTEXT_ENABLED, false);
@@ -47,12 +49,12 @@ class PeripheralViewerManager implements vscode.Disposable {
 
     this.treeProvider = new PeripheralTreeProvider(context);
     this.analysisManager = new PeripheralAnalysisManager(this.treeProvider);
-    const commands = new Commands(this.treeProvider);
+    this.commands = new Commands(this.treeProvider);
 
     this.disposables.push(
       this.treeProvider.activate(),
       this.analysisManager.activate(context),
-      commands.activate(context),
+      this.commands.activate(context),
       vscode.debug.onDidStartDebugSession(session => {
         if (session.type === DEBUG_TYPE) {
           void this.treeProvider?.onDebugSessionStarted(session);
@@ -99,6 +101,10 @@ class PeripheralViewerManager implements vscode.Disposable {
     return this.treeProvider?.getActiveSessionData();
   }
 
+  public getDebugSnapshotBackend(): DebugSnapshotBackend | undefined {
+    return this.commands?.getDebugSnapshotBackend();
+  }
+
   public dispose(): void {
     for (const disposable of this.disposables.splice(0)) {
       disposable.dispose();
@@ -106,6 +112,7 @@ class PeripheralViewerManager implements vscode.Disposable {
     clearParsedSvdCache();
     this.analysisManager = undefined;
     this.treeProvider = undefined;
+    this.commands = undefined;
   }
 }
 
@@ -147,6 +154,10 @@ export function unregisterPeripheralViewerAnalyzer(name: string): void {
 export function disposePeripheralViewer(): void {
   peripheralViewerManager?.dispose();
   peripheralViewerManager = undefined;
+}
+
+export function getPeripheralViewerDebugSnapshotBackend(): DebugSnapshotBackend | undefined {
+  return peripheralViewerManager?.getDebugSnapshotBackend();
 }
 
 export * from './types';

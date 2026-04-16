@@ -5,6 +5,7 @@ import ImportSdkPage from '@/views/ImportSdkPage.vue';
 import SdkDetailPage from '@/views/SdkDetailPage.vue';
 import TaskPage from '@/views/TaskPage.vue';
 import AnalysisPage from '@/views/AnalysisPage.vue';
+import DebugSnapshotPage from '@/views/DebugSnapshotPage.vue';
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -40,6 +41,11 @@ export const router = createRouter({
       path: '/analysis',
       name: 'analysis',
       component: AnalysisPage,
+    },
+    {
+      path: '/debug-snapshot',
+      name: 'debug-snapshot',
+      component: DebugSnapshotPage,
     },
     {
       path: '/:pathMatch(.*)*',

@@ -188,6 +188,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const showMcpLogsCommand = vscode.commands.registerCommand(CMD_PREFIX + 'mcp.showLogs', async () => {
     await mcpCommands.showLogs();
   });
+  const exportDebugSnapshotCommand = vscode.commands.registerCommand(CMD_PREFIX + 'debugSnapshot.openWebview', () =>
+    vueWebviewProvider.openDebugSnapshotWebview(context)
+  );
   const refreshSdkDependenciesCommand = vscode.commands.registerCommand(CMD_PREFIX + 'refreshSdkDependencies', () => {
     sdkDependencyExplorerManager.refresh();
   });
@@ -205,6 +208,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     createProjectCommand,
     refreshSdkDependenciesCommand,
     generateCodebaseIndexCommand,
+    exportDebugSnapshotCommand,
     startMcpCommand,
     stopMcpCommand,
     showMcpCommand,

@@ -5,6 +5,7 @@ import { DEBUG_TYPE, SESSION_STATE_KEY, VIEW_ID } from '../manifest';
 import { PeripheralsProvider } from '../peripherals-provider';
 import { PeripheralSessionExecutionState, PeripheralViewerSessionData } from '../session-data';
 import { BaseNode, PeripheralBaseNode } from './nodes/basenode';
+import { ActionNode } from './nodes/actionnode';
 import { MessageNode } from './nodes/messagenode';
 import { PeripheralNode } from './nodes/peripheralnode';
 import { PeripheralRegisterNode } from './nodes/peripheralregisternode';
@@ -104,7 +105,22 @@ class SessionPeripheralTree extends PeripheralBaseNode {
       return [new MessageNode(this.message)];
     }
 
-    return this.peripherals;
+    const children: PeripheralBaseNode[] = [];
+    if (this.executionState === 'stopped') {
+      children.push(
+        new ActionNode(
+          vscode.l10n.t('Export Debug Snapshot'),
+          {
+            command: 'extension.debugSnapshot.export',
+            title: vscode.l10n.t('Export Debug Snapshot'),
+          },
+          new vscode.ThemeIcon('export'),
+          vscode.l10n.t('Export a debug snapshot from the current paused sifli-probe-rs session.')
+        )
+      );
+    }
+
+    return [...children, ...this.peripherals];
   }
 
   public saveState(): NodeSetting[] {
