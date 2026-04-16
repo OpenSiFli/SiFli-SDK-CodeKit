@@ -1,5 +1,6 @@
 export * from './config';
 export * from './board';
+export * from './debugSnapshot';
 export * from './sdk';
 export * from './workflow';
 export * from './tooling';
@@ -22,6 +23,7 @@ export type CommandId =
   | 'extension.menuconfig'
   | 'extension.generateCodebaseIndex'
   | 'extension.refreshSdkDependencies'
+  | 'extension.debugSnapshot.export'
   | 'extension.selectChipModule'
   | 'extension.selectDownloadPort'
   | 'extension.manageSiFliSdk'

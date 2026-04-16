@@ -115,6 +115,11 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "extension.debugSnapshot.export",
+        "title": "%command.debugSnapshot.export.title%",
+        "icon": "$(export)"
+      },
+      {
         "command": "extension.peripheralAnalysis.runAll",
         "title": "%command.peripheralAnalysis.runAll.title%",
         "icon": "$(beaker)"
@@ -608,6 +613,11 @@
           "command": "extension.peripheralViewer.refreshAll",
           "when": "view == sifliPeripheralViewer",
           "group": "navigation"
+        },
+        {
+          "command": "extension.debugSnapshot.export",
+          "when": "view == sifliPeripheralViewer && debugState == 'stopped'",
+          "group": "navigation@1"
         },
         {
           "command": "extension.peripheralAnalysis.runAll",
@@ -1623,6 +1633,7 @@
     "setup-debug": "node scripts/setup-debug-extensions.js"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.10",
     "@types/node": "^24.1.0",
     "@types/vscode": "^1.102.0",
@@ -1639,6 +1650,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "axios": "^1.10.0",
+    "js-yaml": "^4.1.0",
     "serialport": "^13.0.0",
     "xml2js": "^0.6.2",
     "zod": "^3.25.0"

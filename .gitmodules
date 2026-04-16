@@ -1,0 +1,3 @@
+[submodule "SiliconSchema"]
+	path = SiliconSchema
+	url = https://github.com/OpenSiFli/SiliconSchema.git
