@@ -123,13 +123,11 @@ export const useDebugSnapshotStore = defineStore('debugSnapshot', () => {
     if (!plan.value || !outputRoot.value) {
       return;
     }
-    error.value = null;
-    const request: DebugSnapshotRequest = {
-      partNumber: plan.value.chip.partNumber,
-      outputRoot: outputRoot.value,
-      selectedItemIds: [...selectedItemIds.value],
-    };
-    postMessage({ command: 'startDebugSnapshotExport', request });
+    startExportWithItems([...selectedItemIds.value]);
+  }
+
+  function exportSingleItem(itemId: string) {
+    startExportWithItems([itemId]);
   }
 
   function cancelExport() {
@@ -167,6 +165,20 @@ export const useDebugSnapshotStore = defineStore('debugSnapshot', () => {
     error.value = null;
   }
 
+  function startExportWithItems(selectedIds: string[]) {
+    if (!plan.value || !outputRoot.value || selectedIds.length === 0) {
+      return;
+    }
+
+    error.value = null;
+    const request: DebugSnapshotRequest = {
+      partNumber: plan.value.chip.partNumber,
+      outputRoot: outputRoot.value,
+      selectedItemIds: selectedIds,
+    };
+    postMessage({ command: 'startDebugSnapshotExport', request });
+  }
+
   return {
     bootstrap,
     plan,
@@ -184,6 +196,7 @@ export const useDebugSnapshotStore = defineStore('debugSnapshot', () => {
     buildPlan,
     browseOutputRoot,
     startExport,
+    exportSingleItem,
     cancelExport,
     toggleItem,
     selectAll,

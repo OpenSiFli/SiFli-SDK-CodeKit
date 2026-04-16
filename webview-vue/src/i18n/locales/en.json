@@ -281,7 +281,8 @@
       "kind": "Type",
       "address": "Address",
       "size": "Size",
-      "fileName": "File Name"
+      "fileName": "File Name",
+      "actions": "Actions"
     },
     "output": {
       "label": "Output Directory",
@@ -291,7 +292,8 @@
       "refresh": "Refresh",
       "startExport": "Start Export",
       "exporting": "Exporting…",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "exportSingle": "Export"
     },
     "task": {
       "label": "Export Progress",

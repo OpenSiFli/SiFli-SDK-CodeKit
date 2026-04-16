@@ -143,7 +143,16 @@
             <span class="ml-1 opacity-60">({{ group.items.length }})</span>
           </p>
           <div class="overflow-x-auto">
-            <table class="table table-xs w-full">
+            <table class="table table-xs table-fixed w-full">
+              <colgroup>
+                <col class="w-9" />
+                <col class="w-[22%]" />
+                <col class="w-24" />
+                <col class="w-[18%]" />
+                <col class="w-28" />
+                <col class="w-[20%]" />
+                <col class="w-28" />
+              </colgroup>
               <thead>
                 <tr class="text-xs text-vscode-input-placeholder">
                   <th class="w-8"></th>
@@ -152,6 +161,7 @@
                   <th>{{ t('debugSnapshot.table.address') }}</th>
                   <th>{{ t('debugSnapshot.table.size') }}</th>
                   <th>{{ t('debugSnapshot.table.fileName') }}</th>
+                  <th>{{ t('debugSnapshot.table.actions') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -165,15 +175,27 @@
                       @change="store.toggleItem(item.id)"
                     />
                   </td>
-                  <td class="font-mono text-xs">{{ item.name }}</td>
-                  <td>
+                  <td class="font-mono text-xs align-middle">{{ item.name }}</td>
+                  <td class="align-middle">
                     <span class="badge badge-xs" :class="item.kind === 'memoryRegion' ? 'badge-info' : 'badge-accent'">
                       {{ item.kind === 'memoryRegion' ? 'MEM' : 'REG' }}
                     </span>
                   </td>
-                  <td class="font-mono text-xs">0x{{ item.address.toString(16).toUpperCase().padStart(8, '0') }}</td>
-                  <td class="text-xs">{{ formatSize(item.size) }}</td>
-                  <td class="font-mono text-xs opacity-70">{{ item.fileName }}</td>
+                  <td class="font-mono text-xs align-middle whitespace-nowrap">
+                    0x{{ item.address.toString(16).toUpperCase().padStart(8, '0') }}
+                  </td>
+                  <td class="text-xs align-middle whitespace-nowrap">{{ formatSize(item.size) }}</td>
+                  <td class="font-mono text-xs align-middle opacity-70">{{ item.fileName }}</td>
+                  <td class="align-middle">
+                    <BaseButton
+                      variant="secondary"
+                      size="sm"
+                      :disabled="!canExportSingleItem()"
+                      @click="store.exportSingleItem(item.id)"
+                    >
+                      {{ t('debugSnapshot.actions.exportSingle') }}
+                    </BaseButton>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -448,5 +470,9 @@ function formatLogTime(ts: string): string {
   } catch {
     return '';
   }
+}
+
+function canExportSingleItem(): boolean {
+  return !!store.bootstrap?.session.canExport && !!store.outputRoot && !store.isTaskRunning;
 }
 </script>

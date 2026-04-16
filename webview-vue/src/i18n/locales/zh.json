@@ -277,7 +277,8 @@
       "kind": "类型",
       "address": "地址",
       "size": "大小",
-      "fileName": "文件名"
+      "fileName": "文件名",
+      "actions": "操作"
     },
     "output": {
       "label": "输出目录",
@@ -287,7 +288,8 @@
       "refresh": "刷新",
       "startExport": "开始导出",
       "exporting": "导出中…",
-      "dismiss": "关闭"
+      "dismiss": "关闭",
+      "exportSingle": "单独导出"
     },
     "task": {
       "label": "导出进度",
