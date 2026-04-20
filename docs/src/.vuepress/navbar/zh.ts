@@ -8,9 +8,9 @@ export const zhNavbar = navbar([
     link: "/get-started/",
   },
   {
-    text: "故障排除",
+    text: "硬件调试",
     icon: "code",
-    link: "/Troubleshooting/",
+    link: "/debug/",
   },
   {
     text: "进阶功能",
