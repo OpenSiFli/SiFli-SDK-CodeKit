@@ -5,12 +5,14 @@ import { ChildProcess, spawn } from 'child_process';
 import axios from 'axios';
 import { GitSdkMetadata, SdkBranch, SdkRelease } from '../types';
 import { GIT_REPOS } from '../constants';
+import { createIdleTimeoutWatchdog } from '../utils/idleTimeoutWatchdog';
 
 type ProgressSource = 'stdout' | 'stderr';
 
 interface GitCommandOptions {
   cwd?: string;
   timeoutMs?: number;
+  idleTimeoutMs?: number;
   onProgress?: (line: string, source: ProgressSource) => void;
 }
 
@@ -24,13 +26,15 @@ class GitCommandError extends Error {
   public readonly code: number | null;
   public readonly stdout: string;
   public readonly stderr: string;
+  public readonly timedOut: boolean;
 
-  constructor(message: string, code: number | null, stdout: string, stderr: string) {
+  constructor(message: string, code: number | null, stdout: string, stderr: string, timedOut = false) {
     super(message);
     this.name = 'GitCommandError';
     this.code = code;
     this.stdout = stdout;
     this.stderr = stderr;
+    this.timedOut = timedOut;
   }
 }
 
@@ -151,6 +155,7 @@ export class GitService {
     options?: {
       branch?: string;
       depth?: number;
+      idleTimeoutMs?: number;
       onProgress?: (progress: string) => void;
     }
   ): Promise<void> {
@@ -170,7 +175,8 @@ export class GitService {
       onProgress: line => {
         options?.onProgress?.(line);
       },
-      timeoutMs: 10 * 60 * 1000,
+      timeoutMs: options?.idleTimeoutMs === undefined ? 10 * 60 * 1000 : undefined,
+      idleTimeoutMs: options?.idleTimeoutMs,
     });
   }
 
@@ -180,6 +186,7 @@ export class GitService {
     options?: {
       branch?: string;
       depth?: number;
+      idleTimeoutMs?: number;
       onProgress?: (progress: string) => void;
     }
   ): Promise<void> {
@@ -483,6 +490,7 @@ export class GitService {
   private async runGit(args: string[], options: GitCommandOptions = {}): Promise<GitCommandResult> {
     const processId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const timeoutMs = options.timeoutMs ?? 30_000;
+    const idleTimeoutMs = options.idleTimeoutMs;
 
     this.gitOutputChannel.appendLine(`[Git] git ${args.join(' ')}${options.cwd ? ` (cwd: ${options.cwd})` : ''}`);
 
@@ -497,19 +505,39 @@ export class GitService {
       let stdout = '';
       let stderr = '';
       let settled = false;
+      let timeout: NodeJS.Timeout | undefined;
+      const idleTimeoutWatchdog =
+        idleTimeoutMs !== undefined
+          ? createIdleTimeoutWatchdog(idleTimeoutMs, () => {
+              const message = `git ${args.join(' ')} timed out after ${idleTimeoutMs}ms without new stdout/stderr output`;
+              this.gitOutputChannel.appendLine(`[Git] ${message}`);
+
+              if (!gitProcess.killed) {
+                gitProcess.kill('SIGTERM');
+              }
+
+              finish(() => {
+                reject(new GitCommandError(message, null, stdout, stderr, true));
+              });
+            })
+          : undefined;
 
       const finish = (handler: () => void) => {
         if (settled) {
           return;
         }
         settled = true;
-        clearTimeout(timeout);
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+        idleTimeoutWatchdog?.dispose();
         this.removeProcess(processId);
         handler();
       };
 
       const pushOutput = (chunk: Buffer, source: ProgressSource) => {
         const content = chunk.toString();
+        idleTimeoutWatchdog?.bump();
 
         if (source === 'stdout') {
           stdout += content;
@@ -548,15 +576,19 @@ export class GitService {
         });
       });
 
-      const timeout = setTimeout(() => {
-        if (!gitProcess.killed) {
-          gitProcess.kill('SIGTERM');
-        }
+      if (!idleTimeoutWatchdog) {
+        timeout = setTimeout(() => {
+          if (!gitProcess.killed) {
+            gitProcess.kill('SIGTERM');
+          }
 
-        finish(() => {
-          reject(new GitCommandError(`git ${args.join(' ')} timed out after ${timeoutMs}ms`, null, stdout, stderr));
-        });
-      }, timeoutMs);
+          finish(() => {
+            reject(
+              new GitCommandError(`git ${args.join(' ')} timed out after ${timeoutMs}ms`, null, stdout, stderr, true)
+            );
+          });
+        }, timeoutMs);
+      }
     });
   }
 
@@ -575,6 +607,10 @@ export class GitService {
 
   private formatError(error: unknown): string {
     if (error instanceof GitCommandError) {
+      if (error.timedOut) {
+        return error.message;
+      }
+
       return error.stderr.trim() || error.stdout.trim() || error.message;
     }
 

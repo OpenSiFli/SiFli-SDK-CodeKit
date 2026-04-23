@@ -81,3 +81,5 @@ export const GIT_REPOS = {
     GIT_URL: 'https://gitee.com/SiFli/sifli-sdk.git',
   },
 } as const;
+
+export const SDK_INSTALL_IDLE_TIMEOUT_MS = 3 * 60 * 1000;

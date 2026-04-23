@@ -184,6 +184,7 @@
   "Extracting MinGit...": "Extracting MinGit...",
   "Failed to install MinGit: {0}": "Failed to install MinGit: {0}",
   "install.ps1 failed under Windows PowerShell. Please update to PowerShell 7 and try again.": "install.ps1 failed under Windows PowerShell. Please update to PowerShell 7 and try again.",
+  "The install script timed out after {0} minutes without new stdout/stderr output.": "The install script timed out after {0} minutes without new stdout/stderr output.",
   "Offline Release Notes file not found.": "Offline Release Notes file not found.",
   "View release notes": "View release notes",
   "SiFli SDK CodeKit updated to {0}. View release notes?": "SiFli SDK CodeKit updated to {0}. View release notes?",

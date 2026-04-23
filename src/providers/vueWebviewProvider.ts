@@ -10,12 +10,13 @@ import { SdkService } from '../services/sdkService';
 import { TerminalService } from '../services/terminalService';
 import { UvService } from '../services/uvService';
 import { WindowsManagedEnvService } from '../services/windowsManagedEnvService';
-import { GIT_REPOS } from '../constants';
+import { GIT_REPOS, SDK_INSTALL_IDLE_TIMEOUT_MS } from '../constants';
 import { SdkTaskKind, SdkTaskRecord, TaskLogEntry, ToolchainSource } from '../types';
 import { DebugSnapshotRequest } from '../types/debugSnapshot';
 import { DebugSnapshotBackend } from '../peripheral-viewer/export/debugSnapshotBackend';
 import { getPeripheralViewerDebugSnapshotBackend } from '../peripheral-viewer';
 import { formatInstallScriptFailure } from '../utils/powerShellUtils';
+import { createIdleTimeoutWatchdog } from '../utils/idleTimeoutWatchdog';
 
 const RELEASE_BRANCH_PREFIX = 'release/';
 
@@ -512,6 +513,7 @@ export class VueWebviewProvider {
 
       await this.gitService.cloneRepository(repoUrl, fullInstallPath, {
         branch: cloneRef,
+        idleTimeoutMs: SDK_INSTALL_IDLE_TIMEOUT_MS,
         onProgress: progress => log(progress),
       });
 
@@ -955,18 +957,31 @@ export class VueWebviewProvider {
       let stdout = '';
       let stderr = '';
       let settled = false;
+      const idleTimeoutMinutes = Math.floor(SDK_INSTALL_IDLE_TIMEOUT_MS / 60_000);
+      const idleTimeoutMessage = vscode.l10n.t(
+        'The install script timed out after {0} minutes without new stdout/stderr output.',
+        idleTimeoutMinutes
+      );
+      const idleTimeoutWatchdog = createIdleTimeoutWatchdog(SDK_INSTALL_IDLE_TIMEOUT_MS, () => {
+        if (!child.killed) {
+          child.kill('SIGTERM');
+        }
+
+        finish(() => reject(new Error(idleTimeoutMessage)));
+      });
 
       const finish = (handler: () => void) => {
         if (settled) {
           return;
         }
         settled = true;
-        clearTimeout(timeout);
+        idleTimeoutWatchdog.dispose();
         handler();
       };
 
       child.stdout?.on('data', (chunk: Buffer) => {
         const output = chunk.toString();
+        idleTimeoutWatchdog.bump();
         stdout += output;
         output
           .split(/\r?\n/)
@@ -977,6 +992,7 @@ export class VueWebviewProvider {
 
       child.stderr?.on('data', (chunk: Buffer) => {
         const output = chunk.toString();
+        idleTimeoutWatchdog.bump();
         stderr += output;
         output
           .split(/\r?\n/)
@@ -1000,17 +1016,6 @@ export class VueWebviewProvider {
       child.on('error', error => {
         finish(() => reject(new Error(this.formatInstallScriptError(this.getErrorMessage(error), powerShell?.kind))));
       });
-
-      const timeout = setTimeout(
-        () => {
-          if (!child.killed) {
-            child.kill('SIGTERM');
-          }
-
-          finish(() => reject(new Error('install 脚本执行超时。')));
-        },
-        10 * 60 * 1000
-      );
     });
   }
 
