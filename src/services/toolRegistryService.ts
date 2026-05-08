@@ -588,7 +588,7 @@ export class ToolRegistryService {
         id: 'project.configureClangd',
         mcp: {
           name: 'sifli.project.configureClangd',
-          description: 'Update the VS Code clangd configuration for the active board compile commands directory.',
+          description: 'Update clangd arguments and .clangd for the active board, including SiFli GCC query-driver.',
           inputSchema: {
             type: 'object',
             properties: {

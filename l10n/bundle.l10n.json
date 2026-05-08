@@ -92,6 +92,7 @@
   "No workspace folder found.": "No workspace folder found.",
   "Restart VS Code": "Restart VS Code",
   "clangd configuration completed for board {0}. Restart VS Code to apply.": "clangd configuration completed for board {0}. Restart VS Code to apply.",
+  "clangd was configured with warnings: {0}": "clangd was configured with warnings: {0}",
   "Failed to configure clangd: {0}": "Failed to configure clangd: {0}",
   "Manage SiFli SDK installation": "Manage SiFli SDK installation",
   "SDK: {0}": "SDK: {0}",

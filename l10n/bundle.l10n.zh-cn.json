@@ -92,6 +92,7 @@
   "No workspace folder found.": "未找到工作区文件夹。",
   "Restart VS Code": "重启 VS Code",
   "clangd configuration completed for board {0}. Restart VS Code to apply.": "clangd 配置已完成，已设置为芯片模组 {0}。建议重启 VS Code 以使配置生效。",
+  "clangd was configured with warnings: {0}": "clangd 已完成配置，但存在警告：{0}",
   "Failed to configure clangd: {0}": "配置 clangd 失败：{0}",
   "Manage SiFli SDK installation": "管理 SiFli SDK 安装",
   "SDK: {0}": "SDK：{0}",

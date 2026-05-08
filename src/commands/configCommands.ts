@@ -228,6 +228,12 @@ export class ConfigCommands {
       if (action === restartAction) {
         vscode.commands.executeCommand('workbench.action.reloadWindow');
       }
+
+      if (result.warnings && result.warnings.length > 0) {
+        vscode.window.showWarningMessage(
+          vscode.l10n.t('clangd was configured with warnings: {0}', result.warnings.join('; '))
+        );
+      }
     } catch (error) {
       console.error('[ConfigCommands] Error in configureClangd:', error);
       vscode.window.showErrorMessage(vscode.l10n.t('Failed to configure clangd: {0}', String(error)));
