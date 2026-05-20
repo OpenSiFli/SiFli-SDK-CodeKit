@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
 import { SerialPort } from 'serialport';
+import { formatSerialBufferHex, parseSerialHexInput } from '../utils/serialDataUtils';
+
+export { parseSerialHexInput } from '../utils/serialDataUtils';
 
 type SerialParity = 'none' | 'even' | 'mark' | 'odd' | 'space';
 type SerialSendMode = 'text' | 'hex';
@@ -76,26 +79,6 @@ const DEFAULT_BAUD_RATE = 1000000;
 const DEFAULT_DATA_BITS = 8;
 const DEFAULT_STOP_BITS = 1;
 const DEFAULT_PARITY: SerialParity = 'none';
-
-export function parseSerialHexInput(input: string): Buffer {
-  const normalized = input.replace(/0x/gi, '').replace(/[\s,;:_-]/g, '');
-  if (!normalized) {
-    return Buffer.alloc(0);
-  }
-  if (/[^0-9a-fA-F]/.test(normalized)) {
-    throw new Error(vscode.l10n.t('HEX input can only contain hexadecimal bytes.'));
-  }
-  if (normalized.length % 2 !== 0) {
-    throw new Error(vscode.l10n.t('HEX input must contain an even number of digits.'));
-  }
-  return Buffer.from(normalized, 'hex');
-}
-
-function formatBufferHex(data: Buffer): string {
-  return Array.from(data)
-    .map(byte => byte.toString(16).padStart(2, '0').toUpperCase())
-    .join(' ');
-}
 
 function clampPositiveInteger(value: number | undefined, fallback: number, min: number, max: number): number {
   if (value === undefined || !Number.isFinite(value)) {
@@ -331,7 +314,7 @@ class SerialMonitorSession {
     this.addEntry({
       source,
       text,
-      hex: formatBufferHex(data),
+      hex: formatSerialBufferHex(data),
       byteLength: data.length,
     });
   }
@@ -341,7 +324,7 @@ class SerialMonitorSession {
     this.addEntry({
       source,
       text,
-      hex: formatBufferHex(data),
+      hex: formatSerialBufferHex(data),
       byteLength: data.length,
     });
   }
