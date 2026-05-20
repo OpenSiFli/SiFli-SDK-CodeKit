@@ -128,14 +128,12 @@
     <main
       v-else
       ref="logContainer"
-      tabindex="0"
       class="min-h-0 flex-1 overflow-auto bg-vscode-background px-3 py-2 font-mono text-sm leading-relaxed"
       :class="terminalMode ? 'terminal-log-mode' : ''"
-      @click="focusTerminal"
-      @keydown="handleTerminalKeydown"
-      @paste="handleTerminalPaste"
     >
-      <div v-if="continuousLog" class="terminal-stream">
+      <div v-if="terminalMode" ref="terminalContainer" class="xterm-host"></div>
+
+      <div v-else-if="continuousLog" class="terminal-stream">
         <span
           v-for="segment in continuousSegments"
           :key="segment.key"
@@ -196,8 +194,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { FitAddon } from '@xterm/addon-fit';
+import { Terminal } from '@xterm/xterm';
+import '@xterm/xterm/css/xterm.css';
 import { onMessage, postMessage } from '@/services/vscodeBridge';
-import { renderAnsiEntries } from '@/utils/ansiTerminal';
+import { renderAnsiEntries, stripAnsiControlSequences } from '@/utils/ansiTerminal';
 import type {
   SerialLineEnding,
   SerialLogEntry,
@@ -223,7 +224,14 @@ const settings = ref({ showTimestamp: true, renderAnsi: true, logBaudRate: 10000
 const input = ref('');
 const errorMessage = ref('');
 const logContainer = ref<HTMLElement | null>(null);
+const terminalContainer = ref<HTMLElement | null>(null);
 const supportedBaudRates = [1000000, 115200, 1500000, 2000000, 3000000, 6000000];
+
+let terminal: Terminal | undefined;
+let terminalFitAddon: FitAddon | undefined;
+let terminalInputDisposable: { dispose(): void } | undefined;
+let terminalResizeObserver: ResizeObserver | undefined;
+let terminalWrittenEntryId = 0;
 
 const selectedPortInStatus = computed(() => status.value.port || '');
 const activeBaudRate = computed(() => status.value.baudRate || settings.value.logBaudRate);
@@ -243,15 +251,6 @@ const baudRateOptions = computed(() => {
   const current = settings.value.logBaudRate;
   return supportedBaudRates.includes(current) ? supportedBaudRates : [current, ...supportedBaudRates];
 });
-const terminalEnterPayload = computed(() => {
-  if (lineEnding.value === 'lf') {
-    return '\n';
-  }
-  if (lineEnding.value === 'crlf') {
-    return '\r\n';
-  }
-  return '\r';
-});
 
 const disposables: Array<() => void> = [];
 
@@ -263,6 +262,7 @@ onMounted(() => {
     onMessage<{ entry: SerialLogEntry }>('serialMonitorEntry', payload => {
       entries.value = [...entries.value, payload.entry].slice(-2000);
       status.value = { ...status.value, logCount: entries.value.length };
+      syncTerminalEntries();
       void scrollToBottom();
     }),
     onMessage<{ status: SerialMonitorStatus }>('serialMonitorStatus', payload => {
@@ -278,14 +278,39 @@ onMounted(() => {
 
 onUnmounted(() => {
   disposables.forEach(dispose => dispose());
+  disposeTerminal();
 });
 
 watch(terminalMode, enabled => {
   if (enabled) {
     mode.value = 'text';
-    void focusTerminal();
+    if (!settingsOpen.value) {
+      void initializeTerminal();
+    }
+  } else {
+    disposeTerminal();
   }
 });
+
+watch(settingsOpen, open => {
+  if (!terminalMode.value) {
+    return;
+  }
+  if (open) {
+    disposeTerminal();
+    return;
+  }
+  void initializeTerminal();
+});
+
+watch(
+  () => settings.value.renderAnsi,
+  () => {
+    if (terminalMode.value) {
+      replayTerminalEntries();
+    }
+  }
+);
 
 function applySnapshot(snapshot: SerialMonitorSnapshot) {
   status.value = snapshot.status;
@@ -298,6 +323,9 @@ function applySnapshot(snapshot: SerialMonitorSnapshot) {
     renderAnsi: snapshot.settings?.renderAnsi ?? true,
     logBaudRate: snapshot.settings?.logBaudRate ?? snapshot.status.baudRate ?? 1000000,
   };
+  if (terminalMode.value) {
+    replayTerminalEntries();
+  }
   void scrollToBottom();
 }
 
@@ -347,6 +375,10 @@ function toggleConnection() {
 }
 
 function clearLog() {
+  if (terminalMode.value) {
+    terminal?.clear();
+    terminalWrittenEntryId = 0;
+  }
   postMessage({ command: 'serialMonitorClear' });
 }
 
@@ -368,40 +400,42 @@ function handleInputKeydown(event: KeyboardEvent) {
   }
 }
 
-async function focusTerminal() {
+async function initializeTerminal() {
   if (!terminalMode.value) {
     return;
   }
   await nextTick();
-  logContainer.value?.focus({ preventScroll: true });
-}
-
-function handleTerminalPaste(event: ClipboardEvent) {
-  if (!terminalMode.value || !status.value.connected) {
-    return;
-  }
-  const text = event.clipboardData?.getData('text') ?? '';
-  if (text) {
-    event.preventDefault();
-    sendTerminalText(text);
-  }
-}
-
-function handleTerminalKeydown(event: KeyboardEvent) {
-  if (!terminalMode.value || !status.value.connected) {
-    return;
-  }
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v') {
+  if (!terminalContainer.value) {
     return;
   }
 
-  const payload = resolveTerminalKeyPayload(event);
-  if (payload === undefined) {
-    return;
+  if (!terminal) {
+    terminal = new Terminal({
+      convertEol: true,
+      cursorBlink: true,
+      fontFamily: "Menlo, Monaco, 'Courier New', monospace",
+      fontSize: 13,
+      scrollback: 5000,
+      theme: readTerminalTheme(),
+    });
+    terminalFitAddon = new FitAddon();
+    terminal.loadAddon(terminalFitAddon);
+    terminal.open(terminalContainer.value);
+    terminalInputDisposable = terminal.onData(data => {
+      if (status.value.connected) {
+        sendTerminalText(data);
+      }
+    });
+    terminalResizeObserver = new ResizeObserver(() => fitTerminal());
+    terminalResizeObserver.observe(terminalContainer.value);
+    if (logContainer.value) {
+      terminalResizeObserver.observe(logContainer.value);
+    }
   }
 
-  event.preventDefault();
-  sendTerminalText(payload);
+  fitTerminal();
+  replayTerminalEntries();
+  terminal.focus();
 }
 
 function sendTerminalText(payload: string) {
@@ -413,107 +447,72 @@ function sendTerminalText(payload: string) {
   });
 }
 
-function resolveTerminalKeyPayload(event: KeyboardEvent): string | undefined {
-  if (event.ctrlKey && !event.metaKey && !event.altKey) {
-    return resolveCtrlKeyPayload(event.key);
+function replayTerminalEntries() {
+  if (!terminal) {
+    return;
   }
-  if (event.metaKey || event.altKey || event.ctrlKey) {
-    return undefined;
-  }
-  if (event.key.length === 1) {
-    return event.key;
+  terminal.reset();
+  terminalWrittenEntryId = 0;
+  syncTerminalEntries();
+}
+
+function syncTerminalEntries() {
+  if (!terminalMode.value || !terminal) {
+    return;
   }
 
-  switch (event.key) {
-    case 'Enter':
-      return terminalEnterPayload.value;
-    case 'Backspace':
-      return '\x7f';
-    case 'Tab':
-      return '\t';
-    case 'Escape':
-      return '\x1b';
-    case 'ArrowUp':
-      return '\x1b[A';
-    case 'ArrowDown':
-      return '\x1b[B';
-    case 'ArrowRight':
-      return '\x1b[C';
-    case 'ArrowLeft':
-      return '\x1b[D';
-    case 'Home':
-      return '\x1b[H';
-    case 'End':
-      return '\x1b[F';
-    case 'Insert':
-      return '\x1b[2~';
-    case 'Delete':
-      return '\x1b[3~';
-    case 'PageUp':
-      return '\x1b[5~';
-    case 'PageDown':
-      return '\x1b[6~';
-    default:
-      return resolveFunctionKeyPayload(event.key);
+  displayEntries.value.forEach(entry => {
+    if (entry.id <= terminalWrittenEntryId) {
+      return;
+    }
+    terminalWrittenEntryId = entry.id;
+    writeTerminalEntry(entry);
+  });
+  terminal.scrollToBottom();
+}
+
+function writeTerminalEntry(entry: SerialLogEntry) {
+  if (!terminal || entry.source === 'user' || entry.source === 'mcp') {
+    return;
+  }
+
+  const text = settings.value.renderAnsi ? entry.text : stripAnsiControlSequences(entry.text);
+  if (entry.source === 'error' && settings.value.renderAnsi) {
+    terminal.write(`\x1b[31m${text}\x1b[0m\r\n`);
+    return;
+  }
+  terminal.write(text);
+}
+
+function fitTerminal() {
+  try {
+    terminalFitAddon?.fit();
+  } catch {
+    // xterm can throw while the container is not measurable during webview layout churn.
   }
 }
 
-function resolveCtrlKeyPayload(key: string): string | undefined {
-  const lowerKey = key.toLowerCase();
-  if (lowerKey.length === 1 && lowerKey >= 'a' && lowerKey <= 'z') {
-    return String.fromCharCode(lowerKey.charCodeAt(0) - 96);
-  }
-
-  switch (key) {
-    case '@':
-    case '2':
-      return '\x00';
-    case '[':
-      return '\x1b';
-    case '\\':
-      return '\x1c';
-    case ']':
-      return '\x1d';
-    case '^':
-    case '6':
-      return '\x1e';
-    case '_':
-    case '-':
-      return '\x1f';
-    default:
-      return undefined;
-  }
+function disposeTerminal() {
+  terminalResizeObserver?.disconnect();
+  terminalResizeObserver = undefined;
+  terminalInputDisposable?.dispose();
+  terminalInputDisposable = undefined;
+  terminal?.dispose();
+  terminal = undefined;
+  terminalFitAddon = undefined;
+  terminalWrittenEntryId = 0;
 }
 
-function resolveFunctionKeyPayload(key: string): string | undefined {
-  switch (key) {
-    case 'F1':
-      return '\x1bOP';
-    case 'F2':
-      return '\x1bOQ';
-    case 'F3':
-      return '\x1bOR';
-    case 'F4':
-      return '\x1bOS';
-    case 'F5':
-      return '\x1b[15~';
-    case 'F6':
-      return '\x1b[17~';
-    case 'F7':
-      return '\x1b[18~';
-    case 'F8':
-      return '\x1b[19~';
-    case 'F9':
-      return '\x1b[20~';
-    case 'F10':
-      return '\x1b[21~';
-    case 'F11':
-      return '\x1b[23~';
-    case 'F12':
-      return '\x1b[24~';
-    default:
-      return undefined;
-  }
+function readTerminalTheme() {
+  const style = getComputedStyle(document.documentElement);
+  const read = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
+
+  return {
+    background: read('--vscode-terminal-background', read('--vscode-editor-background', '#1e1e1e')),
+    foreground: read('--vscode-terminal-foreground', read('--vscode-editor-foreground', '#d4d4d4')),
+    cursor: read('--vscode-terminalCursor-foreground', read('--vscode-editor-foreground', '#d4d4d4')),
+    selectionBackground: read('--vscode-terminal-selectionBackground', 'rgba(255, 255, 255, 0.25)'),
+  };
 }
 
 function formatPortLabel(port: SerialPortInfo): string {
@@ -559,6 +558,10 @@ function showError(message: string) {
 
 async function scrollToBottom() {
   await nextTick();
+  if (terminalMode.value && terminal) {
+    terminal.scrollToBottom();
+    return;
+  }
   if (logContainer.value) {
     logContainer.value.scrollTop = logContainer.value.scrollHeight;
   }
@@ -617,13 +620,28 @@ async function scrollToBottom() {
 }
 
 .terminal-log-mode {
+  padding: 0;
   background: var(--vscode-terminal-background, var(--vscode-background));
   color: var(--vscode-terminal-foreground, var(--vscode-foreground));
   outline: none;
 }
 
-.terminal-log-mode:focus {
-  box-shadow: inset 0 0 0 1px var(--vscode-focus-border);
+.xterm-host {
+  height: 100%;
+  min-height: 100%;
+}
+
+.xterm-host :deep(.xterm) {
+  height: 100%;
+  padding: 8px 10px;
+}
+
+.xterm-host :deep(.xterm-screen) {
+  min-height: 100%;
+}
+
+.xterm-host :deep(.xterm-viewport) {
+  background: transparent;
 }
 
 .send-input {
