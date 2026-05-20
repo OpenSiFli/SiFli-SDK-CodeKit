@@ -20,6 +20,15 @@
 
 Please refer to our [User Guide](https://docs.sifli.com/projects/codekit) to learn how to install and use the extension.
 
+## Serial Monitor
+
+CodeKit includes a standalone serial monitor panel and no longer depends on the VS Code terminal as the primary serial interaction UI.
+
+- Send data as String or HEX
+- Switch between text logs and HEX byte view
+- Pulse DTR/RTS control lines for device reset
+- Configure the default line ending, open-state DTR/RTS levels, and reset pulse parameters with `sifli-sdk-codekit.serialMonitor.*`
+
 ## MCP Server
 
 CodeKit now includes an optional embedded MCP Server so other agent tools or IDEs can call extension capabilities through MCP.
@@ -27,5 +36,6 @@ CodeKit now includes an optional embedded MCP Server so other agent tools or IDE
 - Run `Start SiFli MCP Server` from the command palette to start the server
 - Run `Show SiFli MCP Connection Info` to get the URL and Bearer token
 - Enable `sifli-sdk-codekit.mcp.autoStart` to start it automatically on activation
+- Serial MCP tools include `sifli.serial.listPorts`, `sifli.serial.connect`, `sifli.serial.write`, `sifli.serial.read`, `sifli.serial.reset`, `sifli.serial.status`, and `sifli.serial.disconnect`
 
 The current implementation runs inside the VS Code extension host, so the VS Code instance that hosts CodeKit must remain running while external clients use the MCP connection.
