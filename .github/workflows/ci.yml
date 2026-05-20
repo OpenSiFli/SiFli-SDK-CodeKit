@@ -27,13 +27,13 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0  # Fetch all history for commit counting
           submodules: recursive
         
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'yarn'
@@ -124,7 +124,7 @@ jobs:
         run: ls -la *.vsix
         
       - name: Upload VSIX as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sifli-sdk-codekit-${{ steps.get-version.outputs.version }}-${{ github.sha }}
           path: '*.vsix'
@@ -139,7 +139,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           submodules: recursive
@@ -167,7 +167,7 @@ jobs:
         run: git cliff "${{ steps.tag_range.outputs.range }}" -c cliff.toml -o RELEASE_NOTES.md
         
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: sifli-sdk-codekit-${{ needs.build.outputs.version }}-${{ github.sha }}
           
@@ -196,19 +196,19 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           submodules: recursive
         
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'yarn'
         
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: sifli-sdk-codekit-${{ needs.build.outputs.version }}-${{ github.sha }}
           
@@ -238,19 +238,19 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           submodules: recursive
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'yarn'
 
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: sifli-sdk-codekit-${{ needs.build.outputs.version }}-${{ github.sha }}
 
