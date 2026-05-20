@@ -708,6 +708,9 @@ export class BuiltinSerialMonitorService {
             await this.postSnapshot(connectionId);
           }
           break;
+        case 'serialMonitorConnect':
+          await this.connectPanelSerialPort(connectionId, message);
+          break;
         case 'serialMonitorChangePort':
           await this.changePanelSerialPort(connectionId, String(message.port ?? ''));
           break;
@@ -796,6 +799,12 @@ export class BuiltinSerialMonitorService {
     return baudRate;
   }
 
+  private async connectPanelSerialPort(connectionId: string, message: Record<string, unknown>): Promise<void> {
+    const baudRate = this.resolveLogBaudRate(message.baudRate) ?? this.serialPortService.monitorBaudRate;
+    this.serialPortService.monitorBaudRate = baudRate;
+    await this.changePanelSerialPort(connectionId, String(message.port ?? ''), baudRate);
+  }
+
   private async changePanelSerialPort(
     connectionId: string,
     portPath: string,
@@ -860,6 +869,8 @@ export class BuiltinSerialMonitorService {
     );
 
     await session.open();
+    this.serialPortService.monitorSerialPort = session.portPath;
+    this.serialPortService.monitorBaudRate = baudRate;
     this.sessions.set(session.connectionId, session);
     this.panels.set(session.connectionId, panel);
     panel.title = `${baseTitle}: ${session.name}`;

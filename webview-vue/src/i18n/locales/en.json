@@ -171,6 +171,7 @@
       "settings": "Settings",
       "clear": "Clear",
       "reset": "Reset",
+      "connect": "Connect",
       "disconnect": "Disconnect",
       "send": "Send"
     },

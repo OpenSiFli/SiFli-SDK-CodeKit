@@ -51,8 +51,8 @@
       <button class="tool-button" :disabled="!status.connected" @click="resetDevice">
         {{ t('serialMonitor.actions.reset') }}
       </button>
-      <button class="tool-button" :disabled="!status.connected" @click="disconnect">
-        {{ t('serialMonitor.actions.disconnect') }}
+      <button class="tool-button" :disabled="!canToggleConnection" @click="toggleConnection">
+        {{ status.connected ? t('serialMonitor.actions.disconnect') : t('serialMonitor.actions.connect') }}
       </button>
 
       <div class="basis-full text-xs text-vscode-input-placeholder sm:basis-auto">
@@ -174,6 +174,7 @@ const supportedBaudRates = [1000000, 115200, 1500000, 2000000, 3000000, 6000000]
 const selectedPortInStatus = computed(() => status.value.port || '');
 const activeBaudRate = computed(() => status.value.baudRate || settings.value.logBaudRate);
 const displayEntries = computed(() => entries.value.filter(entry => entry.source !== 'system'));
+const canToggleConnection = computed(() => status.value.connected || !!selectedPort.value);
 const baudRateOptions = computed(() => {
   const current = settings.value.logBaudRate;
   return supportedBaudRates.includes(current) ? supportedBaudRates : [current, ...supportedBaudRates];
@@ -251,8 +252,17 @@ function resetDevice() {
   postMessage({ command: 'serialMonitorReset' });
 }
 
-function disconnect() {
-  postMessage({ command: 'serialMonitorDisconnect' });
+function toggleConnection() {
+  if (status.value.connected) {
+    postMessage({ command: 'serialMonitorDisconnect' });
+    return;
+  }
+
+  postMessage({
+    command: 'serialMonitorConnect',
+    port: selectedPort.value,
+    baudRate: settings.value.logBaudRate,
+  });
 }
 
 function clearLog() {
