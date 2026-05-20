@@ -258,13 +258,13 @@ export class SerialPortService {
    * 工具函数：从完整的串口路径中提取用于状态栏显示的名称。
    * 兼容 Windows、Linux 和 macOS。
    * @param portPath 完整的串口路径，例如 'COM8' 或 '/dev/ttyUSB0'。
-   * @returns 简化的名称，例如 '8' 或 'ttyUSB0'。
+   * @returns 简化的名称，例如 'COM8' 或 'ttyUSB0'。
    */
   public static getDisplayPortName(portPath: string): string {
     // 检查是否为 Windows 的 COM 端口
-    const comMatch = portPath.match(/COM(\d+)/i);
+    const comMatch = portPath.match(/^(?:\\\\\.\\)?COM(\d+)$/i);
     if (comMatch && comMatch[1]) {
-      return comMatch[1]; // 返回纯数字部分，例如 '8'
+      return `COM${comMatch[1]}`;
     }
 
     // 对于非 Windows 系统，返回路径的基名称

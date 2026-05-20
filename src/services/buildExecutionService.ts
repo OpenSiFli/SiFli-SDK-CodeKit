@@ -165,14 +165,14 @@ export class BuildExecutionService {
     if (!selectedSerialPort) {
       if (showNotifications) {
         vscode.window.showWarningMessage(
-          vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.')
+          vscode.l10n.t('Select a download serial port first. Click the plug item in the status bar.')
         );
       }
       return {
         success: false,
         taskName: TASK_NAMES.DOWNLOAD,
         runId: options?.runId,
-        message: vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'),
+        message: vscode.l10n.t('Select a download serial port first. Click the plug item in the status bar.'),
       };
     }
 

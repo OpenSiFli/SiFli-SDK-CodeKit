@@ -922,7 +922,7 @@ export class WorkflowService {
         reasons.add(vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'));
       }
       if (step.type === 'build.download' && !hasDownloadSerialPort) {
-        reasons.add(vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'));
+        reasons.add(vscode.l10n.t('Select a download serial port first. Click the plug item in the status bar.'));
       }
       if (step.type === 'monitor.open' && !hasMonitorSerialPort) {
         reasons.add(vscode.l10n.t('Select a log serial port in the serial monitor first or pass a port.'));

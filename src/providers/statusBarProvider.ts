@@ -106,7 +106,7 @@ export class StatusBarProvider {
     context.subscriptions.push(this.currentBoardStatusItem);
 
     this.currentSerialPortStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
-    this.currentSerialPortStatusItem.text = vscode.l10n.t('$(plug) COM: {0}', vscode.l10n.t('N/A'));
+    this.currentSerialPortStatusItem.text = vscode.l10n.t('$(plug) {0}', vscode.l10n.t('N/A'));
     this.currentSerialPortStatusItem.command = CMD_PREFIX + 'selectPort';
     this.currentSerialPortStatusItem.show();
     context.subscriptions.push(this.currentSerialPortStatusItem);
@@ -163,9 +163,7 @@ export class StatusBarProvider {
       const displayPortName = selectedSerialPort
         ? SerialPortService.getDisplayPortName(selectedSerialPort)
         : notAvailable;
-      this.currentSerialPortStatusItem.text = selectedSerialPort
-        ? vscode.l10n.t('$(plug) COM: {0} @ {1}', displayPortName, String(this.serialPortService.downloadBaudRate))
-        : vscode.l10n.t('$(plug) COM: {0}', displayPortName);
+      this.currentSerialPortStatusItem.text = vscode.l10n.t('$(plug) {0}', displayPortName);
       this.currentSerialPortStatusItem.tooltip = vscode.l10n.t(
         'Download serial port: {0}\nDownload baud rate: {1}\nClick to configure download serial port',
         selectedSerialPort || notSelected,
