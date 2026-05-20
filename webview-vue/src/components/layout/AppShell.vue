@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen p-0 text-vscode-foreground">
+  <div :class="rootClass">
     <div :class="shellClass">
       <header v-if="showBackButton" class="flex items-center gap-3">
         <button
@@ -30,7 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSdkCatalogStore } from '@/stores/sdkCatalog';
 
@@ -42,12 +42,17 @@ const isStandaloneRoute = computed(
   () => route.name === 'analysis' || route.name === 'debug-snapshot' || isSerialMonitorRoute.value
 );
 const showBackButton = computed(() => route.path !== '/' && !isStandaloneRoute.value);
+const rootClass = computed(() =>
+  isSerialMonitorRoute.value
+    ? 'h-screen min-h-0 overflow-hidden p-0 text-vscode-foreground'
+    : 'min-h-screen p-0 text-vscode-foreground'
+);
 const shellClass = computed(() =>
   isSerialMonitorRoute.value
-    ? 'mx-auto flex w-full max-w-none flex-col px-0 py-0'
+    ? 'mx-auto flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden px-0 py-0'
     : 'mx-auto flex w-full max-w-6xl flex-col px-4 py-8 sm:px-6'
 );
-const mainClass = computed(() => (isSerialMonitorRoute.value ? 'flex-1 py-0' : 'flex-1 py-6'));
+const mainClass = computed(() => (isSerialMonitorRoute.value ? 'min-h-0 flex-1 overflow-hidden py-0' : 'flex-1 py-6'));
 
 onMounted(() => {
   if (!isStandaloneRoute.value && catalogStore.sdks.length === 0) {
@@ -64,5 +69,19 @@ const bannerClass = computed(() => {
     default:
       return 'border-vscode-panel-border bg-vscode-input-background text-vscode-foreground';
   }
+});
+
+watch(
+  isSerialMonitorRoute,
+  enabled => {
+    document.documentElement.classList.toggle('serial-monitor-route', enabled);
+    document.body.classList.toggle('serial-monitor-route', enabled);
+  },
+  { immediate: true }
+);
+
+onUnmounted(() => {
+  document.documentElement.classList.remove('serial-monitor-route');
+  document.body.classList.remove('serial-monitor-route');
 });
 </script>
