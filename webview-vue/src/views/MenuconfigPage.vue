@@ -64,20 +64,39 @@
           />
         </div>
         <div class="max-h-[calc(100vh-9rem)] overflow-auto py-2">
-          <button
-            v-for="node in menuNodes"
-            :key="node.id"
-            class="block w-full truncate px-2 py-1.5 text-left text-sm hover:bg-[var(--vscode-list-hoverBackground)]"
-            :class="
-              node.id === selectedNodeId
-                ? 'bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-list-activeSelectionForeground)]'
-                : ''
-            "
-            :style="{ paddingLeft: `${node.depth * 12 + 8}px` }"
-            @click="selectNode(node.id)"
-          >
-            {{ node.prompt }}
-          </button>
+          <div v-if="treeRows.length === 0" class="px-3 py-8 text-center text-sm text-vscode-input-placeholder">
+            没有匹配的菜单项
+          </div>
+          <template v-else>
+            <div
+              v-for="row in treeRows"
+              :key="row.node.id"
+              class="flex min-w-0 items-center gap-1 px-2 py-1 text-sm hover:bg-[var(--vscode-list-hoverBackground)]"
+              :class="
+                row.node.id === selectedNodeId
+                  ? 'bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-list-activeSelectionForeground)]'
+                  : ''
+              "
+              :style="{ paddingLeft: `${row.depth * 12 + 8}px` }"
+            >
+              <button
+                v-if="row.hasChildren"
+                class="flex h-5 w-5 shrink-0 items-center justify-center text-xs text-vscode-input-placeholder hover:text-vscode-foreground"
+                :aria-label="isExpanded(row.node) ? '折叠菜单' : '展开菜单'"
+                @click.stop="toggleNode(row.node.id)"
+              >
+                {{ isExpanded(row.node) ? '▾' : '▸' }}
+              </button>
+              <span v-else class="h-5 w-5 shrink-0" />
+              <button
+                class="min-w-0 flex-1 truncate text-left"
+                :class="row.matched ? 'font-medium text-vscode-foreground' : ''"
+                @click="selectNode(row.node.id)"
+              >
+                {{ row.node.prompt }}
+              </button>
+            </div>
+          </template>
         </div>
       </aside>
 
@@ -102,11 +121,11 @@
             :key="node.id"
             class="grid gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_260px]"
             :class="node.visible ? '' : 'opacity-55'"
-            @click="selectedDetailId = node.id"
+            @click="showDetail(node.id)"
           >
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
-                <button class="truncate text-left font-medium hover:underline" @click.stop="selectedDetailId = node.id">
+                <button class="truncate text-left font-medium hover:underline" @click.stop="showDetail(node.id)">
                   {{ node.prompt }}
                 </button>
                 <span v-if="node.symbol" class="font-mono text-xs text-vscode-input-placeholder">{{
@@ -240,16 +259,26 @@ import BaseButton from '@/components/common/BaseButton.vue';
 import { useKconfigStore } from '@/stores/kconfig';
 import type { KconfigNode } from '@/types';
 
+interface TreeRow {
+  node: KconfigNode;
+  depth: number;
+  hasChildren: boolean;
+  matched: boolean;
+}
+
 const store = useKconfigStore();
 const query = ref('');
 const selectedNodeId = ref('');
 const selectedDetailId = ref('');
+const expandedNodeIds = ref<Set<string>>(new Set());
 
 const snapshot = computed(() => store.snapshot);
+const searchNeedle = computed(() => query.value.trim().toLowerCase());
 
-const menuNodes = computed(() =>
-  store.flatNodes.filter(node => node.kind === 'menu' || node.kind === 'choice' || node.children.length > 0)
-);
+const treeRows = computed(() => {
+  const nodes = snapshot.value?.nodes ?? [];
+  return searchNeedle.value ? buildFilteredTreeRows(nodes, 0, searchNeedle.value) : buildExpandedTreeRows(nodes, 0);
+});
 
 const selectedNode = computed(() => store.flatNodes.find(node => node.id === selectedNodeId.value) ?? null);
 const selectedDetail = computed(
@@ -264,16 +293,11 @@ const contentTitle = computed(() => {
 });
 
 const contentNodes = computed<KconfigNode[]>(() => {
-  const needle = query.value.trim().toLowerCase();
-  if (needle) {
-    return store.flatNodes.filter(
-      node =>
-        isConfigurable(node) &&
-        (node.prompt.toLowerCase().includes(needle) || node.symbol.toLowerCase().includes(needle))
-    );
+  if (searchNeedle.value) {
+    return store.flatNodes.filter(node => isConfigurable(node) && matchesNode(node, searchNeedle.value));
   }
   if (selectedNode.value) {
-    return selectedNode.value.children;
+    return selectedNode.value.children.length > 0 ? selectedNode.value.children : [selectedNode.value];
   }
   return snapshot.value?.nodes ?? [];
 });
@@ -288,8 +312,11 @@ watch(
     if (!nodes || nodes.length === 0) {
       return;
     }
+    if (expandedNodeIds.value.size === 0) {
+      expandedNodeIds.value = new Set(collectInitialExpandedIds(nodes));
+    }
     if (!selectedNodeId.value) {
-      selectedNodeId.value = menuNodes.value[0]?.id ?? nodes[0].id;
+      selectedNodeId.value = treeRows.value[0]?.node.id ?? nodes[0].id;
     }
     if (!selectedDetailId.value) {
       selectedDetailId.value = nodes[0].id;
@@ -298,9 +325,145 @@ watch(
   { immediate: true }
 );
 
+watch(searchNeedle, needle => {
+  if (!needle) {
+    return;
+  }
+  const firstMatch = store.flatNodes.find(node => isConfigurable(node) && matchesNode(node, needle));
+  if (firstMatch) {
+    selectedNodeId.value = firstMatch.id;
+    selectedDetailId.value = firstMatch.id;
+  }
+});
+
 function selectNode(id: string) {
   selectedNodeId.value = id;
   selectedDetailId.value = id;
+  expandAncestors(id);
+}
+
+function showDetail(id: string) {
+  selectedDetailId.value = id;
+  expandAncestors(id);
+}
+
+function toggleNode(id: string) {
+  if (searchNeedle.value) {
+    return;
+  }
+  const next = new Set(expandedNodeIds.value);
+  if (next.has(id)) {
+    next.delete(id);
+  } else {
+    next.add(id);
+  }
+  expandedNodeIds.value = next;
+}
+
+function isExpanded(node: KconfigNode): boolean {
+  return searchNeedle.value ? hasTreeChildren(node) : expandedNodeIds.value.has(node.id);
+}
+
+function buildExpandedTreeRows(nodes: KconfigNode[], depth: number): TreeRow[] {
+  const rows: TreeRow[] = [];
+  for (const node of nodes) {
+    if (!isTreeNode(node)) {
+      rows.push(...buildExpandedTreeRows(node.children, depth));
+      continue;
+    }
+
+    const hasChildren = hasTreeChildren(node);
+    rows.push({
+      node,
+      depth,
+      hasChildren,
+      matched: false,
+    });
+
+    if (hasChildren && expandedNodeIds.value.has(node.id)) {
+      rows.push(...buildExpandedTreeRows(node.children, depth + 1));
+    }
+  }
+  return rows;
+}
+
+function buildFilteredTreeRows(nodes: KconfigNode[], depth: number, needle: string): TreeRow[] {
+  const rows: TreeRow[] = [];
+  for (const node of nodes) {
+    const childRows = buildFilteredTreeRows(node.children, depth + (isTreeNode(node) ? 1 : 0), needle);
+
+    if (!isTreeNode(node)) {
+      rows.push(...childRows);
+      continue;
+    }
+
+    const matched = matchesNode(node, needle);
+    if (!matched && childRows.length === 0) {
+      continue;
+    }
+
+    rows.push({
+      node,
+      depth,
+      hasChildren: hasTreeChildren(node),
+      matched,
+    });
+    rows.push(...childRows);
+  }
+  return rows;
+}
+
+function collectInitialExpandedIds(nodes: KconfigNode[], depth = 0): string[] {
+  const ids: string[] = [];
+  for (const node of nodes) {
+    if (!isTreeNode(node)) {
+      ids.push(...collectInitialExpandedIds(node.children, depth));
+      continue;
+    }
+    if (hasTreeChildren(node) && depth < 2) {
+      ids.push(node.id);
+      ids.push(...collectInitialExpandedIds(node.children, depth + 1));
+    }
+  }
+  return ids;
+}
+
+function expandAncestors(id: string) {
+  const path = findNodePath(snapshot.value?.nodes ?? [], id);
+  if (!path || path.length < 2) {
+    return;
+  }
+  const next = new Set(expandedNodeIds.value);
+  for (const ancestorId of path.slice(0, -1)) {
+    next.add(ancestorId);
+  }
+  expandedNodeIds.value = next;
+}
+
+function findNodePath(nodes: KconfigNode[], id: string, path: string[] = []): string[] | null {
+  for (const node of nodes) {
+    const nextPath = isTreeNode(node) ? [...path, node.id] : path;
+    if (node.id === id) {
+      return nextPath;
+    }
+    const childPath = findNodePath(node.children, id, nextPath);
+    if (childPath) {
+      return childPath;
+    }
+  }
+  return null;
+}
+
+function isTreeNode(node: KconfigNode): boolean {
+  return node.kind !== 'comment' && !!node.prompt;
+}
+
+function hasTreeChildren(node: KconfigNode): boolean {
+  return node.children.some(child => isTreeNode(child) || hasTreeChildren(child));
+}
+
+function matchesNode(node: KconfigNode, needle: string): boolean {
+  return node.prompt.toLowerCase().includes(needle) || node.symbol.toLowerCase().includes(needle);
 }
 
 function isConfigurable(node: KconfigNode): boolean {
