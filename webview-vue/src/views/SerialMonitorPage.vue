@@ -125,16 +125,16 @@
 
     <footer
       v-if="!settingsOpen"
-      class="flex gap-2 border-t border-vscode-panel-border bg-vscode-input-background/35 p-3"
+      class="grid grid-cols-[minmax(0,1fr)_96px] items-stretch gap-2 border-t border-vscode-panel-border bg-vscode-input-background/35 p-3"
     >
       <textarea
         v-model="input"
-        class="min-h-[52px] flex-1 resize-y rounded border border-vscode-input-border bg-vscode-input-background px-3 py-2 font-mono text-sm text-vscode-input-foreground"
+        class="send-input h-14 min-h-14 resize-none rounded border border-vscode-input-border bg-vscode-input-background px-3 py-2 font-mono text-sm leading-5 text-vscode-input-foreground"
         spellcheck="false"
         :placeholder="mode === 'hex' ? t('serialMonitor.placeholder.hex') : t('serialMonitor.placeholder.text')"
         @keydown="handleInputKeydown"
       ></textarea>
-      <button class="tool-button-primary min-w-[96px]" :disabled="!status.connected" @click="sendData">
+      <button class="tool-button-primary send-button" :disabled="!status.connected" @click="sendData">
         {{ t('serialMonitor.actions.send') }}
       </button>
     </footer>
@@ -366,6 +366,16 @@ async function scrollToBottom() {
 .tool-button-active {
   border-color: var(--vscode-focus-border);
   color: var(--vscode-foreground);
+}
+
+.send-input {
+  overflow-y: auto;
+}
+
+.send-button {
+  height: 56px;
+  min-width: 96px;
+  align-self: stretch;
 }
 
 .direction-chip {
