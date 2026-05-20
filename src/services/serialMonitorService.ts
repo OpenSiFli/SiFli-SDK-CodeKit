@@ -7,6 +7,7 @@ import {
   SerialMonitorStatus,
   SerialWriteOptions,
 } from './builtinSerialMonitorService';
+import { SerialPortService } from './serialPortService';
 
 /**
  * 串口监听器服务
@@ -15,6 +16,9 @@ import {
 export class SerialMonitorService {
   private static instance: SerialMonitorService;
   private builtinService: BuiltinSerialMonitorService;
+  private serialPortService: SerialPortService;
+  private readonly onDidChangeActiveSessionEmitter = new vscode.EventEmitter<SerialMonitorStatus>();
+  public readonly onDidChangeActiveSession = this.onDidChangeActiveSessionEmitter.event;
   private currentConnectionId: string | undefined;
   private defaultBaudRate = 1000000;
   private lastUsedSerialPort: string | undefined;
@@ -22,6 +26,10 @@ export class SerialMonitorService {
 
   private constructor() {
     this.builtinService = BuiltinSerialMonitorService.getInstance();
+    this.serialPortService = SerialPortService.getInstance();
+    this.builtinService.onDidChangeActiveSession(status => {
+      this.captureConnectedStatus(status);
+    });
   }
 
   public static getInstance(): SerialMonitorService {
@@ -60,9 +68,13 @@ export class SerialMonitorService {
 
       if (this.currentConnectionId) {
         console.log(`串口监听器已打开: ${this.currentConnectionId}`);
-        // 记住当前使用的配置
-        this.lastUsedSerialPort = this.currentConnectionId;
-        this.lastUsedBaudRate = actualBaudRate;
+        this.persistConnectedSerialConfig({
+          connectionId: this.currentConnectionId,
+          connected: true,
+          port: this.currentConnectionId,
+          baudRate: actualBaudRate,
+          logCount: 0,
+        });
         return true;
       } else {
         console.log('用户取消了串口选择或打开失败');
@@ -92,8 +104,13 @@ export class SerialMonitorService {
         return false;
       }
 
-      this.lastUsedSerialPort = this.currentConnectionId;
-      this.lastUsedBaudRate = actualBaudRate;
+      this.persistConnectedSerialConfig({
+        connectionId: this.currentConnectionId,
+        connected: true,
+        port: this.currentConnectionId,
+        baudRate: actualBaudRate,
+        logCount: 0,
+      });
       return true;
     } catch (error) {
       console.error('连接串口会话失败:', error);
@@ -278,6 +295,30 @@ export class SerialMonitorService {
    */
   public getActiveConnectionCount(): number {
     return this.builtinService.getActiveConnectionCount();
+  }
+
+  private captureConnectedStatus(status: SerialMonitorStatus): void {
+    if (!status.connected || !status.port) {
+      return;
+    }
+
+    this.persistConnectedSerialConfig(status);
+    this.onDidChangeActiveSessionEmitter.fire(status);
+  }
+
+  private persistConnectedSerialConfig(status: SerialMonitorStatus): void {
+    if (!status.port) {
+      return;
+    }
+
+    this.currentConnectionId = status.connectionId ?? status.port;
+    this.lastUsedSerialPort = status.port;
+    this.serialPortService.selectedSerialPort = status.port;
+
+    if (status.baudRate !== undefined) {
+      this.lastUsedBaudRate = status.baudRate;
+      this.serialPortService.monitorBaudRate = status.baudRate;
+    }
   }
 
   private requireConnectionId(): string {

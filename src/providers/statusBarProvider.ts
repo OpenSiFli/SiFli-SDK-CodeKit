@@ -110,6 +110,11 @@ export class StatusBarProvider {
     this.currentSerialPortStatusItem.command = CMD_PREFIX + 'selectPort';
     this.currentSerialPortStatusItem.show();
     context.subscriptions.push(this.currentSerialPortStatusItem);
+    context.subscriptions.push(
+      this.serialMonitorService.onDidChangeActiveSession(() => {
+        this.updateStatusBarItems();
+      })
+    );
 
     this.renderActionButtons();
     this.updateStatusBarItems();

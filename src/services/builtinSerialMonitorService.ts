@@ -55,6 +55,12 @@ export interface SerialMonitorStatus {
   logCount: number;
 }
 
+export interface SerialPortInfo {
+  path: string;
+  manufacturer?: string;
+  serialNumber?: string;
+}
+
 export interface SerialReadOptions {
   afterId?: number;
   maxEntries?: number;
@@ -357,6 +363,8 @@ export class BuiltinSerialMonitorService {
   private readonly sessions = new Map<string, SerialMonitorSession>();
   private readonly panels = new Map<string, vscode.WebviewPanel>();
   private readonly panelDisposables = new Map<string, vscode.Disposable[]>();
+  private readonly onDidChangeActiveSessionEmitter = new vscode.EventEmitter<SerialMonitorStatus>();
+  public readonly onDidChangeActiveSession = this.onDidChangeActiveSessionEmitter.event;
   private defaultBaudRate = DEFAULT_BAUD_RATE;
 
   private constructor() {}
@@ -368,7 +376,7 @@ export class BuiltinSerialMonitorService {
     return BuiltinSerialMonitorService.instance;
   }
 
-  public async listSerialPorts(): Promise<{ path: string; manufacturer?: string; serialNumber?: string }[]> {
+  public async listSerialPorts(): Promise<SerialPortInfo[]> {
     try {
       const ports = await SerialPort.list();
       return ports.map(port => ({
@@ -395,6 +403,7 @@ export class BuiltinSerialMonitorService {
         if (revealMonitor) {
           this.revealOrCreatePanel(existingSession, title);
         }
+        this.onDidChangeActiveSessionEmitter.fire(existingSession.getStatus());
         return existingSession.connectionId;
       }
 
@@ -422,6 +431,7 @@ export class BuiltinSerialMonitorService {
         this.revealOrCreatePanel(session, title);
       }
 
+      this.onDidChangeActiveSessionEmitter.fire(session.getStatus());
       return session.connectionId;
     } catch (error) {
       console.error('Failed to open serial monitor:', error);
@@ -525,9 +535,7 @@ export class BuiltinSerialMonitorService {
     return selected?.label;
   }
 
-  private async resolvePortInfo(
-    portPath: string
-  ): Promise<{ path: string; manufacturer?: string; serialNumber?: string }> {
+  private async resolvePortInfo(portPath: string): Promise<SerialPortInfo> {
     const ports = await this.listSerialPorts();
     return ports.find(port => port.path === portPath) ?? { path: portPath };
   }
