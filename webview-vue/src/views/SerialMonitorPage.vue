@@ -83,6 +83,18 @@
           <input v-model="settings.showTimestamp" type="checkbox" class="h-4 w-4" @change="updateSettings" />
         </label>
 
+        <label
+          class="mt-4 flex cursor-pointer items-center justify-between gap-4 border-t border-vscode-panel-border pt-4"
+        >
+          <span>
+            <span class="block text-sm">{{ t('serialMonitor.settings.renderAnsi') }}</span>
+            <span class="mt-1 block text-xs text-vscode-input-placeholder">
+              {{ t('serialMonitor.settings.renderAnsiDescription') }}
+            </span>
+          </span>
+          <input v-model="settings.renderAnsi" type="checkbox" class="h-4 w-4" @change="updateSettings" />
+        </label>
+
         <label class="mt-4 block border-t border-vscode-panel-border pt-4">
           <span class="block text-sm">{{ t('serialMonitor.settings.logBaudRate') }}</span>
           <span class="mt-1 block text-xs text-vscode-input-placeholder">
@@ -165,7 +177,7 @@ const mode = ref<SerialSendMode>('text');
 const lineEnding = ref<SerialLineEnding>('crlf');
 const showHex = ref(false);
 const settingsOpen = ref(false);
-const settings = ref({ showTimestamp: true, logBaudRate: 1000000 });
+const settings = ref({ showTimestamp: true, renderAnsi: true, logBaudRate: 1000000 });
 const input = ref('');
 const errorMessage = ref('');
 const logContainer = ref<HTMLElement | null>(null);
@@ -215,6 +227,7 @@ function applySnapshot(snapshot: SerialMonitorSnapshot) {
   lineEnding.value = snapshot.defaultLineEnding || 'crlf';
   settings.value = {
     showTimestamp: snapshot.settings?.showTimestamp ?? true,
+    renderAnsi: snapshot.settings?.renderAnsi ?? true,
     logBaudRate: snapshot.settings?.logBaudRate ?? snapshot.status.baudRate ?? 1000000,
   };
   void scrollToBottom();
@@ -274,6 +287,7 @@ function updateSettings() {
     command: 'serialMonitorUpdateSettings',
     settings: {
       showTimestamp: settings.value.showTimestamp,
+      renderAnsi: settings.value.renderAnsi,
       logBaudRate: settings.value.logBaudRate,
     },
   });

@@ -24,6 +24,8 @@ export interface WorkspaceState {
   workflowShellApprovals?: Record<string, true>;
   // 串口监视器是否显示时间戳
   serialMonitorShowTimestamp?: boolean;
+  // 串口监视器是否渲染 VT-100/ANSI 颜色
+  serialMonitorRenderAnsi?: boolean;
 }
 
 // 工作区状态的 key 常量
@@ -37,6 +39,7 @@ export const WORKSPACE_STATE_KEYS = {
   NUM_THREADS: 'numThreads',
   WORKFLOW_SHELL_APPROVALS: 'workflowShellApprovals',
   SERIAL_MONITOR_SHOW_TIMESTAMP: 'serialMonitorShowTimestamp',
+  SERIAL_MONITOR_RENDER_ANSI: 'serialMonitorRenderAnsi',
 } as const;
 
 // 默认值
@@ -50,6 +53,7 @@ const DEFAULT_VALUES: Required<WorkspaceState> = {
   numThreads: 8,
   workflowShellApprovals: {},
   serialMonitorShowTimestamp: true,
+  serialMonitorRenderAnsi: true,
 };
 
 /**
@@ -124,6 +128,7 @@ export class WorkspaceStateService {
       numThreads: this.get('numThreads'),
       workflowShellApprovals: this.get('workflowShellApprovals'),
       serialMonitorShowTimestamp: this.get('serialMonitorShowTimestamp'),
+      serialMonitorRenderAnsi: this.get('serialMonitorRenderAnsi'),
     };
   }
 
@@ -243,5 +248,14 @@ export class WorkspaceStateService {
 
   public async setSerialMonitorShowTimestamp(value: boolean): Promise<void> {
     await this.set('serialMonitorShowTimestamp', value);
+  }
+
+  // serialMonitorRenderAnsi
+  public getSerialMonitorRenderAnsi(): boolean {
+    return this.get('serialMonitorRenderAnsi') ?? DEFAULT_VALUES.serialMonitorRenderAnsi;
+  }
+
+  public async setSerialMonitorRenderAnsi(value: boolean): Promise<void> {
+    await this.set('serialMonitorRenderAnsi', value);
   }
 }
