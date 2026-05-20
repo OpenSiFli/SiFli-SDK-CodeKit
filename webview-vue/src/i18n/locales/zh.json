@@ -210,6 +210,65 @@
     "noPorts": "未发现串口",
     "entries": "{count} 条日志"
   },
+  "menuconfig": {
+    "sectionLabel": "Menuconfig",
+    "title": "图形化配置",
+    "meta": {
+      "board": "开发板：{board}",
+      "config": "配置：{config}"
+    },
+    "actions": {
+      "refresh": "刷新",
+      "discard": "丢弃",
+      "save": "保存",
+      "terminal": "终端版"
+    },
+    "loading": "正在读取 Kconfig...",
+    "search": {
+      "placeholder": "搜索配置项",
+      "results": "搜索结果",
+      "allConfig": "全部配置"
+    },
+    "tree": {
+      "expandLabel": "展开菜单",
+      "collapseLabel": "折叠菜单"
+    },
+    "empty": {
+      "noMenuMatches": "没有匹配的菜单项",
+      "noConfigMatches": "没有匹配的配置项"
+    },
+    "changes": {
+      "count": "{count} 项更改",
+      "previewing": "正在计算依赖"
+    },
+    "fields": {
+      "readOnly": "只读",
+      "dependsOn": "依赖 {expression}"
+    },
+    "values": {
+      "enabled": "启用",
+      "disabled": "关闭"
+    },
+    "details": {
+      "title": "详情",
+      "name": "名称",
+      "type": "类型",
+      "value": "值",
+      "location": "位置",
+      "depends": "依赖",
+      "help": "帮助",
+      "placeholder": "选择一个配置项查看详情"
+    },
+    "warnings": {
+      "title": "警告"
+    },
+    "task": {
+      "title": "任务"
+    },
+    "errors": {
+      "saveFailed": "保存 Menuconfig 失败。"
+    }
+  },
   "analysis": {
     "sectionLabel": "外设分析",
     "title": "分析结果仪表板",

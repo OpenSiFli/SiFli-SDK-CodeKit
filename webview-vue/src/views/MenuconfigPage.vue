@@ -3,11 +3,13 @@
     <header class="border-b border-vscode-panel-border pb-3">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="min-w-0">
-          <p class="text-xs uppercase text-vscode-input-placeholder">Menuconfig</p>
-          <h2 class="mt-1 text-2xl font-semibold leading-tight">图形化配置</h2>
+          <p class="text-xs uppercase text-vscode-input-placeholder">{{ t('menuconfig.sectionLabel') }}</p>
+          <h2 class="mt-1 text-2xl font-semibold leading-tight">{{ t('menuconfig.title') }}</h2>
           <div v-if="snapshot" class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-vscode-input-placeholder">
-            <span>Board: {{ snapshot.boardName }}</span>
-            <span class="min-w-0 truncate">Config: {{ compactPath(snapshot.configFile) }}</span>
+            <span>{{ t('menuconfig.meta.board', { board: snapshot.boardName }) }}</span>
+            <span class="min-w-0 truncate">{{
+              t('menuconfig.meta.config', { config: compactPath(snapshot.configFile) })
+            }}</span>
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -17,7 +19,7 @@
             :disabled="store.loading || store.saving"
             @click="store.fetchSnapshot()"
           >
-            刷新
+            {{ t('menuconfig.actions.refresh') }}
           </BaseButton>
           <BaseButton
             variant="secondary"
@@ -25,7 +27,7 @@
             :disabled="!store.dirty || store.saving"
             @click="store.discardChanges()"
           >
-            丢弃
+            {{ t('menuconfig.actions.discard') }}
           </BaseButton>
           <BaseButton
             variant="primary"
@@ -34,10 +36,10 @@
             :loading="store.saving"
             @click="store.saveChanges()"
           >
-            保存
+            {{ t('menuconfig.actions.save') }}
           </BaseButton>
           <BaseButton variant="warning" size="sm" :disabled="store.saving" @click="store.openTerminalMenuconfig()">
-            终端版
+            {{ t('menuconfig.actions.terminal') }}
           </BaseButton>
         </div>
       </div>
@@ -51,7 +53,7 @@
       v-if="store.loading && !snapshot"
       class="flex flex-1 items-center justify-center text-vscode-input-placeholder"
     >
-      正在读取 Kconfig...
+      {{ t('menuconfig.loading') }}
     </div>
 
     <div v-else class="grid min-h-0 flex-1 gap-3 lg:grid-cols-[280px_minmax(0,1fr)_320px]">
@@ -60,12 +62,12 @@
           <input
             v-model.trim="query"
             class="w-full border border-vscode-input-border bg-vscode-input-background px-3 py-2 text-sm text-vscode-input-foreground outline-none"
-            placeholder="搜索配置项"
+            :placeholder="t('menuconfig.search.placeholder')"
           />
         </div>
         <div class="max-h-[calc(100vh-9rem)] overflow-auto py-2">
           <div v-if="treeRows.length === 0" class="px-3 py-8 text-center text-sm text-vscode-input-placeholder">
-            没有匹配的菜单项
+            {{ t('menuconfig.empty.noMenuMatches') }}
           </div>
           <template v-else>
             <div
@@ -82,7 +84,9 @@
               <button
                 v-if="row.hasChildren"
                 class="flex h-5 w-5 shrink-0 items-center justify-center text-xs text-vscode-input-placeholder hover:text-vscode-foreground"
-                :aria-label="isExpanded(row.node) ? '折叠菜单' : '展开菜单'"
+                :aria-label="
+                  isExpanded(row.node) ? t('menuconfig.tree.collapseLabel') : t('menuconfig.tree.expandLabel')
+                "
                 @click.stop="toggleNode(row.node.id)"
               >
                 {{ isExpanded(row.node) ? '▾' : '▸' }}
@@ -105,14 +109,14 @@
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h3 class="text-base font-semibold leading-tight">{{ contentTitle }}</h3>
             <span class="text-xs text-vscode-input-placeholder">
-              {{ store.changedCount }} 项更改
-              <span v-if="store.previewing"> · 正在计算依赖</span>
+              {{ t('menuconfig.changes.count', { count: store.changedCount }) }}
+              <span v-if="store.previewing"> · {{ t('menuconfig.changes.previewing') }}</span>
             </span>
           </div>
         </div>
 
         <div v-if="contentNodes.length === 0" class="px-4 py-12 text-center text-vscode-input-placeholder">
-          没有匹配的配置项
+          {{ t('menuconfig.empty.noConfigMatches') }}
         </div>
 
         <div v-else class="divide-y divide-vscode-panel-border">
@@ -132,11 +136,11 @@
                   node.symbol
                 }}</span>
                 <span v-if="!node.editable && isConfigurable(node)" class="text-xs text-vscode-input-placeholder">
-                  只读
+                  {{ t('menuconfig.fields.readOnly') }}
                 </span>
               </div>
               <p v-if="node.dependsOn" class="mt-1 truncate text-xs text-vscode-input-placeholder">
-                depends on {{ node.dependsOn }}
+                {{ t('menuconfig.fields.dependsOn', { expression: node.dependsOn }) }}
               </p>
             </div>
 
@@ -162,7 +166,9 @@
                     :disabled="!node.editable || store.saving"
                     @change="handleBoolChange(node, $event)"
                   />
-                  <span>{{ nodeValue(node) === 'y' ? '启用' : '关闭' }}</span>
+                  <span>{{
+                    nodeValue(node) === 'y' ? t('menuconfig.values.enabled') : t('menuconfig.values.disabled')
+                  }}</span>
                 </label>
               </template>
 
@@ -194,11 +200,11 @@
 
       <aside class="min-h-0 overflow-auto border border-vscode-panel-border bg-vscode-background">
         <div class="border-b border-vscode-panel-border px-4 py-3">
-          <h3 class="text-base font-semibold leading-tight">详情</h3>
+          <h3 class="text-base font-semibold leading-tight">{{ t('menuconfig.details.title') }}</h3>
         </div>
         <div v-if="selectedDetail" class="space-y-3 p-4 text-sm">
           <div>
-            <p class="text-xs uppercase text-vscode-input-placeholder">Name</p>
+            <p class="text-xs uppercase text-vscode-input-placeholder">{{ t('menuconfig.details.name') }}</p>
             <p class="mt-1 font-medium">{{ selectedDetail.prompt }}</p>
             <p v-if="selectedDetail.symbol" class="mt-1 font-mono text-xs text-vscode-input-placeholder">
               {{ selectedDetail.symbol }}
@@ -206,38 +212,40 @@
           </div>
           <div class="grid grid-cols-2 gap-2 text-xs">
             <div>
-              <p class="text-vscode-input-placeholder">Type</p>
+              <p class="text-vscode-input-placeholder">{{ t('menuconfig.details.type') }}</p>
               <p>{{ selectedDetail.type }}</p>
             </div>
             <div>
-              <p class="text-vscode-input-placeholder">Value</p>
+              <p class="text-vscode-input-placeholder">{{ t('menuconfig.details.value') }}</p>
               <p>{{ selectedDetail.value || '-' }}</p>
             </div>
           </div>
           <div v-if="selectedDetail.location">
-            <p class="text-xs uppercase text-vscode-input-placeholder">Location</p>
+            <p class="text-xs uppercase text-vscode-input-placeholder">{{ t('menuconfig.details.location') }}</p>
             <p class="mt-1 break-all font-mono text-xs">{{ selectedDetail.location }}</p>
           </div>
           <div v-if="selectedDetail.dependsOn">
-            <p class="text-xs uppercase text-vscode-input-placeholder">Depends</p>
+            <p class="text-xs uppercase text-vscode-input-placeholder">{{ t('menuconfig.details.depends') }}</p>
             <p class="mt-1 break-words font-mono text-xs">{{ selectedDetail.dependsOn }}</p>
           </div>
           <div v-if="selectedDetail.help">
-            <p class="text-xs uppercase text-vscode-input-placeholder">Help</p>
+            <p class="text-xs uppercase text-vscode-input-placeholder">{{ t('menuconfig.details.help') }}</p>
             <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ selectedDetail.help }}</p>
           </div>
         </div>
-        <div v-else class="p-4 text-sm text-vscode-input-placeholder">选择一个配置项查看详情</div>
+        <div v-else class="p-4 text-sm text-vscode-input-placeholder">
+          {{ t('menuconfig.details.placeholder') }}
+        </div>
 
         <div v-if="snapshot?.warnings.length" class="border-t border-vscode-panel-border p-4">
-          <p class="text-xs uppercase text-vscode-input-placeholder">Warnings</p>
+          <p class="text-xs uppercase text-vscode-input-placeholder">{{ t('menuconfig.warnings.title') }}</p>
           <ul class="mt-2 space-y-2 text-xs text-amber-100">
             <li v-for="warning in snapshot.warnings" :key="warning">{{ warning }}</li>
           </ul>
         </div>
 
         <div v-if="store.logs.length" class="border-t border-vscode-panel-border p-4">
-          <p class="text-xs uppercase text-vscode-input-placeholder">Task</p>
+          <p class="text-xs uppercase text-vscode-input-placeholder">{{ t('menuconfig.task.title') }}</p>
           <ul class="mt-2 space-y-1 text-xs">
             <li
               v-for="log in store.logs"
@@ -255,6 +263,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import BaseButton from '@/components/common/BaseButton.vue';
 import { useKconfigStore } from '@/stores/kconfig';
 import type { KconfigNode } from '@/types';
@@ -271,6 +280,7 @@ const query = ref('');
 const selectedNodeId = ref('');
 const selectedDetailId = ref('');
 const expandedNodeIds = ref<Set<string>>(new Set());
+const { t } = useI18n();
 
 const snapshot = computed(() => store.snapshot);
 const searchNeedle = computed(() => query.value.trim().toLowerCase());
@@ -287,9 +297,9 @@ const selectedDetail = computed(
 
 const contentTitle = computed(() => {
   if (query.value) {
-    return '搜索结果';
+    return t('menuconfig.search.results');
   }
-  return selectedNode.value?.prompt ?? '全部配置';
+  return selectedNode.value?.prompt ?? t('menuconfig.search.allConfig');
 });
 
 const contentNodes = computed<KconfigNode[]>(() => {

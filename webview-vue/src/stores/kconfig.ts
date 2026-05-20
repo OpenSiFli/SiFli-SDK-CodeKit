@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
+import { i18n } from '@/i18n';
 import { onMessage, postMessage } from '@/services/vscodeBridge';
 import type { KconfigChange, KconfigNode, KconfigSnapshot } from '@/types';
 
@@ -85,7 +86,7 @@ export const useKconfigStore = defineStore('kconfig', () => {
         changes.value = {};
         error.value = '';
       } else {
-        error.value = payload.message ?? '保存 Menuconfig 失败。';
+        error.value = payload.message ?? i18n.global.t('menuconfig.errors.saveFailed');
       }
     });
   }

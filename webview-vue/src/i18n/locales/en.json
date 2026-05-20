@@ -214,6 +214,65 @@
     "noPorts": "No serial ports",
     "entries": "{count} entries"
   },
+  "menuconfig": {
+    "sectionLabel": "Menuconfig",
+    "title": "Graphical Configuration",
+    "meta": {
+      "board": "Board: {board}",
+      "config": "Config: {config}"
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "discard": "Discard",
+      "save": "Save",
+      "terminal": "Terminal"
+    },
+    "loading": "Reading Kconfig...",
+    "search": {
+      "placeholder": "Search configuration",
+      "results": "Search Results",
+      "allConfig": "All Configuration"
+    },
+    "tree": {
+      "expandLabel": "Expand menu",
+      "collapseLabel": "Collapse menu"
+    },
+    "empty": {
+      "noMenuMatches": "No matching menu items",
+      "noConfigMatches": "No matching configuration items"
+    },
+    "changes": {
+      "count": "{count} changes",
+      "previewing": "Recomputing dependencies"
+    },
+    "fields": {
+      "readOnly": "Read-only",
+      "dependsOn": "Depends on {expression}"
+    },
+    "values": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "details": {
+      "title": "Details",
+      "name": "Name",
+      "type": "Type",
+      "value": "Value",
+      "location": "Location",
+      "depends": "Depends",
+      "help": "Help",
+      "placeholder": "Select a configuration item to view details"
+    },
+    "warnings": {
+      "title": "Warnings"
+    },
+    "task": {
+      "title": "Task"
+    },
+    "errors": {
+      "saveFailed": "Failed to save Menuconfig."
+    }
+  },
   "analysis": {
     "sectionLabel": "Peripheral Analysis",
     "title": "Analysis Dashboard",
