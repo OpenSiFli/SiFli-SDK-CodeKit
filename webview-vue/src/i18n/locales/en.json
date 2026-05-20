@@ -12,6 +12,7 @@
     "error": "Error",
     "retry": "Retry",
     "continue": "Continue",
+    "close": "Close",
     "yes": "Yes",
     "no": "No"
   },

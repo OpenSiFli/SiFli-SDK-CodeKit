@@ -6,7 +6,7 @@
           @click="router.back()"
           class="flex items-center gap-1.5 rounded-xl border border-vscode-panel-border bg-vscode-background px-4 py-2 text-base font-medium text-vscode-foreground shadow-sm transition-colors hover:bg-vscode-input-background"
         >
-          ← 返回
+          ← {{ t('common.back') }}
         </button>
       </header>
 
@@ -17,7 +17,7 @@
             class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder hover:text-vscode-foreground"
             @click="catalogStore.clearBanner()"
           >
-            关闭
+            {{ t('common.close') }}
           </button>
         </div>
       </div>
@@ -31,12 +31,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useSdkCatalogStore } from '@/stores/sdkCatalog';
 
 const route = useRoute();
 const router = useRouter();
 const catalogStore = useSdkCatalogStore();
+const { t } = useI18n();
 const isSerialMonitorRoute = computed(() => route.name === 'serial-monitor');
 const isMenuconfigRoute = computed(() => route.name === 'menuconfig');
 const isStandaloneRoute = computed(
