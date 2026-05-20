@@ -1,5 +1,12 @@
 import * as vscode from 'vscode';
-import { BuiltinSerialMonitorService } from './builtinSerialMonitorService';
+import {
+  BuiltinSerialMonitorService,
+  SerialReadOptions,
+  SerialReadResult,
+  SerialResetOptions,
+  SerialMonitorStatus,
+  SerialWriteOptions,
+} from './builtinSerialMonitorService';
 
 /**
  * 串口监听器服务
@@ -54,7 +61,7 @@ export class SerialMonitorService {
       if (this.currentConnectionId) {
         console.log(`串口监听器已打开: ${this.currentConnectionId}`);
         // 记住当前使用的配置
-        this.lastUsedSerialPort = serialPort;
+        this.lastUsedSerialPort = this.currentConnectionId;
         this.lastUsedBaudRate = actualBaudRate;
         return true;
       } else {
@@ -66,6 +73,60 @@ export class SerialMonitorService {
       vscode.window.showErrorMessage(vscode.l10n.t('Failed to open serial monitor: {0}', String(error)));
       return false;
     }
+  }
+
+  /**
+   * 连接串口会话，可选择是否展示监视器 UI。
+   */
+  public async connectSerialSession(serialPort: string, baudRate?: number, revealMonitor = false): Promise<boolean> {
+    try {
+      const actualBaudRate = baudRate || this.defaultBaudRate;
+      this.currentConnectionId = await this.builtinService.connectSerialPort(
+        serialPort,
+        actualBaudRate,
+        revealMonitor,
+        vscode.l10n.t('SiFli Device Monitor')
+      );
+
+      if (!this.currentConnectionId) {
+        return false;
+      }
+
+      this.lastUsedSerialPort = this.currentConnectionId;
+      this.lastUsedBaudRate = actualBaudRate;
+      return true;
+    } catch (error) {
+      console.error('连接串口会话失败:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 向当前串口会话发送数据。
+   */
+  public async writeSerialData(input: string, options: SerialWriteOptions): Promise<{ bytesWritten: number }> {
+    return this.builtinService.writeSerialData(this.requireConnectionId(), input, options);
+  }
+
+  /**
+   * 读取当前串口会话日志。
+   */
+  public readSerialData(options?: SerialReadOptions): SerialReadResult {
+    return this.builtinService.readSerialData(this.requireConnectionId(), options);
+  }
+
+  /**
+   * 使用配置的控制线脉冲复位当前设备。
+   */
+  public async resetSerialDevice(options?: SerialResetOptions): Promise<void> {
+    await this.builtinService.resetSerialDevice(this.requireConnectionId(), options);
+  }
+
+  /**
+   * 获取当前串口会话状态。
+   */
+  public getSerialStatus(): SerialMonitorStatus {
+    return this.builtinService.getSerialStatus(this.currentConnectionId);
   }
 
   /**
@@ -145,7 +206,7 @@ export class SerialMonitorService {
    * 检查是否有活动的串口监听器
    */
   public hasActiveMonitor(): boolean {
-    return !!this.currentConnectionId;
+    return !!this.currentConnectionId && this.builtinService.getSerialStatus(this.currentConnectionId).connected;
   }
 
   /**
@@ -217,5 +278,12 @@ export class SerialMonitorService {
    */
   public getActiveConnectionCount(): number {
     return this.builtinService.getActiveConnectionCount();
+  }
+
+  private requireConnectionId(): string {
+    if (!this.currentConnectionId || !this.builtinService.getSerialStatus(this.currentConnectionId).connected) {
+      throw new Error(vscode.l10n.t('Serial monitor is not connected.'));
+    }
+    return this.currentConnectionId;
   }
 }
