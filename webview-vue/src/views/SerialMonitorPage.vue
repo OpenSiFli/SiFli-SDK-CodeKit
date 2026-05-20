@@ -56,7 +56,7 @@
       </button>
 
       <div class="basis-full text-xs text-vscode-input-placeholder sm:basis-auto">
-        <span v-if="status.baudRate">{{ status.baudRate }} baud</span>
+        <span v-if="activeBaudRate">{{ activeBaudRate }} baud</span>
         <span class="mx-2">·</span>
         <span>{{ t('serialMonitor.entries', { count: displayEntries.length }) }}</span>
       </div>
@@ -81,6 +81,22 @@
             </span>
           </span>
           <input v-model="settings.showTimestamp" type="checkbox" class="h-4 w-4" @change="updateSettings" />
+        </label>
+
+        <label class="mt-4 block border-t border-vscode-panel-border pt-4">
+          <span class="block text-sm">{{ t('serialMonitor.settings.logBaudRate') }}</span>
+          <span class="mt-1 block text-xs text-vscode-input-placeholder">
+            {{ t('serialMonitor.settings.logBaudRateDescription') }}
+          </span>
+          <select
+            v-model.number="settings.logBaudRate"
+            class="mt-3 h-8 min-w-[180px] rounded border border-vscode-input-border bg-vscode-input-background px-2 text-sm text-vscode-input-foreground"
+            @change="updateSettings"
+          >
+            <option v-for="baudRate in baudRateOptions" :key="baudRate" :value="baudRate">
+              {{ baudRate }}
+            </option>
+          </select>
         </label>
       </section>
     </main>
@@ -149,13 +165,19 @@ const mode = ref<SerialSendMode>('text');
 const lineEnding = ref<SerialLineEnding>('crlf');
 const showHex = ref(false);
 const settingsOpen = ref(false);
-const settings = ref({ showTimestamp: true });
+const settings = ref({ showTimestamp: true, logBaudRate: 1000000 });
 const input = ref('');
 const errorMessage = ref('');
 const logContainer = ref<HTMLElement | null>(null);
+const supportedBaudRates = [1000000, 115200, 1500000, 2000000, 3000000, 6000000];
 
 const selectedPortInStatus = computed(() => status.value.port || '');
+const activeBaudRate = computed(() => status.value.baudRate || settings.value.logBaudRate);
 const displayEntries = computed(() => entries.value.filter(entry => entry.source !== 'system'));
+const baudRateOptions = computed(() => {
+  const current = settings.value.logBaudRate;
+  return supportedBaudRates.includes(current) ? supportedBaudRates : [current, ...supportedBaudRates];
+});
 
 const disposables: Array<() => void> = [];
 
@@ -192,6 +214,7 @@ function applySnapshot(snapshot: SerialMonitorSnapshot) {
   lineEnding.value = snapshot.defaultLineEnding || 'crlf';
   settings.value = {
     showTimestamp: snapshot.settings?.showTimestamp ?? true,
+    logBaudRate: snapshot.settings?.logBaudRate ?? snapshot.status.baudRate ?? 1000000,
   };
   void scrollToBottom();
 }
@@ -241,6 +264,7 @@ function updateSettings() {
     command: 'serialMonitorUpdateSettings',
     settings: {
       showTimestamp: settings.value.showTimestamp,
+      logBaudRate: settings.value.logBaudRate,
     },
   });
 }

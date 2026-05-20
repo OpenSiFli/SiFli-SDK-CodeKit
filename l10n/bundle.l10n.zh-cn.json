@@ -125,6 +125,7 @@
   "Select download baud rate (current: {0})": "选择下载波特率（当前：{0}）",
   "Monitor baud rate: {0}": "监视波特率：{0}",
   "Select monitor baud rate (current: {0})": "选择监视波特率（当前：{0}）",
+  "Log baud rate must be a positive integer.": "日志波特率必须是正整数。",
   "Serial port configured: {0}\\nDownload baud rate: {1}\\nMonitor baud rate: {2}": "已配置串口：{0}\\n下载波特率：{1}\\n监视波特率：{2}",
   "Error selecting serial port configuration: {0}": "选择串口配置时发生错误：{0}",
   "Failed to initialize serial monitor: {0}": "初始化串口监视器失败：{0}",

@@ -125,6 +125,7 @@
   "Select download baud rate (current: {0})": "Select download baud rate (current: {0})",
   "Monitor baud rate: {0}": "Monitor baud rate: {0}",
   "Select monitor baud rate (current: {0})": "Select monitor baud rate (current: {0})",
+  "Log baud rate must be a positive integer.": "Log baud rate must be a positive integer.",
   "Serial port configured: {0}\\nDownload baud rate: {1}\\nMonitor baud rate: {2}": "Serial port configured: {0}\\nDownload baud rate: {1}\\nMonitor baud rate: {2}",
   "Error selecting serial port configuration: {0}": "Error selecting serial port configuration: {0}",
   "Failed to initialize serial monitor: {0}": "Failed to initialize serial monitor: {0}",

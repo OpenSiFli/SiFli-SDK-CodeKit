@@ -198,6 +198,8 @@
     "settings": {
       "title": "Serial Monitor Settings",
       "description": "These preferences are saved in the current workspace and apply when the monitor is reopened.",
+      "logBaudRate": "Log baud rate",
+      "logBaudRateDescription": "Used by serial logs and MCP sessions. It does not change the status bar COM download baud rate.",
       "showTimestamp": "Show timestamps",
       "showTimestampDescription": "Turn this off to show only TX/RX direction and payloads in narrow windows."
     },

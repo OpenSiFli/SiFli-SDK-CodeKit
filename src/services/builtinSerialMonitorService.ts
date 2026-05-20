@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { SerialPort } from 'serialport';
 import { formatSerialBufferHex, parseSerialHexInput } from '../utils/serialDataUtils';
 import { getVueWebviewContent } from '../utils/vueWebviewContent';
+import { SerialPortService } from './serialPortService';
 import { WorkspaceStateService } from './workspaceStateService';
 
 export { parseSerialHexInput } from '../utils/serialDataUtils';
@@ -76,6 +77,7 @@ export interface SerialReadResult {
 
 export interface SerialMonitorSettings {
   showTimestamp: boolean;
+  logBaudRate: number;
 }
 
 interface SerialSessionSnapshot {
@@ -380,6 +382,7 @@ export class BuiltinSerialMonitorService {
   private readonly onDidChangeActiveSessionEmitter = new vscode.EventEmitter<SerialMonitorStatus>();
   public readonly onDidChangeActiveSession = this.onDidChangeActiveSessionEmitter.event;
   private readonly workspaceStateService = WorkspaceStateService.getInstance();
+  private readonly serialPortService = SerialPortService.getInstance();
   private defaultBaudRate = DEFAULT_BAUD_RATE;
   private context?: vscode.ExtensionContext;
 
@@ -679,8 +682,9 @@ export class BuiltinSerialMonitorService {
           await this.postSnapshot(connectionId);
           break;
         case 'serialMonitorUpdateSettings':
-          await this.updateMonitorSettings(message.settings);
-          await this.postSnapshot(connectionId);
+          if (!(await this.updateMonitorSettings(connectionId, message.settings))) {
+            await this.postSnapshot(connectionId);
+          }
           break;
         case 'serialMonitorChangePort':
           await this.changePanelSerialPort(connectionId, String(message.port ?? ''));
@@ -728,18 +732,53 @@ export class BuiltinSerialMonitorService {
     return value === 'none' || value === 'lf' || value === 'crlf' ? value : this.readDefaultLineEnding();
   }
 
-  private async updateMonitorSettings(value: unknown): Promise<void> {
+  private async updateMonitorSettings(connectionId: string, value: unknown): Promise<boolean> {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return;
+      return false;
     }
 
     const settings = value as Partial<SerialMonitorSettings>;
     if (typeof settings.showTimestamp === 'boolean') {
       await this.workspaceStateService.setSerialMonitorShowTimestamp(settings.showTimestamp);
     }
+
+    const nextBaudRate = this.resolveLogBaudRate(settings.logBaudRate);
+    if (nextBaudRate === undefined) {
+      return false;
+    }
+
+    this.serialPortService.monitorBaudRate = nextBaudRate;
+    const currentSession = this.sessions.get(connectionId);
+    if (
+      currentSession?.isConnected &&
+      currentSession.portPath &&
+      currentSession.getStatus().baudRate !== nextBaudRate
+    ) {
+      await this.changePanelSerialPort(connectionId, currentSession.portPath, nextBaudRate);
+      return true;
+    }
+
+    return false;
   }
 
-  private async changePanelSerialPort(connectionId: string, portPath: string): Promise<void> {
+  private resolveLogBaudRate(value: unknown): number | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    const baudRate = Number(value);
+    if (!Number.isInteger(baudRate) || baudRate <= 0) {
+      throw new Error(vscode.l10n.t('Log baud rate must be a positive integer.'));
+    }
+
+    return baudRate;
+  }
+
+  private async changePanelSerialPort(
+    connectionId: string,
+    portPath: string,
+    baudRateOverride?: number
+  ): Promise<void> {
     const nextPortPath = portPath.trim();
     if (!nextPortPath) {
       throw new Error(vscode.l10n.t('Select a serial port first.'));
@@ -751,12 +790,18 @@ export class BuiltinSerialMonitorService {
     }
 
     const currentSession = this.sessions.get(connectionId);
-    if (currentSession?.portPath === nextPortPath && currentSession.isConnected) {
+    const currentBaudRate = currentSession?.getStatus().baudRate;
+    if (
+      currentSession?.portPath === nextPortPath &&
+      currentSession.isConnected &&
+      (baudRateOverride === undefined || currentBaudRate === baudRateOverride)
+    ) {
       await this.postSnapshot(connectionId);
       return;
     }
 
-    const baudRate = currentSession?.getStatus().baudRate ?? this.defaultBaudRate;
+    const baudRate =
+      baudRateOverride ?? currentBaudRate ?? this.serialPortService.monitorBaudRate ?? this.defaultBaudRate;
     const baseTitle = panel.title.includes(':')
       ? panel.title.slice(0, panel.title.indexOf(':')).trim()
       : vscode.l10n.t('SiFli Serial Monitor');
@@ -873,6 +918,7 @@ export class BuiltinSerialMonitorService {
   private readMonitorSettings(): SerialMonitorSettings {
     return {
       showTimestamp: this.workspaceStateService.getSerialMonitorShowTimestamp(),
+      logBaudRate: this.workspaceStateService.getMonitorBaudRate(),
     };
   }
 

@@ -278,6 +278,7 @@ export interface SerialMonitorSnapshot {
   };
   settings: {
     showTimestamp: boolean;
+    logBaudRate: number;
   };
 }
 
