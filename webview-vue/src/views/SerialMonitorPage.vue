@@ -1,6 +1,6 @@
 <template>
   <section
-    class="flex h-[calc(100vh-56px)] min-h-[520px] flex-col overflow-hidden border border-vscode-panel-border bg-vscode-background"
+    class="serial-monitor-shell flex min-h-0 flex-col overflow-hidden border border-vscode-panel-border bg-vscode-background"
   >
     <header
       class="flex flex-wrap items-center gap-2 border-b border-vscode-panel-border bg-vscode-input-background/40 px-3 py-2"
@@ -128,8 +128,8 @@
     <main
       v-else
       ref="logContainer"
-      class="min-h-0 flex-1 overflow-auto bg-vscode-background px-3 py-2 font-mono text-sm leading-relaxed"
-      :class="terminalMode ? 'terminal-log-mode' : ''"
+      class="min-h-0 flex-1 bg-vscode-background font-mono text-sm leading-relaxed"
+      :class="terminalMode ? 'terminal-log-mode overflow-hidden' : 'overflow-auto px-3 py-2'"
     >
       <div v-if="terminalMode" ref="terminalContainer" class="xterm-host"></div>
 
@@ -569,6 +569,11 @@ async function scrollToBottom() {
 </script>
 
 <style scoped>
+.serial-monitor-shell {
+  height: 100vh;
+  max-height: 100vh;
+}
+
 .tool-button,
 .tool-button-primary,
 .tool-select {
@@ -628,10 +633,12 @@ async function scrollToBottom() {
 
 .xterm-host {
   height: 100%;
-  min-height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .xterm-host :deep(.xterm) {
+  box-sizing: border-box;
   height: 100%;
   padding: 8px 10px;
 }
