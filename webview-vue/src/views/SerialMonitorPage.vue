@@ -119,18 +119,29 @@
       class="min-h-0 flex-1 overflow-auto bg-vscode-background px-3 py-2 font-mono text-sm leading-relaxed"
     >
       <div
-        v-for="entry in displayEntries"
-        :key="entry.id"
+        v-for="rendered in renderedEntries"
+        :key="rendered.entry.id"
         class="grid gap-2 border-b border-vscode-panel-border/50 px-1 py-1.5"
         :class="settings.showTimestamp ? 'grid-cols-[74px_34px_minmax(0,1fr)]' : 'grid-cols-[34px_minmax(0,1fr)]'"
       >
         <span v-if="settings.showTimestamp" class="text-xs text-vscode-input-placeholder">
-          {{ formatTime(entry.timestamp) }}
+          {{ formatTime(rendered.entry.timestamp) }}
         </span>
-        <span class="direction-chip" :class="directionClass(entry.source)">{{ directionLabel(entry.source) }}</span>
+        <span class="direction-chip" :class="directionClass(rendered.entry.source)">
+          {{ directionLabel(rendered.entry.source) }}
+        </span>
         <span class="min-w-0 whitespace-pre-wrap break-words">
-          <span>{{ entry.text }}</span>
-          <span v-if="showHex" class="mt-0.5 block text-xs text-vscode-input-placeholder">{{ entry.hex }}</span>
+          <span
+            v-for="(segment, segmentIndex) in rendered.segments"
+            :key="segmentIndex"
+            :class="segment.className"
+            :style="segment.style"
+          >
+            {{ segment.text }}
+          </span>
+          <span v-if="showHex" class="mt-0.5 block text-xs text-vscode-input-placeholder">
+            {{ rendered.entry.hex }}
+          </span>
         </span>
       </div>
     </main>
@@ -157,6 +168,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { onMessage, postMessage } from '@/services/vscodeBridge';
+import { renderAnsiEntries } from '@/utils/ansiTerminal';
 import type {
   SerialLineEnding,
   SerialLogEntry,
@@ -186,6 +198,7 @@ const supportedBaudRates = [1000000, 115200, 1500000, 2000000, 3000000, 6000000]
 const selectedPortInStatus = computed(() => status.value.port || '');
 const activeBaudRate = computed(() => status.value.baudRate || settings.value.logBaudRate);
 const displayEntries = computed(() => entries.value.filter(entry => entry.source !== 'system'));
+const renderedEntries = computed(() => renderAnsiEntries(displayEntries.value, settings.value.renderAnsi));
 const canToggleConnection = computed(() => status.value.connected || !!selectedPort.value);
 const baudRateOptions = computed(() => {
   const current = settings.value.logBaudRate;
@@ -380,6 +393,18 @@ async function scrollToBottom() {
 .tool-button-active {
   border-color: var(--vscode-focus-border);
   color: var(--vscode-foreground);
+}
+
+.terminal-source-tx {
+  color: #67e8f9;
+}
+
+.terminal-source-error {
+  color: #fca5a5;
+}
+
+.terminal-source-system {
+  color: var(--vscode-input-placeholder);
 }
 
 .send-input {
