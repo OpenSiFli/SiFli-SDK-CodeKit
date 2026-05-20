@@ -483,7 +483,9 @@ export class BuiltinSerialMonitorService {
       }
 
       await session.close();
+      const status = session.getStatus();
       this.disposeSession(connectionId);
+      this.onDidChangeActiveSessionEmitter.fire(status);
       return true;
     } catch (error) {
       console.error('Failed to close serial monitor:', error);
@@ -661,11 +663,31 @@ export class BuiltinSerialMonitorService {
         void this.handleWebviewMessage(session.connectionId, message);
       }),
       panel.onDidDispose(() => {
-        this.panels.delete(session.connectionId);
-        this.disposePanelDisposables(session.connectionId);
+        void this.releasePanelSession(session.connectionId);
       }),
     ];
     this.panelDisposables.set(session.connectionId, disposables);
+  }
+
+  private async releasePanelSession(connectionId: string): Promise<void> {
+    this.panels.delete(connectionId);
+    this.disposePanelDisposables(connectionId);
+
+    const session = this.sessions.get(connectionId);
+    if (!session) {
+      return;
+    }
+
+    try {
+      await session.close();
+    } catch (error) {
+      console.error('Failed to close serial monitor after panel disposal:', error);
+    } finally {
+      const status = session.getStatus();
+      session.dispose();
+      this.sessions.delete(connectionId);
+      this.onDidChangeActiveSessionEmitter.fire(status);
+    }
   }
 
   private async handleWebviewMessage(connectionId: string, message: Record<string, unknown>): Promise<void> {

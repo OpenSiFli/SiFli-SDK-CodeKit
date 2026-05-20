@@ -304,6 +304,14 @@ export class SerialMonitorService {
 
   private captureConnectedStatus(status: SerialMonitorStatus): void {
     if (!status.connected || !status.port) {
+      if (
+        !status.connectionId ||
+        status.connectionId === this.currentConnectionId ||
+        status.port === this.currentConnectionId
+      ) {
+        this.currentConnectionId = undefined;
+      }
+      this.onDidChangeActiveSessionEmitter.fire(status);
       return;
     }
 
