@@ -168,6 +168,7 @@
     "actions": {
       "refresh": "Refresh",
       "hexView": "HEX View",
+      "terminalMode": "Terminal Mode",
       "settings": "Settings",
       "clear": "Clear",
       "reset": "Reset",
@@ -204,7 +205,7 @@
       "renderAnsi": "Render VT-100 colors",
       "renderAnsiDescription": "Parse ANSI SGR color sequences. Turn it off to show logs as plain text.",
       "showTimestamp": "Show timestamps",
-      "showTimestampDescription": "Turn this off to show only TX/RX direction and payloads in narrow windows."
+      "showTimestampDescription": "Turn this off to show logs as a continuous stream without packet boundaries."
     },
     "placeholder": {
       "text": "Type string data",

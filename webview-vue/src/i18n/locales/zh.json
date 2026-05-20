@@ -164,6 +164,7 @@
     "actions": {
       "refresh": "刷新",
       "hexView": "HEX 视图",
+      "terminalMode": "终端模式",
       "settings": "设置",
       "clear": "清空",
       "reset": "复位",
@@ -200,7 +201,7 @@
       "renderAnsi": "渲染 VT-100 颜色",
       "renderAnsiDescription": "解析 ANSI SGR 颜色序列，关闭后会以普通文本显示日志。",
       "showTimestamp": "显示时间戳",
-      "showTimestampDescription": "关闭后日志只显示 TX/RX 方向和内容，适合窄窗口查看。"
+      "showTimestampDescription": "关闭后日志以连续流显示，不再按接收分包绘制边界。"
     },
     "placeholder": {
       "text": "输入字符串数据",

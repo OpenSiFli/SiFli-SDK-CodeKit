@@ -37,8 +37,20 @@
         <option value="crlf">{{ t('serialMonitor.lineEnding.crlf') }}</option>
       </select>
 
-      <button class="tool-button" :class="showHex ? 'tool-button-active' : ''" @click="showHex = !showHex">
+      <button
+        class="tool-button"
+        :class="showHex && !continuousLog ? 'tool-button-active' : ''"
+        :disabled="continuousLog"
+        @click="showHex = !showHex"
+      >
         {{ t('serialMonitor.actions.hexView') }}
+      </button>
+      <button
+        class="tool-button"
+        :class="terminalMode ? 'tool-button-active' : ''"
+        @click="terminalMode = !terminalMode"
+      >
+        {{ t('serialMonitor.actions.terminalMode') }}
       </button>
       <button
         class="tool-button"
@@ -117,8 +129,21 @@
       v-else
       ref="logContainer"
       class="min-h-0 flex-1 overflow-auto bg-vscode-background px-3 py-2 font-mono text-sm leading-relaxed"
+      :class="terminalMode ? 'terminal-log-mode' : ''"
     >
+      <div v-if="continuousLog" class="terminal-stream">
+        <span
+          v-for="segment in continuousSegments"
+          :key="segment.key"
+          :class="segment.className"
+          :style="segment.style"
+        >
+          {{ segment.text }}
+        </span>
+      </div>
+
       <div
+        v-else
         v-for="rendered in renderedEntries"
         :key="rendered.entry.id"
         class="grid gap-2 border-b border-vscode-panel-border/50 px-1 py-1.5"
@@ -188,6 +213,7 @@ const selectedPort = ref('');
 const mode = ref<SerialSendMode>('text');
 const lineEnding = ref<SerialLineEnding>('crlf');
 const showHex = ref(false);
+const terminalMode = ref(false);
 const settingsOpen = ref(false);
 const settings = ref({ showTimestamp: true, renderAnsi: true, logBaudRate: 1000000 });
 const input = ref('');
@@ -199,6 +225,15 @@ const selectedPortInStatus = computed(() => status.value.port || '');
 const activeBaudRate = computed(() => status.value.baudRate || settings.value.logBaudRate);
 const displayEntries = computed(() => entries.value.filter(entry => entry.source !== 'system'));
 const renderedEntries = computed(() => renderAnsiEntries(displayEntries.value, settings.value.renderAnsi));
+const continuousLog = computed(() => terminalMode.value || !settings.value.showTimestamp);
+const continuousSegments = computed(() =>
+  renderedEntries.value.flatMap(rendered =>
+    rendered.segments.map((segment, segmentIndex) => ({
+      ...segment,
+      key: `${rendered.entry.id}-${segmentIndex}`,
+    }))
+  )
+);
 const canToggleConnection = computed(() => status.value.connected || !!selectedPort.value);
 const baudRateOptions = computed(() => {
   const current = settings.value.logBaudRate;
@@ -307,6 +342,12 @@ function updateSettings() {
 }
 
 function handleInputKeydown(event: KeyboardEvent) {
+  if (terminalMode.value && event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendData();
+    return;
+  }
+
   if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
     event.preventDefault();
     sendData();
@@ -405,6 +446,17 @@ async function scrollToBottom() {
 
 .terminal-source-system {
   color: var(--vscode-input-placeholder);
+}
+
+.terminal-stream {
+  min-height: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.terminal-log-mode {
+  background: var(--vscode-terminal-background, var(--vscode-background));
+  color: var(--vscode-terminal-foreground, var(--vscode-foreground));
 }
 
 .send-input {
