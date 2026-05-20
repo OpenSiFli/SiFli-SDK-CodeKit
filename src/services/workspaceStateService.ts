@@ -20,6 +20,8 @@ export interface WorkspaceState {
   numThreads?: number;
   // workflow shell step 授权缓存（key: workflowRef:stepIndex:commandFingerprint）
   workflowShellApprovals?: Record<string, true>;
+  // 串口监视器是否显示时间戳
+  serialMonitorShowTimestamp?: boolean;
 }
 
 // 工作区状态的 key 常量
@@ -31,6 +33,7 @@ export const WORKSPACE_STATE_KEYS = {
   CURRENT_SDK_PATH: 'currentSdkPath',
   NUM_THREADS: 'numThreads',
   WORKFLOW_SHELL_APPROVALS: 'workflowShellApprovals',
+  SERIAL_MONITOR_SHOW_TIMESTAMP: 'serialMonitorShowTimestamp',
 } as const;
 
 // 默认值
@@ -42,6 +45,7 @@ const DEFAULT_VALUES: Required<WorkspaceState> = {
   currentSdkPath: '',
   numThreads: 8,
   workflowShellApprovals: {},
+  serialMonitorShowTimestamp: true,
 };
 
 /**
@@ -114,6 +118,7 @@ export class WorkspaceStateService {
       currentSdkPath: this.get('currentSdkPath'),
       numThreads: this.get('numThreads'),
       workflowShellApprovals: this.get('workflowShellApprovals'),
+      serialMonitorShowTimestamp: this.get('serialMonitorShowTimestamp'),
     };
   }
 
@@ -215,5 +220,14 @@ export class WorkspaceStateService {
     const approvals = this.getWorkflowShellApprovals();
     approvals[approvalKey] = true;
     await this.setWorkflowShellApprovals(approvals);
+  }
+
+  // serialMonitorShowTimestamp
+  public getSerialMonitorShowTimestamp(): boolean {
+    return this.get('serialMonitorShowTimestamp') ?? DEFAULT_VALUES.serialMonitorShowTimestamp;
+  }
+
+  public async setSerialMonitorShowTimestamp(value: boolean): Promise<void> {
+    await this.set('serialMonitorShowTimestamp', value);
   }
 }

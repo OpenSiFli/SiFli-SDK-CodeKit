@@ -276,6 +276,9 @@ export interface SerialMonitorSnapshot {
     activeMs: number;
     settleMs: number;
   };
+  settings: {
+    showTimestamp: boolean;
+  };
 }
 
 // SDK 管理器状态

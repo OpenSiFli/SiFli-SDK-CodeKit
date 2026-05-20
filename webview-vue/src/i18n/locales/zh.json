@@ -164,6 +164,7 @@
     "actions": {
       "refresh": "刷新",
       "hexView": "HEX 视图",
+      "settings": "设置",
       "clear": "清空",
       "reset": "复位",
       "disconnect": "断开",
@@ -184,6 +185,17 @@
       "mcp": "MCP",
       "system": "系统",
       "error": "错误"
+    },
+    "direction": {
+      "rx": "RX",
+      "tx": "TX",
+      "error": "ERR"
+    },
+    "settings": {
+      "title": "串口监视器设置",
+      "description": "这些偏好会保存在当前工作区，重新打开监视器后仍会生效。",
+      "showTimestamp": "显示时间戳",
+      "showTimestampDescription": "关闭后日志只显示 TX/RX 方向和内容，适合窄窗口查看。"
     },
     "placeholder": {
       "text": "输入字符串数据",

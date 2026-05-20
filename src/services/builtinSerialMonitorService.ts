@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { SerialPort } from 'serialport';
 import { formatSerialBufferHex, parseSerialHexInput } from '../utils/serialDataUtils';
 import { getVueWebviewContent } from '../utils/vueWebviewContent';
+import { WorkspaceStateService } from './workspaceStateService';
 
 export { parseSerialHexInput } from '../utils/serialDataUtils';
 
@@ -73,12 +74,17 @@ export interface SerialReadResult {
   nextAfterId?: number;
 }
 
+export interface SerialMonitorSettings {
+  showTimestamp: boolean;
+}
+
 interface SerialSessionSnapshot {
   status: SerialMonitorStatus;
   entries: SerialLogEntry[];
   ports: SerialPortInfo[];
   defaultLineEnding: SerialLineEnding;
   reset: Required<SerialResetOptions>;
+  settings: SerialMonitorSettings;
 }
 
 const MAX_LOG_ENTRIES = 2000;
@@ -263,7 +269,8 @@ class SerialMonitorSession {
   public getSnapshot(
     defaultLineEnding: SerialLineEnding,
     reset: Required<SerialResetOptions>,
-    ports: SerialPortInfo[]
+    ports: SerialPortInfo[],
+    settings: SerialMonitorSettings
   ): SerialSessionSnapshot {
     return {
       status: this.getStatus(),
@@ -271,6 +278,7 @@ class SerialMonitorSession {
       ports,
       defaultLineEnding,
       reset,
+      settings,
     };
   }
 
@@ -371,6 +379,7 @@ export class BuiltinSerialMonitorService {
   private readonly panelDisposables = new Map<string, vscode.Disposable[]>();
   private readonly onDidChangeActiveSessionEmitter = new vscode.EventEmitter<SerialMonitorStatus>();
   public readonly onDidChangeActiveSession = this.onDidChangeActiveSessionEmitter.event;
+  private readonly workspaceStateService = WorkspaceStateService.getInstance();
   private defaultBaudRate = DEFAULT_BAUD_RATE;
   private context?: vscode.ExtensionContext;
 
@@ -669,6 +678,10 @@ export class BuiltinSerialMonitorService {
         case 'serialMonitorRefreshPorts':
           await this.postSnapshot(connectionId);
           break;
+        case 'serialMonitorUpdateSettings':
+          await this.updateMonitorSettings(message.settings);
+          await this.postSnapshot(connectionId);
+          break;
         case 'serialMonitorChangePort':
           await this.changePanelSerialPort(connectionId, String(message.port ?? ''));
           break;
@@ -713,6 +726,17 @@ export class BuiltinSerialMonitorService {
 
   private normalizeLineEnding(value: unknown): SerialLineEnding {
     return value === 'none' || value === 'lf' || value === 'crlf' ? value : this.readDefaultLineEnding();
+  }
+
+  private async updateMonitorSettings(value: unknown): Promise<void> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return;
+    }
+
+    const settings = value as Partial<SerialMonitorSettings>;
+    if (typeof settings.showTimestamp === 'boolean') {
+      await this.workspaceStateService.setSerialMonitorShowTimestamp(settings.showTimestamp);
+    }
   }
 
   private async changePanelSerialPort(connectionId: string, portPath: string): Promise<void> {
@@ -792,6 +816,7 @@ export class BuiltinSerialMonitorService {
           ports,
           defaultLineEnding: this.readDefaultLineEnding(),
           reset: this.resolveResetOptions(),
+          settings: this.readMonitorSettings(),
         } satisfies SerialSessionSnapshot,
       });
       return;
@@ -799,7 +824,12 @@ export class BuiltinSerialMonitorService {
 
     this.postToPanel(connectionId, {
       command: 'serialMonitorSnapshot',
-      snapshot: session.getSnapshot(this.readDefaultLineEnding(), this.resolveResetOptions(), ports),
+      snapshot: session.getSnapshot(
+        this.readDefaultLineEnding(),
+        this.resolveResetOptions(),
+        ports,
+        this.readMonitorSettings()
+      ),
     });
   }
 
@@ -838,6 +868,12 @@ export class BuiltinSerialMonitorService {
     const config = vscode.workspace.getConfiguration();
     const locale = config.get<string>('locale') || vscode.env.language || 'en';
     return locale.startsWith('zh') ? 'zh' : 'en';
+  }
+
+  private readMonitorSettings(): SerialMonitorSettings {
+    return {
+      showTimestamp: this.workspaceStateService.getSerialMonitorShowTimestamp(),
+    };
   }
 
   private createMissingContextHtml(): string {

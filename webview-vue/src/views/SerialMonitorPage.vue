@@ -40,6 +40,13 @@
       <button class="tool-button" :class="showHex ? 'tool-button-active' : ''" @click="showHex = !showHex">
         {{ t('serialMonitor.actions.hexView') }}
       </button>
+      <button
+        class="tool-button"
+        :class="settingsOpen ? 'tool-button-active' : ''"
+        @click="settingsOpen = !settingsOpen"
+      >
+        {{ t('serialMonitor.actions.settings') }}
+      </button>
       <button class="tool-button" @click="clearLog">{{ t('serialMonitor.actions.clear') }}</button>
       <button class="tool-button" :disabled="!status.connected" @click="resetDevice">
         {{ t('serialMonitor.actions.reset') }}
@@ -51,7 +58,7 @@
       <div class="basis-full text-xs text-vscode-input-placeholder sm:basis-auto">
         <span v-if="status.baudRate">{{ status.baudRate }} baud</span>
         <span class="mx-2">·</span>
-        <span>{{ t('serialMonitor.entries', { count: entries.length }) }}</span>
+        <span>{{ t('serialMonitor.entries', { count: displayEntries.length }) }}</span>
       </div>
     </header>
 
@@ -59,17 +66,40 @@
       {{ errorMessage }}
     </div>
 
+    <main v-if="settingsOpen" class="min-h-0 flex-1 overflow-auto bg-vscode-background px-4 py-4 text-sm">
+      <section class="max-w-2xl border border-vscode-panel-border bg-vscode-input-background/30 px-4 py-4">
+        <p class="text-sm font-semibold">{{ t('serialMonitor.settings.title') }}</p>
+        <p class="mt-1 text-xs text-vscode-input-placeholder">{{ t('serialMonitor.settings.description') }}</p>
+
+        <label
+          class="mt-4 flex cursor-pointer items-center justify-between gap-4 border-t border-vscode-panel-border pt-4"
+        >
+          <span>
+            <span class="block text-sm">{{ t('serialMonitor.settings.showTimestamp') }}</span>
+            <span class="mt-1 block text-xs text-vscode-input-placeholder">
+              {{ t('serialMonitor.settings.showTimestampDescription') }}
+            </span>
+          </span>
+          <input v-model="settings.showTimestamp" type="checkbox" class="h-4 w-4" @change="updateSettings" />
+        </label>
+      </section>
+    </main>
+
     <main
+      v-else
       ref="logContainer"
       class="min-h-0 flex-1 overflow-auto bg-vscode-background px-3 py-2 font-mono text-sm leading-relaxed"
     >
       <div
-        v-for="entry in entries"
+        v-for="entry in displayEntries"
         :key="entry.id"
-        class="grid grid-cols-[86px_76px_minmax(0,1fr)] gap-3 border-b border-vscode-panel-border/50 px-1 py-1.5"
+        class="grid gap-2 border-b border-vscode-panel-border/50 px-1 py-1.5"
+        :class="settings.showTimestamp ? 'grid-cols-[74px_34px_minmax(0,1fr)]' : 'grid-cols-[34px_minmax(0,1fr)]'"
       >
-        <span class="text-vscode-input-placeholder">{{ formatTime(entry.timestamp) }}</span>
-        <span class="text-xs uppercase" :class="sourceClass(entry.source)">{{ sourceLabel(entry.source) }}</span>
+        <span v-if="settings.showTimestamp" class="text-xs text-vscode-input-placeholder">
+          {{ formatTime(entry.timestamp) }}
+        </span>
+        <span class="direction-chip" :class="directionClass(entry.source)">{{ directionLabel(entry.source) }}</span>
         <span class="min-w-0 whitespace-pre-wrap break-words">
           <span>{{ entry.text }}</span>
           <span v-if="showHex" class="mt-0.5 block text-xs text-vscode-input-placeholder">{{ entry.hex }}</span>
@@ -77,7 +107,10 @@
       </div>
     </main>
 
-    <footer class="flex gap-2 border-t border-vscode-panel-border bg-vscode-input-background/35 p-3">
+    <footer
+      v-if="!settingsOpen"
+      class="flex gap-2 border-t border-vscode-panel-border bg-vscode-input-background/35 p-3"
+    >
       <textarea
         v-model="input"
         class="min-h-[52px] flex-1 resize-y rounded border border-vscode-input-border bg-vscode-input-background px-3 py-2 font-mono text-sm text-vscode-input-foreground"
@@ -115,11 +148,14 @@ const selectedPort = ref('');
 const mode = ref<SerialSendMode>('text');
 const lineEnding = ref<SerialLineEnding>('crlf');
 const showHex = ref(false);
+const settingsOpen = ref(false);
+const settings = ref({ showTimestamp: true });
 const input = ref('');
 const errorMessage = ref('');
 const logContainer = ref<HTMLElement | null>(null);
 
 const selectedPortInStatus = computed(() => status.value.port || '');
+const displayEntries = computed(() => entries.value.filter(entry => entry.source !== 'system'));
 
 const disposables: Array<() => void> = [];
 
@@ -154,6 +190,9 @@ function applySnapshot(snapshot: SerialMonitorSnapshot) {
   ports.value = snapshot.ports || [];
   selectedPort.value = snapshot.status.port || ports.value[0]?.path || '';
   lineEnding.value = snapshot.defaultLineEnding || 'crlf';
+  settings.value = {
+    showTimestamp: snapshot.settings?.showTimestamp ?? true,
+  };
   void scrollToBottom();
 }
 
@@ -197,6 +236,15 @@ function clearLog() {
   postMessage({ command: 'serialMonitorClear' });
 }
 
+function updateSettings() {
+  postMessage({
+    command: 'serialMonitorUpdateSettings',
+    settings: {
+      showTimestamp: settings.value.showTimestamp,
+    },
+  });
+}
+
 function handleInputKeydown(event: KeyboardEvent) {
   if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
     event.preventDefault();
@@ -212,21 +260,27 @@ function formatTime(timestamp: string): string {
   return new Date(timestamp).toLocaleTimeString();
 }
 
-function sourceLabel(source: SerialLogSource): string {
-  return t(`serialMonitor.source.${source}`);
+function directionLabel(source: SerialLogSource): string {
+  if (source === 'device') {
+    return t('serialMonitor.direction.rx');
+  }
+  if (source === 'user' || source === 'mcp') {
+    return t('serialMonitor.direction.tx');
+  }
+  return t('serialMonitor.direction.error');
 }
 
-function sourceClass(source: SerialLogSource): string {
+function directionClass(source: SerialLogSource): string {
   switch (source) {
     case 'device':
-      return 'text-emerald-300';
+      return 'border-emerald-500/35 bg-emerald-500/10 text-emerald-200';
     case 'user':
     case 'mcp':
-      return 'text-cyan-300';
+      return 'border-cyan-500/35 bg-cyan-500/10 text-cyan-200';
     case 'error':
-      return 'text-red-300';
+      return 'border-red-500/35 bg-red-500/10 text-red-200';
     default:
-      return 'text-vscode-input-placeholder';
+      return 'border-vscode-panel-border text-vscode-input-placeholder';
   }
 }
 
@@ -278,5 +332,18 @@ async function scrollToBottom() {
 .tool-button-active {
   border-color: var(--vscode-focus-border);
   color: var(--vscode-foreground);
+}
+
+.direction-chip {
+  display: inline-flex;
+  height: 20px;
+  width: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  border-width: 1px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
 }
 </style>
