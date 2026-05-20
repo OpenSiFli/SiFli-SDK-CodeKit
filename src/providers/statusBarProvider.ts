@@ -196,7 +196,7 @@ export class StatusBarProvider {
   public async openDeviceMonitor(): Promise<void> {
     try {
       await this.serialMonitorService.initialize();
-      const selectedSerialPort = this.serialPortService.selectedSerialPort;
+      const selectedSerialPort = this.serialPortService.monitorSerialPort || this.serialPortService.selectedSerialPort;
       const success = await this.serialMonitorService.openSerialMonitor(
         selectedSerialPort || undefined,
         this.serialPortService.monitorBaudRate

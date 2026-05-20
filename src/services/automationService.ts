@@ -36,6 +36,7 @@ export type ProjectState = {
   selectedBoard: string | null;
   numThreads: number;
   selectedSerialPort: string | null;
+  monitorSerialPort: string | null;
   downloadBaudRate: number;
   monitorBaudRate: number;
   monitorActive: boolean;
@@ -108,6 +109,7 @@ export class AutomationService {
       selectedBoard: selectedBoard && selectedBoard !== 'N/A' ? selectedBoard : null,
       numThreads: this.configService.getNumThreads(),
       selectedSerialPort: this.serialPortService.selectedSerialPort,
+      monitorSerialPort: this.serialPortService.monitorSerialPort,
       downloadBaudRate: this.serialPortService.downloadBaudRate,
       monitorBaudRate: this.serialPortService.monitorBaudRate,
       monitorActive: this.serialMonitorService.hasActiveMonitor(),
@@ -464,6 +466,7 @@ export class AutomationService {
   public async listSerialPorts(): Promise<unknown> {
     const ports = await this.serialPortService.getSerialPorts();
     const selectedPort = this.serialPortService.selectedSerialPort;
+    const monitorPort = this.serialPortService.monitorSerialPort;
     const supportedBaudRates = SerialPortService.getBaudRates();
     return this.withResult({
       success: true,
@@ -475,6 +478,8 @@ export class AutomationService {
         vendorId: port.vendorId,
         productId: port.productId,
         selected: port.path === selectedPort,
+        selectedForDownload: port.path === selectedPort,
+        selectedForMonitor: port.path === monitorPort,
         supportedBaudRates,
         currentDownloadBaudRate: this.serialPortService.downloadBaudRate,
         currentMonitorBaudRate: this.serialPortService.monitorBaudRate,
@@ -545,7 +550,8 @@ export class AutomationService {
       revealMonitor?: boolean;
     } = {}
   ): Promise<unknown> {
-    const portPath = input.port ?? this.serialPortService.selectedSerialPort;
+    const portPath =
+      input.port ?? this.serialPortService.monitorSerialPort ?? this.serialPortService.selectedSerialPort;
     if (!portPath) {
       return this.withResult({
         success: false,
@@ -574,7 +580,7 @@ export class AutomationService {
       });
     }
 
-    this.serialPortService.selectedSerialPort = port.path;
+    this.serialPortService.monitorSerialPort = port.path;
     this.serialPortService.monitorBaudRate = baudRate;
 
     const success = await this.serialMonitorService.connectSerialSession(
@@ -695,28 +701,35 @@ export class AutomationService {
       return project.payload;
     }
 
-    if (input.port) {
-      const selected = await this.selectSerialPort({
-        port: input.port,
-        monitorBaud: input.monitorBaud,
+    const supportedBaudRates = new Set(SerialPortService.getBaudRates());
+    if (input.monitorBaud !== undefined && !supportedBaudRates.has(input.monitorBaud)) {
+      return this.withResult({
+        success: false,
+        operation: 'openMonitor',
+        message: vscode.l10n.t('Unsupported monitor baud rate: {0}', String(input.monitorBaud)),
       });
-      if (typeof selected === 'object' && selected && 'success' in selected && !selected.success) {
-        return selected;
-      }
-    } else if (input.monitorBaud !== undefined) {
-      const supportedBaudRates = new Set(SerialPortService.getBaudRates());
-      if (!supportedBaudRates.has(input.monitorBaud)) {
+    }
+
+    if (input.port) {
+      const ports = await this.serialPortService.getSerialPorts();
+      const port = ports.find(item => item.path === input.port);
+      if (!port) {
         return this.withResult({
           success: false,
           operation: 'openMonitor',
-          message: vscode.l10n.t('Unsupported monitor baud rate: {0}', String(input.monitorBaud)),
+          message: vscode.l10n.t('Serial port not found: {0}', input.port),
+          ports: ports.map(item => item.path),
         });
       }
+      this.serialPortService.monitorSerialPort = port.path;
+    }
+
+    if (input.monitorBaud !== undefined) {
       this.serialPortService.monitorBaudRate = input.monitorBaud;
     }
 
     await this.serialMonitorService.initialize();
-    const selectedPort = this.serialPortService.selectedSerialPort;
+    const selectedPort = this.serialPortService.monitorSerialPort ?? this.serialPortService.selectedSerialPort;
     if (!selectedPort) {
       return this.withResult({
         success: false,

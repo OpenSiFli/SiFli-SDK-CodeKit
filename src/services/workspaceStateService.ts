@@ -10,6 +10,8 @@ export interface WorkspaceState {
   defaultChipModule?: string;
   // 当前选择的串口
   selectedSerialPort?: string;
+  // 串口监视器选择的日志串口
+  monitorSerialPort?: string;
   // 下载波特率
   downloadBaudRate?: number;
   // 监视波特率
@@ -28,6 +30,7 @@ export interface WorkspaceState {
 export const WORKSPACE_STATE_KEYS = {
   DEFAULT_CHIP_MODULE: 'defaultChipModule',
   SELECTED_SERIAL_PORT: 'selectedSerialPort',
+  MONITOR_SERIAL_PORT: 'monitorSerialPort',
   DOWNLOAD_BAUD_RATE: 'downloadBaudRate',
   MONITOR_BAUD_RATE: 'monitorBaudRate',
   CURRENT_SDK_PATH: 'currentSdkPath',
@@ -40,6 +43,7 @@ export const WORKSPACE_STATE_KEYS = {
 const DEFAULT_VALUES: Required<WorkspaceState> = {
   defaultChipModule: '',
   selectedSerialPort: '',
+  monitorSerialPort: '',
   downloadBaudRate: 1000000,
   monitorBaudRate: 1000000,
   currentSdkPath: '',
@@ -113,6 +117,7 @@ export class WorkspaceStateService {
     return {
       defaultChipModule: this.get('defaultChipModule'),
       selectedSerialPort: this.get('selectedSerialPort'),
+      monitorSerialPort: this.get('monitorSerialPort'),
       downloadBaudRate: this.get('downloadBaudRate'),
       monitorBaudRate: this.get('monitorBaudRate'),
       currentSdkPath: this.get('currentSdkPath'),
@@ -159,6 +164,15 @@ export class WorkspaceStateService {
 
   public async setSelectedSerialPort(value: string): Promise<void> {
     await this.set('selectedSerialPort', value);
+  }
+
+  // monitorSerialPort
+  public getMonitorSerialPort(): string {
+    return this.get('monitorSerialPort') || '';
+  }
+
+  public async setMonitorSerialPort(value: string): Promise<void> {
+    await this.set('monitorSerialPort', value);
   }
 
   // downloadBaudRate

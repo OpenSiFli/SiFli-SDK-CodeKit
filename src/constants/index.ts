@@ -62,6 +62,7 @@ export const CONFIG_MIGRATION_VERSIONS = {
    * v1.2.2: 将以下配置从 settings.json 迁移到 workspaceState
    * - defaultChipModule
    * - selectedSerialPort
+   * - monitorSerialPort
    * - numThreads
    * - sifliSdkExportScriptPath
    * - downloadBaudRate (新增)

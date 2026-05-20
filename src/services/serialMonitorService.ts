@@ -58,10 +58,15 @@ export class SerialMonitorService {
    */
   public async openSerialMonitor(serialPort?: string, baudRate?: number): Promise<boolean> {
     try {
-      const actualBaudRate = baudRate || this.defaultBaudRate;
+      const actualSerialPort =
+        serialPort ??
+        this.serialPortService.monitorSerialPort ??
+        this.serialPortService.selectedSerialPort ??
+        undefined;
+      const actualBaudRate = baudRate || this.serialPortService.monitorBaudRate || this.defaultBaudRate;
 
       this.currentConnectionId = await this.builtinService.openSerialMonitor(
-        serialPort,
+        actualSerialPort,
         actualBaudRate,
         vscode.l10n.t('SiFli Device Monitor')
       );
@@ -313,7 +318,7 @@ export class SerialMonitorService {
 
     this.currentConnectionId = status.connectionId ?? status.port;
     this.lastUsedSerialPort = status.port;
-    this.serialPortService.selectedSerialPort = status.port;
+    this.serialPortService.monitorSerialPort = status.port;
 
     if (status.baudRate !== undefined) {
       this.lastUsedBaudRate = status.baudRate;

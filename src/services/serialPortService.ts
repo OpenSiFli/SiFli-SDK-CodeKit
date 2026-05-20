@@ -9,6 +9,7 @@ import { WorkspaceStateService } from './workspaceStateService';
 export class SerialPortService {
   private static instance: SerialPortService;
   private _selectedSerialPort: string | null = null;
+  private _monitorSerialPort: string | null = null;
   private _downloadBaudRate: number = 1000000; // 默认下载波特率
   private _monitorBaudRate: number = 1000000; // 默认监视波特率
   private configService: ConfigService;
@@ -33,6 +34,10 @@ export class SerialPortService {
 
   public get selectedSerialPort(): string | null {
     return this._selectedSerialPort;
+  }
+
+  public get monitorSerialPort(): string | null {
+    return this._monitorSerialPort;
   }
 
   public get downloadBaudRate(): number {
@@ -85,10 +90,30 @@ export class SerialPortService {
       this.logService.debug('No saved serial port found');
     }
 
+    const savedMonitorPort = this.workspaceStateService.getMonitorSerialPort();
+    if (savedMonitorPort) {
+      this.logService.debug(`Checking saved monitor serial port: ${savedMonitorPort}`);
+      const isAvailable = await this.validateSerialPort(savedMonitorPort);
+      if (isAvailable) {
+        this._monitorSerialPort = savedMonitorPort;
+        this.logService.info(`Restored monitor serial port: ${savedMonitorPort}`);
+      } else {
+        this.logService.warn(
+          `Saved monitor serial port ${savedMonitorPort} is no longer available, clearing selection`
+        );
+        await this.workspaceStateService.setMonitorSerialPort('');
+        this._monitorSerialPort = null;
+      }
+    } else if (this._selectedSerialPort) {
+      this._monitorSerialPort = this._selectedSerialPort;
+    }
+
     // 从 workspaceState 中恢复波特率设置
     this._downloadBaudRate = this.workspaceStateService.getDownloadBaudRate();
     this._monitorBaudRate = this.workspaceStateService.getMonitorBaudRate();
-    this.logService.debug(`Restored baud rates: download=${this._downloadBaudRate}, monitor=${this._monitorBaudRate}`);
+    this.logService.debug(
+      `Restored serial config: download=${this._selectedSerialPort ?? 'none'} @ ${this._downloadBaudRate}, monitor=${this._monitorSerialPort ?? 'none'} @ ${this._monitorBaudRate}`
+    );
   }
 
   public set selectedSerialPort(port: string | null) {
@@ -96,6 +121,13 @@ export class SerialPortService {
     // 异步保存到 workspaceState
     this.workspaceStateService.setSelectedSerialPort(port || '').catch(err => {
       this.logService.error(`Failed to save selected serial port: ${err}`);
+    });
+  }
+
+  public set monitorSerialPort(port: string | null) {
+    this._monitorSerialPort = port;
+    this.workspaceStateService.setMonitorSerialPort(port || '').catch(err => {
+      this.logService.error(`Failed to save monitor serial port: ${err}`);
     });
   }
 

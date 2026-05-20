@@ -800,7 +800,8 @@ export class WorkflowService {
 
   private async runMonitorOpenStep(options: WorkflowExecutionOptions): Promise<WorkflowStepExecutionResult> {
     await this.serialMonitorService.initialize();
-    const selectedSerialPort = this.serialPortService.selectedSerialPort || undefined;
+    const selectedSerialPort =
+      this.serialPortService.monitorSerialPort || this.serialPortService.selectedSerialPort || undefined;
     if (!selectedSerialPort && !options.allowMonitorPortPrompt) {
       return {
         success: false,
