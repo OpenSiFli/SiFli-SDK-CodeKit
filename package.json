@@ -1003,6 +1003,62 @@
               }
             }
           },
+          "sifli-sdk-codekit.serialMonitor.lineEnding": {
+            "type": "string",
+            "enum": [
+              "none",
+              "lf",
+              "crlf"
+            ],
+            "enumDescriptions": [
+              "%configuration.sifli.serialMonitor.lineEnding.enum.none%",
+              "%configuration.sifli.serialMonitor.lineEnding.enum.lf%",
+              "%configuration.sifli.serialMonitor.lineEnding.enum.crlf%"
+            ],
+            "default": "crlf",
+            "description": "%configuration.sifli.serialMonitor.lineEnding.description%",
+            "scope": "resource"
+          },
+          "sifli-sdk-codekit.serialMonitor.openDtr": {
+            "type": "boolean",
+            "default": false,
+            "description": "%configuration.sifli.serialMonitor.openDtr.description%",
+            "scope": "resource"
+          },
+          "sifli-sdk-codekit.serialMonitor.openRts": {
+            "type": "boolean",
+            "default": false,
+            "description": "%configuration.sifli.serialMonitor.openRts.description%",
+            "scope": "resource"
+          },
+          "sifli-sdk-codekit.serialMonitor.resetDtr": {
+            "type": "boolean",
+            "default": true,
+            "description": "%configuration.sifli.serialMonitor.resetDtr.description%",
+            "scope": "resource"
+          },
+          "sifli-sdk-codekit.serialMonitor.resetRts": {
+            "type": "boolean",
+            "default": false,
+            "description": "%configuration.sifli.serialMonitor.resetRts.description%",
+            "scope": "resource"
+          },
+          "sifli-sdk-codekit.serialMonitor.resetActiveMs": {
+            "type": "number",
+            "default": 100,
+            "minimum": 10,
+            "maximum": 5000,
+            "description": "%configuration.sifli.serialMonitor.resetActiveMs.description%",
+            "scope": "resource"
+          },
+          "sifli-sdk-codekit.serialMonitor.resetSettleMs": {
+            "type": "number",
+            "default": 100,
+            "minimum": 0,
+            "maximum": 10000,
+            "description": "%configuration.sifli.serialMonitor.resetSettleMs.description%",
+            "scope": "resource"
+          },
           "sifli-sdk-codekit.mcp.enabled": {
             "type": "boolean",
             "default": true,

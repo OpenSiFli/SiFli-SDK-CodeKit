@@ -748,5 +748,15 @@
   "{0} findings": "{0} 条结果",
   "Register": "寄存器",
   "Peripheral analysis is available only during an active sifli-probe-rs debug session.": "只有在活动的 sifli-probe-rs 调试会话中才能使用外设分析。",
-  "Pause the target before running peripheral analysis.": "运行外设分析前请先暂停目标。"
+  "Pause the target before running peripheral analysis.": "运行外设分析前请先暂停目标。",
+  "HEX input can only contain hexadecimal bytes.": "HEX 输入只能包含十六进制字节。",
+  "HEX input must contain an even number of digits.": "HEX 输入必须包含偶数个十六进制数字。",
+  "Serial port closed.": "串口已关闭。",
+  "Connected to {0} at {1} baud.": "已连接到 {0}，波特率 {1}。",
+  "Disconnected from {0}.": "已断开 {0}。",
+  "Reset pulse sent.": "已发送复位脉冲。",
+  "Serial port is not connected.": "串口未连接。",
+  "Serial monitor session not found: {0}": "未找到串口监视会话：{0}",
+  "Serial monitor is not connected.": "串口监视器未连接。",
+  "Serial baud rate must be a positive integer.": "串口波特率必须是正整数。"
 }

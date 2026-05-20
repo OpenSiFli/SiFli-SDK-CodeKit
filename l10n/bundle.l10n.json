@@ -570,5 +570,15 @@
   "{0} findings": "{0} findings",
   "Register": "Register",
   "Peripheral analysis is available only during an active sifli-probe-rs debug session.": "Peripheral analysis is available only during an active sifli-probe-rs debug session.",
-  "Pause the target before running peripheral analysis.": "Pause the target before running peripheral analysis."
+  "Pause the target before running peripheral analysis.": "Pause the target before running peripheral analysis.",
+  "HEX input can only contain hexadecimal bytes.": "HEX input can only contain hexadecimal bytes.",
+  "HEX input must contain an even number of digits.": "HEX input must contain an even number of digits.",
+  "Serial port closed.": "Serial port closed.",
+  "Connected to {0} at {1} baud.": "Connected to {0} at {1} baud.",
+  "Disconnected from {0}.": "Disconnected from {0}.",
+  "Reset pulse sent.": "Reset pulse sent.",
+  "Serial port is not connected.": "Serial port is not connected.",
+  "Serial monitor session not found: {0}": "Serial monitor session not found: {0}",
+  "Serial monitor is not connected.": "Serial monitor is not connected.",
+  "Serial baud rate must be a positive integer.": "Serial baud rate must be a positive integer."
 }
