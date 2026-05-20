@@ -38,8 +38,13 @@ const route = useRoute();
 const router = useRouter();
 const catalogStore = useSdkCatalogStore();
 const isSerialMonitorRoute = computed(() => route.name === 'serial-monitor');
+const isMenuconfigRoute = computed(() => route.name === 'menuconfig');
 const isStandaloneRoute = computed(
-  () => route.name === 'analysis' || route.name === 'debug-snapshot' || isSerialMonitorRoute.value
+  () =>
+    route.name === 'analysis' ||
+    route.name === 'debug-snapshot' ||
+    isSerialMonitorRoute.value ||
+    isMenuconfigRoute.value
 );
 const showBackButton = computed(() => route.path !== '/' && !isStandaloneRoute.value);
 const rootClass = computed(() =>
@@ -50,9 +55,17 @@ const rootClass = computed(() =>
 const shellClass = computed(() =>
   isSerialMonitorRoute.value
     ? 'mx-auto flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden px-0 py-0'
-    : 'mx-auto flex w-full max-w-6xl flex-col px-4 py-8 sm:px-6'
+    : isMenuconfigRoute.value
+      ? 'mx-auto flex min-h-screen w-full max-w-none flex-col px-4 py-4 sm:px-5'
+      : 'mx-auto flex w-full max-w-6xl flex-col px-4 py-8 sm:px-6'
 );
-const mainClass = computed(() => (isSerialMonitorRoute.value ? 'min-h-0 flex-1 overflow-hidden py-0' : 'flex-1 py-6'));
+const mainClass = computed(() =>
+  isSerialMonitorRoute.value
+    ? 'min-h-0 flex-1 overflow-hidden py-0'
+    : isMenuconfigRoute.value
+      ? 'flex-1 py-0'
+      : 'flex-1 py-6'
+);
 
 onMounted(() => {
   if (!isStandaloneRoute.value && catalogStore.sdks.length === 0) {

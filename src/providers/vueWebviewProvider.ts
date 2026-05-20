@@ -4,6 +4,8 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import { ConfigService } from '../services/configService';
 import { GitService } from '../services/gitService';
+import { BuildExecutionService } from '../services/buildExecutionService';
+import { KconfigService } from '../services/kconfigService';
 import { LogService } from '../services/logService';
 import { RegionService } from '../services/regionService';
 import { SdkService } from '../services/sdkService';
@@ -11,7 +13,7 @@ import { TerminalService } from '../services/terminalService';
 import { UvService } from '../services/uvService';
 import { WindowsManagedEnvService } from '../services/windowsManagedEnvService';
 import { GIT_REPOS, SDK_INSTALL_IDLE_TIMEOUT_MS } from '../constants';
-import { SdkTaskKind, SdkTaskRecord, TaskLogEntry, ToolchainSource } from '../types';
+import { KconfigChange, SdkTaskKind, SdkTaskRecord, TaskLogEntry, ToolchainSource } from '../types';
 import { DebugSnapshotRequest } from '../types/debugSnapshot';
 import { DebugSnapshotBackend } from '../peripheral-viewer/export/debugSnapshotBackend';
 import { getPeripheralViewerDebugSnapshotBackend } from '../peripheral-viewer';
@@ -72,7 +74,7 @@ interface ExistingSdkValidationResult {
 }
 
 type TaskLogger = (message: string, level?: TaskLogEntry['level']) => void;
-type WebviewPanelKind = 'sdkManager' | 'debugSnapshot';
+type WebviewPanelKind = 'sdkManager' | 'debugSnapshot' | 'menuconfig';
 
 interface WebviewPanelConfig {
   viewType: string;
@@ -104,16 +106,21 @@ export class VueWebviewProvider {
   private readonly terminalService: TerminalService;
   private readonly sdkService: SdkService;
   private readonly gitService: GitService;
+  private readonly buildExecutionService: BuildExecutionService;
+  private readonly kconfigService: KconfigService;
   private readonly configService: ConfigService;
   private readonly logService: LogService;
   private readonly tasks = new Map<string, SdkTaskRecord>();
   private sdkManagerPanel?: vscode.WebviewPanel;
   private debugSnapshotPanel?: vscode.WebviewPanel;
+  private menuconfigPanel?: vscode.WebviewPanel;
 
   private constructor() {
     this.terminalService = TerminalService.getInstance();
     this.sdkService = SdkService.getInstance();
     this.gitService = GitService.getInstance();
+    this.buildExecutionService = BuildExecutionService.getInstance();
+    this.kconfigService = KconfigService.getInstance();
     this.configService = ConfigService.getInstance();
     this.logService = LogService.getInstance();
   }
@@ -133,10 +140,18 @@ export class VueWebviewProvider {
     this.openPanel('debugSnapshot', context);
   }
 
+  public async openMenuconfigWebview(context: vscode.ExtensionContext): Promise<void> {
+    this.openPanel('menuconfig', context);
+  }
+
   private openPanel(kind: WebviewPanelKind, context: vscode.ExtensionContext): void {
     const existingPanel = this.getPanel(kind);
     if (existingPanel) {
       existingPanel.reveal(existingPanel.viewColumn ?? vscode.ViewColumn.One);
+      const panelConfig = this.getPanelConfig(kind);
+      if (panelConfig.initialRoute) {
+        existingPanel.webview.postMessage({ command: 'navigate', route: panelConfig.initialRoute });
+      }
       return;
     }
 
@@ -201,12 +216,23 @@ export class VueWebviewProvider {
   }
 
   private getPanel(kind: WebviewPanelKind): vscode.WebviewPanel | undefined {
-    return kind === 'sdkManager' ? this.sdkManagerPanel : this.debugSnapshotPanel;
+    if (kind === 'sdkManager') {
+      return this.sdkManagerPanel;
+    }
+    if (kind === 'debugSnapshot') {
+      return this.debugSnapshotPanel;
+    }
+    return this.menuconfigPanel;
   }
 
   private setPanel(kind: WebviewPanelKind, panel: vscode.WebviewPanel): void {
     if (kind === 'sdkManager') {
       this.sdkManagerPanel = panel;
+      return;
+    }
+
+    if (kind === 'menuconfig') {
+      this.menuconfigPanel = panel;
       return;
     }
 
@@ -223,6 +249,11 @@ export class VueWebviewProvider {
       return;
     }
 
+    if (kind === 'menuconfig') {
+      this.menuconfigPanel = undefined;
+      return;
+    }
+
     this.debugSnapshotPanel = undefined;
   }
 
@@ -232,6 +263,14 @@ export class VueWebviewProvider {
         viewType: 'sifliDebugSnapshotVue',
         title: '调试现场导出',
         initialRoute: '/debug-snapshot',
+      };
+    }
+
+    if (kind === 'menuconfig') {
+      return {
+        viewType: 'sifliMenuconfigVue',
+        title: 'SiFli Menuconfig',
+        initialRoute: '/menuconfig',
       };
     }
 
@@ -358,9 +397,122 @@ export class VueWebviewProvider {
         await this.handleCancelDebugSnapshotTask(message.taskId, webview);
         break;
 
+      case 'getKconfigSnapshot':
+        await this.handleGetKconfigSnapshot(webview);
+        break;
+
+      case 'previewKconfigChanges':
+        await this.handlePreviewKconfigChanges((message.changes ?? []) as KconfigChange[], webview);
+        break;
+
+      case 'saveKconfigChanges':
+        this.startSaveKconfigChanges((message.changes ?? []) as KconfigChange[], webview);
+        break;
+
+      case 'openTerminalMenuconfig':
+        await this.handleOpenTerminalMenuconfig(webview);
+        break;
+
       default:
         this.logService.warn(`Unknown webview command: ${message.command}`);
     }
+  }
+
+  private async handleGetKconfigSnapshot(webview: vscode.Webview): Promise<void> {
+    try {
+      const snapshot = await this.kconfigService.getSnapshot();
+      webview.postMessage({
+        command: 'kconfigSnapshot',
+        snapshot,
+      });
+    } catch (error) {
+      this.postKconfigError(webview, error);
+    }
+  }
+
+  private async handlePreviewKconfigChanges(changes: KconfigChange[], webview: vscode.Webview): Promise<void> {
+    try {
+      const snapshot = await this.kconfigService.previewChanges(changes);
+      webview.postMessage({
+        command: 'kconfigSnapshot',
+        snapshot,
+      });
+    } catch (error) {
+      this.postKconfigError(webview, error);
+    }
+  }
+
+  private startSaveKconfigChanges(changes: KconfigChange[], webview: vscode.Webview): void {
+    const taskId = `kconfig-task-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    webview.postMessage({
+      command: 'kconfigTaskStarted',
+      taskId,
+      title: '保存 Menuconfig',
+    });
+    webview.postMessage({
+      command: 'kconfigTaskLog',
+      taskId,
+      level: 'info',
+      message: '正在后台保存 proj.conf 并刷新构建配置...',
+    });
+
+    void (async () => {
+      try {
+        const snapshot = await this.kconfigService.saveChanges(changes);
+        webview.postMessage({
+          command: 'kconfigTaskLog',
+          taskId,
+          level: 'info',
+          message: '配置保存完成。',
+        });
+        webview.postMessage({
+          command: 'kconfigSnapshot',
+          snapshot,
+        });
+        webview.postMessage({
+          command: 'kconfigTaskFinished',
+          taskId,
+          success: true,
+          snapshot,
+        });
+      } catch (error) {
+        const message = this.getErrorMessage(error);
+        webview.postMessage({
+          command: 'kconfigTaskLog',
+          taskId,
+          level: 'error',
+          message,
+        });
+        webview.postMessage({
+          command: 'kconfigTaskFinished',
+          taskId,
+          success: false,
+          message,
+        });
+        this.postKconfigError(webview, error);
+      }
+    })();
+  }
+
+  private async handleOpenTerminalMenuconfig(webview: vscode.Webview): Promise<void> {
+    try {
+      await this.buildExecutionService.executeMenuconfig({ waitForExit: false });
+      webview.postMessage({
+        command: 'kconfigTaskLog',
+        taskId: 'terminal-menuconfig',
+        level: 'info',
+        message: '已打开终端版 Menuconfig。',
+      });
+    } catch (error) {
+      this.postKconfigError(webview, error);
+    }
+  }
+
+  private postKconfigError(webview: vscode.Webview, error: unknown): void {
+    webview.postMessage({
+      command: 'kconfigError',
+      message: this.getErrorMessage(error),
+    });
   }
 
   private async sendSdkList(webview: vscode.Webview): Promise<void> {

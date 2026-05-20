@@ -10,7 +10,6 @@ import './styles/index.css';
 initializeVSCodeApi();
 initializeLocale();
 setupVSCodeMessageListener();
-initializeVsCodeBridge();
 
 function detectAndSetVSCodeTheme() {
   const body = document.body;
@@ -51,6 +50,8 @@ async function bootstrap() {
       void router.replace(payload.route);
     }
   });
+
+  initializeVsCodeBridge();
 
   const savedState = getState<{ route?: string }>();
 

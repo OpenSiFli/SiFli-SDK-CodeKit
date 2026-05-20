@@ -11,6 +11,7 @@ import { PythonService } from './services/pythonService';
 import { MinGitService } from './services/minGitService';
 import { ProbeRsService } from './services/probeRsService';
 import { UvService } from './services/uvService';
+import { KconfigService } from './services/kconfigService';
 import { LogService } from './services/logService';
 import { RegionService } from './services/regionService';
 import { WorkspaceStateService } from './services/workspaceStateService';
@@ -76,11 +77,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const minGitService = MinGitService.getInstance();
   const probeRsService = ProbeRsService.getInstance();
   const uvService = UvService.getInstance();
+  const kconfigService = KconfigService.getInstance();
   const regionService = RegionService.getInstance();
   pythonService.setContext(context);
   minGitService.setContext(context);
   probeRsService.setContext(context);
   uvService.setContext(context);
+  kconfigService.setContext(context);
   builtinSerialMonitorService.setContext(context);
   probeRsService.prepareManagedEnvironment();
   uvService.prepareManagedEnvironment();
@@ -331,7 +334,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.commands.registerCommand(CMD_PREFIX + 'rebuild', () => buildCommands.buildWithSaveCheck(false)),
       vscode.commands.registerCommand(CMD_PREFIX + 'clean', () => buildCommands.executeCleanCommand()),
       vscode.commands.registerCommand(CMD_PREFIX + 'download', () => buildCommands.executeDownloadTask()),
-      vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () => buildCommands.executeMenuconfigTask()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'menuconfig', () =>
+        vueWebviewProvider.openMenuconfigWebview(context)
+      ),
       vscode.commands.registerCommand(CMD_PREFIX + 'selectChipModule', () => configCommands.selectChipModule()),
       vscode.commands.registerCommand(CMD_PREFIX + 'selectPort', () => configCommands.selectPort()),
       // 注意：manageSiFliSdk 已在外部注册，无论是否为 SiFli 项目
