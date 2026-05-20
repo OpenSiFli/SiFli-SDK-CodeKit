@@ -1064,7 +1064,6 @@ export class BuiltinSerialMonitorService {
     <header class="toolbar">
       <div class="status">
         <span class="pill"><span id="dot" class="dot"></span><strong id="connection">Disconnected</strong></span>
-        <span id="port"></span>
         <span id="baud"></span>
         <span id="count"></span>
       </div>
@@ -1139,7 +1138,6 @@ export class BuiltinSerialMonitorService {
       const connected = !!status.connected;
       document.getElementById('dot').classList.toggle('connected', connected);
       document.getElementById('connection').textContent = connected ? 'Connected' : 'Disconnected';
-      document.getElementById('port').textContent = status.port ? status.port : '';
       document.getElementById('baud').textContent = status.baudRate ? status.baudRate + ' baud' : '';
       document.getElementById('count').textContent = (status.logCount || entries.length || 0) + ' entries';
       if (status.port && portSelect.value !== status.port) {
