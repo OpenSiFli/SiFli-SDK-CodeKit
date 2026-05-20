@@ -538,6 +538,157 @@ export class AutomationService {
     });
   }
 
+  public async connectSerial(
+    input: {
+      port?: string;
+      baudRate?: number;
+      revealMonitor?: boolean;
+    } = {}
+  ): Promise<unknown> {
+    const portPath = input.port ?? this.serialPortService.selectedSerialPort;
+    if (!portPath) {
+      return this.withResult({
+        success: false,
+        operation: 'serialConnect',
+        message: vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'),
+      });
+    }
+
+    const baudRate = input.baudRate ?? this.serialPortService.monitorBaudRate;
+    if (!Number.isInteger(baudRate) || baudRate <= 0) {
+      return this.withResult({
+        success: false,
+        operation: 'serialConnect',
+        message: vscode.l10n.t('Serial baud rate must be a positive integer.'),
+      });
+    }
+
+    const ports = await this.serialPortService.getSerialPorts();
+    const port = ports.find(item => item.path === portPath);
+    if (!port) {
+      return this.withResult({
+        success: false,
+        operation: 'serialConnect',
+        message: vscode.l10n.t('Serial port not found: {0}', portPath),
+        ports: ports.map(item => item.path),
+      });
+    }
+
+    this.serialPortService.selectedSerialPort = port.path;
+    this.serialPortService.monitorBaudRate = baudRate;
+
+    const success = await this.serialMonitorService.connectSerialSession(
+      port.path,
+      baudRate,
+      input.revealMonitor ?? false
+    );
+    this.statusBarProvider.updateStatusBarItems();
+
+    return this.withResult({
+      success,
+      operation: 'serialConnect',
+      port,
+      baudRate,
+      status: this.serialMonitorService.getSerialStatus(),
+    });
+  }
+
+  public async disconnectSerial(): Promise<unknown> {
+    const success = await this.serialMonitorService.closeSerialMonitor();
+    this.statusBarProvider.updateStatusBarItems();
+    return this.withResult({
+      success,
+      operation: 'serialDisconnect',
+      status: this.serialMonitorService.getSerialStatus(),
+    });
+  }
+
+  public async writeSerial(input: {
+    data: string;
+    mode?: 'text' | 'hex';
+    lineEnding?: 'none' | 'lf' | 'crlf';
+  }): Promise<unknown> {
+    try {
+      const result = await this.serialMonitorService.writeSerialData(input.data, {
+        mode: input.mode ?? 'text',
+        lineEnding: input.lineEnding,
+        source: 'mcp',
+      });
+      return this.withResult({
+        success: true,
+        operation: 'serialWrite',
+        ...result,
+        status: this.serialMonitorService.getSerialStatus(),
+      });
+    } catch (error) {
+      return this.withResult({
+        success: false,
+        operation: 'serialWrite',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  public async readSerial(
+    input: {
+      afterId?: number;
+      maxEntries?: number;
+      consume?: boolean;
+    } = {}
+  ): Promise<unknown> {
+    try {
+      const result = this.serialMonitorService.readSerialData({
+        afterId: input.afterId,
+        maxEntries: input.maxEntries,
+        consume: input.consume ?? true,
+      });
+      return this.withResult({
+        success: true,
+        operation: 'serialRead',
+        ...result,
+        text: result.entries.map(entry => `[${entry.source}] ${entry.text}`).join('\n'),
+      });
+    } catch (error) {
+      return this.withResult({
+        success: false,
+        operation: 'serialRead',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  public async resetSerial(
+    input: {
+      dtr?: boolean;
+      rts?: boolean;
+      activeMs?: number;
+      settleMs?: number;
+    } = {}
+  ): Promise<unknown> {
+    try {
+      await this.serialMonitorService.resetSerialDevice(input);
+      return this.withResult({
+        success: true,
+        operation: 'serialReset',
+        status: this.serialMonitorService.getSerialStatus(),
+      });
+    } catch (error) {
+      return this.withResult({
+        success: false,
+        operation: 'serialReset',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  public async getSerialStatus(): Promise<unknown> {
+    return this.withResult({
+      success: true,
+      operation: 'serialStatus',
+      status: this.serialMonitorService.getSerialStatus(),
+    });
+  }
+
   public async openMonitor(input: { port?: string; monitorBaud?: number } = {}): Promise<unknown> {
     const project = this.ensureSiFliProject('openMonitor');
     if (!project.ok) {

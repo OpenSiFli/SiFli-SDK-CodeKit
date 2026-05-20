@@ -371,6 +371,159 @@ export class ToolRegistryService {
           }),
       },
       {
+        id: 'serial.connect',
+        mcp: {
+          name: 'sifli.serial.connect',
+          description:
+            'Connect to a serial port for MCP-driven device interaction. Optionally reveal the VS Code serial monitor UI.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              port: {
+                type: 'string',
+                description: 'Serial port path. Uses the selected SiFli serial port when omitted.',
+              },
+              baudRate: {
+                type: 'integer',
+                description: 'Serial baud rate. Uses the selected monitor baud rate when omitted.',
+              },
+              revealMonitor: {
+                type: 'boolean',
+                description: 'Open the VS Code serial monitor panel after connecting.',
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+        invoke: async input =>
+          this.automationService.connectSerial({
+            port: this.asOptionalString(input.port),
+            baudRate: this.asOptionalNumber(input.baudRate),
+            revealMonitor: this.asOptionalBoolean(input.revealMonitor),
+          }),
+      },
+      {
+        id: 'serial.disconnect',
+        mcp: {
+          name: 'sifli.serial.disconnect',
+          description: 'Disconnect the active serial MCP session.',
+          inputSchema: EMPTY_OBJECT_SCHEMA,
+        },
+        invoke: async () => this.automationService.disconnectSerial(),
+      },
+      {
+        id: 'serial.write',
+        mcp: {
+          name: 'sifli.serial.write',
+          description: 'Write string or HEX bytes to the active serial session.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              data: {
+                type: 'string',
+                description: 'String data or hexadecimal bytes to send.',
+              },
+              mode: {
+                type: 'string',
+                enum: ['text', 'hex'],
+                description: 'Use text for UTF-8 strings or hex for raw hexadecimal bytes.',
+              },
+              lineEnding: {
+                type: 'string',
+                enum: ['none', 'lf', 'crlf'],
+                description: 'Optional line ending appended in text mode.',
+              },
+            },
+            required: ['data'],
+            additionalProperties: false,
+          },
+        },
+        invoke: async input =>
+          this.automationService.writeSerial({
+            data: this.asString(input.data),
+            mode: this.asSerialSendMode(input.mode),
+            lineEnding: this.asSerialLineEnding(input.lineEnding),
+          }),
+      },
+      {
+        id: 'serial.read',
+        mcp: {
+          name: 'sifli.serial.read',
+          description:
+            'Read buffered serial log entries from the active session. By default this consumes entries like a chat transcript.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              afterId: {
+                type: 'integer',
+                description: 'Return entries after this log id when consume is false.',
+              },
+              maxEntries: {
+                type: 'integer',
+                description: 'Maximum number of entries to return.',
+              },
+              consume: {
+                type: 'boolean',
+                description: 'Advance the MCP read cursor after reading. Defaults to true.',
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+        invoke: async input =>
+          this.automationService.readSerial({
+            afterId: this.asOptionalNumber(input.afterId),
+            maxEntries: this.asOptionalNumber(input.maxEntries),
+            consume: this.asOptionalBoolean(input.consume),
+          }),
+      },
+      {
+        id: 'serial.reset',
+        mcp: {
+          name: 'sifli.serial.reset',
+          description:
+            'Pulse the configured DTR/RTS serial control lines to reset the connected device. Settings provide defaults.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              dtr: {
+                type: 'boolean',
+                description: 'DTR value during the active reset pulse.',
+              },
+              rts: {
+                type: 'boolean',
+                description: 'RTS value during the active reset pulse.',
+              },
+              activeMs: {
+                type: 'integer',
+                description: 'How long to hold active reset signals.',
+              },
+              settleMs: {
+                type: 'integer',
+                description: 'Delay after restoring idle control signals.',
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+        invoke: async input =>
+          this.automationService.resetSerial({
+            dtr: this.asOptionalBoolean(input.dtr),
+            rts: this.asOptionalBoolean(input.rts),
+            activeMs: this.asOptionalNumber(input.activeMs),
+            settleMs: this.asOptionalNumber(input.settleMs),
+          }),
+      },
+      {
+        id: 'serial.status',
+        mcp: {
+          name: 'sifli.serial.status',
+          description: 'Return the active serial session status and log count.',
+          inputSchema: EMPTY_OBJECT_SCHEMA,
+        },
+        invoke: async () => this.automationService.getSerialStatus(),
+      },
+      {
         id: 'monitor.open',
         lm: {
           name: LM_TOOL_NAMES.OPEN_MONITOR,
@@ -738,6 +891,36 @@ export class ToolRegistryService {
     }
     const parsed = this.asNumber(value);
     return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  private asOptionalBoolean(value: unknown): boolean | undefined {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    if (typeof value !== 'boolean') {
+      throw new Error('Expected an optional boolean value.');
+    }
+    return value;
+  }
+
+  private asSerialSendMode(value: unknown): 'text' | 'hex' | undefined {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    if (value !== 'text' && value !== 'hex') {
+      throw new Error('Expected serial send mode to be "text" or "hex".');
+    }
+    return value;
+  }
+
+  private asSerialLineEnding(value: unknown): 'none' | 'lf' | 'crlf' | undefined {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    if (value !== 'none' && value !== 'lf' && value !== 'crlf') {
+      throw new Error('Expected serial line ending to be "none", "lf", or "crlf".');
+    }
+    return value;
   }
 
   private asStringMap(value: unknown): Record<string, string> | undefined {
