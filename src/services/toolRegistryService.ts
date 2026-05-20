@@ -330,7 +330,7 @@ export class ToolRegistryService {
         },
         mcp: {
           name: 'sifli.serial.listPorts',
-          description: 'List serial ports and current baud rate selections.',
+          description: 'List serial ports and current download/log baud rate selections.',
           inputSchema: EMPTY_OBJECT_SCHEMA,
         },
         invoke: async () => this.automationService.listSerialPorts(),
@@ -341,11 +341,12 @@ export class ToolRegistryService {
           name: LM_TOOL_NAMES.SELECT_SERIAL_PORT,
           invocationMessage: input => vscode.l10n.t('Selecting serial port {0}', this.asString(input.port)),
           confirmationTitle: input => vscode.l10n.t('Select serial port {0}?', this.asString(input.port)),
-          confirmationMessage: input => vscode.l10n.t('Set the active serial port to {0}.', this.asString(input.port)),
+          confirmationMessage: input =>
+            vscode.l10n.t('Set the download serial port to {0}.', this.asString(input.port)),
         },
         mcp: {
           name: 'sifli.serial.selectPort',
-          description: 'Select the active serial port and update download or monitor baud rates.',
+          description: 'Select the download serial port and optionally update the download baud rate.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -353,9 +354,6 @@ export class ToolRegistryService {
                 type: 'string',
               },
               downloadBaud: {
-                type: 'integer',
-              },
-              monitorBaud: {
                 type: 'integer',
               },
             },
@@ -367,7 +365,6 @@ export class ToolRegistryService {
           this.automationService.selectSerialPort({
             port: this.asString(input.port),
             downloadBaud: this.asOptionalNumber(input.downloadBaud),
-            monitorBaud: this.asOptionalNumber(input.monitorBaud),
           }),
       },
       {
@@ -381,11 +378,11 @@ export class ToolRegistryService {
             properties: {
               port: {
                 type: 'string',
-                description: 'Serial port path. Uses the selected SiFli serial port when omitted.',
+                description: 'Serial port path. Uses the persisted log serial port when omitted.',
               },
               baudRate: {
                 type: 'integer',
-                description: 'Serial baud rate. Uses the selected monitor baud rate when omitted.',
+                description: 'Serial baud rate. Uses the persisted log baud rate when omitted.',
               },
               revealMonitor: {
                 type: 'boolean',
@@ -529,11 +526,11 @@ export class ToolRegistryService {
           name: LM_TOOL_NAMES.OPEN_MONITOR,
           invocationMessage: vscode.l10n.t('Opening device monitor'),
           confirmationTitle: vscode.l10n.t('Open device monitor?'),
-          confirmationMessage: vscode.l10n.t('Open the serial monitor for the selected device.'),
+          confirmationMessage: vscode.l10n.t('Open the serial monitor for the persisted log serial port.'),
         },
         mcp: {
           name: 'sifli.monitor.open',
-          description: 'Open the serial monitor for the selected device or an explicitly provided port.',
+          description: 'Open the serial monitor for the persisted log serial port or an explicitly provided port.',
           inputSchema: {
             type: 'object',
             properties: {

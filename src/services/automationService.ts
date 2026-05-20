@@ -487,11 +487,7 @@ export class AutomationService {
     });
   }
 
-  public async selectSerialPort(input: {
-    port: string;
-    downloadBaud?: number;
-    monitorBaud?: number;
-  }): Promise<unknown> {
+  public async selectSerialPort(input: { port: string; downloadBaud?: number }): Promise<unknown> {
     const project = this.ensureSiFliProject('selectSerialPort');
     if (!project.ok) {
       return project.payload;
@@ -517,20 +513,9 @@ export class AutomationService {
       });
     }
 
-    if (input.monitorBaud !== undefined && !supportedBaudRates.has(input.monitorBaud)) {
-      return this.withResult({
-        success: false,
-        operation: 'selectSerialPort',
-        message: vscode.l10n.t('Unsupported monitor baud rate: {0}', String(input.monitorBaud)),
-      });
-    }
-
     this.serialPortService.selectedSerialPort = port.path;
     if (input.downloadBaud !== undefined) {
       this.serialPortService.downloadBaudRate = input.downloadBaud;
-    }
-    if (input.monitorBaud !== undefined) {
-      this.serialPortService.monitorBaudRate = input.monitorBaud;
     }
     this.statusBarProvider.updateStatusBarItems();
 
@@ -539,7 +524,6 @@ export class AutomationService {
       operation: 'selectSerialPort',
       port,
       downloadBaudRate: this.serialPortService.downloadBaudRate,
-      monitorBaudRate: this.serialPortService.monitorBaudRate,
     });
   }
 
@@ -556,7 +540,7 @@ export class AutomationService {
       return this.withResult({
         success: false,
         operation: 'serialConnect',
-        message: vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'),
+        message: vscode.l10n.t('Select a log serial port in the serial monitor first or pass a port.'),
       });
     }
 
@@ -734,7 +718,7 @@ export class AutomationService {
       return this.withResult({
         success: false,
         operation: 'openMonitor',
-        message: vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'),
+        message: vscode.l10n.t('Select a log serial port in the serial monitor first or pass a port.'),
       });
     }
 

@@ -163,12 +163,13 @@ export class StatusBarProvider {
       const displayPortName = selectedSerialPort
         ? SerialPortService.getDisplayPortName(selectedSerialPort)
         : notAvailable;
-      this.currentSerialPortStatusItem.text = vscode.l10n.t('$(plug) COM: {0}', displayPortName);
+      this.currentSerialPortStatusItem.text = selectedSerialPort
+        ? vscode.l10n.t('$(plug) COM: {0} @ {1}', displayPortName, String(this.serialPortService.downloadBaudRate))
+        : vscode.l10n.t('$(plug) COM: {0}', displayPortName);
       this.currentSerialPortStatusItem.tooltip = vscode.l10n.t(
-        'Current serial port: {0}\nDownload baud rate: {1}\nMonitor baud rate: {2}\nClick to configure serial port',
+        'Download serial port: {0}\nDownload baud rate: {1}\nClick to configure download serial port',
         selectedSerialPort || notSelected,
-        String(this.serialPortService.downloadBaudRate),
-        String(this.serialPortService.monitorBaudRate)
+        String(this.serialPortService.downloadBaudRate)
       );
     }
 

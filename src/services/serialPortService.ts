@@ -154,9 +154,9 @@ export class SerialPortService {
   }
 
   /**
-   * 显示串口选择对话框，包括串口、下载波特率和监视波特率的选择
+   * 显示下载串口选择对话框，包括串口和下载波特率的选择
    */
-  public async selectPort(): Promise<{ port?: string; downloadBaud?: number; monitorBaud?: number } | undefined> {
+  public async selectPort(): Promise<{ port?: string; downloadBaud?: number } | undefined> {
     try {
       // 第一步：选择串口
       const ports = await this.getSerialPorts();
@@ -199,50 +199,25 @@ export class SerialPortService {
         return undefined;
       }
 
-      // 第三步：选择监视波特率
-      const monitorBaudItems = SerialPortService.BAUD_RATES.map(baud => ({
-        label: baud.toString(),
-        // description: baud === this._monitorBaudRate ? '(当前)' : '',
-        detail: vscode.l10n.t('Monitor baud rate: {0}', String(baud)),
-      }));
-
-      const selectedMonitorBaud = await vscode.window.showQuickPick(monitorBaudItems, {
-        placeHolder: vscode.l10n.t('Select monitor baud rate (current: {0})', String(this._monitorBaudRate)),
-        canPickMany: false,
-      });
-
-      if (!selectedMonitorBaud) {
-        return undefined;
-      }
-
       // 应用选择的配置
       const port = selectedPort.label;
       const downloadBaud = parseInt(selectedDownloadBaud.label);
-      const monitorBaud = parseInt(selectedMonitorBaud.label);
 
       this._selectedSerialPort = port;
       this._downloadBaudRate = downloadBaud;
-      this._monitorBaudRate = monitorBaud;
 
       // 保存配置到 workspaceState
       await this.workspaceStateService.setSelectedSerialPort(port);
       await this.workspaceStateService.setDownloadBaudRate(downloadBaud);
-      await this.workspaceStateService.setMonitorBaudRate(monitorBaud);
 
-      this.logService.info(`Port configuration updated: ${port}, download: ${downloadBaud}, monitor: ${monitorBaud}`);
+      this.logService.info(`Download port configuration updated: ${port}, download: ${downloadBaud}`);
       vscode.window.showInformationMessage(
-        vscode.l10n.t(
-          'Serial port configured: {0}\nDownload baud rate: {1}\nMonitor baud rate: {2}',
-          port,
-          String(downloadBaud),
-          String(monitorBaud)
-        )
+        vscode.l10n.t('Download serial port configured: {0}\nDownload baud rate: {1}', port, String(downloadBaud))
       );
 
       return {
         port,
         downloadBaud,
-        monitorBaud,
       };
     } catch (error) {
       console.error('[SerialPortService] Error in selectPort:', error);

@@ -112,7 +112,7 @@ export class ConfigCommands {
   }
 
   /**
-   * 选择端口配置（包括串口、下载波特率、监视波特率）
+   * 选择下载串口配置（包括串口和下载波特率）
    */
   public async selectPort(): Promise<void> {
     const result = await this.serialPortService.selectPort();

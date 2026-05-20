@@ -805,7 +805,7 @@ export class WorkflowService {
     if (!selectedSerialPort && !options.allowMonitorPortPrompt) {
       return {
         success: false,
-        message: vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'),
+        message: vscode.l10n.t('Select a log serial port in the serial monitor first or pass a port.'),
       };
     }
     return {
@@ -894,7 +894,10 @@ export class WorkflowService {
     const steps = Array.isArray(scopedWorkflow.workflow.steps) ? scopedWorkflow.workflow.steps : [];
 
     const hasBoard = this.isBoardSelected();
-    const hasSerialPort = !!this.serialPortService.selectedSerialPort;
+    const hasDownloadSerialPort = !!this.serialPortService.selectedSerialPort;
+    const hasMonitorSerialPort = !!(
+      this.serialPortService.monitorSerialPort || this.serialPortService.selectedSerialPort
+    );
     const hasShellCommand = steps.some(step => step.type === 'shell.command');
 
     steps.forEach((step, index) => {
@@ -918,8 +921,11 @@ export class WorkflowService {
       ) {
         reasons.add(vscode.l10n.t('Select a SiFli board first. Click the board name in the status bar.'));
       }
-      if ((step.type === 'build.download' || step.type === 'monitor.open') && !hasSerialPort) {
+      if (step.type === 'build.download' && !hasDownloadSerialPort) {
         reasons.add(vscode.l10n.t('Select a serial port first. Click "COM: N/A" in the status bar.'));
+      }
+      if (step.type === 'monitor.open' && !hasMonitorSerialPort) {
+        reasons.add(vscode.l10n.t('Select a log serial port in the serial monitor first or pass a port.'));
       }
       if (step.type === 'shell.command') {
         if (!vscode.workspace.isTrusted) {

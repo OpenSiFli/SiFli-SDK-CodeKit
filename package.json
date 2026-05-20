@@ -514,10 +514,6 @@
             "downloadBaud": {
               "type": "number",
               "description": "%lmTool.selectSerialPort.downloadBaud.description%"
-            },
-            "monitorBaud": {
-              "type": "number",
-              "description": "%lmTool.selectSerialPort.monitorBaud.description%"
             }
           },
           "required": [
