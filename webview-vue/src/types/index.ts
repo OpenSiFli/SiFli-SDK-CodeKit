@@ -235,6 +235,49 @@ export interface TaskLogMessage {
   entry: TaskLogEntry;
 }
 
+export type SerialLogSource = 'device' | 'user' | 'mcp' | 'system' | 'error';
+export type SerialSendMode = 'text' | 'hex';
+export type SerialLineEnding = 'none' | 'lf' | 'crlf';
+
+export interface SerialPortInfo {
+  path: string;
+  manufacturer?: string;
+  serialNumber?: string;
+}
+
+export interface SerialLogEntry {
+  id: number;
+  timestamp: string;
+  source: SerialLogSource;
+  text: string;
+  hex: string;
+  byteLength: number;
+}
+
+export interface SerialMonitorStatus {
+  connectionId?: string;
+  connected: boolean;
+  port?: string;
+  baudRate?: number;
+  dataBits?: number;
+  stopBits?: number;
+  parity?: string;
+  logCount: number;
+}
+
+export interface SerialMonitorSnapshot {
+  status: SerialMonitorStatus;
+  entries: SerialLogEntry[];
+  ports: SerialPortInfo[];
+  defaultLineEnding: SerialLineEnding;
+  reset: {
+    dtr: boolean;
+    rts: boolean;
+    activeMs: number;
+    settleMs: number;
+  };
+}
+
 // SDK 管理器状态
 export interface SdkManagerState {
   sdkSource: SdkSource;

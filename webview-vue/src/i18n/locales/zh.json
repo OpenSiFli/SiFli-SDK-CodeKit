@@ -156,6 +156,42 @@
     "release": "发布版",
     "branch": "分支"
   },
+  "serialMonitor": {
+    "status": {
+      "connected": "已连接",
+      "disconnected": "未连接"
+    },
+    "actions": {
+      "refresh": "刷新",
+      "hexView": "HEX 视图",
+      "clear": "清空",
+      "reset": "复位",
+      "disconnect": "断开",
+      "send": "发送"
+    },
+    "mode": {
+      "text": "String",
+      "hex": "HEX"
+    },
+    "lineEnding": {
+      "none": "无行尾",
+      "lf": "LF",
+      "crlf": "CRLF"
+    },
+    "source": {
+      "device": "设备",
+      "user": "用户",
+      "mcp": "MCP",
+      "system": "系统",
+      "error": "错误"
+    },
+    "placeholder": {
+      "text": "输入字符串数据",
+      "hex": "输入 HEX 字节，例如 AA 55 0D 0A"
+    },
+    "noPorts": "未发现串口",
+    "entries": "{count} 条日志"
+  },
   "analysis": {
     "sectionLabel": "外设分析",
     "title": "分析结果仪表板",

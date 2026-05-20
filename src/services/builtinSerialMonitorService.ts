@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { randomUUID } from 'crypto';
 import { SerialPort } from 'serialport';
 import { formatSerialBufferHex, parseSerialHexInput } from '../utils/serialDataUtils';
+import { getVueWebviewContent } from '../utils/vueWebviewContent';
 
 export { parseSerialHexInput } from '../utils/serialDataUtils';
 
@@ -372,6 +372,7 @@ export class BuiltinSerialMonitorService {
   private readonly onDidChangeActiveSessionEmitter = new vscode.EventEmitter<SerialMonitorStatus>();
   public readonly onDidChangeActiveSession = this.onDidChangeActiveSessionEmitter.event;
   private defaultBaudRate = DEFAULT_BAUD_RATE;
+  private context?: vscode.ExtensionContext;
 
   private constructor() {}
 
@@ -380,6 +381,10 @@ export class BuiltinSerialMonitorService {
       BuiltinSerialMonitorService.instance = new BuiltinSerialMonitorService();
     }
     return BuiltinSerialMonitorService.instance;
+  }
+
+  public setContext(context: vscode.ExtensionContext): void {
+    this.context = context;
   }
 
   public async listSerialPorts(): Promise<SerialPortInfo[]> {
@@ -614,15 +619,20 @@ export class BuiltinSerialMonitorService {
       {
         enableScripts: true,
         retainContextWhenHidden: true,
+        enableCommandUris: true,
+        localResourceRoots: this.context
+          ? [
+              vscode.Uri.joinPath(this.context.extensionUri, 'webview-vue', 'dist'),
+              vscode.Uri.joinPath(this.context.extensionUri, 'webview-vue', 'dist', 'assets'),
+            ]
+          : [],
       }
     );
 
     this.panels.set(session.connectionId, panel);
-    const ports = await this.listSerialPorts();
-    panel.webview.html = this.createWebviewHtml(
-      panel.webview,
-      session.getSnapshot(this.readDefaultLineEnding(), this.resolveResetOptions(), ports)
-    );
+    panel.webview.html = this.context
+      ? getVueWebviewContent(panel.webview, this.context.extensionPath)
+      : this.createMissingContextHtml();
 
     this.bindPanelToSession(panel, session);
   }
@@ -630,10 +640,10 @@ export class BuiltinSerialMonitorService {
   private bindPanelToSession(panel: vscode.WebviewPanel, session: SerialMonitorSession): void {
     const disposables: vscode.Disposable[] = [
       session.onDidReceiveData(entry => {
-        this.postToPanel(session.connectionId, { type: 'entry', entry });
+        this.postToPanel(session.connectionId, { command: 'serialMonitorEntry', entry });
       }),
       session.onDidChangeStatus(status => {
-        this.postToPanel(session.connectionId, { type: 'status', status });
+        this.postToPanel(session.connectionId, { command: 'serialMonitorStatus', status });
       }),
       panel.webview.onDidReceiveMessage(message => {
         void this.handleWebviewMessage(session.connectionId, message);
@@ -651,28 +661,31 @@ export class BuiltinSerialMonitorService {
     try {
       switch (command) {
         case 'ready':
+          await this.initializePanelWebview(connectionId);
+          break;
+        case 'getSerialMonitorSnapshot':
           await this.postSnapshot(connectionId);
           break;
-        case 'refreshPorts':
+        case 'serialMonitorRefreshPorts':
           await this.postSnapshot(connectionId);
           break;
-        case 'changePort':
+        case 'serialMonitorChangePort':
           await this.changePanelSerialPort(connectionId, String(message.port ?? ''));
           break;
-        case 'send':
+        case 'serialMonitorSend':
           await this.writeSerialData(connectionId, String(message.payload ?? ''), {
             mode: message.mode === 'hex' ? 'hex' : 'text',
             lineEnding: this.normalizeLineEnding(message.lineEnding),
             source: 'user',
           });
           break;
-        case 'reset':
+        case 'serialMonitorReset':
           await this.resetSerialDevice(connectionId);
           break;
-        case 'disconnect':
+        case 'serialMonitorDisconnect':
           await this.closeSerialMonitor(connectionId);
           break;
-        case 'clear':
+        case 'serialMonitorClear':
           this.clearSerialLog(connectionId);
           break;
         default:
@@ -680,10 +693,22 @@ export class BuiltinSerialMonitorService {
       }
     } catch (error) {
       this.postToPanel(connectionId, {
-        type: 'error',
+        command: 'serialMonitorError',
         message: error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  private async initializePanelWebview(connectionId: string): Promise<void> {
+    this.postToPanel(connectionId, {
+      command: 'initializeLocale',
+      locale: this.getVSCodeLocale(),
+    });
+    this.postToPanel(connectionId, {
+      command: 'navigate',
+      route: '/serial-monitor',
+    });
+    await this.postSnapshot(connectionId);
   }
 
   private normalizeLineEnding(value: unknown): SerialLineEnding {
@@ -757,7 +782,7 @@ export class BuiltinSerialMonitorService {
     const session = this.sessions.get(connectionId);
     if (!session) {
       this.postToPanel(connectionId, {
-        type: 'snapshot',
+        command: 'serialMonitorSnapshot',
         snapshot: {
           status: {
             connected: false,
@@ -773,7 +798,7 @@ export class BuiltinSerialMonitorService {
     }
 
     this.postToPanel(connectionId, {
-      type: 'snapshot',
+      command: 'serialMonitorSnapshot',
       snapshot: session.getSnapshot(this.readDefaultLineEnding(), this.resolveResetOptions(), ports),
     });
   }
@@ -794,7 +819,7 @@ export class BuiltinSerialMonitorService {
     const panel = this.panels.get(connectionId);
     if (panel) {
       this.postToPanel(connectionId, {
-        type: 'status',
+        command: 'serialMonitorStatus',
         status: {
           connected: false,
           logCount: 0,
@@ -809,441 +834,13 @@ export class BuiltinSerialMonitorService {
     this.panelDisposables.delete(connectionId);
   }
 
-  private createWebviewHtml(webview: vscode.Webview, snapshot: SerialSessionSnapshot): string {
-    const nonce = randomUUID();
-    const initialState = JSON.stringify(snapshot).replace(/</g, '\\u003c');
+  private getVSCodeLocale(): string {
+    const config = vscode.workspace.getConfiguration();
+    const locale = config.get<string>('locale') || vscode.env.language || 'en';
+    return locale.startsWith('zh') ? 'zh' : 'en';
+  }
 
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SiFli Serial Monitor</title>
-  <style>
-    :root {
-      color-scheme: light dark;
-      --monitor-border: var(--vscode-panel-border);
-      --monitor-muted: var(--vscode-descriptionForeground);
-      --monitor-bg-soft: var(--vscode-sideBar-background);
-      --monitor-row: color-mix(in srgb, var(--vscode-editor-foreground) 6%, transparent);
-      --monitor-accent: var(--vscode-button-background);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      padding: 0;
-      min-height: 100vh;
-      background: var(--vscode-editor-background);
-      color: var(--vscode-editor-foreground);
-      font-family: var(--vscode-font-family);
-      font-size: var(--vscode-font-size);
-    }
-
-    button,
-    select,
-    textarea {
-      font: inherit;
-    }
-
-    button,
-    select {
-      height: 30px;
-    }
-
-    .port-select {
-      min-width: 160px;
-      max-width: min(280px, 42vw);
-    }
-
-    button {
-      border: 1px solid var(--vscode-button-border, transparent);
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-      border-radius: 4px;
-      padding: 0 10px;
-      cursor: pointer;
-    }
-
-    button.primary {
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-    }
-
-    button:disabled {
-      cursor: default;
-      opacity: 0.55;
-    }
-
-    select,
-    textarea {
-      border: 1px solid var(--vscode-input-border, var(--monitor-border));
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border-radius: 4px;
-    }
-
-    .shell {
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
-      min-height: 100vh;
-    }
-
-    .toolbar,
-    .composer {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--monitor-border);
-      background: var(--monitor-bg-soft);
-    }
-
-    .composer {
-      align-items: stretch;
-      border-top: 1px solid var(--monitor-border);
-      border-bottom: 0;
-    }
-
-    .status {
-      min-width: 0;
-      flex: 1;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px 12px;
-      color: var(--monitor-muted);
-    }
-
-    .status strong {
-      color: var(--vscode-editor-foreground);
-      font-weight: 600;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      min-height: 22px;
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--vscode-testing-iconErrored);
-    }
-
-    .dot.connected {
-      background: var(--vscode-testing-iconPassed);
-    }
-
-    .log {
-      min-height: 0;
-      overflow: auto;
-      padding: 10px 12px 16px;
-      font-family: var(--vscode-editor-font-family);
-      font-size: var(--vscode-editor-font-size);
-      line-height: 1.45;
-    }
-
-    .entry {
-      display: grid;
-      grid-template-columns: 82px 72px minmax(0, 1fr);
-      gap: 10px;
-      padding: 5px 6px;
-      border-bottom: 1px solid var(--monitor-row);
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-    }
-
-    .time,
-    .source,
-    .hex {
-      color: var(--monitor-muted);
-    }
-
-    .source {
-      text-transform: uppercase;
-      font-size: 11px;
-      letter-spacing: 0;
-    }
-
-    .source.device {
-      color: var(--vscode-terminal-ansiGreen);
-    }
-
-    .source.user,
-    .source.mcp {
-      color: var(--vscode-terminal-ansiCyan);
-    }
-
-    .source.error {
-      color: var(--vscode-errorForeground);
-    }
-
-    .payload {
-      min-width: 0;
-    }
-
-    .hex {
-      display: none;
-      margin-top: 3px;
-      font-size: 11px;
-    }
-
-    .show-hex .hex {
-      display: block;
-    }
-
-    textarea {
-      flex: 1;
-      min-height: 46px;
-      max-height: 120px;
-      resize: vertical;
-      padding: 8px;
-      line-height: 1.35;
-      font-family: var(--vscode-editor-font-family);
-    }
-
-    .composer-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      min-width: 112px;
-    }
-
-    .error-banner {
-      display: none;
-      padding: 8px 12px;
-      color: var(--vscode-inputValidation-errorForeground);
-      background: var(--vscode-inputValidation-errorBackground);
-      border-bottom: 1px solid var(--vscode-inputValidation-errorBorder);
-    }
-
-    .error-banner.visible {
-      display: block;
-    }
-
-    @media (max-width: 720px) {
-      .toolbar,
-      .composer {
-        flex-wrap: wrap;
-      }
-
-      .entry {
-        grid-template-columns: 72px minmax(0, 1fr);
-      }
-
-      .source {
-        grid-column: 2;
-        grid-row: 1;
-      }
-
-      .payload {
-        grid-column: 1 / -1;
-      }
-
-      .composer-actions {
-        flex-direction: row;
-        width: 100%;
-      }
-
-      .composer-actions button {
-        flex: 1;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="shell">
-    <header class="toolbar">
-      <div class="status">
-        <span class="pill"><span id="dot" class="dot"></span><strong id="connection">Disconnected</strong></span>
-        <span id="baud"></span>
-        <span id="count"></span>
-      </div>
-      <select id="portSelect" class="port-select" title="Serial port"></select>
-      <button id="refreshPorts" title="Refresh serial ports">Refresh</button>
-      <select id="mode" title="Input mode">
-        <option value="text">String</option>
-        <option value="hex">HEX</option>
-      </select>
-      <select id="lineEnding" title="Line ending">
-        <option value="none">No EOL</option>
-        <option value="lf">LF</option>
-        <option value="crlf">CRLF</option>
-      </select>
-      <button id="toggleHex" title="Show or hide HEX bytes">HEX View</button>
-      <button id="clear" title="Clear monitor log">Clear</button>
-      <button id="reset" title="Pulse configured DTR/RTS reset signals">Reset</button>
-      <button id="disconnect" title="Disconnect serial port">Disconnect</button>
-    </header>
-    <div id="error" class="error-banner"></div>
-    <main id="log" class="log"></main>
-    <footer class="composer">
-      <textarea id="input" spellcheck="false" placeholder="Type string data or HEX bytes"></textarea>
-      <div class="composer-actions">
-        <button id="send" class="primary" title="Send data">Send</button>
-      </div>
-    </footer>
-  </div>
-  <script nonce="${nonce}">
-    const vscode = acquireVsCodeApi();
-    let state = ${initialState};
-    let entries = [];
-    let showHex = false;
-
-    const log = document.getElementById('log');
-    const input = document.getElementById('input');
-    const mode = document.getElementById('mode');
-    const lineEnding = document.getElementById('lineEnding');
-    const portSelect = document.getElementById('portSelect');
-    const error = document.getElementById('error');
-
-    function renderSnapshot(snapshot) {
-      state = snapshot;
-      entries = snapshot.entries || [];
-      lineEnding.value = snapshot.defaultLineEnding || 'crlf';
-      renderPorts(snapshot.ports || [], snapshot.status && snapshot.status.port);
-      renderStatus(snapshot.status);
-      renderEntries();
-    }
-
-    function renderPorts(ports, selectedPort) {
-      const options = ports.length
-        ? ports.map(port => {
-            const option = document.createElement('option');
-            option.value = port.path;
-            option.textContent = port.manufacturer ? port.path + ' - ' + port.manufacturer : port.path;
-            return option;
-          })
-        : [(() => {
-            const option = document.createElement('option');
-            option.value = '';
-            option.textContent = 'No serial ports';
-            return option;
-          })()];
-
-      portSelect.replaceChildren(...options);
-      portSelect.value = selectedPort || (ports[0] && ports[0].path) || '';
-      portSelect.disabled = ports.length === 0;
-    }
-
-    function renderStatus(status) {
-      const connected = !!status.connected;
-      document.getElementById('dot').classList.toggle('connected', connected);
-      document.getElementById('connection').textContent = connected ? 'Connected' : 'Disconnected';
-      document.getElementById('baud').textContent = status.baudRate ? status.baudRate + ' baud' : '';
-      document.getElementById('count').textContent = (status.logCount || entries.length || 0) + ' entries';
-      if (status.port && portSelect.value !== status.port) {
-        portSelect.value = status.port;
-      }
-      document.getElementById('send').disabled = !connected;
-      document.getElementById('reset').disabled = !connected;
-      document.getElementById('disconnect').disabled = !connected;
-    }
-
-    function renderEntries() {
-      log.classList.toggle('show-hex', showHex);
-      log.replaceChildren(...entries.map(renderEntry));
-      log.scrollTop = log.scrollHeight;
-    }
-
-    function renderEntry(entry) {
-      const row = document.createElement('div');
-      row.className = 'entry';
-
-      const time = document.createElement('div');
-      time.className = 'time';
-      time.textContent = new Date(entry.timestamp).toLocaleTimeString();
-
-      const source = document.createElement('div');
-      source.className = 'source ' + entry.source;
-      source.textContent = entry.source;
-
-      const payload = document.createElement('div');
-      payload.className = 'payload';
-      const text = document.createElement('div');
-      text.textContent = entry.text || '';
-      const hex = document.createElement('div');
-      hex.className = 'hex';
-      hex.textContent = entry.hex || '';
-      payload.append(text, hex);
-
-      row.append(time, source, payload);
-      return row;
-    }
-
-    function showError(message) {
-      error.textContent = message || '';
-      error.classList.toggle('visible', !!message);
-      if (message) {
-        setTimeout(() => showError(''), 6000);
-      }
-    }
-
-    document.getElementById('send').addEventListener('click', () => {
-      vscode.postMessage({
-        command: 'send',
-        payload: input.value,
-        mode: mode.value,
-        lineEnding: lineEnding.value
-      });
-      input.value = '';
-      input.focus();
-    });
-
-    input.addEventListener('keydown', event => {
-      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-        event.preventDefault();
-        document.getElementById('send').click();
-      }
-    });
-
-    document.getElementById('reset').addEventListener('click', () => vscode.postMessage({ command: 'reset' }));
-    document.getElementById('disconnect').addEventListener('click', () => vscode.postMessage({ command: 'disconnect' }));
-    document.getElementById('clear').addEventListener('click', () => vscode.postMessage({ command: 'clear' }));
-    document.getElementById('refreshPorts').addEventListener('click', () => vscode.postMessage({ command: 'refreshPorts' }));
-    portSelect.addEventListener('change', () => {
-      if (!portSelect.value || portSelect.value === (state.status && state.status.port)) {
-        return;
-      }
-      vscode.postMessage({ command: 'changePort', port: portSelect.value });
-    });
-    document.getElementById('toggleHex').addEventListener('click', () => {
-      showHex = !showHex;
-      renderEntries();
-    });
-
-    window.addEventListener('message', event => {
-      const message = event.data;
-      if (message.type === 'snapshot') {
-        renderSnapshot(message.snapshot);
-      } else if (message.type === 'entry') {
-        entries.push(message.entry);
-        if (entries.length > 2000) {
-          entries.shift();
-        }
-        renderStatus({ ...(state.status || {}), logCount: entries.length });
-        log.append(renderEntry(message.entry));
-        log.scrollTop = log.scrollHeight;
-      } else if (message.type === 'status') {
-        state.status = message.status;
-        renderStatus(message.status);
-      } else if (message.type === 'error') {
-        showError(message.message);
-      }
-    });
-
-    renderSnapshot(state);
-    vscode.postMessage({ command: 'ready' });
-  </script>
-</body>
-</html>`;
+  private createMissingContextHtml(): string {
+    return '<!doctype html><html><body>Serial monitor webview context is not initialized.</body></html>';
   }
 }

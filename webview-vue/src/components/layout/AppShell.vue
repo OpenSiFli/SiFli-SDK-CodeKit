@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen text-vscode-foreground p-0">
-    <div class="mx-auto flex w-full max-w-6xl flex-col px-4 py-8 sm:px-6">
+  <div class="min-h-screen p-0 text-vscode-foreground">
+    <div :class="shellClass">
       <header v-if="showBackButton" class="flex items-center gap-3">
         <button
           @click="router.back()"
@@ -22,7 +22,7 @@
         </div>
       </div>
 
-      <main class="flex-1 py-6">
+      <main :class="mainClass">
         <slot />
       </main>
     </div>
@@ -37,8 +37,17 @@ import { useSdkCatalogStore } from '@/stores/sdkCatalog';
 const route = useRoute();
 const router = useRouter();
 const catalogStore = useSdkCatalogStore();
-const isStandaloneRoute = computed(() => route.name === 'analysis' || route.name === 'debug-snapshot');
+const isSerialMonitorRoute = computed(() => route.name === 'serial-monitor');
+const isStandaloneRoute = computed(
+  () => route.name === 'analysis' || route.name === 'debug-snapshot' || isSerialMonitorRoute.value
+);
 const showBackButton = computed(() => route.path !== '/' && !isStandaloneRoute.value);
+const shellClass = computed(() =>
+  isSerialMonitorRoute.value
+    ? 'mx-auto flex w-full max-w-none flex-col px-0 py-0'
+    : 'mx-auto flex w-full max-w-6xl flex-col px-4 py-8 sm:px-6'
+);
+const mainClass = computed(() => (isSerialMonitorRoute.value ? 'flex-1 py-0' : 'flex-1 py-6'));
 
 onMounted(() => {
   if (!isStandaloneRoute.value && catalogStore.sdks.length === 0) {

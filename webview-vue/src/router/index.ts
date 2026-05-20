@@ -6,6 +6,7 @@ import SdkDetailPage from '@/views/SdkDetailPage.vue';
 import TaskPage from '@/views/TaskPage.vue';
 import AnalysisPage from '@/views/AnalysisPage.vue';
 import DebugSnapshotPage from '@/views/DebugSnapshotPage.vue';
+import SerialMonitorPage from '@/views/SerialMonitorPage.vue';
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -46,6 +47,11 @@ export const router = createRouter({
       path: '/debug-snapshot',
       name: 'debug-snapshot',
       component: DebugSnapshotPage,
+    },
+    {
+      path: '/serial-monitor',
+      name: 'serial-monitor',
+      component: SerialMonitorPage,
     },
     {
       path: '/:pathMatch(.*)*',

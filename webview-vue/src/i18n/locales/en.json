@@ -160,6 +160,42 @@
     "release": "Release",
     "branch": "Branch"
   },
+  "serialMonitor": {
+    "status": {
+      "connected": "Connected",
+      "disconnected": "Disconnected"
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "hexView": "HEX View",
+      "clear": "Clear",
+      "reset": "Reset",
+      "disconnect": "Disconnect",
+      "send": "Send"
+    },
+    "mode": {
+      "text": "String",
+      "hex": "HEX"
+    },
+    "lineEnding": {
+      "none": "No EOL",
+      "lf": "LF",
+      "crlf": "CRLF"
+    },
+    "source": {
+      "device": "Device",
+      "user": "User",
+      "mcp": "MCP",
+      "system": "System",
+      "error": "Error"
+    },
+    "placeholder": {
+      "text": "Type string data",
+      "hex": "Type HEX bytes, for example AA 55 0D 0A"
+    },
+    "noPorts": "No serial ports",
+    "entries": "{count} entries"
+  },
   "analysis": {
     "sectionLabel": "Peripheral Analysis",
     "title": "Analysis Dashboard",

@@ -28,6 +28,7 @@ import { WorkflowService } from './services/workflowService';
 import { LanguageModelToolService } from './services/languageModelToolService';
 import { McpServerService } from './services/mcpServerService';
 import { McpServerDefinitionProviderService } from './services/mcpServerDefinitionProviderService';
+import { BuiltinSerialMonitorService } from './services/builtinSerialMonitorService';
 import { isSiFliProject } from './utils/projectUtils';
 import { getReleaseNotesNotificationAction } from './utils/releaseNotesUtils';
 import { registerProbeRsDebugger } from './probe-rs/extension';
@@ -70,6 +71,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const gitService = GitService.getInstance();
   const serialPortService = SerialPortService.getInstance();
   const terminalService = TerminalService.getInstance();
+  const builtinSerialMonitorService = BuiltinSerialMonitorService.getInstance();
   const pythonService = PythonService.getInstance();
   const minGitService = MinGitService.getInstance();
   const probeRsService = ProbeRsService.getInstance();
@@ -79,6 +81,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   minGitService.setContext(context);
   probeRsService.setContext(context);
   uvService.setContext(context);
+  builtinSerialMonitorService.setContext(context);
   probeRsService.prepareManagedEnvironment();
   uvService.prepareManagedEnvironment();
   regionService.prewarm(); // 异步预热区域检测结果
