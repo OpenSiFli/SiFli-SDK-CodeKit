@@ -1,6 +1,7 @@
 export * from './config';
 export * from './board';
 export * from './debugSnapshot';
+export * from './kconfig';
 export * from './sdk';
 export * from './workflow';
 export * from './tooling';
