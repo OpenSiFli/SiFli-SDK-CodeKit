@@ -26,7 +26,7 @@
 
       <button class="tool-button" @click="refreshPorts">{{ t('serialMonitor.actions.refresh') }}</button>
 
-      <select v-model="mode" class="tool-select">
+      <select v-model="mode" class="tool-select" :disabled="terminalMode">
         <option value="text">{{ t('serialMonitor.mode.text') }}</option>
         <option value="hex">{{ t('serialMonitor.mode.hex') }}</option>
       </select>
@@ -128,8 +128,12 @@
     <main
       v-else
       ref="logContainer"
+      tabindex="0"
       class="min-h-0 flex-1 overflow-auto bg-vscode-background px-3 py-2 font-mono text-sm leading-relaxed"
       :class="terminalMode ? 'terminal-log-mode' : ''"
+      @click="focusTerminal"
+      @keydown="handleTerminalKeydown"
+      @paste="handleTerminalPaste"
     >
       <div v-if="continuousLog" class="terminal-stream">
         <span
@@ -172,7 +176,7 @@
     </main>
 
     <footer
-      v-if="!settingsOpen"
+      v-if="!settingsOpen && !terminalMode"
       class="grid grid-cols-[minmax(0,1fr)_96px] items-stretch gap-2 border-t border-vscode-panel-border bg-vscode-input-background/35 p-3"
     >
       <textarea
@@ -190,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { onMessage, postMessage } from '@/services/vscodeBridge';
 import { renderAnsiEntries } from '@/utils/ansiTerminal';
@@ -239,6 +243,15 @@ const baudRateOptions = computed(() => {
   const current = settings.value.logBaudRate;
   return supportedBaudRates.includes(current) ? supportedBaudRates : [current, ...supportedBaudRates];
 });
+const terminalEnterPayload = computed(() => {
+  if (lineEnding.value === 'lf') {
+    return '\n';
+  }
+  if (lineEnding.value === 'crlf') {
+    return '\r\n';
+  }
+  return '\r';
+});
 
 const disposables: Array<() => void> = [];
 
@@ -265,6 +278,13 @@ onMounted(() => {
 
 onUnmounted(() => {
   disposables.forEach(dispose => dispose());
+});
+
+watch(terminalMode, enabled => {
+  if (enabled) {
+    mode.value = 'text';
+    void focusTerminal();
+  }
 });
 
 function applySnapshot(snapshot: SerialMonitorSnapshot) {
@@ -342,15 +362,157 @@ function updateSettings() {
 }
 
 function handleInputKeydown(event: KeyboardEvent) {
-  if (terminalMode.value && event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-    sendData();
-    return;
-  }
-
   if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
     event.preventDefault();
     sendData();
+  }
+}
+
+async function focusTerminal() {
+  if (!terminalMode.value) {
+    return;
+  }
+  await nextTick();
+  logContainer.value?.focus({ preventScroll: true });
+}
+
+function handleTerminalPaste(event: ClipboardEvent) {
+  if (!terminalMode.value || !status.value.connected) {
+    return;
+  }
+  const text = event.clipboardData?.getData('text') ?? '';
+  if (text) {
+    event.preventDefault();
+    sendTerminalText(text);
+  }
+}
+
+function handleTerminalKeydown(event: KeyboardEvent) {
+  if (!terminalMode.value || !status.value.connected) {
+    return;
+  }
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v') {
+    return;
+  }
+
+  const payload = resolveTerminalKeyPayload(event);
+  if (payload === undefined) {
+    return;
+  }
+
+  event.preventDefault();
+  sendTerminalText(payload);
+}
+
+function sendTerminalText(payload: string) {
+  postMessage({
+    command: 'serialMonitorSend',
+    payload,
+    mode: 'text',
+    lineEnding: 'none',
+  });
+}
+
+function resolveTerminalKeyPayload(event: KeyboardEvent): string | undefined {
+  if (event.ctrlKey && !event.metaKey && !event.altKey) {
+    return resolveCtrlKeyPayload(event.key);
+  }
+  if (event.metaKey || event.altKey || event.ctrlKey) {
+    return undefined;
+  }
+  if (event.key.length === 1) {
+    return event.key;
+  }
+
+  switch (event.key) {
+    case 'Enter':
+      return terminalEnterPayload.value;
+    case 'Backspace':
+      return '\x7f';
+    case 'Tab':
+      return '\t';
+    case 'Escape':
+      return '\x1b';
+    case 'ArrowUp':
+      return '\x1b[A';
+    case 'ArrowDown':
+      return '\x1b[B';
+    case 'ArrowRight':
+      return '\x1b[C';
+    case 'ArrowLeft':
+      return '\x1b[D';
+    case 'Home':
+      return '\x1b[H';
+    case 'End':
+      return '\x1b[F';
+    case 'Insert':
+      return '\x1b[2~';
+    case 'Delete':
+      return '\x1b[3~';
+    case 'PageUp':
+      return '\x1b[5~';
+    case 'PageDown':
+      return '\x1b[6~';
+    default:
+      return resolveFunctionKeyPayload(event.key);
+  }
+}
+
+function resolveCtrlKeyPayload(key: string): string | undefined {
+  const lowerKey = key.toLowerCase();
+  if (lowerKey.length === 1 && lowerKey >= 'a' && lowerKey <= 'z') {
+    return String.fromCharCode(lowerKey.charCodeAt(0) - 96);
+  }
+
+  switch (key) {
+    case '@':
+    case '2':
+      return '\x00';
+    case '[':
+      return '\x1b';
+    case '\\':
+      return '\x1c';
+    case ']':
+      return '\x1d';
+    case '^':
+    case '6':
+      return '\x1e';
+    case '_':
+    case '-':
+      return '\x1f';
+    default:
+      return undefined;
+  }
+}
+
+function resolveFunctionKeyPayload(key: string): string | undefined {
+  switch (key) {
+    case 'F1':
+      return '\x1bOP';
+    case 'F2':
+      return '\x1bOQ';
+    case 'F3':
+      return '\x1bOR';
+    case 'F4':
+      return '\x1bOS';
+    case 'F5':
+      return '\x1b[15~';
+    case 'F6':
+      return '\x1b[17~';
+    case 'F7':
+      return '\x1b[18~';
+    case 'F8':
+      return '\x1b[19~';
+    case 'F9':
+      return '\x1b[20~';
+    case 'F10':
+      return '\x1b[21~';
+    case 'F11':
+      return '\x1b[23~';
+    case 'F12':
+      return '\x1b[24~';
+    default:
+      return undefined;
   }
 }
 
@@ -457,6 +619,11 @@ async function scrollToBottom() {
 .terminal-log-mode {
   background: var(--vscode-terminal-background, var(--vscode-background));
   color: var(--vscode-terminal-foreground, var(--vscode-foreground));
+  outline: none;
+}
+
+.terminal-log-mode:focus {
+  box-shadow: inset 0 0 0 1px var(--vscode-focus-border);
 }
 
 .send-input {
