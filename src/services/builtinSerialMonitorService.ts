@@ -76,6 +76,7 @@ export interface SerialReadResult {
 interface SerialSessionSnapshot {
   status: SerialMonitorStatus;
   entries: SerialLogEntry[];
+  ports: SerialPortInfo[];
   defaultLineEnding: SerialLineEnding;
   reset: Required<SerialResetOptions>;
 }
@@ -259,10 +260,15 @@ class SerialMonitorSession {
     };
   }
 
-  public getSnapshot(defaultLineEnding: SerialLineEnding, reset: Required<SerialResetOptions>): SerialSessionSnapshot {
+  public getSnapshot(
+    defaultLineEnding: SerialLineEnding,
+    reset: Required<SerialResetOptions>,
+    ports: SerialPortInfo[]
+  ): SerialSessionSnapshot {
     return {
       status: this.getStatus(),
       entries: [...this.entries],
+      ports,
       defaultLineEnding,
       reset,
     };
@@ -401,7 +407,7 @@ export class BuiltinSerialMonitorService {
       const existingSession = this.sessions.get(selectedPortInfo.path);
       if (existingSession?.isConnected) {
         if (revealMonitor) {
-          this.revealOrCreatePanel(existingSession, title);
+          await this.revealOrCreatePanel(existingSession, title);
         }
         this.onDidChangeActiveSessionEmitter.fire(existingSession.getStatus());
         return existingSession.connectionId;
@@ -428,7 +434,7 @@ export class BuiltinSerialMonitorService {
       this.sessions.set(session.connectionId, session);
 
       if (revealMonitor) {
-        this.revealOrCreatePanel(session, title);
+        await this.revealOrCreatePanel(session, title);
       }
 
       this.onDidChangeActiveSessionEmitter.fire(session.getStatus());
@@ -493,7 +499,7 @@ export class BuiltinSerialMonitorService {
 
   public clearSerialLog(connectionId: string): void {
     this.getRequiredSession(connectionId).clearLog();
-    this.postSnapshot(connectionId);
+    void this.postSnapshot(connectionId);
   }
 
   public getSerialStatus(connectionId?: string): SerialMonitorStatus {
@@ -593,11 +599,11 @@ export class BuiltinSerialMonitorService {
     };
   }
 
-  private revealOrCreatePanel(session: SerialMonitorSession, title: string): void {
+  private async revealOrCreatePanel(session: SerialMonitorSession, title: string): Promise<void> {
     const existingPanel = this.panels.get(session.connectionId);
     if (existingPanel) {
       existingPanel.reveal(vscode.ViewColumn.Beside);
-      this.postSnapshot(session.connectionId);
+      await this.postSnapshot(session.connectionId);
       return;
     }
 
@@ -612,11 +618,16 @@ export class BuiltinSerialMonitorService {
     );
 
     this.panels.set(session.connectionId, panel);
+    const ports = await this.listSerialPorts();
     panel.webview.html = this.createWebviewHtml(
       panel.webview,
-      session.getSnapshot(this.readDefaultLineEnding(), this.resolveResetOptions())
+      session.getSnapshot(this.readDefaultLineEnding(), this.resolveResetOptions(), ports)
     );
 
+    this.bindPanelToSession(panel, session);
+  }
+
+  private bindPanelToSession(panel: vscode.WebviewPanel, session: SerialMonitorSession): void {
     const disposables: vscode.Disposable[] = [
       session.onDidReceiveData(entry => {
         this.postToPanel(session.connectionId, { type: 'entry', entry });
@@ -640,7 +651,13 @@ export class BuiltinSerialMonitorService {
     try {
       switch (command) {
         case 'ready':
-          this.postSnapshot(connectionId);
+          await this.postSnapshot(connectionId);
+          break;
+        case 'refreshPorts':
+          await this.postSnapshot(connectionId);
+          break;
+        case 'changePort':
+          await this.changePanelSerialPort(connectionId, String(message.port ?? ''));
           break;
         case 'send':
           await this.writeSerialData(connectionId, String(message.payload ?? ''), {
@@ -673,22 +690,91 @@ export class BuiltinSerialMonitorService {
     return value === 'none' || value === 'lf' || value === 'crlf' ? value : this.readDefaultLineEnding();
   }
 
-  private postSnapshot(connectionId: string): void {
+  private async changePanelSerialPort(connectionId: string, portPath: string): Promise<void> {
+    const nextPortPath = portPath.trim();
+    if (!nextPortPath) {
+      throw new Error(vscode.l10n.t('Select a serial port first.'));
+    }
+
+    const panel = this.panels.get(connectionId);
+    if (!panel) {
+      throw new Error(vscode.l10n.t('Serial monitor panel not found.'));
+    }
+
+    const currentSession = this.sessions.get(connectionId);
+    if (currentSession?.portPath === nextPortPath && currentSession.isConnected) {
+      await this.postSnapshot(connectionId);
+      return;
+    }
+
+    const baudRate = currentSession?.getStatus().baudRate ?? this.defaultBaudRate;
+    const baseTitle = panel.title.includes(':')
+      ? panel.title.slice(0, panel.title.indexOf(':')).trim()
+      : vscode.l10n.t('SiFli Serial Monitor');
+
+    if (currentSession) {
+      await currentSession.close();
+      currentSession.dispose();
+      this.sessions.delete(connectionId);
+    }
+
+    this.disposePanelDisposables(connectionId);
+    this.panels.delete(connectionId);
+
+    const selectedPortInfo = await this.resolvePortInfo(nextPortPath);
+    const existingSession = this.sessions.get(selectedPortInfo.path);
+    if (existingSession) {
+      await existingSession.close();
+      existingSession.dispose();
+      this.sessions.delete(existingSession.connectionId);
+      this.disposePanelDisposables(existingSession.connectionId);
+      this.panels.delete(existingSession.connectionId);
+    }
+
+    const session = new SerialMonitorSession(
+      selectedPortInfo.path,
+      this.formatPortName(selectedPortInfo),
+      {
+        baudRate,
+        dataBits: DEFAULT_DATA_BITS,
+        stopBits: DEFAULT_STOP_BITS,
+        parity: DEFAULT_PARITY,
+      },
+      this.readInitialControlSignals()
+    );
+
+    await session.open();
+    this.sessions.set(session.connectionId, session);
+    this.panels.set(session.connectionId, panel);
+    panel.title = `${baseTitle}: ${session.name}`;
+    this.bindPanelToSession(panel, session);
+    this.onDidChangeActiveSessionEmitter.fire(session.getStatus());
+    await this.postSnapshot(session.connectionId);
+  }
+
+  private async postSnapshot(connectionId: string): Promise<void> {
+    const ports = await this.listSerialPorts();
     const session = this.sessions.get(connectionId);
     if (!session) {
       this.postToPanel(connectionId, {
-        type: 'status',
-        status: {
-          connected: false,
-          logCount: 0,
-        } satisfies SerialMonitorStatus,
+        type: 'snapshot',
+        snapshot: {
+          status: {
+            connected: false,
+            logCount: 0,
+          } satisfies SerialMonitorStatus,
+          entries: [],
+          ports,
+          defaultLineEnding: this.readDefaultLineEnding(),
+          reset: this.resolveResetOptions(),
+        } satisfies SerialSessionSnapshot,
       });
       return;
     }
 
     this.postToPanel(connectionId, {
       type: 'snapshot',
-      snapshot: session.getSnapshot(this.readDefaultLineEnding(), this.resolveResetOptions()),
+      snapshot: session.getSnapshot(this.readDefaultLineEnding(), this.resolveResetOptions(), ports),
     });
   }
 
@@ -767,6 +853,11 @@ export class BuiltinSerialMonitorService {
     button,
     select {
       height: 30px;
+    }
+
+    .port-select {
+      min-width: 160px;
+      max-width: min(280px, 42vw);
     }
 
     button {
@@ -977,6 +1068,8 @@ export class BuiltinSerialMonitorService {
         <span id="baud"></span>
         <span id="count"></span>
       </div>
+      <select id="portSelect" class="port-select" title="Serial port"></select>
+      <button id="refreshPorts" title="Refresh serial ports">Refresh</button>
       <select id="mode" title="Input mode">
         <option value="text">String</option>
         <option value="hex">HEX</option>
@@ -1010,14 +1103,36 @@ export class BuiltinSerialMonitorService {
     const input = document.getElementById('input');
     const mode = document.getElementById('mode');
     const lineEnding = document.getElementById('lineEnding');
+    const portSelect = document.getElementById('portSelect');
     const error = document.getElementById('error');
 
     function renderSnapshot(snapshot) {
       state = snapshot;
       entries = snapshot.entries || [];
       lineEnding.value = snapshot.defaultLineEnding || 'crlf';
+      renderPorts(snapshot.ports || [], snapshot.status && snapshot.status.port);
       renderStatus(snapshot.status);
       renderEntries();
+    }
+
+    function renderPorts(ports, selectedPort) {
+      const options = ports.length
+        ? ports.map(port => {
+            const option = document.createElement('option');
+            option.value = port.path;
+            option.textContent = port.manufacturer ? port.path + ' - ' + port.manufacturer : port.path;
+            return option;
+          })
+        : [(() => {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No serial ports';
+            return option;
+          })()];
+
+      portSelect.replaceChildren(...options);
+      portSelect.value = selectedPort || (ports[0] && ports[0].path) || '';
+      portSelect.disabled = ports.length === 0;
     }
 
     function renderStatus(status) {
@@ -1027,6 +1142,9 @@ export class BuiltinSerialMonitorService {
       document.getElementById('port').textContent = status.port ? status.port : '';
       document.getElementById('baud').textContent = status.baudRate ? status.baudRate + ' baud' : '';
       document.getElementById('count').textContent = (status.logCount || entries.length || 0) + ' entries';
+      if (status.port && portSelect.value !== status.port) {
+        portSelect.value = status.port;
+      }
       document.getElementById('send').disabled = !connected;
       document.getElementById('reset').disabled = !connected;
       document.getElementById('disconnect').disabled = !connected;
@@ -1092,6 +1210,13 @@ export class BuiltinSerialMonitorService {
     document.getElementById('reset').addEventListener('click', () => vscode.postMessage({ command: 'reset' }));
     document.getElementById('disconnect').addEventListener('click', () => vscode.postMessage({ command: 'disconnect' }));
     document.getElementById('clear').addEventListener('click', () => vscode.postMessage({ command: 'clear' }));
+    document.getElementById('refreshPorts').addEventListener('click', () => vscode.postMessage({ command: 'refreshPorts' }));
+    portSelect.addEventListener('change', () => {
+      if (!portSelect.value || portSelect.value === (state.status && state.status.port)) {
+        return;
+      }
+      vscode.postMessage({ command: 'changePort', port: portSelect.value });
+    });
     document.getElementById('toggleHex').addEventListener('click', () => {
       showHex = !showHex;
       renderEntries();
