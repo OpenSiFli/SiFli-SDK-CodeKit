@@ -5,7 +5,13 @@ export interface SdkVersion {
   valid: boolean;
 }
 
-export type ToolchainSource = 'github' | 'sifli';
+export type ToolchainSource = 'github' | 'sifli' | 'custom';
+export interface ToolchainMirrorUrls {
+  githubAssets?: string;
+  pypiIndex?: string;
+  uvPythonDownloadsJson?: string;
+  uvPypyInstallMirror?: string;
+}
 export type SdkRefType = 'branch' | 'tag' | 'detached' | 'unknown';
 export type SdkTaskKind =
   | 'install'
@@ -43,6 +49,7 @@ export interface ManagedSdkSummary {
   canUpdate: boolean;
   toolsPath?: string;
   toolchainSource?: ToolchainSource;
+  toolchainMirrorUrls?: ToolchainMirrorUrls;
   actions: ManagedSdkActions;
 }
 

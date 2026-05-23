@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { SiFliConfig, SdkVersion, SdkConfig, LegacySiFliConfig, ToolchainSource } from '../types';
+import { SiFliConfig, SdkVersion, SdkConfig, LegacySiFliConfig, ToolchainMirrorUrls, ToolchainSource } from '../types';
 import { WorkspaceStateService } from './workspaceStateService';
 import { CONFIG_MIGRATION_VERSIONS } from '../constants';
 import { LogService } from './logService';
@@ -249,7 +249,12 @@ export class ConfigService {
   /**
    * 添加SDK配置
    */
-  public async addSdkConfig(sdkPath: string, toolsPath?: string, toolchainSource?: ToolchainSource): Promise<void> {
+  public async addSdkConfig(
+    sdkPath: string,
+    toolsPath?: string,
+    toolchainSource?: ToolchainSource,
+    toolchainMirrorUrls?: ToolchainMirrorUrls
+  ): Promise<void> {
     const updatedConfigs = [...this._config.sdkConfigs];
     // 检查是否已存在
     const existingIndex = updatedConfigs.findIndex(config => config.path === sdkPath);
@@ -261,13 +266,16 @@ export class ConfigService {
       if (toolchainSource !== undefined) {
         nextConfig.toolchainSource = toolchainSource;
       }
+      if (toolchainMirrorUrls !== undefined) {
+        nextConfig.toolchainMirrorUrls = toolchainMirrorUrls;
+      }
       updatedConfigs.push(nextConfig);
     } else {
       // 更新现有配置
       updatedConfigs[existingIndex] = {
         ...updatedConfigs[existingIndex],
         ...(toolsPath !== undefined ? { toolsPath } : {}),
-        ...(toolchainSource !== undefined ? { toolchainSource } : {}),
+        ...(toolchainSource !== undefined ? { toolchainSource, toolchainMirrorUrls } : {}),
       };
     }
     await this.updateConfigValue('sdkConfigs', updatedConfigs);
@@ -325,14 +333,27 @@ export class ConfigService {
     return config?.toolchainSource;
   }
 
-  public async setSdkToolchainSource(sdkPath: string, toolchainSource: ToolchainSource): Promise<void> {
+  public getSdkToolchainMirrorUrls(sdkPath: string): ToolchainMirrorUrls | undefined {
+    const config = this._config.sdkConfigs.find(item => item.path === sdkPath);
+    return config?.toolchainMirrorUrls;
+  }
+
+  public async setSdkToolchainSource(
+    sdkPath: string,
+    toolchainSource: ToolchainSource,
+    toolchainMirrorUrls?: ToolchainMirrorUrls
+  ): Promise<void> {
     const updatedConfigs = [...this._config.sdkConfigs];
     const existingIndex = updatedConfigs.findIndex(config => config.path === sdkPath);
 
     if (existingIndex === -1) {
-      updatedConfigs.push({ path: sdkPath, toolchainSource });
+      updatedConfigs.push({ path: sdkPath, toolchainSource, toolchainMirrorUrls });
     } else {
-      updatedConfigs[existingIndex] = { ...updatedConfigs[existingIndex], toolchainSource };
+      updatedConfigs[existingIndex] = {
+        ...updatedConfigs[existingIndex],
+        toolchainSource,
+        toolchainMirrorUrls,
+      };
     }
 
     await this.updateConfigValue('sdkConfigs', updatedConfigs);

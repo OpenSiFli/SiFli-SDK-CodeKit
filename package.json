@@ -788,9 +788,32 @@
                   "type": "string",
                   "enum": [
                     "github",
-                    "sifli"
+                    "sifli",
+                    "custom"
                   ],
                   "description": "Toolchain download source for this SDK."
+                },
+                "toolchainMirrorUrls": {
+                  "type": "object",
+                  "properties": {
+                    "githubAssets": {
+                      "type": "string",
+                      "description": "Mirror URL for GitHub release assets."
+                    },
+                    "pypiIndex": {
+                      "type": "string",
+                      "description": "Python package index URL used by SDK installation."
+                    },
+                    "uvPythonDownloadsJson": {
+                      "type": "string",
+                      "description": "uv Python downloads metadata JSON URL."
+                    },
+                    "uvPypyInstallMirror": {
+                      "type": "string",
+                      "description": "uv PyPy install mirror URL."
+                    }
+                  },
+                  "description": "Custom toolchain mirror URLs for this SDK."
                 }
               },
               "required": [

@@ -1,7 +1,10 @@
+import type { ToolchainMirrorUrls, ToolchainSource } from './sdk';
+
 export interface SdkConfig {
   path: string; // SDK路径
   toolsPath?: string; // 工具链路径
-  toolchainSource?: 'github' | 'sifli'; // 工具链下载源
+  toolchainSource?: ToolchainSource; // 工具链下载源
+  toolchainMirrorUrls?: ToolchainMirrorUrls; // 自定义工具链镜像 URL
   // 后续可以添加其他SDK特定的配置项
   // customFlags?: string[];
   // buildOptions?: Record<string, any>;

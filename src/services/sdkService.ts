@@ -8,6 +8,7 @@ import {
   SdkConfig,
   SdkTarget,
   SdkVersion,
+  ToolchainMirrorUrls,
   ToolchainSource,
 } from '../types';
 import { ConfigService } from './configService';
@@ -246,9 +247,10 @@ export class SdkService {
   public async registerSdk(
     sdkPath: string,
     toolsPath?: string,
-    toolchainSource?: ToolchainSource
+    toolchainSource?: ToolchainSource,
+    toolchainMirrorUrls?: ToolchainMirrorUrls
   ): Promise<ManagedSdkSummary> {
-    await this.configService.addSdkConfig(sdkPath, toolsPath, toolchainSource);
+    await this.configService.addSdkConfig(sdkPath, toolsPath, toolchainSource, toolchainMirrorUrls);
     return this.buildManagedSdkSummary(this.configService.getSdkConfig(sdkPath) || { path: sdkPath }, false);
   }
 
@@ -329,8 +331,12 @@ export class SdkService {
     return this.configService.getSdkToolchainSource(sdkPath);
   }
 
-  public async setSdkToolchainSource(sdkPath: string, toolchainSource: ToolchainSource): Promise<void> {
-    await this.configService.setSdkToolchainSource(sdkPath, toolchainSource);
+  public async setSdkToolchainSource(
+    sdkPath: string,
+    toolchainSource: ToolchainSource,
+    toolchainMirrorUrls?: ToolchainMirrorUrls
+  ): Promise<void> {
+    await this.configService.setSdkToolchainSource(sdkPath, toolchainSource, toolchainMirrorUrls);
   }
 
   public getCurrentSdk(): SdkVersion | undefined {
@@ -515,6 +521,7 @@ export class SdkService {
       canUpdate: canUpdateBranch,
       toolsPath: sdkConfig.toolsPath,
       toolchainSource: sdkConfig.toolchainSource,
+      toolchainMirrorUrls: sdkConfig.toolchainMirrorUrls,
       actions: {
         canActivate: valid,
         canSwitchRef: valid && metadata.isGitRepo,
