@@ -31,7 +31,13 @@ export interface SdkVersionInfo {
 }
 
 export type SdkSource = 'github' | 'gitee';
-export type ToolchainSource = 'github' | 'sifli';
+export type ToolchainSource = 'github' | 'sifli' | 'custom';
+export interface ToolchainMirrorUrls {
+  githubAssets?: string;
+  pypiIndex?: string;
+  uvPythonDownloadsJson?: string;
+  uvPypyInstallMirror?: string;
+}
 export type DownloadType = 'release' | 'branch';
 export type SdkRefType = 'branch' | 'tag' | 'detached' | 'unknown';
 export type SdkTaskKind =
@@ -70,6 +76,7 @@ export interface ManagedSdkSummary {
   canUpdate: boolean;
   toolsPath?: string;
   toolchainSource?: ToolchainSource;
+  toolchainMirrorUrls?: ToolchainMirrorUrls;
   actions: ManagedSdkActions;
 }
 
@@ -248,6 +255,7 @@ export interface SdkInstallRequestData {
   version: SdkInstallVersionPayload;
   installPath: string;
   toolchainSource: ToolchainSource;
+  toolchainMirrorUrls?: ToolchainMirrorUrls;
   toolsPath: string;
 }
 

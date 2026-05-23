@@ -62,7 +62,16 @@
           </div>
           <div>
             <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">Toolchain Source</dt>
-            <dd class="mt-1 text-sm">{{ sdk.toolchainSource || '未记录，按区域默认处理' }}</dd>
+            <dd class="mt-1 text-sm">{{ mirrorSourceLabel(sdk.toolchainSource) }}</dd>
+          </div>
+          <div v-if="sdk.toolchainSource === 'custom' && configuredMirrorUrls.length > 0">
+            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">Mirror URLs</dt>
+            <dd class="mt-2 grid gap-2 text-xs">
+              <div v-for="item in configuredMirrorUrls" :key="item.key" class="break-all">
+                <span class="text-vscode-input-placeholder">{{ item.label }}: </span>
+                <span>{{ item.value }}</span>
+              </div>
+            </dd>
           </div>
         </dl>
       </article>
@@ -146,6 +155,7 @@
     <EditToolchainDialog
       :open="editToolchainDialogOpen"
       :initial-source="sdk.toolchainSource"
+      :initial-mirror-urls="sdk.toolchainMirrorUrls"
       :initial-tools-path="sdk.toolsPath"
       :busy="taskCenterStore.requestInFlight"
       @close="editToolchainDialogOpen = false"
@@ -181,7 +191,8 @@ import { postMessage } from '@/services/vscodeBridge';
 import { useSdkCatalogStore } from '@/stores/sdkCatalog';
 import { useSdkTargetsStore } from '@/stores/sdkTargets';
 import { useTaskCenterStore } from '@/stores/taskCenter';
-import type { WebviewMessage } from '@/types';
+import type { ToolchainMirrorUrls, ToolchainSource, WebviewMessage } from '@/types';
+import { TOOLCHAIN_MIRROR_FIELDS, mirrorSourceLabel, normalizeMirrorUrls } from '@/utils/toolchainMirror';
 
 const route = useRoute();
 const router = useRouter();
@@ -196,6 +207,14 @@ const removeSdkDialogOpen = ref(false);
 
 const sdkId = computed(() => route.params.sdkId as string);
 const sdk = computed(() => catalogStore.getSdkDetailById(sdkId.value));
+const configuredMirrorUrls = computed(() => {
+  const urls = normalizeMirrorUrls(sdk.value?.toolchainMirrorUrls);
+  return TOOLCHAIN_MIRROR_FIELDS.map(field => ({
+    key: field.key,
+    label: field.label,
+    value: urls[field.key],
+  })).filter(item => !!item.value);
+});
 
 function fetchData() {
   catalogStore.fetchDetail(sdkId.value);
@@ -249,13 +268,18 @@ async function handleRenameConfirm(directoryName: string) {
   });
 }
 
-async function handleEditToolchainConfirm(payload: { source: string; toolsPath: string }) {
+async function handleEditToolchainConfirm(payload: {
+  source: ToolchainSource;
+  mirrorUrls?: ToolchainMirrorUrls;
+  toolsPath: string;
+}) {
   editToolchainDialogOpen.value = false;
   await requestTask({
     command: 'editToolchain',
     data: {
       sdkId: sdkId.value,
       source: payload.source,
+      toolchainMirrorUrls: payload.mirrorUrls,
       toolsPath: payload.toolsPath,
     },
   });

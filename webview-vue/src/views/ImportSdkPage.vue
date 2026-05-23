@@ -8,11 +8,15 @@
 
     <div class="rounded-3xl border border-vscode-panel-border bg-vscode-background p-6 shadow-sm">
       <div class="grid gap-5 lg:grid-cols-2">
-        <div>
-          <label class="mb-2 block text-sm font-medium">工具链源</label>
-          <BaseSelect v-model="importToolchainSourceModel" :options="toolchainSourceOptions" />
+        <div class="lg:col-span-2">
+          <label class="mb-2 block text-sm font-medium">工具链镜像模式</label>
+          <ToolchainMirrorConfig
+            :source="importToolchainSource"
+            :mirror-urls="importToolchainMirrorUrls"
+            @update:source="importToolchainSource = $event"
+            @update:mirror-urls="importToolchainMirrorUrls = $event"
+          />
         </div>
-        <div></div>
         <div class="lg:col-span-2">
           <label class="mb-2 block text-sm font-medium">SDK 路径</label>
           <div class="flex gap-3">
@@ -97,11 +101,12 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '@/components/common/BaseButton.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
-import BaseSelect from '@/components/common/BaseSelect.vue';
+import ToolchainMirrorConfig from '@/components/sdk/ToolchainMirrorConfig.vue';
 import { onMessage, postMessage } from '@/services/vscodeBridge';
 import { useSdkCatalogStore } from '@/stores/sdkCatalog';
 import { useTaskCenterStore } from '@/stores/taskCenter';
-import type { ToolchainSource } from '@/types';
+import type { ToolchainMirrorUrls, ToolchainSource } from '@/types';
+import { compactMirrorUrls, validateMirrorConfig } from '@/utils/toolchainMirror';
 
 interface ValidationResult {
   valid: boolean;
@@ -117,24 +122,18 @@ const catalogStore = useSdkCatalogStore();
 const taskCenterStore = useTaskCenterStore();
 
 const importToolchainSource = ref<ToolchainSource>(catalogStore.defaultToolchainSource);
+const importToolchainMirrorUrls = ref<ToolchainMirrorUrls>({});
 const existingSdkPath = ref('');
 const importToolsPath = ref('');
 const validation = ref<ValidationResult | null>(null);
 const browseContext = ref<BrowseContext>(null);
 
-const toolchainSourceOptions: Array<{ value: ToolchainSource; label: string }> = [
-  { value: 'github', label: 'GitHub' },
-  { value: 'sifli', label: 'SiFli 镜像' },
-];
-
-const canStartImport = computed(() => !!validation.value?.valid && !!existingSdkPath.value.trim());
-
-const importToolchainSourceModel = computed<string>({
-  get: () => importToolchainSource.value,
-  set: value => {
-    importToolchainSource.value = value as ToolchainSource;
-  },
-});
+const mirrorValidation = computed(() =>
+  validateMirrorConfig(importToolchainSource.value, importToolchainMirrorUrls.value)
+);
+const canStartImport = computed(
+  () => !!validation.value?.valid && !!existingSdkPath.value.trim() && !mirrorValidation.value
+);
 
 const disposers: Array<() => void> = [];
 
@@ -194,6 +193,7 @@ async function startImport() {
       data: {
         sdkPath: existingSdkPath.value.trim(),
         toolchainSource: importToolchainSource.value,
+        toolchainMirrorUrls: compactMirrorUrls(importToolchainMirrorUrls.value),
         toolsPath: importToolsPath.value.trim(),
       },
     });

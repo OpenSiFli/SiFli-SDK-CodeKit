@@ -12,9 +12,14 @@
           <label class="mb-2 block text-sm font-medium">源码源</label>
           <BaseSelect v-model="sdkSourceModel" :options="sdkSourceOptions" />
         </div>
-        <div>
-          <label class="mb-2 block text-sm font-medium">工具链源</label>
-          <BaseSelect v-model="downloadToolchainSourceModel" :options="toolchainSourceOptions" />
+        <div class="lg:col-span-2">
+          <label class="mb-2 block text-sm font-medium">工具链镜像模式</label>
+          <ToolchainMirrorConfig
+            :source="downloadToolchainSource"
+            :mirror-urls="downloadToolchainMirrorUrls"
+            @update:source="downloadToolchainSource = $event"
+            @update:mirror-urls="downloadToolchainMirrorUrls = $event"
+          />
         </div>
         <div>
           <label class="mb-2 block text-sm font-medium">版本类别</label>
@@ -114,11 +119,13 @@ import { useRouter } from 'vue-router';
 import BaseButton from '@/components/common/BaseButton.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
 import BaseSelect from '@/components/common/BaseSelect.vue';
+import ToolchainMirrorConfig from '@/components/sdk/ToolchainMirrorConfig.vue';
 import { onMessage, postMessage } from '@/services/vscodeBridge';
 import { useSdkCatalogStore } from '@/stores/sdkCatalog';
 import { useSdkTargetsStore } from '@/stores/sdkTargets';
 import { useTaskCenterStore } from '@/stores/taskCenter';
-import type { SdkSource, ToolchainSource } from '@/types';
+import type { SdkSource, ToolchainMirrorUrls, ToolchainSource } from '@/types';
+import { compactMirrorUrls, validateMirrorConfig } from '@/utils/toolchainMirror';
 
 type BrowseContext = 'download-install' | 'download-tools' | null;
 
@@ -129,6 +136,7 @@ const taskCenterStore = useTaskCenterStore();
 
 const sdkSource = ref<SdkSource>(catalogStore.defaultSdkSource);
 const downloadToolchainSource = ref<ToolchainSource>(catalogStore.defaultToolchainSource);
+const downloadToolchainMirrorUrls = ref<ToolchainMirrorUrls>({});
 const installPath = ref('');
 const downloadToolsPath = ref('');
 const targetCategory = ref<'branch' | 'tag' | ''>('');
@@ -161,13 +169,12 @@ const sdkSourceOptions: Array<{ value: SdkSource; label: string }> = [
   { value: 'github', label: 'GitHub' },
   { value: 'gitee', label: 'Gitee' },
 ];
-const toolchainSourceOptions: Array<{ value: ToolchainSource; label: string }> = [
-  { value: 'github', label: 'GitHub' },
-  { value: 'sifli', label: 'SiFli 镜像' },
-];
-
 const canStartDownload = computed(
-  () => !!selectedTarget.value && !!installPath.value.trim() && !!directoryName.value.trim()
+  () =>
+    !!selectedTarget.value &&
+    !!installPath.value.trim() &&
+    !!directoryName.value.trim() &&
+    !downloadMirrorValidation.value
 );
 const sdkSourceModel = computed<string>({
   get: () => sdkSource.value,
@@ -178,12 +185,9 @@ const sdkSourceModel = computed<string>({
     }
   },
 });
-const downloadToolchainSourceModel = computed<string>({
-  get: () => downloadToolchainSource.value,
-  set: value => {
-    downloadToolchainSource.value = value as ToolchainSource;
-  },
-});
+const downloadMirrorValidation = computed(() =>
+  validateMirrorConfig(downloadToolchainSource.value, downloadToolchainMirrorUrls.value)
+);
 
 const disposers: Array<() => void> = [];
 
@@ -267,6 +271,7 @@ async function startDownload() {
         directoryName: directoryName.value.trim(),
         installPath: containerPath,
         toolchainSource: downloadToolchainSource.value,
+        toolchainMirrorUrls: compactMirrorUrls(downloadToolchainMirrorUrls.value),
         toolsPath: downloadToolsPath.value.trim(),
       },
     });

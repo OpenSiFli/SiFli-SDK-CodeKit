@@ -19,8 +19,14 @@
 
       <div class="grid gap-5">
         <div>
-          <label class="mb-2 block text-sm font-medium">工具链源</label>
-          <BaseSelect v-model="sourceValue" :options="sourceOptions" />
+          <label class="mb-2 block text-sm font-medium">工具链镜像模式</label>
+          <ToolchainMirrorConfig
+            :source="sourceValue"
+            :mirror-urls="mirrorUrlsValue"
+            :disabled="busy"
+            @update:source="sourceValue = $event"
+            @update:mirror-urls="mirrorUrlsValue = $event"
+          />
         </div>
         <div>
           <label class="mb-2 block text-sm font-medium">工具链目录</label>
@@ -51,7 +57,7 @@
 
       <div class="mt-4 flex justify-end gap-3 border-t border-vscode-panel-border pt-4">
         <BaseButton variant="secondary" :disabled="busy" @click="onClose">取消</BaseButton>
-        <BaseButton variant="primary" :disabled="busy || !hasChanges" @click="onConfirm">
+        <BaseButton variant="primary" :disabled="busy || !hasChanges || !!mirrorValidation" @click="onConfirm">
           <svg v-if="busy" class="button-spinner mr-2" viewBox="0 0 24 24"></svg>
           保存修改
         </BaseButton>
@@ -64,12 +70,15 @@
 import { computed, ref, watch } from 'vue';
 import BaseButton from '@/components/common/BaseButton.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
-import BaseSelect from '@/components/common/BaseSelect.vue';
+import ToolchainMirrorConfig from '@/components/sdk/ToolchainMirrorConfig.vue';
 import { onMessage, postMessage } from '@/services/vscodeBridge';
+import type { ToolchainMirrorUrls, ToolchainSource } from '@/types';
+import { compactMirrorUrls, normalizeMirrorUrls, validateMirrorConfig } from '@/utils/toolchainMirror';
 
 interface Props {
   open: boolean;
-  initialSource?: string;
+  initialSource?: ToolchainSource;
+  initialMirrorUrls?: ToolchainMirrorUrls;
   initialToolsPath?: string;
   busy?: boolean;
 }
@@ -77,15 +86,11 @@ interface Props {
 const props = defineProps<Props>();
 const emit = defineEmits<{
   close: [];
-  confirm: [payload: { source: string; toolsPath: string }];
+  confirm: [payload: { source: ToolchainSource; mirrorUrls?: ToolchainMirrorUrls; toolsPath: string }];
 }>();
 
-const sourceOptions = [
-  { value: 'github', label: 'GitHub' },
-  { value: 'sifli', label: 'SiFli 镜像' },
-];
-
-const sourceValue = ref(props.initialSource || 'github');
+const sourceValue = ref<ToolchainSource>(props.initialSource || 'github');
+const mirrorUrlsValue = ref<ToolchainMirrorUrls>(normalizeMirrorUrls(props.initialMirrorUrls));
 const toolsPathValue = ref(props.initialToolsPath || '');
 let browseDisposer: (() => void) | null = null;
 
@@ -94,6 +99,7 @@ watch(
   isOpen => {
     if (isOpen) {
       sourceValue.value = props.initialSource || 'github';
+      mirrorUrlsValue.value = normalizeMirrorUrls(props.initialMirrorUrls);
       toolsPathValue.value = props.initialToolsPath || '';
 
       if (!browseDisposer) {
@@ -112,9 +118,14 @@ watch(
 
 const hasChanges = computed(() => {
   const isSourceChanged = sourceValue.value !== (props.initialSource || 'github');
+  const isMirrorUrlsChanged =
+    JSON.stringify(compactMirrorUrls(mirrorUrlsValue.value) || {}) !==
+    JSON.stringify(compactMirrorUrls(props.initialMirrorUrls) || {});
   const isToolsPathChanged = toolsPathValue.value !== (props.initialToolsPath || '');
-  return isSourceChanged || isToolsPathChanged;
+  return isSourceChanged || isMirrorUrlsChanged || isToolsPathChanged;
 });
+
+const mirrorValidation = computed(() => validateMirrorConfig(sourceValue.value, mirrorUrlsValue.value));
 
 const browseToolsPath = () => {
   postMessage({ command: 'browseToolsPath' });
@@ -136,6 +147,7 @@ const onConfirm = () => {
   if (!props.busy && hasChanges.value) {
     emit('confirm', {
       source: sourceValue.value,
+      mirrorUrls: compactMirrorUrls(mirrorUrlsValue.value),
       toolsPath: toolsPathValue.value.trim(),
     });
   }
