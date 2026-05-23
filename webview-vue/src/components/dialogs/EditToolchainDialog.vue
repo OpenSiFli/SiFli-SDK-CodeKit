@@ -19,7 +19,7 @@
 
       <div class="grid gap-5">
         <div>
-          <label class="mb-2 block text-sm font-medium">工具链镜像模式</label>
+          <label class="mb-2 block text-sm font-medium">{{ t('sdk.toolchainMirror.label') }}</label>
           <ToolchainMirrorConfig
             :source="sourceValue"
             :mirror-urls="mirrorUrlsValue"
@@ -68,12 +68,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import BaseButton from '@/components/common/BaseButton.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
 import ToolchainMirrorConfig from '@/components/sdk/ToolchainMirrorConfig.vue';
 import { onMessage, postMessage } from '@/services/vscodeBridge';
 import type { ToolchainMirrorUrls, ToolchainSource } from '@/types';
-import { compactMirrorUrls, normalizeMirrorUrls, validateMirrorConfig } from '@/utils/toolchainMirror';
+import { compactMirrorUrls, getMirrorValidationIssue, normalizeMirrorUrls } from '@/utils/toolchainMirror';
 
 interface Props {
   open: boolean;
@@ -89,6 +90,7 @@ const emit = defineEmits<{
   confirm: [payload: { source: ToolchainSource; mirrorUrls?: ToolchainMirrorUrls; toolsPath: string }];
 }>();
 
+const { t } = useI18n();
 const sourceValue = ref<ToolchainSource>(props.initialSource || 'github');
 const mirrorUrlsValue = ref<ToolchainMirrorUrls>(normalizeMirrorUrls(props.initialMirrorUrls));
 const toolsPathValue = ref(props.initialToolsPath || '');
@@ -125,7 +127,7 @@ const hasChanges = computed(() => {
   return isSourceChanged || isMirrorUrlsChanged || isToolsPathChanged;
 });
 
-const mirrorValidation = computed(() => validateMirrorConfig(sourceValue.value, mirrorUrlsValue.value));
+const mirrorValidation = computed(() => getMirrorValidationIssue(sourceValue.value, mirrorUrlsValue.value));
 
 const browseToolsPath = () => {
   postMessage({ command: 'browseToolsPath' });

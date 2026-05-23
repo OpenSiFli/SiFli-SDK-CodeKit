@@ -2,30 +2,35 @@ import type { ToolchainMirrorUrls, ToolchainSource } from '@/types';
 
 export const TOOLCHAIN_MIRROR_FIELDS: Array<{
   key: keyof ToolchainMirrorUrls;
-  label: string;
+  labelKey: string;
   placeholder: string;
 }> = [
   {
     key: 'githubAssets',
-    label: 'GitHub assets 镜像',
+    labelKey: 'sdk.toolchainMirror.fields.githubAssets',
     placeholder: 'https://downloads.sifli.com/github_assets',
   },
   {
     key: 'pypiIndex',
-    label: 'PyPI 默认索引',
+    labelKey: 'sdk.toolchainMirror.fields.pypiIndex',
     placeholder: 'https://mirrors.ustc.edu.cn/pypi/simple',
   },
   {
     key: 'uvPythonDownloadsJson',
-    label: 'uv Python metadata',
+    labelKey: 'sdk.toolchainMirror.fields.uvPythonDownloadsJson',
     placeholder: 'https://uv.agentsmirror.com/metadata/python-downloads.json',
   },
   {
     key: 'uvPypyInstallMirror',
-    label: 'uv PyPy 镜像',
+    labelKey: 'sdk.toolchainMirror.fields.uvPypyInstallMirror',
     placeholder: 'https://uv.agentsmirror.com/pypy',
   },
 ];
+
+export interface MirrorValidationIssue {
+  type: 'required' | 'invalidUrl';
+  field?: (typeof TOOLCHAIN_MIRROR_FIELDS)[number];
+}
 
 export function normalizeMirrorUrls(mirrorUrls?: ToolchainMirrorUrls): ToolchainMirrorUrls {
   return {
@@ -50,16 +55,19 @@ export function compactMirrorUrls(mirrorUrls?: ToolchainMirrorUrls): ToolchainMi
   return Object.keys(compact).length > 0 ? compact : undefined;
 }
 
-export function validateMirrorConfig(source: ToolchainSource, mirrorUrls?: ToolchainMirrorUrls): string {
+export function getMirrorValidationIssue(
+  source: ToolchainSource,
+  mirrorUrls?: ToolchainMirrorUrls
+): MirrorValidationIssue | null {
   if (source !== 'custom') {
-    return '';
+    return null;
   }
 
   const normalized = normalizeMirrorUrls(mirrorUrls);
   const values = TOOLCHAIN_MIRROR_FIELDS.map(field => normalized[field.key]).filter(Boolean);
 
   if (values.length === 0) {
-    return '手动镜像 URL 至少需要填写一项。';
+    return { type: 'required' };
   }
 
   const invalidField = TOOLCHAIN_MIRROR_FIELDS.find(field => {
@@ -67,16 +75,16 @@ export function validateMirrorConfig(source: ToolchainSource, mirrorUrls?: Toolc
     return value && !/^https?:\/\//i.test(value);
   });
 
-  return invalidField ? `${invalidField.label} 必须以 http:// 或 https:// 开头。` : '';
+  return invalidField ? { type: 'invalidUrl', field: invalidField } : null;
 }
 
-export function mirrorSourceLabel(source?: ToolchainSource): string {
+export function mirrorSourceLabelKey(source?: ToolchainSource): string {
   switch (source) {
     case 'sifli':
-      return 'SiFli 国内镜像';
+      return 'sdk.toolchainMirror.mode.sifli';
     case 'custom':
-      return '手动镜像 URL';
+      return 'sdk.toolchainMirror.mode.custom';
     default:
-      return '上游默认';
+      return 'sdk.toolchainMirror.mode.github';
   }
 }

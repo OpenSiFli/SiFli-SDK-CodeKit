@@ -9,7 +9,7 @@
     <div class="rounded-3xl border border-vscode-panel-border bg-vscode-background p-6 shadow-sm">
       <div class="grid gap-5 lg:grid-cols-2">
         <div class="lg:col-span-2">
-          <label class="mb-2 block text-sm font-medium">工具链镜像模式</label>
+          <label class="mb-2 block text-sm font-medium">{{ t('sdk.toolchainMirror.label') }}</label>
           <ToolchainMirrorConfig
             :source="importToolchainSource"
             :mirror-urls="importToolchainMirrorUrls"
@@ -98,6 +98,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import BaseButton from '@/components/common/BaseButton.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
@@ -106,7 +107,7 @@ import { onMessage, postMessage } from '@/services/vscodeBridge';
 import { useSdkCatalogStore } from '@/stores/sdkCatalog';
 import { useTaskCenterStore } from '@/stores/taskCenter';
 import type { ToolchainMirrorUrls, ToolchainSource } from '@/types';
-import { compactMirrorUrls, validateMirrorConfig } from '@/utils/toolchainMirror';
+import { compactMirrorUrls, getMirrorValidationIssue } from '@/utils/toolchainMirror';
 
 interface ValidationResult {
   valid: boolean;
@@ -118,6 +119,7 @@ interface ValidationResult {
 type BrowseContext = 'import-sdk' | 'import-tools' | null;
 
 const router = useRouter();
+const { t } = useI18n();
 const catalogStore = useSdkCatalogStore();
 const taskCenterStore = useTaskCenterStore();
 
@@ -129,7 +131,7 @@ const validation = ref<ValidationResult | null>(null);
 const browseContext = ref<BrowseContext>(null);
 
 const mirrorValidation = computed(() =>
-  validateMirrorConfig(importToolchainSource.value, importToolchainMirrorUrls.value)
+  getMirrorValidationIssue(importToolchainSource.value, importToolchainMirrorUrls.value)
 );
 const canStartImport = computed(
   () => !!validation.value?.valid && !!existingSdkPath.value.trim() && !mirrorValidation.value

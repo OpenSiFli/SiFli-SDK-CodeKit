@@ -147,6 +147,28 @@
       "sifli": "SiFli Mirror (Recommended for Chinese mainland users)",
       "github": "GitHub"
     },
+    "toolchainMirror": {
+      "label": "Toolchain mirror mode",
+      "mode": {
+        "github": "Upstream default",
+        "sifli": "SiFli China mirror",
+        "custom": "Custom mirror URLs"
+      },
+      "fields": {
+        "githubAssets": "GitHub assets mirror",
+        "pypiIndex": "PyPI default index",
+        "uvPythonDownloadsJson": "uv Python metadata",
+        "uvPypyInstallMirror": "uv PyPy mirror"
+      },
+      "validation": {
+        "required": "Enter at least one custom mirror URL.",
+        "invalidUrl": "{field} must start with http:// or https://."
+      },
+      "detail": {
+        "source": "Toolchain Mirror",
+        "urls": "Mirror URLs"
+      }
+    },
     "toolsPath": {
       "label": "SiFli SDK Tools Directory (SIFLI_SDK_TOOLS_PATH):",
       "placeholder": "Enter tools directory path",

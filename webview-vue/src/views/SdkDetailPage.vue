@@ -61,14 +61,18 @@
             <dd class="mt-1 break-all text-sm">{{ sdk.toolsPath || '默认环境' }}</dd>
           </div>
           <div>
-            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">Toolchain Source</dt>
-            <dd class="mt-1 text-sm">{{ mirrorSourceLabel(sdk.toolchainSource) }}</dd>
+            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">
+              {{ t('sdk.toolchainMirror.detail.source') }}
+            </dt>
+            <dd class="mt-1 text-sm">{{ t(mirrorSourceLabelKey(sdk.toolchainSource)) }}</dd>
           </div>
           <div v-if="sdk.toolchainSource === 'custom' && configuredMirrorUrls.length > 0">
-            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">Mirror URLs</dt>
+            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">
+              {{ t('sdk.toolchainMirror.detail.urls') }}
+            </dt>
             <dd class="mt-2 grid gap-2 text-xs">
               <div v-for="item in configuredMirrorUrls" :key="item.key" class="break-all">
-                <span class="text-vscode-input-placeholder">{{ item.label }}: </span>
+                <span class="text-vscode-input-placeholder">{{ t(item.labelKey) }}: </span>
                 <span>{{ item.value }}</span>
               </div>
             </dd>
@@ -181,6 +185,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import BaseButton from '@/components/common/BaseButton.vue';
 import RenameSdkDialog from '@/components/dialogs/RenameSdkDialog.vue';
@@ -192,10 +197,11 @@ import { useSdkCatalogStore } from '@/stores/sdkCatalog';
 import { useSdkTargetsStore } from '@/stores/sdkTargets';
 import { useTaskCenterStore } from '@/stores/taskCenter';
 import type { ToolchainMirrorUrls, ToolchainSource, WebviewMessage } from '@/types';
-import { TOOLCHAIN_MIRROR_FIELDS, mirrorSourceLabel, normalizeMirrorUrls } from '@/utils/toolchainMirror';
+import { TOOLCHAIN_MIRROR_FIELDS, mirrorSourceLabelKey, normalizeMirrorUrls } from '@/utils/toolchainMirror';
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const catalogStore = useSdkCatalogStore();
 const targetsStore = useSdkTargetsStore();
 const taskCenterStore = useTaskCenterStore();
@@ -211,7 +217,7 @@ const configuredMirrorUrls = computed(() => {
   const urls = normalizeMirrorUrls(sdk.value?.toolchainMirrorUrls);
   return TOOLCHAIN_MIRROR_FIELDS.map(field => ({
     key: field.key,
-    label: field.label,
+    labelKey: field.labelKey,
     value: urls[field.key],
   })).filter(item => !!item.value);
 });

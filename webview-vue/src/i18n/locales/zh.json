@@ -143,6 +143,28 @@
       "sifli": "SiFli 镜像(建议中国大陆用户选择)",
       "github": "GitHub"
     },
+    "toolchainMirror": {
+      "label": "工具链镜像模式",
+      "mode": {
+        "github": "上游默认",
+        "sifli": "SiFli 国内镜像",
+        "custom": "手动镜像 URL"
+      },
+      "fields": {
+        "githubAssets": "GitHub assets 镜像",
+        "pypiIndex": "PyPI 默认索引",
+        "uvPythonDownloadsJson": "uv Python metadata",
+        "uvPypyInstallMirror": "uv PyPy 镜像"
+      },
+      "validation": {
+        "required": "手动镜像 URL 至少需要填写一项。",
+        "invalidUrl": "{field} 必须以 http:// 或 https:// 开头。"
+      },
+      "detail": {
+        "source": "工具链镜像",
+        "urls": "镜像 URL"
+      }
+    },
     "toolsPath": {
       "label": "SiFli SDK 工具链目录 (SIFLI_SDK_TOOLS_PATH)：",
       "placeholder": "输入工具链目录路径",

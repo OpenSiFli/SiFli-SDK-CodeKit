@@ -9,7 +9,7 @@
 
     <div v-if="source === 'custom'" class="grid gap-4 border-l border-vscode-panel-border pl-4">
       <div v-for="field in TOOLCHAIN_MIRROR_FIELDS" :key="field.key">
-        <label class="mb-2 block text-sm font-medium">{{ field.label }}</label>
+        <label class="mb-2 block text-sm font-medium">{{ t(field.labelKey) }}</label>
         <BaseInput
           :model-value="mirrorUrls[field.key] || ''"
           :placeholder="field.placeholder"
@@ -25,10 +25,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import BaseInput from '@/components/common/BaseInput.vue';
 import BaseSelect from '@/components/common/BaseSelect.vue';
 import type { ToolchainMirrorUrls, ToolchainSource } from '@/types';
-import { TOOLCHAIN_MIRROR_FIELDS, normalizeMirrorUrls, validateMirrorConfig } from '@/utils/toolchainMirror';
+import { TOOLCHAIN_MIRROR_FIELDS, getMirrorValidationIssue, normalizeMirrorUrls } from '@/utils/toolchainMirror';
 
 interface Props {
   source?: ToolchainSource;
@@ -46,15 +47,27 @@ const emit = defineEmits<{
   'update:mirrorUrls': [value: ToolchainMirrorUrls];
 }>();
 
-const sourceOptions: Array<{ value: ToolchainSource; label: string }> = [
-  { value: 'github', label: '上游默认' },
-  { value: 'sifli', label: 'SiFli 国内镜像' },
-  { value: 'custom', label: '手动镜像 URL' },
-];
+const { t } = useI18n();
 
 const source = computed(() => props.source ?? 'github');
 const mirrorUrls = computed(() => normalizeMirrorUrls(props.mirrorUrls));
-const validationMessage = computed(() => validateMirrorConfig(source.value, mirrorUrls.value));
+const sourceOptions = computed<Array<{ value: ToolchainSource; label: string }>>(() => [
+  { value: 'github', label: t('sdk.toolchainMirror.mode.github') },
+  { value: 'sifli', label: t('sdk.toolchainMirror.mode.sifli') },
+  { value: 'custom', label: t('sdk.toolchainMirror.mode.custom') },
+]);
+const validationMessage = computed(() => {
+  const issue = getMirrorValidationIssue(source.value, mirrorUrls.value);
+  if (!issue) {
+    return '';
+  }
+  if (issue.type === 'required') {
+    return t('sdk.toolchainMirror.validation.required');
+  }
+  return t('sdk.toolchainMirror.validation.invalidUrl', {
+    field: issue.field ? t(issue.field.labelKey) : '',
+  });
+});
 
 function updateSource(value: string) {
   emit('update:source', value as ToolchainSource);

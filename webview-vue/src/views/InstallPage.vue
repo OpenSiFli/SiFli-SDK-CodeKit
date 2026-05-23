@@ -13,7 +13,7 @@
           <BaseSelect v-model="sdkSourceModel" :options="sdkSourceOptions" />
         </div>
         <div class="lg:col-span-2">
-          <label class="mb-2 block text-sm font-medium">工具链镜像模式</label>
+          <label class="mb-2 block text-sm font-medium">{{ t('sdk.toolchainMirror.label') }}</label>
           <ToolchainMirrorConfig
             :source="downloadToolchainSource"
             :mirror-urls="downloadToolchainMirrorUrls"
@@ -115,6 +115,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import BaseButton from '@/components/common/BaseButton.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
@@ -125,11 +126,12 @@ import { useSdkCatalogStore } from '@/stores/sdkCatalog';
 import { useSdkTargetsStore } from '@/stores/sdkTargets';
 import { useTaskCenterStore } from '@/stores/taskCenter';
 import type { SdkSource, ToolchainMirrorUrls, ToolchainSource } from '@/types';
-import { compactMirrorUrls, validateMirrorConfig } from '@/utils/toolchainMirror';
+import { compactMirrorUrls, getMirrorValidationIssue } from '@/utils/toolchainMirror';
 
 type BrowseContext = 'download-install' | 'download-tools' | null;
 
 const router = useRouter();
+const { t } = useI18n();
 const catalogStore = useSdkCatalogStore();
 const targetsStore = useSdkTargetsStore();
 const taskCenterStore = useTaskCenterStore();
@@ -186,7 +188,7 @@ const sdkSourceModel = computed<string>({
   },
 });
 const downloadMirrorValidation = computed(() =>
-  validateMirrorConfig(downloadToolchainSource.value, downloadToolchainMirrorUrls.value)
+  getMirrorValidationIssue(downloadToolchainSource.value, downloadToolchainMirrorUrls.value)
 );
 
 const disposers: Array<() => void> = [];
