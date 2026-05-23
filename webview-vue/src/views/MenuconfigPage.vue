@@ -105,13 +105,18 @@
             <div
               v-for="row in treeRows"
               :key="row.node.id"
-              class="flex h-[22px] min-w-0 items-center text-[13px] leading-[22px] hover:bg-[var(--vscode-list-hoverBackground)]"
+              class="flex h-[22px] min-w-0 cursor-pointer items-center text-[13px] leading-[22px] hover:bg-[var(--vscode-list-hoverBackground)]"
               :class="
                 row.node.id === selectedNodeId
                   ? 'bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-list-activeSelectionForeground)]'
                   : ''
               "
               :style="{ paddingLeft: `${row.depth * 8 + 4}px` }"
+              role="button"
+              tabindex="0"
+              @click="activateTreeRow(row)"
+              @keydown.enter.prevent="activateTreeRow(row)"
+              @keydown.space.prevent="activateTreeRow(row)"
             >
               <button
                 v-if="row.hasChildren"
@@ -124,13 +129,12 @@
                 {{ isExpanded(row.node) ? '▾' : '▸' }}
               </button>
               <span v-else class="h-[22px] w-[22px] shrink-0" />
-              <button
-                class="h-[22px] min-w-0 flex-1 truncate text-left"
+              <span
+                class="h-[22px] min-w-0 flex-1 truncate"
                 :class="row.matched ? 'font-medium text-vscode-foreground' : ''"
-                @click="selectNode(row.node.id)"
               >
                 {{ row.node.prompt }}
-              </button>
+              </span>
             </div>
           </template>
         </div>
@@ -380,6 +384,13 @@ function selectNode(id: string) {
   selectedNodeId.value = id;
   selectedDetailId.value = id;
   expandAncestors(id);
+}
+
+function activateTreeRow(row: TreeRow) {
+  selectNode(row.node.id);
+  if (row.hasChildren) {
+    toggleNode(row.node.id);
+  }
 }
 
 function showDetail(id: string) {
