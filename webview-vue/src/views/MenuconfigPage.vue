@@ -163,7 +163,7 @@
                   <input
                     type="checkbox"
                     :checked="nodeValue(node) === 'y'"
-                    :disabled="!node.editable || store.saving"
+                    :disabled="!canToggleBool(node) || store.saving"
                     @change="handleBoolChange(node, $event)"
                   />
                   <span>{{
@@ -496,12 +496,24 @@ function nodeValue(node: KconfigNode): string {
   return node.symbol ? (store.changes[node.symbol] ?? node.value) : node.value;
 }
 
+function canAssignValue(node: KconfigNode, value: string): boolean {
+  return node.editable && node.assignable.includes(value);
+}
+
+function canToggleBool(node: KconfigNode): boolean {
+  return canAssignValue(node, nodeValue(node) === 'y' ? 'n' : 'y');
+}
+
 function choiceOptions(node: KconfigNode): KconfigNode[] {
   return node.children.filter(child => child.symbol && child.visible);
 }
 
 function handleBoolChange(node: KconfigNode, event: Event) {
-  store.setChange(node.symbol, (event.target as HTMLInputElement).checked ? 'y' : 'n');
+  const value = (event.target as HTMLInputElement).checked ? 'y' : 'n';
+  if (!canAssignValue(node, value)) {
+    return;
+  }
+  store.setChange(node.symbol, value);
 }
 
 function handleSelectChange(node: KconfigNode, event: Event) {
