@@ -13,13 +13,21 @@ import { TerminalService } from '../services/terminalService';
 import { UvService } from '../services/uvService';
 import { WindowsManagedEnvService } from '../services/windowsManagedEnvService';
 import { GIT_REPOS, SDK_INSTALL_IDLE_TIMEOUT_MS } from '../constants';
-import { KconfigChange, SdkTaskKind, SdkTaskRecord, TaskLogEntry, ToolchainSource } from '../types';
+import {
+  KconfigChange,
+  SdkTaskKind,
+  SdkTaskRecord,
+  TaskLogEntry,
+  ToolchainMirrorUrls,
+  ToolchainSource,
+} from '../types';
 import { DebugSnapshotRequest } from '../types/debugSnapshot';
 import { DebugSnapshotBackend } from '../peripheral-viewer/export/debugSnapshotBackend';
 import { getPeripheralViewerDebugSnapshotBackend } from '../peripheral-viewer';
 import { formatInstallScriptFailure } from '../utils/powerShellUtils';
 import { createIdleTimeoutWatchdog } from '../utils/idleTimeoutWatchdog';
 import { getVueWebviewContent } from '../utils/vueWebviewContent';
+import { applySdkInstallMirrorEnvironment, normalizeToolchainMirrorUrls } from '../utils/sdkInstallMirrorEnv';
 
 const RELEASE_BRANCH_PREFIX = 'release/';
 
@@ -30,12 +38,14 @@ interface InstallSdkMessageData {
   directoryName: string;
   installPath: string;
   toolchainSource?: ToolchainSource;
+  toolchainMirrorUrls?: ToolchainMirrorUrls;
   toolsPath?: string;
 }
 
 interface InstallExistingSdkMessageData {
   sdkPath: string;
   toolchainSource?: ToolchainSource;
+  toolchainMirrorUrls?: ToolchainMirrorUrls;
   toolsPath?: string;
 }
 
@@ -58,6 +68,7 @@ interface RemoveSdkMessageData {
 interface EditToolchainMessageData {
   sdkId: string;
   source: ToolchainSource;
+  toolchainMirrorUrls?: ToolchainMirrorUrls;
   toolsPath: string;
 }
 
@@ -628,6 +639,7 @@ export class VueWebviewProvider {
 
     void this.runTask(task, webview, async log => {
       const toolchainSource = data.toolchainSource ?? (await this.getDefaultToolchainSource());
+      const toolchainMirrorUrls = this.normalizeMirrorUrlsForSource(toolchainSource, data.toolchainMirrorUrls);
       const toolsPath = data.toolsPath?.trim() || undefined;
       const directoryName = data.directoryName.trim();
       const installContainerPath = data.installPath.trim();
@@ -670,9 +682,9 @@ export class VueWebviewProvider {
         onProgress: progress => log(progress),
       });
 
-      await this.runInstallScript(fullInstallPath, toolsPath, toolchainSource, log, true);
+      await this.runInstallScript(fullInstallPath, toolsPath, toolchainSource, toolchainMirrorUrls, log, true);
 
-      await this.configService.addSdkConfig(fullInstallPath, toolsPath, toolchainSource);
+      await this.configService.addSdkConfig(fullInstallPath, toolsPath, toolchainSource, toolchainMirrorUrls);
 
       const metadata = await this.gitService.getSdkMetadata(fullInstallPath);
       return {
@@ -695,18 +707,19 @@ export class VueWebviewProvider {
       }
 
       const toolchainSource = data.toolchainSource ?? (await this.getDefaultToolchainSource());
+      const toolchainMirrorUrls = this.normalizeMirrorUrlsForSource(toolchainSource, data.toolchainMirrorUrls);
       const toolsPath = data.toolsPath?.trim() || undefined;
 
       log(`导入路径: ${data.sdkPath}`);
 
       const hasInstallScript = !!this.sdkService.getInstallScriptPath(data.sdkPath);
       if (hasInstallScript) {
-        await this.runInstallScript(data.sdkPath, toolsPath, toolchainSource, log, true);
+        await this.runInstallScript(data.sdkPath, toolsPath, toolchainSource, toolchainMirrorUrls, log, true);
       } else {
         log('未检测到 install 脚本，跳过工具安装步骤。', 'warn');
       }
 
-      await this.configService.addSdkConfig(data.sdkPath, toolsPath, toolchainSource);
+      await this.configService.addSdkConfig(data.sdkPath, toolsPath, toolchainSource, toolchainMirrorUrls);
 
       const metadata = await this.gitService.getSdkMetadata(data.sdkPath);
       return {
@@ -810,10 +823,11 @@ export class VueWebviewProvider {
     void this.runTask(task, webview, async log => {
       const detail = await this.sdkService.getManagedSdkDetail(sdkId);
       const toolchainSource = detail.toolchainSource ?? (await this.getDefaultToolchainSource());
+      const toolchainMirrorUrls = this.normalizeMirrorUrlsForSource(toolchainSource, detail.toolchainMirrorUrls);
       const toolsPath = detail.toolsPath?.trim() || undefined;
 
-      await this.runInstallScript(detail.path, toolsPath, toolchainSource, log, false);
-      await this.configService.setSdkToolchainSource(detail.path, toolchainSource);
+      await this.runInstallScript(detail.path, toolsPath, toolchainSource, toolchainMirrorUrls, log, false);
+      await this.configService.setSdkToolchainSource(detail.path, toolchainSource, toolchainMirrorUrls);
 
       const metadata = await this.gitService.getSdkMetadata(detail.path);
       return {
@@ -859,7 +873,8 @@ export class VueWebviewProvider {
 
     void this.runTask(task, webview, async log => {
       log(`正在更新此 SDK 的工具链源为: ${data.source}`);
-      await this.configService.setSdkToolchainSource(sdkPath, data.source);
+      const toolchainMirrorUrls = this.normalizeMirrorUrlsForSource(data.source, data.toolchainMirrorUrls);
+      await this.configService.setSdkToolchainSource(sdkPath, data.source, toolchainMirrorUrls);
 
       if (data.toolsPath) {
         log(`更新自定义关联工具环境路径为: ${data.toolsPath}`);
@@ -1022,6 +1037,7 @@ export class VueWebviewProvider {
     sdkPath: string,
     toolsPath: string | undefined,
     toolchainSource: ToolchainSource,
+    toolchainMirrorUrls: ToolchainMirrorUrls | undefined,
     log: TaskLogger,
     failOnMissingScript: boolean
   ): Promise<void> {
@@ -1035,7 +1051,7 @@ export class VueWebviewProvider {
       throw new Error('未找到 install 脚本。');
     }
 
-    await this.executeInstallScript(installScript, sdkPath, toolsPath, toolchainSource, log);
+    await this.executeInstallScript(installScript, sdkPath, toolsPath, toolchainSource, toolchainMirrorUrls, log);
   }
 
   private async executeInstallScript(
@@ -1043,6 +1059,7 @@ export class VueWebviewProvider {
     workingDir: string,
     toolsPath: string | undefined,
     toolchainSource: ToolchainSource,
+    toolchainMirrorUrls: ToolchainMirrorUrls | undefined,
     log: TaskLogger
   ): Promise<void> {
     let uvDir: string | undefined;
@@ -1079,10 +1096,7 @@ export class VueWebviewProvider {
         env.SIFLI_SDK_TOOLS_PATH = toolsPath;
       }
 
-      if (toolchainSource === 'sifli') {
-        env.SIFLI_SDK_GITHUB_ASSETS = 'downloads.sifli.com/github_assets';
-        env.PIP_INDEX_URL = 'https://mirrors.ustc.edu.cn/pypi/simple';
-      }
+      const mirrorEnv = applySdkInstallMirrorEnvironment(env, toolchainSource, toolchainMirrorUrls);
 
       log(`执行脚本: ${command} ${args.join(' ')}`);
       if (powerShell) {
@@ -1097,8 +1111,13 @@ export class VueWebviewProvider {
       if (toolsPath) {
         log(`SIFLI_SDK_TOOLS_PATH=${toolsPath}`);
       }
-      if (toolchainSource === 'sifli') {
-        log('使用 SiFli 工具链镜像源。');
+      if (mirrorEnv.source === 'sifli') {
+        log('使用 SiFli 国内镜像预设。');
+      } else if (mirrorEnv.source === 'custom') {
+        log('使用手动工具链镜像 URL。');
+      }
+      if (mirrorEnv.keys.length > 0) {
+        log(`镜像环境变量: ${mirrorEnv.keys.join(', ')}`);
       }
 
       const child = spawn(command, args, {
@@ -1220,6 +1239,13 @@ export class VueWebviewProvider {
   private async getDefaultToolchainSource(): Promise<ToolchainSource> {
     const regionService = RegionService.getInstance();
     return (await regionService.isUserInChina()) ? 'sifli' : 'github';
+  }
+
+  private normalizeMirrorUrlsForSource(
+    toolchainSource: ToolchainSource,
+    toolchainMirrorUrls?: ToolchainMirrorUrls
+  ): ToolchainMirrorUrls | undefined {
+    return toolchainSource === 'custom' ? normalizeToolchainMirrorUrls(toolchainMirrorUrls) : undefined;
   }
 
   private getVSCodeLocale(): string {
