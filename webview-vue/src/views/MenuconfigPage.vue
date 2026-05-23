@@ -216,7 +216,7 @@
         </div>
       </main>
 
-      <aside class="min-h-0 overflow-auto border border-vscode-panel-border bg-vscode-background">
+      <aside class="min-h-0 border border-vscode-panel-border bg-vscode-background">
         <div class="border-b border-vscode-panel-border px-4 py-3">
           <h3 class="text-base font-semibold leading-tight">{{ t('menuconfig.details.title') }}</h3>
         </div>
