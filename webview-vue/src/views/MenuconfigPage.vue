@@ -60,32 +60,44 @@
       <aside
         class="flex h-full min-h-0 flex-col overflow-hidden border border-vscode-panel-border bg-vscode-background"
       >
-        <div class="shrink-0 space-y-2 border-b border-vscode-panel-border p-3">
-          <input
-            v-model.trim="query"
-            class="w-full border border-vscode-input-border bg-vscode-input-background px-3 py-2 text-sm text-vscode-input-foreground outline-none"
-            :placeholder="t('menuconfig.search.placeholder')"
-          />
-          <div class="flex items-center justify-end gap-2">
+        <div class="shrink-0 border-b border-vscode-panel-border p-2">
+          <div class="flex items-center gap-1">
+            <input
+              v-model.trim="query"
+              class="h-7 min-w-0 flex-1 border border-vscode-input-border bg-vscode-input-background px-2 text-[13px] text-vscode-input-foreground outline-none"
+              :placeholder="t('menuconfig.search.placeholder')"
+            />
             <button
-              class="border border-vscode-input-border px-2 py-1 text-xs text-vscode-input-placeholder hover:text-vscode-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              class="flex h-7 w-7 shrink-0 items-center justify-center border border-vscode-input-border text-vscode-input-placeholder hover:bg-[var(--vscode-toolbar-hoverBackground)] hover:text-vscode-foreground disabled:cursor-not-allowed disabled:opacity-45"
               :disabled="!!searchNeedle || allExpandableNodeIds.length === 0"
+              :aria-label="t('menuconfig.tree.expandAll')"
               :title="t('menuconfig.tree.expandAll')"
               @click="expandAllNodes"
             >
-              {{ t('menuconfig.tree.expandAll') }}
+              <svg viewBox="0 0 16 16" class="h-4 w-4" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M4.2 3.7 8 7.5l3.8-3.8.7.7L8 8.9 3.5 4.4l.7-.7Zm0 4L8 11.5l3.8-3.8.7.7L8 12.9 3.5 8.4l.7-.7Z"
+                />
+              </svg>
             </button>
             <button
-              class="border border-vscode-input-border px-2 py-1 text-xs text-vscode-input-placeholder hover:text-vscode-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              class="flex h-7 w-7 shrink-0 items-center justify-center border border-vscode-input-border text-vscode-input-placeholder hover:bg-[var(--vscode-toolbar-hoverBackground)] hover:text-vscode-foreground disabled:cursor-not-allowed disabled:opacity-45"
               :disabled="!!searchNeedle || expandedNodeIds.size === 0"
+              :aria-label="t('menuconfig.tree.collapseAll')"
               :title="t('menuconfig.tree.collapseAll')"
               @click="collapseAllNodes"
             >
-              {{ t('menuconfig.tree.collapseAll') }}
+              <svg viewBox="0 0 16 16" class="h-4 w-4" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M4.2 12.3 8 8.5l3.8 3.8.7-.7L8 7.1l-4.5 4.5.7.7Zm0-4L8 4.5l3.8 3.8.7-.7L8 3.1 3.5 7.6l.7.7Z"
+                />
+              </svg>
             </button>
           </div>
         </div>
-        <div class="min-h-0 flex-1 overflow-auto py-2">
+        <div class="min-h-0 flex-1 overflow-auto py-1">
           <div v-if="treeRows.length === 0" class="px-3 py-8 text-center text-sm text-vscode-input-placeholder">
             {{ t('menuconfig.empty.noMenuMatches') }}
           </div>
@@ -93,17 +105,17 @@
             <div
               v-for="row in treeRows"
               :key="row.node.id"
-              class="flex min-w-0 items-center gap-1 px-2 py-1 text-sm hover:bg-[var(--vscode-list-hoverBackground)]"
+              class="flex h-[22px] min-w-0 items-center text-[13px] leading-[22px] hover:bg-[var(--vscode-list-hoverBackground)]"
               :class="
                 row.node.id === selectedNodeId
                   ? 'bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-list-activeSelectionForeground)]'
                   : ''
               "
-              :style="{ paddingLeft: `${row.depth * 12 + 8}px` }"
+              :style="{ paddingLeft: `${row.depth * 8 + 4}px` }"
             >
               <button
                 v-if="row.hasChildren"
-                class="flex h-5 w-5 shrink-0 items-center justify-center text-xs text-vscode-input-placeholder hover:text-vscode-foreground"
+                class="flex h-[22px] w-[22px] shrink-0 items-center justify-center text-[15px] text-vscode-input-placeholder hover:text-vscode-foreground"
                 :aria-label="
                   isExpanded(row.node) ? t('menuconfig.tree.collapseLabel') : t('menuconfig.tree.expandLabel')
                 "
@@ -111,9 +123,9 @@
               >
                 {{ isExpanded(row.node) ? '▾' : '▸' }}
               </button>
-              <span v-else class="h-5 w-5 shrink-0" />
+              <span v-else class="h-[22px] w-[22px] shrink-0" />
               <button
-                class="min-w-0 flex-1 truncate text-left"
+                class="h-[22px] min-w-0 flex-1 truncate text-left"
                 :class="row.matched ? 'font-medium text-vscode-foreground' : ''"
                 @click="selectNode(row.node.id)"
               >
