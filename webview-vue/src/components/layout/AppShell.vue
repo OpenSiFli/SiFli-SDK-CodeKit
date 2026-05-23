@@ -41,6 +41,7 @@ const catalogStore = useSdkCatalogStore();
 const { t } = useI18n();
 const isSerialMonitorRoute = computed(() => route.name === 'serial-monitor');
 const isMenuconfigRoute = computed(() => route.name === 'menuconfig');
+const isViewportLockedRoute = computed(() => isSerialMonitorRoute.value || isMenuconfigRoute.value);
 const isStandaloneRoute = computed(
   () =>
     route.name === 'analysis' ||
@@ -50,7 +51,7 @@ const isStandaloneRoute = computed(
 );
 const showBackButton = computed(() => route.path !== '/' && !isStandaloneRoute.value);
 const rootClass = computed(() =>
-  isSerialMonitorRoute.value
+  isViewportLockedRoute.value
     ? 'h-screen min-h-0 overflow-hidden p-0 text-vscode-foreground'
     : 'min-h-screen p-0 text-vscode-foreground'
 );
@@ -58,16 +59,10 @@ const shellClass = computed(() =>
   isSerialMonitorRoute.value
     ? 'mx-auto flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden px-0 py-0'
     : isMenuconfigRoute.value
-      ? 'mx-auto flex min-h-screen w-full max-w-none flex-col px-4 py-4 sm:px-5'
+      ? 'mx-auto flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden px-4 py-4 sm:px-5'
       : 'mx-auto flex w-full max-w-6xl flex-col px-4 py-8 sm:px-6'
 );
-const mainClass = computed(() =>
-  isSerialMonitorRoute.value
-    ? 'min-h-0 flex-1 overflow-hidden py-0'
-    : isMenuconfigRoute.value
-      ? 'flex-1 py-0'
-      : 'flex-1 py-6'
-);
+const mainClass = computed(() => (isViewportLockedRoute.value ? 'min-h-0 flex-1 overflow-hidden py-0' : 'flex-1 py-6'));
 
 onMounted(() => {
   if (!isStandaloneRoute.value && catalogStore.sdks.length === 0) {
@@ -87,16 +82,16 @@ const bannerClass = computed(() => {
 });
 
 watch(
-  isSerialMonitorRoute,
+  isViewportLockedRoute,
   enabled => {
-    document.documentElement.classList.toggle('serial-monitor-route', enabled);
-    document.body.classList.toggle('serial-monitor-route', enabled);
+    document.documentElement.classList.toggle('full-viewport-route', enabled);
+    document.body.classList.toggle('full-viewport-route', enabled);
   },
   { immediate: true }
 );
 
 onUnmounted(() => {
-  document.documentElement.classList.remove('serial-monitor-route');
-  document.body.classList.remove('serial-monitor-route');
+  document.documentElement.classList.remove('full-viewport-route');
+  document.body.classList.remove('full-viewport-route');
 });
 </script>

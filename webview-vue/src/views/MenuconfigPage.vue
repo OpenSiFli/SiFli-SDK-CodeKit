@@ -1,6 +1,6 @@
 <template>
-  <section class="flex min-h-[calc(100vh-2rem)] flex-col gap-3">
-    <header class="border-b border-vscode-panel-border pb-3">
+  <section class="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+    <header class="shrink-0 border-b border-vscode-panel-border pb-3">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="min-w-0">
           <p class="text-xs uppercase text-vscode-input-placeholder">{{ t('menuconfig.sectionLabel') }}</p>
@@ -45,20 +45,22 @@
       </div>
     </header>
 
-    <div v-if="store.error" class="border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+    <div v-if="store.error" class="shrink-0 border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
       {{ store.error }}
     </div>
 
     <div
       v-if="store.loading && !snapshot"
-      class="flex flex-1 items-center justify-center text-vscode-input-placeholder"
+      class="flex min-h-0 flex-1 items-center justify-center text-vscode-input-placeholder"
     >
       {{ t('menuconfig.loading') }}
     </div>
 
-    <div v-else class="grid min-h-0 flex-1 gap-3 lg:grid-cols-[280px_minmax(0,1fr)_320px]">
-      <aside class="min-h-0 border border-vscode-panel-border bg-vscode-background">
-        <div class="space-y-2 border-b border-vscode-panel-border p-3">
+    <div v-else class="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[280px_minmax(0,1fr)_320px]">
+      <aside
+        class="flex h-full min-h-0 flex-col overflow-hidden border border-vscode-panel-border bg-vscode-background"
+      >
+        <div class="shrink-0 space-y-2 border-b border-vscode-panel-border p-3">
           <input
             v-model.trim="query"
             class="w-full border border-vscode-input-border bg-vscode-input-background px-3 py-2 text-sm text-vscode-input-foreground outline-none"
@@ -83,7 +85,7 @@
             </button>
           </div>
         </div>
-        <div class="max-h-[calc(100vh-9rem)] overflow-auto py-2">
+        <div class="min-h-0 flex-1 overflow-auto py-2">
           <div v-if="treeRows.length === 0" class="px-3 py-8 text-center text-sm text-vscode-input-placeholder">
             {{ t('menuconfig.empty.noMenuMatches') }}
           </div>
@@ -122,7 +124,7 @@
         </div>
       </aside>
 
-      <main class="min-h-0 overflow-auto border border-vscode-panel-border bg-vscode-background">
+      <main class="h-full min-h-0 overflow-auto border border-vscode-panel-border bg-vscode-background">
         <div class="sticky top-0 z-10 border-b border-vscode-panel-border bg-vscode-background px-4 py-3">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h3 class="text-base font-semibold leading-tight">{{ contentTitle }}</h3>
@@ -216,7 +218,7 @@
         </div>
       </main>
 
-      <aside class="min-h-0 border border-vscode-panel-border bg-vscode-background">
+      <aside class="h-full min-h-0 overflow-hidden border border-vscode-panel-border bg-vscode-background">
         <div class="border-b border-vscode-panel-border px-4 py-3">
           <h3 class="text-base font-semibold leading-tight">{{ t('menuconfig.details.title') }}</h3>
         </div>
