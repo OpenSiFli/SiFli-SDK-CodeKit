@@ -58,12 +58,30 @@
 
     <div v-else class="grid min-h-0 flex-1 gap-3 lg:grid-cols-[280px_minmax(0,1fr)_320px]">
       <aside class="min-h-0 border border-vscode-panel-border bg-vscode-background">
-        <div class="border-b border-vscode-panel-border p-3">
+        <div class="space-y-2 border-b border-vscode-panel-border p-3">
           <input
             v-model.trim="query"
             class="w-full border border-vscode-input-border bg-vscode-input-background px-3 py-2 text-sm text-vscode-input-foreground outline-none"
             :placeholder="t('menuconfig.search.placeholder')"
           />
+          <div class="flex items-center justify-end gap-2">
+            <button
+              class="border border-vscode-input-border px-2 py-1 text-xs text-vscode-input-placeholder hover:text-vscode-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="!!searchNeedle || allExpandableNodeIds.length === 0"
+              :title="t('menuconfig.tree.expandAll')"
+              @click="expandAllNodes"
+            >
+              {{ t('menuconfig.tree.expandAll') }}
+            </button>
+            <button
+              class="border border-vscode-input-border px-2 py-1 text-xs text-vscode-input-placeholder hover:text-vscode-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="!!searchNeedle || expandedNodeIds.size === 0"
+              :title="t('menuconfig.tree.collapseAll')"
+              @click="collapseAllNodes"
+            >
+              {{ t('menuconfig.tree.collapseAll') }}
+            </button>
+          </div>
         </div>
         <div class="max-h-[calc(100vh-9rem)] overflow-auto py-2">
           <div v-if="treeRows.length === 0" class="px-3 py-8 text-center text-sm text-vscode-input-placeholder">
@@ -289,6 +307,7 @@ const treeRows = computed(() => {
   const nodes = snapshot.value?.nodes ?? [];
   return searchNeedle.value ? buildFilteredTreeRows(nodes, 0, searchNeedle.value) : buildExpandedTreeRows(nodes, 0);
 });
+const allExpandableNodeIds = computed(() => collectExpandableNodeIds(snapshot.value?.nodes ?? []));
 
 const selectedNode = computed(() => store.flatNodes.find(node => node.id === selectedNodeId.value) ?? null);
 const selectedDetail = computed(
@@ -321,9 +340,6 @@ watch(
   nodes => {
     if (!nodes || nodes.length === 0) {
       return;
-    }
-    if (expandedNodeIds.value.size === 0) {
-      expandedNodeIds.value = new Set(collectInitialExpandedIds(nodes));
     }
     if (!selectedNodeId.value) {
       selectedNodeId.value = treeRows.value[0]?.node.id ?? nodes[0].id;
@@ -368,6 +384,14 @@ function toggleNode(id: string) {
     next.add(id);
   }
   expandedNodeIds.value = next;
+}
+
+function expandAllNodes() {
+  expandedNodeIds.value = new Set(allExpandableNodeIds.value);
+}
+
+function collapseAllNodes() {
+  expandedNodeIds.value = new Set();
 }
 
 function isExpanded(node: KconfigNode): boolean {
@@ -423,16 +447,16 @@ function buildFilteredTreeRows(nodes: KconfigNode[], depth: number, needle: stri
   return rows;
 }
 
-function collectInitialExpandedIds(nodes: KconfigNode[], depth = 0): string[] {
+function collectExpandableNodeIds(nodes: KconfigNode[]): string[] {
   const ids: string[] = [];
   for (const node of nodes) {
     if (!isTreeNode(node)) {
-      ids.push(...collectInitialExpandedIds(node.children, depth));
+      ids.push(...collectExpandableNodeIds(node.children));
       continue;
     }
-    if (hasTreeChildren(node) && depth < 2) {
+    if (hasTreeChildren(node)) {
       ids.push(node.id);
-      ids.push(...collectInitialExpandedIds(node.children, depth + 1));
+      ids.push(...collectExpandableNodeIds(node.children));
     }
   }
   return ids;

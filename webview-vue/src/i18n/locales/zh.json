@@ -254,7 +254,9 @@
     },
     "tree": {
       "expandLabel": "展开菜单",
-      "collapseLabel": "折叠菜单"
+      "collapseLabel": "折叠菜单",
+      "expandAll": "全部展开",
+      "collapseAll": "全部折叠"
     },
     "empty": {
       "noMenuMatches": "没有匹配的菜单项",

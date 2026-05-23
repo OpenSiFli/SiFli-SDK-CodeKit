@@ -258,7 +258,9 @@
     },
     "tree": {
       "expandLabel": "Expand menu",
-      "collapseLabel": "Collapse menu"
+      "collapseLabel": "Collapse menu",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all"
     },
     "empty": {
       "noMenuMatches": "No matching menu items",
