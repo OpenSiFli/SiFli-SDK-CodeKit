@@ -10,7 +10,10 @@ import { SdkService } from './sdkService';
 import { WindowsManagedEnvService } from './windowsManagedEnvService';
 import { KconfigChange, KconfigSnapshot } from '../types';
 import { getProjectInfo } from '../utils/projectUtils';
-import { resolvePowerShellExecutable } from '../utils/powerShellUtils';
+import {
+  buildPowerShellDotSourceCommandWithOutputToError,
+  resolvePowerShellExecutable,
+} from '../utils/powerShellUtils';
 
 type BridgeCommand = 'snapshot' | 'preview' | 'save';
 
@@ -353,7 +356,7 @@ export class KconfigService {
       const powerShell = resolvePowerShellExecutable(this.configService.config.powershellPath).executablePath;
       const command = [
         '$ErrorActionPreference = "Stop"',
-        `. ${this.powerShellQuote(exportScriptPath)} 1>&2`,
+        buildPowerShellDotSourceCommandWithOutputToError(exportScriptPath),
         envJsonCommand,
         'exit $LASTEXITCODE',
       ].join('; ');
@@ -403,9 +406,5 @@ export class KconfigService {
 
   private shellQuote(value: string): string {
     return `'${value.replace(/'/g, `'\\''`)}'`;
-  }
-
-  private powerShellQuote(value: string): string {
-    return `'${value.replace(/'/g, "''")}'`;
   }
 }

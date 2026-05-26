@@ -3,7 +3,13 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { afterEach, describe, it } from 'mocha';
-import { formatInstallScriptFailure, inferPowerShellKind, resolvePowerShellExecutable } from '../utils/powerShellUtils';
+import {
+  buildPowerShellDotSourceCommandWithOutputToError,
+  formatInstallScriptFailure,
+  inferPowerShellKind,
+  quotePowerShellString,
+  resolvePowerShellExecutable,
+} from '../utils/powerShellUtils';
 
 describe('powerShellUtils', () => {
   const tempDirs: string[] = [];
@@ -58,6 +64,18 @@ describe('powerShellUtils', () => {
       inferPowerShellKind('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'),
       'powershell'
     );
+  });
+
+  it('quotes PowerShell strings by doubling single quotes', () => {
+    assert.strictEqual(quotePowerShellString("C:\\SDK's\\export.ps1"), "'C:\\SDK''s\\export.ps1'");
+  });
+
+  it('builds a Windows PowerShell compatible dot-source command that keeps stdout clean', () => {
+    const command = buildPowerShellDotSourceCommandWithOutputToError('C:\\SiFli SDK\\export.ps1');
+
+    assert.ok(command.includes(". 'C:\\SiFli SDK\\export.ps1' | ForEach-Object"));
+    assert.ok(command.includes('[Console]::Error.WriteLine($_)'));
+    assert.ok(!command.includes('1>&2'));
   });
 
   it('appends the PowerShell 7 upgrade hint only for Windows PowerShell on Windows', () => {

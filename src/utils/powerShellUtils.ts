@@ -53,6 +53,14 @@ export function inferPowerShellKind(executablePath: string): PowerShellKind {
   return normalized === 'pwsh' ? 'pwsh' : 'powershell';
 }
 
+export function quotePowerShellString(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+export function buildPowerShellDotSourceCommandWithOutputToError(scriptPath: string): string {
+  return `. ${quotePowerShellString(scriptPath)} | ForEach-Object { [Console]::Error.WriteLine($_) }`;
+}
+
 export function formatInstallScriptFailure(
   message: string,
   powerShellKind: PowerShellKind | undefined,
