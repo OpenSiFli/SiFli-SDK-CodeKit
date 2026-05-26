@@ -126,7 +126,7 @@
       <button
         class="search-button search-button-wide"
         :class="searchHex ? 'tool-button-active' : ''"
-        :disabled="terminalMode"
+        :disabled="!canSearchHex"
         :title="t('serialMonitor.search.hex')"
         @click="searchHex = !searchHex"
       >
@@ -371,6 +371,7 @@ const searchMatchCount = computed(() =>
   terminalMode.value ? terminalSearchResult.value.resultCount : searchModel.value.matches.length
 );
 const canNavigateSearch = computed(() => searchActive.value && searchMatchCount.value > 0);
+const canSearchHex = computed(() => !terminalMode.value && !continuousLog.value);
 const searchResultText = computed(() => {
   if (!searchActive.value) {
     return t('serialMonitor.search.idle');
@@ -484,6 +485,12 @@ watch(terminalMode, enabled => {
     if (searchOpen.value && searchActive.value) {
       void nextTick(() => runTerminalSearch('next', true));
     }
+  }
+});
+
+watch(canSearchHex, enabled => {
+  if (!enabled) {
+    searchHex.value = false;
   }
 });
 
