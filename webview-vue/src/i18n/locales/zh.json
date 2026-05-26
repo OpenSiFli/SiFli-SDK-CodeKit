@@ -189,6 +189,7 @@
       "hexView": "HEX 视图",
       "terminalMode": "终端模式",
       "settings": "设置",
+      "search": "搜索",
       "clear": "清空",
       "reset": "复位",
       "connect": "连接",
@@ -229,6 +230,17 @@
     "placeholder": {
       "text": "输入字符串数据",
       "hex": "输入 HEX 字节，例如 AA 55 0D 0A"
+    },
+    "search": {
+      "placeholder": "搜索日志",
+      "idle": "0/0",
+      "noResults": "无结果",
+      "previous": "上一处",
+      "next": "下一处",
+      "caseSensitive": "区分大小写",
+      "regex": "使用正则表达式",
+      "hex": "搜索 HEX",
+      "close": "关闭搜索"
     },
     "noPorts": "未发现串口",
     "entries": "{count} 条日志"

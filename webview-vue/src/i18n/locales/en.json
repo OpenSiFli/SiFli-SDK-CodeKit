@@ -193,6 +193,7 @@
       "hexView": "HEX View",
       "terminalMode": "Terminal Mode",
       "settings": "Settings",
+      "search": "Search",
       "clear": "Clear",
       "reset": "Reset",
       "connect": "Connect",
@@ -233,6 +234,17 @@
     "placeholder": {
       "text": "Type string data",
       "hex": "Type HEX bytes, for example AA 55 0D 0A"
+    },
+    "search": {
+      "placeholder": "Search logs",
+      "idle": "0/0",
+      "noResults": "No results",
+      "previous": "Previous match",
+      "next": "Next match",
+      "caseSensitive": "Match case",
+      "regex": "Use regular expression",
+      "hex": "Search HEX",
+      "close": "Close search"
     },
     "noPorts": "No serial ports",
     "entries": "{count} entries"

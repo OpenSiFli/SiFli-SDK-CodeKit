@@ -59,6 +59,9 @@
       >
         {{ t('serialMonitor.actions.settings') }}
       </button>
+      <button class="tool-button" :class="searchOpen ? 'tool-button-active' : ''" @click="toggleSearch">
+        {{ t('serialMonitor.actions.search') }}
+      </button>
       <button class="tool-button" @click="clearLog">{{ t('serialMonitor.actions.clear') }}</button>
       <button class="tool-button" :disabled="!status.connected" @click="resetDevice">
         {{ t('serialMonitor.actions.reset') }}
@@ -76,6 +79,60 @@
 
     <div v-if="errorMessage" class="border-b border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-100">
       {{ errorMessage }}
+    </div>
+
+    <div v-if="searchOpen && !settingsOpen" class="search-widget">
+      <input
+        ref="searchInput"
+        v-model="searchQuery"
+        class="search-input"
+        spellcheck="false"
+        :placeholder="t('serialMonitor.search.placeholder')"
+        @keydown="handleSearchInputKeydown"
+      />
+      <span class="search-count">{{ searchResultText }}</span>
+      <button
+        class="search-button"
+        :disabled="!canNavigateSearch"
+        :title="t('serialMonitor.search.previous')"
+        @click="goToSearchMatch('previous')"
+      >
+        &lt;
+      </button>
+      <button
+        class="search-button"
+        :disabled="!canNavigateSearch"
+        :title="t('serialMonitor.search.next')"
+        @click="goToSearchMatch('next')"
+      >
+        &gt;
+      </button>
+      <button
+        class="search-button"
+        :class="searchCaseSensitive ? 'tool-button-active' : ''"
+        :title="t('serialMonitor.search.caseSensitive')"
+        @click="searchCaseSensitive = !searchCaseSensitive"
+      >
+        Aa
+      </button>
+      <button
+        class="search-button"
+        :class="searchRegex ? 'tool-button-active' : ''"
+        :title="t('serialMonitor.search.regex')"
+        @click="searchRegex = !searchRegex"
+      >
+        .*
+      </button>
+      <button
+        class="search-button search-button-wide"
+        :class="searchHex ? 'tool-button-active' : ''"
+        :disabled="terminalMode"
+        :title="t('serialMonitor.search.hex')"
+        @click="searchHex = !searchHex"
+      >
+        HEX
+      </button>
+      <button class="search-button" :title="t('serialMonitor.search.close')" @click="closeSearch">x</button>
     </div>
 
     <main v-if="settingsOpen" class="min-h-0 flex-1 overflow-auto bg-vscode-background px-4 py-4 text-sm">
@@ -134,19 +191,22 @@
       <div v-if="terminalMode" ref="terminalContainer" class="xterm-host"></div>
 
       <div v-else-if="continuousLog" class="terminal-stream">
-        <span
-          v-for="segment in continuousSegments"
-          :key="segment.key"
-          :class="segment.className"
-          :style="segment.style"
-        >
-          {{ segment.text }}
+        <span v-for="rendered in searchModel.entries" :key="rendered.entry.id">
+          <span
+            v-for="(segment, segmentIndex) in rendered.textSegments"
+            :key="segmentIndex"
+            :class="segmentClass(segment)"
+            :style="segment.style"
+            v-bind="searchMatchData(segment)"
+          >
+            {{ segment.text }}
+          </span>
         </span>
       </div>
 
       <div
         v-else
-        v-for="rendered in renderedEntries"
+        v-for="rendered in searchModel.entries"
         :key="rendered.entry.id"
         class="grid gap-2 border-b border-vscode-panel-border/50 px-1 py-1.5"
         :class="settings.showTimestamp ? 'grid-cols-[74px_34px_minmax(0,1fr)]' : 'grid-cols-[34px_minmax(0,1fr)]'"
@@ -159,15 +219,26 @@
         </span>
         <span class="min-w-0 whitespace-pre-wrap break-words">
           <span
-            v-for="(segment, segmentIndex) in rendered.segments"
+            v-for="(segment, segmentIndex) in rendered.textSegments"
             :key="segmentIndex"
-            :class="segment.className"
+            :class="segmentClass(segment)"
             :style="segment.style"
+            v-bind="searchMatchData(segment)"
           >
             {{ segment.text }}
           </span>
-          <span v-if="showHex" class="mt-0.5 block text-xs text-vscode-input-placeholder">
-            {{ rendered.entry.hex }}
+          <span
+            v-if="showHex || (searchHex && searchActive)"
+            class="mt-0.5 block text-xs text-vscode-input-placeholder"
+          >
+            <span
+              v-for="(segment, segmentIndex) in rendered.hexSegments"
+              :key="segmentIndex"
+              :class="segmentClass(segment)"
+              v-bind="searchMatchData(segment)"
+            >
+              {{ segment.text }}
+            </span>
           </span>
         </span>
       </div>
@@ -195,10 +266,16 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { FitAddon } from '@xterm/addon-fit';
+import { SearchAddon, type ISearchOptions } from '@xterm/addon-search';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import { onMessage, postMessage } from '@/services/vscodeBridge';
-import { renderAnsiEntries, stripAnsiControlSequences } from '@/utils/ansiTerminal';
+import {
+  renderAnsiEntries,
+  stripAnsiControlSequences,
+  type AnsiRenderSegment,
+  type RenderedAnsiEntry,
+} from '@/utils/ansiTerminal';
 import type {
   SerialLineEnding,
   SerialLogEntry,
@@ -210,6 +287,33 @@ import type {
 } from '@/types';
 
 const { t } = useI18n();
+
+type SearchDirection = 'next' | 'previous';
+type SearchTarget = 'text' | 'hex';
+
+interface SearchMatch {
+  index: number;
+  entryId: number;
+  target: SearchTarget;
+  start: number;
+  end: number;
+}
+
+interface SearchSegment extends AnsiRenderSegment {
+  matchIndex?: number;
+  active?: boolean;
+}
+
+interface SearchEntry {
+  entry: SerialLogEntry;
+  textSegments: SearchSegment[];
+  hexSegments: SearchSegment[];
+}
+
+interface SearchModel {
+  entries: SearchEntry[];
+  matches: SearchMatch[];
+}
 
 const status = ref<SerialMonitorStatus>({ connected: false, logCount: 0 });
 const entries = ref<SerialLogEntry[]>([]);
@@ -225,27 +329,51 @@ const input = ref('');
 const errorMessage = ref('');
 const logContainer = ref<HTMLElement | null>(null);
 const terminalContainer = ref<HTMLElement | null>(null);
+const searchInput = ref<HTMLInputElement | null>(null);
+const searchOpen = ref(false);
+const searchQuery = ref('');
+const searchCaseSensitive = ref(false);
+const searchRegex = ref(false);
+const searchHex = ref(false);
+const activeSearchMatchIndex = ref(0);
 const supportedBaudRates = [1000000, 115200, 1500000, 2000000, 3000000, 6000000];
+const maxSearchMatches = 5000;
 
 let terminal: Terminal | undefined;
 let terminalFitAddon: FitAddon | undefined;
+let terminalSearchAddon: SearchAddon | undefined;
 let terminalInputDisposable: { dispose(): void } | undefined;
 let terminalResizeObserver: ResizeObserver | undefined;
 let terminalWrittenEntryId = 0;
+let terminalSearchRefreshHandle: number | undefined;
 
 const selectedPortInStatus = computed(() => status.value.port || '');
 const activeBaudRate = computed(() => status.value.baudRate || settings.value.logBaudRate);
 const displayEntries = computed(() => entries.value.filter(entry => entry.source !== 'system'));
 const renderedEntries = computed(() => renderAnsiEntries(displayEntries.value, settings.value.renderAnsi));
 const continuousLog = computed(() => terminalMode.value || !settings.value.showTimestamp);
-const continuousSegments = computed(() =>
-  renderedEntries.value.flatMap(rendered =>
-    rendered.segments.map((segment, segmentIndex) => ({
-      ...segment,
-      key: `${rendered.entry.id}-${segmentIndex}`,
-    }))
-  )
+const searchTerm = computed(() => searchQuery.value.trim());
+const searchActive = computed(() => searchOpen.value && searchTerm.value.length > 0);
+const searchModel = computed(() =>
+  buildSearchModel(renderedEntries.value, {
+    term: searchOpen.value ? searchTerm.value : '',
+    caseSensitive: searchCaseSensitive.value,
+    regex: searchRegex.value,
+    target: searchHex.value ? 'hex' : 'text',
+    activeIndex: activeSearchMatchIndex.value,
+  })
 );
+const searchMatchCount = computed(() => searchModel.value.matches.length);
+const canNavigateSearch = computed(() => searchActive.value && searchMatchCount.value > 0);
+const searchResultText = computed(() => {
+  if (!searchActive.value) {
+    return t('serialMonitor.search.idle');
+  }
+  if (searchMatchCount.value === 0) {
+    return t('serialMonitor.search.noResults');
+  }
+  return `${activeSearchMatchIndex.value + 1}/${searchMatchCount.value}`;
+});
 const canToggleConnection = computed(() => status.value.connected || !!selectedPort.value);
 const baudRateOptions = computed(() => {
   const current = settings.value.logBaudRate;
@@ -255,6 +383,8 @@ const baudRateOptions = computed(() => {
 const disposables: Array<() => void> = [];
 
 onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeydown);
+  disposables.push(() => window.removeEventListener('keydown', handleGlobalKeydown));
   disposables.push(
     onMessage<{ snapshot: SerialMonitorSnapshot }>('serialMonitorSnapshot', payload => {
       applySnapshot(payload.snapshot);
@@ -310,6 +440,52 @@ watch(
       replayTerminalEntries();
     }
   }
+);
+
+watch(
+  () => searchModel.value.matches.length,
+  count => {
+    if (count === 0) {
+      activeSearchMatchIndex.value = 0;
+      return;
+    }
+    if (activeSearchMatchIndex.value >= count) {
+      activeSearchMatchIndex.value = count - 1;
+    }
+  }
+);
+
+watch([searchTerm, searchCaseSensitive, searchRegex, searchHex], () => {
+  activeSearchMatchIndex.value = 0;
+});
+
+watch(
+  [activeSearchMatchIndex, searchMatchCount, searchOpen],
+  () => {
+    if (!terminalMode.value && searchActive.value) {
+      void scrollToActiveSearchMatch();
+    }
+  },
+  { flush: 'post' }
+);
+
+watch(terminalMode, enabled => {
+  if (enabled) {
+    searchHex.value = false;
+    if (searchOpen.value && searchActive.value) {
+      void nextTick(() => runTerminalSearch('next', true));
+    }
+  }
+});
+
+watch(
+  [searchTerm, searchCaseSensitive, searchRegex, searchOpen],
+  () => {
+    if (terminalMode.value && searchOpen.value) {
+      void nextTick(() => runTerminalSearch('next', true));
+    }
+  },
+  { flush: 'post' }
 );
 
 function applySnapshot(snapshot: SerialMonitorSnapshot) {
@@ -400,6 +576,81 @@ function handleInputKeydown(event: KeyboardEvent) {
   }
 }
 
+function handleGlobalKeydown(event: KeyboardEvent) {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+    event.preventDefault();
+    openSearch();
+    return;
+  }
+
+  if (searchOpen.value && event.key === 'Escape') {
+    event.preventDefault();
+    closeSearch();
+  }
+}
+
+function handleSearchInputKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    goToSearchMatch(event.shiftKey ? 'previous' : 'next');
+    return;
+  }
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeSearch();
+  }
+}
+
+function toggleSearch() {
+  if (searchOpen.value) {
+    closeSearch();
+    return;
+  }
+  openSearch();
+}
+
+function openSearch() {
+  settingsOpen.value = false;
+  searchOpen.value = true;
+  void nextTick(() => {
+    searchInput.value?.focus();
+    searchInput.value?.select();
+  });
+}
+
+function closeSearch() {
+  searchOpen.value = false;
+  clearTerminalSearch();
+}
+
+function goToSearchMatch(direction: SearchDirection) {
+  if (!searchActive.value) {
+    openSearch();
+    return;
+  }
+
+  const count = searchMatchCount.value;
+  if (count === 0) {
+    return;
+  }
+
+  const delta = direction === 'next' ? 1 : -1;
+  activeSearchMatchIndex.value = (activeSearchMatchIndex.value + delta + count) % count;
+  if (terminalMode.value) {
+    runTerminalSearch(direction);
+    searchInput.value?.focus();
+  }
+}
+
+async function scrollToActiveSearchMatch() {
+  await nextTick();
+  const activeElement = logContainer.value?.querySelector<HTMLElement>(
+    `[data-search-match-index="${activeSearchMatchIndex.value}"]`
+  );
+  activeElement?.scrollIntoView({ block: 'center', inline: 'nearest' });
+}
+
 async function initializeTerminal() {
   if (!terminalMode.value) {
     return;
@@ -411,6 +662,7 @@ async function initializeTerminal() {
 
   if (!terminal) {
     terminal = new Terminal({
+      allowProposedApi: true,
       convertEol: true,
       cursorBlink: true,
       fontFamily: "Menlo, Monaco, 'Courier New', monospace",
@@ -419,7 +671,9 @@ async function initializeTerminal() {
       theme: readTerminalTheme(),
     });
     terminalFitAddon = new FitAddon();
+    terminalSearchAddon = new SearchAddon({ highlightLimit: maxSearchMatches });
     terminal.loadAddon(terminalFitAddon);
+    terminal.loadAddon(terminalSearchAddon);
     terminal.open(terminalContainer.value);
     terminalInputDisposable = terminal.onData(data => {
       if (status.value.connected) {
@@ -435,6 +689,7 @@ async function initializeTerminal() {
 
   fitTerminal();
   replayTerminalEntries();
+  scheduleTerminalSearchRefresh();
   terminal.focus();
 }
 
@@ -447,6 +702,66 @@ function sendTerminalText(payload: string) {
   });
 }
 
+function runTerminalSearch(direction: SearchDirection, incremental = false) {
+  if (!terminalSearchAddon) {
+    return;
+  }
+
+  if (!searchTerm.value) {
+    clearTerminalSearch();
+    return;
+  }
+
+  try {
+    const options = readTerminalSearchOptions(incremental);
+    if (direction === 'previous') {
+      terminalSearchAddon.findPrevious(searchTerm.value, options);
+    } else {
+      terminalSearchAddon.findNext(searchTerm.value, options);
+    }
+  } catch {
+    clearTerminalSearch();
+  }
+}
+
+function scheduleTerminalSearchRefresh() {
+  if (!terminalMode.value || !searchOpen.value || !searchActive.value) {
+    return;
+  }
+  if (terminalSearchRefreshHandle !== undefined) {
+    window.clearTimeout(terminalSearchRefreshHandle);
+  }
+  terminalSearchRefreshHandle = window.setTimeout(() => {
+    terminalSearchRefreshHandle = undefined;
+    runTerminalSearch('next', true);
+  }, 0);
+}
+
+function clearTerminalSearch() {
+  if (terminalSearchRefreshHandle !== undefined) {
+    window.clearTimeout(terminalSearchRefreshHandle);
+    terminalSearchRefreshHandle = undefined;
+  }
+  terminalSearchAddon?.clearDecorations();
+  terminal?.clearSelection();
+}
+
+function readTerminalSearchOptions(incremental: boolean): ISearchOptions {
+  return {
+    caseSensitive: searchCaseSensitive.value,
+    regex: searchRegex.value,
+    incremental,
+    decorations: {
+      matchBackground: '#5a4a1f',
+      matchBorder: '#8a6f24',
+      matchOverviewRuler: '#c8a84a',
+      activeMatchBackground: '#d7ba7d',
+      activeMatchBorder: '#ffffff',
+      activeMatchColorOverviewRuler: '#d7ba7d',
+    },
+  };
+}
+
 function replayTerminalEntries() {
   if (!terminal) {
     return;
@@ -454,6 +769,7 @@ function replayTerminalEntries() {
   terminal.reset();
   terminalWrittenEntryId = 0;
   syncTerminalEntries();
+  scheduleTerminalSearchRefresh();
 }
 
 function syncTerminalEntries() {
@@ -468,6 +784,10 @@ function syncTerminalEntries() {
     terminalWrittenEntryId = entry.id;
     writeTerminalEntry(entry);
   });
+  if (searchOpen.value && searchActive.value) {
+    scheduleTerminalSearchRefresh();
+    return;
+  }
   terminal.scrollToBottom();
 }
 
@@ -478,10 +798,10 @@ function writeTerminalEntry(entry: SerialLogEntry) {
 
   const text = settings.value.renderAnsi ? entry.text : stripAnsiControlSequences(entry.text);
   if (entry.source === 'error' && settings.value.renderAnsi) {
-    terminal.write(`\x1b[31m${text}\x1b[0m\r\n`);
+    terminal.write(`\x1b[31m${text}\x1b[0m\r\n`, scheduleTerminalSearchRefresh);
     return;
   }
-  terminal.write(text);
+  terminal.write(text, scheduleTerminalSearchRefresh);
 }
 
 function fitTerminal() {
@@ -493,6 +813,10 @@ function fitTerminal() {
 }
 
 function disposeTerminal() {
+  if (terminalSearchRefreshHandle !== undefined) {
+    window.clearTimeout(terminalSearchRefreshHandle);
+    terminalSearchRefreshHandle = undefined;
+  }
   terminalResizeObserver?.disconnect();
   terminalResizeObserver = undefined;
   terminalInputDisposable?.dispose();
@@ -500,6 +824,7 @@ function disposeTerminal() {
   terminal?.dispose();
   terminal = undefined;
   terminalFitAddon = undefined;
+  terminalSearchAddon = undefined;
   terminalWrittenEntryId = 0;
 }
 
@@ -547,6 +872,151 @@ function directionClass(source: SerialLogSource): string {
   }
 }
 
+function segmentClass(segment: SearchSegment): Array<string | undefined> {
+  return [
+    segment.className,
+    segment.matchIndex !== undefined ? 'search-match' : undefined,
+    segment.active ? 'search-match-active' : undefined,
+  ];
+}
+
+function searchMatchData(segment: SearchSegment): Record<string, string> {
+  return segment.matchIndex === undefined ? {} : { 'data-search-match-index': String(segment.matchIndex) };
+}
+
+function buildSearchModel(
+  rendered: Array<RenderedAnsiEntry<SerialLogEntry>>,
+  options: {
+    term: string;
+    caseSensitive: boolean;
+    regex: boolean;
+    target: SearchTarget;
+    activeIndex: number;
+  }
+): SearchModel {
+  const entries: SearchEntry[] = [];
+  const matches: SearchMatch[] = [];
+  let nextMatchIndex = 0;
+
+  for (const item of rendered) {
+    const textMatches =
+      options.target === 'text'
+        ? findSearchRanges(item.segments.map(segment => segment.text).join(''), options).map(range => ({
+            ...range,
+            entryId: item.entry.id,
+            target: 'text' as const,
+            index: nextMatchIndex++,
+          }))
+        : [];
+    const hexMatches =
+      options.target === 'hex'
+        ? findSearchRanges(item.entry.hex, options).map(range => ({
+            ...range,
+            entryId: item.entry.id,
+            target: 'hex' as const,
+            index: nextMatchIndex++,
+          }))
+        : [];
+
+    matches.push(...textMatches, ...hexMatches);
+    entries.push({
+      entry: item.entry,
+      textSegments: decorateSearchSegments(item.segments, textMatches, options.activeIndex),
+      hexSegments: decorateSearchSegments(
+        [{ text: item.entry.hex, className: '', style: {} }],
+        hexMatches,
+        options.activeIndex
+      ),
+    });
+  }
+
+  return { entries, matches };
+}
+
+function findSearchRanges(
+  text: string,
+  options: { term: string; caseSensitive: boolean; regex: boolean }
+): Array<{ start: number; end: number }> {
+  if (!options.term || !text) {
+    return [];
+  }
+
+  if (options.regex) {
+    return findRegexRanges(text, options.term, options.caseSensitive);
+  }
+
+  const ranges: Array<{ start: number; end: number }> = [];
+  const haystack = options.caseSensitive ? text : text.toLocaleLowerCase();
+  const needle = options.caseSensitive ? options.term : options.term.toLocaleLowerCase();
+  let index = haystack.indexOf(needle);
+  while (index !== -1 && ranges.length < maxSearchMatches) {
+    ranges.push({ start: index, end: index + needle.length });
+    index = haystack.indexOf(needle, index + Math.max(needle.length, 1));
+  }
+  return ranges;
+}
+
+function findRegexRanges(text: string, pattern: string, caseSensitive: boolean): Array<{ start: number; end: number }> {
+  const ranges: Array<{ start: number; end: number }> = [];
+  let matcher: RegExp;
+  try {
+    matcher = new RegExp(pattern, caseSensitive ? 'g' : 'gi');
+  } catch {
+    return ranges;
+  }
+
+  let match: RegExpExecArray | null;
+  while ((match = matcher.exec(text)) && ranges.length < maxSearchMatches) {
+    const matchText = match[0];
+    if (!matchText) {
+      matcher.lastIndex += 1;
+      continue;
+    }
+    ranges.push({ start: match.index, end: match.index + matchText.length });
+  }
+  return ranges;
+}
+
+function decorateSearchSegments(
+  segments: AnsiRenderSegment[],
+  matches: SearchMatch[],
+  activeIndex: number
+): SearchSegment[] {
+  if (matches.length === 0) {
+    return segments;
+  }
+
+  const decorated: SearchSegment[] = [];
+  let offset = 0;
+  for (const segment of segments) {
+    const segmentStart = offset;
+    const segmentEnd = offset + segment.text.length;
+    let cursor = 0;
+
+    const overlappingMatches = matches.filter(match => match.end > segmentStart && match.start < segmentEnd);
+    for (const match of overlappingMatches) {
+      const start = Math.max(match.start, segmentStart) - segmentStart;
+      const end = Math.min(match.end, segmentEnd) - segmentStart;
+      if (start > cursor) {
+        decorated.push({ ...segment, text: segment.text.slice(cursor, start) });
+      }
+      decorated.push({
+        ...segment,
+        text: segment.text.slice(start, end),
+        matchIndex: match.index,
+        active: match.index === activeIndex,
+      });
+      cursor = end;
+    }
+
+    if (cursor < segment.text.length) {
+      decorated.push({ ...segment, text: segment.text.slice(cursor) });
+    }
+    offset = segmentEnd;
+  }
+  return decorated;
+}
+
 function showError(message: string) {
   errorMessage.value = message;
   window.setTimeout(() => {
@@ -558,6 +1028,9 @@ function showError(message: string) {
 
 async function scrollToBottom() {
   await nextTick();
+  if (searchActive.value) {
+    return;
+  }
   if (terminalMode.value && terminal) {
     terminal.scrollToBottom();
     return;
@@ -616,6 +1089,70 @@ async function scrollToBottom() {
 
 .terminal-source-system {
   color: var(--vscode-input-placeholder);
+}
+
+.search-widget {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-input-background);
+  padding: 6px 8px;
+}
+
+.search-input {
+  height: 28px;
+  min-width: 160px;
+  flex: 1;
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  background: var(--vscode-editor-background);
+  color: var(--vscode-input-foreground);
+  outline: none;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.search-input:focus {
+  border-color: var(--vscode-focus-border);
+}
+
+.search-count {
+  min-width: 52px;
+  text-align: center;
+  color: var(--vscode-input-placeholder);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.search-button {
+  height: 28px;
+  min-width: 28px;
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.search-button-wide {
+  min-width: 42px;
+}
+
+.search-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.search-match {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--vscode-editor-findMatchHighlightBackground, #f6b94d) 65%, transparent);
+  color: var(--vscode-editor-foreground);
+}
+
+.search-match-active {
+  background: var(--vscode-editor-findMatchBackground, #f6b94d);
+  color: var(--vscode-editor-foreground);
+  outline: 1px solid var(--vscode-focus-border);
 }
 
 .terminal-stream {
