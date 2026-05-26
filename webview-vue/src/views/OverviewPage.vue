@@ -1,15 +1,21 @@
 <template>
   <section class="space-y-4">
     <div class="rounded-[2rem] border border-vscode-panel-border bg-vscode-background px-6 py-5 shadow-sm">
-      <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">Overview</p>
-      <h2 class="mt-2 text-[2rem] font-semibold tracking-tight leading-tight">已安装 SDK</h2>
+      <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">{{ t('overview.sectionLabel') }}</p>
+      <h2 class="mt-2 text-[2rem] font-semibold tracking-tight leading-tight">{{ t('overview.title') }}</h2>
       <p class="mt-1.5 text-[0.95rem] leading-snug text-vscode-input-placeholder">
-        在同一个视图中查看本地 SDK 的真实 Git 状态，直接执行激活、分支更新和工具更新。
+        {{ t('overview.subtitle') }}
       </p>
       <div class="mt-4 flex flex-wrap gap-2.5">
-        <BaseButton variant="primary" @click="catalogStore.fetchList()">刷新列表</BaseButton>
-        <BaseButton variant="secondary" @click="router.push('/install')">下载 SDK</BaseButton>
-        <BaseButton variant="secondary" @click="router.push('/import')">导入 SDK</BaseButton>
+        <BaseButton variant="primary" @click="catalogStore.fetchList()">{{
+          t('overview.actions.refreshList')
+        }}</BaseButton>
+        <BaseButton variant="secondary" @click="router.push('/install')">{{
+          t('overview.actions.downloadSdk')
+        }}</BaseButton>
+        <BaseButton variant="secondary" @click="router.push('/import')">{{
+          t('overview.actions.importSdk')
+        }}</BaseButton>
       </div>
     </div>
 
@@ -17,20 +23,24 @@
       v-if="catalogStore.listLoading"
       class="rounded-3xl border border-dashed border-vscode-panel-border px-6 py-10 text-center text-vscode-input-placeholder"
     >
-      正在加载 SDK 列表...
+      {{ t('overview.loading') }}
     </div>
 
     <div
       v-else-if="catalogStore.sdks.length === 0"
       class="rounded-3xl border border-dashed border-vscode-panel-border px-6 py-10 text-center"
     >
-      <h3 class="text-[1.35rem] font-semibold leading-tight">还没有可管理的 SDK</h3>
+      <h3 class="text-[1.35rem] font-semibold leading-tight">{{ t('overview.empty.title') }}</h3>
       <p class="mt-1.5 text-[0.95rem] leading-snug text-vscode-input-placeholder">
-        去安装页下载一个版本，或导入本地已有 SDK。
+        {{ t('overview.empty.description') }}
       </p>
       <div class="mt-4 flex justify-center gap-2.5">
-        <BaseButton variant="primary" @click="router.push('/install')">下载新版本</BaseButton>
-        <BaseButton variant="secondary" @click="router.push('/import')">导入已有 SDK</BaseButton>
+        <BaseButton variant="primary" @click="router.push('/install')">{{
+          t('overview.actions.downloadNew')
+        }}</BaseButton>
+        <BaseButton variant="secondary" @click="router.push('/import')">{{
+          t('overview.actions.importExisting')
+        }}</BaseButton>
       </div>
     </div>
 
@@ -50,6 +60,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import BaseButton from '@/components/common/BaseButton.vue';
 import SdkCard from '@/components/sdk/SdkCard.vue';
@@ -58,6 +69,7 @@ import { useTaskCenterStore } from '@/stores/taskCenter';
 import type { WebviewMessage } from '@/types';
 
 const router = useRouter();
+const { t } = useI18n();
 const catalogStore = useSdkCatalogStore();
 const taskCenterStore = useTaskCenterStore();
 

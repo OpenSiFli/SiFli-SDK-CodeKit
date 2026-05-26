@@ -37,13 +37,18 @@ export function getVueWebviewContent(webview: vscode.Webview, extensionPath: str
 }
 
 function getErrorWebviewContent(message: string): string {
+  const language = vscode.env.language.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
+  const title = vscode.l10n.t('Error');
+  const heading = vscode.l10n.t('Failed to load');
+  const hint = vscode.l10n.t('Check whether the webview-vue project has been built correctly.');
+
   return `
     <!DOCTYPE html>
-    <html lang="zh-CN">
+    <html lang="${language}">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>错误</title>
+      <title>${title}</title>
       <style>
         body {
           font-family: var(--vscode-font-family);
@@ -59,9 +64,9 @@ function getErrorWebviewContent(message: string): string {
       </style>
     </head>
     <body>
-      <h1>加载失败</h1>
+      <h1>${heading}</h1>
       <div class="error">${message}</div>
-      <p>请检查 webview-vue 项目是否已正确构建。</p>
+      <p>${hint}</p>
     </body>
     </html>
   `;

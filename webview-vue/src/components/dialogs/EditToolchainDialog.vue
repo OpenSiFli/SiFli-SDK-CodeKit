@@ -3,8 +3,8 @@
     <div class="dialog-panel" @click.stop>
       <div class="dialog-header">
         <div>
-          <h3 class="text-xl font-semibold text-vscode-foreground">修改工具链配置</h3>
-          <p class="mt-1 text-sm text-vscode-input-placeholder">正在更新 SDK 依赖的编译工具源与本地环境配置。</p>
+          <h3 class="text-xl font-semibold text-vscode-foreground">{{ t('sdkDialogs.editToolchain.title') }}</h3>
+          <p class="mt-1 text-sm text-vscode-input-placeholder">{{ t('sdkDialogs.editToolchain.description') }}</p>
         </div>
         <button class="icon-button" @click="onClose">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -29,9 +29,9 @@
           />
         </div>
         <div>
-          <label class="mb-2 block text-sm font-medium">工具链目录</label>
+          <label class="mb-2 block text-sm font-medium">{{ t('sdkDialogs.editToolchain.toolsPath') }}</label>
           <div class="flex gap-3">
-            <BaseInput v-model="toolsPathValue" placeholder="可选，留空则使用默认环境" />
+            <BaseInput v-model="toolsPathValue" :placeholder="t('sdkDialogs.editToolchain.toolsPathPlaceholder')" />
             <BaseButton variant="primary" class="shrink-0" @click="browseToolsPath">
               <span class="flex items-center gap-1.5 whitespace-nowrap">
                 <svg
@@ -48,7 +48,7 @@
                     d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                   />
                 </svg>
-                浏览
+                {{ t('common.browse') }}
               </span>
             </BaseButton>
           </div>
@@ -56,10 +56,10 @@
       </div>
 
       <div class="mt-4 flex justify-end gap-3 border-t border-vscode-panel-border pt-4">
-        <BaseButton variant="secondary" :disabled="busy" @click="onClose">取消</BaseButton>
+        <BaseButton variant="secondary" :disabled="busy" @click="onClose">{{ t('common.cancel') }}</BaseButton>
         <BaseButton variant="primary" :disabled="busy || !hasChanges || !!mirrorValidation" @click="onConfirm">
           <svg v-if="busy" class="button-spinner mr-2" viewBox="0 0 24 24"></svg>
-          保存修改
+          {{ t('sdkDialogs.editToolchain.confirm') }}
         </BaseButton>
       </div>
     </div>

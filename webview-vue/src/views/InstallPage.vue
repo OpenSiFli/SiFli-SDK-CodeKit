@@ -1,15 +1,17 @@
 <template>
   <section class="space-y-6">
     <div class="rounded-[2rem] border border-vscode-panel-border bg-vscode-background px-6 py-6 shadow-sm">
-      <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">Install</p>
-      <h2 class="mt-3 text-3xl font-semibold tracking-tight">下载 SDK</h2>
-      <p class="mt-2 text-sm text-vscode-input-placeholder">从云端下载并安装全新的 SiFli SDK 到本地计算机。</p>
+      <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">
+        {{ t('sdkInstall.sectionLabel') }}
+      </p>
+      <h2 class="mt-3 text-3xl font-semibold tracking-tight">{{ t('sdkInstall.title') }}</h2>
+      <p class="mt-2 text-sm text-vscode-input-placeholder">{{ t('sdkInstall.subtitle') }}</p>
     </div>
 
     <div class="rounded-3xl border border-vscode-panel-border bg-vscode-background p-6 shadow-sm">
       <div class="grid gap-5 lg:grid-cols-2">
         <div>
-          <label class="mb-2 block text-sm font-medium">源码源</label>
+          <label class="mb-2 block text-sm font-medium">{{ t('sdkInstall.form.source') }}</label>
           <BaseSelect v-model="sdkSourceModel" :options="sdkSourceOptions" />
         </div>
         <div class="lg:col-span-2">
@@ -22,35 +24,32 @@
           />
         </div>
         <div>
-          <label class="mb-2 block text-sm font-medium">版本类别</label>
+          <label class="mb-2 block text-sm font-medium">{{ t('sdkInstall.form.targetCategory') }}</label>
           <BaseSelect
             v-model="targetCategoryModel"
-            :options="[
-              { value: 'branch', label: '分支分支 (Branch)' },
-              { value: 'tag', label: '发布版本 (Release/Tag)' },
-            ]"
-            placeholder="请选择版本类别"
+            :options="targetCategoryOptions"
+            :placeholder="t('sdkInstall.form.targetCategoryPlaceholder')"
           />
         </div>
         <div>
-          <label class="mb-2 block text-sm font-medium">目标版本</label>
+          <label class="mb-2 block text-sm font-medium">{{ t('sdkInstall.form.targetVersion') }}</label>
           <BaseSelect
             v-model="selectedTargetRef"
             :options="filteredTargetOptions"
             :disabled="targetsStore.loading || targetsStore.targets.length === 0 || !targetCategory"
-            placeholder="请选择目标版本"
+            :placeholder="t('sdkInstall.form.targetVersionPlaceholder')"
           />
         </div>
         <div class="lg:col-span-2">
-          <label class="mb-2 block text-sm font-medium">输入 SiFli SDK 容器目录：</label>
+          <label class="mb-2 block text-sm font-medium">{{ t('sdkInstall.form.containerPath') }}</label>
           <div class="flex gap-3">
             <div class="input-group">
               <input
                 v-model="installPath"
-                placeholder="请选择根目录..."
+                :placeholder="t('sdkInstall.form.rootPlaceholder')"
                 class="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-vscode-foreground focus:outline-none"
               />
-              <div class="input-addon">/SiFli-SDK/{{ directoryName || '{版本目录}' }}</div>
+              <div class="input-addon">/SiFli-SDK/{{ directoryName || t('sdkInstall.form.versionDirectory') }}</div>
             </div>
             <BaseButton variant="primary" class="shrink-0" @click="browseInstallPath('download-install')">
               <span class="flex items-center gap-1.5 whitespace-nowrap">
@@ -68,19 +67,19 @@
                     d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                   />
                 </svg>
-                浏览
+                {{ t('common.browse') }}
               </span>
             </BaseButton>
           </div>
         </div>
         <div class="lg:col-span-2">
-          <label class="mb-2 block text-sm font-medium">目录名称</label>
-          <BaseInput v-model="directoryName" placeholder="用于创建最终的 SDK 子目录名" />
+          <label class="mb-2 block text-sm font-medium">{{ t('sdkInstall.form.directoryName') }}</label>
+          <BaseInput v-model="directoryName" :placeholder="t('sdkInstall.form.directoryNamePlaceholder')" />
         </div>
         <div class="lg:col-span-2">
-          <label class="mb-2 block text-sm font-medium">工具链目录</label>
+          <label class="mb-2 block text-sm font-medium">{{ t('sdkInstall.form.toolsPath') }}</label>
           <div class="flex gap-3">
-            <BaseInput v-model="downloadToolsPath" placeholder="可选，留空则使用默认环境" />
+            <BaseInput v-model="downloadToolsPath" :placeholder="t('sdkInstall.form.toolsPathPlaceholder')" />
             <BaseButton variant="primary" class="shrink-0" @click="browseToolsPath('download-tools')">
               <span class="flex items-center gap-1.5 whitespace-nowrap">
                 <svg
@@ -97,7 +96,7 @@
                     d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                   />
                 </svg>
-                浏览
+                {{ t('common.browse') }}
               </span>
             </BaseButton>
           </div>
@@ -105,9 +104,9 @@
       </div>
 
       <div class="mt-8 flex justify-center">
-        <BaseButton variant="primary" class="px-8" :disabled="!canStartDownload" @click="startDownload"
-          >开始安装</BaseButton
-        >
+        <BaseButton variant="primary" class="px-8" :disabled="!canStartDownload" @click="startDownload">{{
+          t('sdkInstall.form.start')
+        }}</BaseButton>
       </div>
     </div>
   </section>
@@ -165,12 +164,16 @@ const filteredTargetOptions = computed(() => {
       label: item.label,
     }));
 });
+const targetCategoryOptions = computed(() => [
+  { value: 'branch', label: t('sdkInstall.form.branchOption') },
+  { value: 'tag', label: t('sdkInstall.form.tagOption') },
+]);
 
 const selectedTarget = computed(() => targetsStore.findTarget(selectedTargetRef.value));
-const sdkSourceOptions: Array<{ value: SdkSource; label: string }> = [
-  { value: 'github', label: 'GitHub' },
-  { value: 'gitee', label: 'Gitee' },
-];
+const sdkSourceOptions = computed<Array<{ value: SdkSource; label: string }>>(() => [
+  { value: 'github', label: t('sdkSource.github') },
+  { value: 'gitee', label: t('sdkSource.gitee') },
+]);
 const canStartDownload = computed(
   () =>
     !!selectedTarget.value &&

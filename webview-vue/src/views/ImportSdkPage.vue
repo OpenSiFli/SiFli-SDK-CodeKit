@@ -1,9 +1,9 @@
 <template>
   <section class="space-y-6">
     <div class="rounded-[2rem] border border-vscode-panel-border bg-vscode-background px-6 py-6 shadow-sm">
-      <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">Import</p>
-      <h2 class="mt-3 text-3xl font-semibold tracking-tight">导入 SDK</h2>
-      <p class="mt-2 text-sm text-vscode-input-placeholder">将本地已有的 SDK 添加到管理台中。</p>
+      <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">{{ t('importSdk.sectionLabel') }}</p>
+      <h2 class="mt-3 text-3xl font-semibold tracking-tight">{{ t('importSdk.title') }}</h2>
+      <p class="mt-2 text-sm text-vscode-input-placeholder">{{ t('importSdk.subtitle') }}</p>
     </div>
 
     <div class="rounded-3xl border border-vscode-panel-border bg-vscode-background p-6 shadow-sm">
@@ -18,11 +18,11 @@
           />
         </div>
         <div class="lg:col-span-2">
-          <label class="mb-2 block text-sm font-medium">SDK 路径</label>
+          <label class="mb-2 block text-sm font-medium">{{ t('importSdk.form.sdkPath') }}</label>
           <div class="flex gap-3">
             <BaseInput
               v-model="existingSdkPath"
-              placeholder="请选择或手动输入已有 SDK 根目录"
+              :placeholder="t('importSdk.form.sdkPathPlaceholder')"
               @blur="validateExistingSdk"
             />
             <BaseButton variant="primary" class="shrink-0" @click="browseInstallPath('import-sdk')">
@@ -41,7 +41,7 @@
                     d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                   />
                 </svg>
-                浏览
+                {{ t('common.browse') }}
               </span>
             </BaseButton>
           </div>
@@ -60,9 +60,9 @@
           </div>
         </div>
         <div class="lg:col-span-2">
-          <label class="mb-2 block text-sm font-medium">工具链目录</label>
+          <label class="mb-2 block text-sm font-medium">{{ t('importSdk.form.toolsPath') }}</label>
           <div class="flex gap-3">
-            <BaseInput v-model="importToolsPath" placeholder="可选，留空则使用默认环境" />
+            <BaseInput v-model="importToolsPath" :placeholder="t('importSdk.form.toolsPathPlaceholder')" />
             <BaseButton variant="primary" class="shrink-0" @click="browseToolsPath('import-tools')">
               <span class="flex items-center gap-1.5 whitespace-nowrap">
                 <svg
@@ -79,7 +79,7 @@
                     d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                   />
                 </svg>
-                浏览
+                {{ t('common.browse') }}
               </span>
             </BaseButton>
           </div>
@@ -87,10 +87,12 @@
       </div>
 
       <div class="mt-8 flex justify-center gap-3">
-        <BaseButton variant="secondary" :disabled="!existingSdkPath" @click="validateExistingSdk">重新验证</BaseButton>
-        <BaseButton variant="primary" class="px-8" :disabled="!canStartImport" @click="startImport"
-          >开始导入</BaseButton
-        >
+        <BaseButton variant="secondary" :disabled="!existingSdkPath" @click="validateExistingSdk">
+          {{ t('importSdk.actions.revalidate') }}
+        </BaseButton>
+        <BaseButton variant="primary" class="px-8" :disabled="!canStartImport" @click="startImport">{{
+          t('importSdk.actions.start')
+        }}</BaseButton>
       </div>
     </div>
   </section>

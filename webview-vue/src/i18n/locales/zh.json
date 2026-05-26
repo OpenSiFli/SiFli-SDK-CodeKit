@@ -14,7 +14,12 @@
     "continue": "继续",
     "close": "关闭",
     "yes": "是",
-    "no": "否"
+    "no": "否",
+    "notAvailable": "不适用",
+    "defaultEnvironment": "默认环境"
+  },
+  "app": {
+    "title": "SiFli SDK 管理器"
   },
   "welcome": {
     "title": "SiFli SDK",
@@ -124,14 +129,95 @@
   },
   "existing": {
     "title": "使用现有 SDK",
-    "subtitle": "配置您现有的 SiFli SDK 安装"
+    "subtitle": "配置您现有的 SiFli SDK 安装",
+    "comingSoon": {
+      "title": "即将推出",
+      "description": "此功能将在未来版本中提供。"
+    }
   },
   "success": {
     "title": "安装完成！",
     "message": "SiFli SDK 已成功安装并配置。",
     "returnHome": "返回主页"
   },
+  "overview": {
+    "sectionLabel": "总览",
+    "title": "已安装 SDK",
+    "subtitle": "在同一个视图中查看本地 SDK 的真实 Git 状态，直接执行激活、分支更新和工具更新。",
+    "actions": {
+      "refreshList": "刷新列表",
+      "downloadSdk": "下载 SDK",
+      "importSdk": "导入 SDK",
+      "downloadNew": "下载新版本",
+      "importExisting": "导入已有 SDK"
+    },
+    "loading": "正在加载 SDK 列表...",
+    "empty": {
+      "title": "还没有可管理的 SDK",
+      "description": "去安装页下载一个版本，或导入本地已有 SDK。"
+    }
+  },
+  "sdkInstall": {
+    "sectionLabel": "安装",
+    "title": "下载 SDK",
+    "subtitle": "从云端下载并安装全新的 SiFli SDK 到本地计算机。",
+    "form": {
+      "source": "源码源",
+      "targetCategory": "版本类别",
+      "targetCategoryPlaceholder": "请选择版本类别",
+      "targetVersion": "目标版本",
+      "targetVersionPlaceholder": "请选择目标版本",
+      "branchOption": "开发分支 (Branch)",
+      "tagOption": "发布版本 (Release/Tag)",
+      "containerPath": "输入 SiFli SDK 容器目录：",
+      "rootPlaceholder": "请选择根目录...",
+      "versionDirectory": "{版本目录}",
+      "directoryName": "目录名称",
+      "directoryNamePlaceholder": "用于创建最终的 SDK 子目录名",
+      "toolsPath": "工具链目录",
+      "toolsPathPlaceholder": "可选，留空则使用默认环境",
+      "start": "开始安装"
+    }
+  },
+  "importSdk": {
+    "sectionLabel": "导入",
+    "title": "导入 SDK",
+    "subtitle": "将本地已有的 SDK 添加到管理台中。",
+    "form": {
+      "sdkPath": "SDK 路径",
+      "sdkPathPlaceholder": "请选择或手动输入已有 SDK 根目录",
+      "toolsPath": "工具链目录",
+      "toolsPathPlaceholder": "可选，留空则使用默认环境"
+    },
+    "actions": {
+      "revalidate": "重新验证",
+      "start": "开始导入"
+    }
+  },
   "sdk": {
+    "labels": {
+      "ref": "Ref",
+      "hash": "Hash",
+      "path": "Path",
+      "remote": "Remote",
+      "trackedBranch": "Tracked Branch",
+      "toolchain": "工具链",
+      "toolsPath": "Tools Path",
+      "status": "状态"
+    },
+    "state": {
+      "invalid": "无效",
+      "current": "当前",
+      "nonGit": "非 Git",
+      "dirty": "有改动",
+      "clean": "干净"
+    },
+    "refType": {
+      "branch": "分支",
+      "tag": "标签",
+      "detached": "游离提交",
+      "unknown": "未知"
+    },
     "installPath": {
       "label": "输入 SiFli SDK 容器目录：",
       "target": "安装目标：",
@@ -169,6 +255,48 @@
       "label": "SiFli SDK 工具链目录 (SIFLI_SDK_TOOLS_PATH)：",
       "placeholder": "输入工具链目录路径",
       "description": "指定 SiFli SDK 工具链的安装目录路径"
+    },
+    "card": {
+      "activateCurrent": "设为当前"
+    },
+    "detail": {
+      "sectionLabel": "SDK 详情",
+      "gitState": "Git 状态",
+      "toolsAndFiles": "工具与文件",
+      "actions": "操作",
+      "loading": "正在加载 SDK 详情...",
+      "openDirectory": "打开目录",
+      "openTerminal": "打开终端",
+      "actionCards": {
+        "switchRef": {
+          "title": "切换版本",
+          "description": "切换到其他的分支或标签"
+        },
+        "updateBranch": {
+          "title": "更新分支",
+          "description": "拉取远程代码库的最新更改"
+        },
+        "rename": {
+          "title": "重命名目录",
+          "description": "修改本地 SDK 的文件夹名称"
+        },
+        "updateTools": {
+          "title": "更新工具",
+          "description": "重新执行此 SDK 的安装脚本"
+        },
+        "editToolchain": {
+          "title": "修改工具链",
+          "description": "修改关联工具环境及镜像源"
+        },
+        "remove": {
+          "title": "不再管理此 SDK",
+          "description": "解除挂载并从本地物理文件系统删除"
+        }
+      }
+    },
+    "targetKind": {
+      "branch": "Branch",
+      "tag": "Tag"
     }
   },
   "sdkSource": {
@@ -178,6 +306,78 @@
   "downloadType": {
     "release": "发布版",
     "branch": "分支"
+  },
+  "taskPage": {
+    "sectionLabel": "任务",
+    "description": "任务状态持续更新中...",
+    "fields": {
+      "started": "Started",
+      "finished": "Finished",
+      "ref": "Ref",
+      "hash": "Hash"
+    },
+    "status": {
+      "running": "运行中",
+      "succeeded": "已成功",
+      "failed": "失败",
+      "cancelled": "已取消"
+    },
+    "running": "运行中",
+    "successTitle": "操作已成功完成",
+    "successDescription": "SDK 现在可以正常使用或在其详情页中进行管理。",
+    "failureTitle": "操作失败",
+    "unknownError": "遇到未知错误，请查看下方日志排查问题。",
+    "actions": {
+      "backToOverview": "返回总览",
+      "openSdk": "查看对应 SDK"
+    },
+    "errors": {
+      "startTimeout": "等待任务启动超时。"
+    },
+    "loading": "正在加载任务信息..."
+  },
+  "taskLog": {
+    "title": "任务日志",
+    "description": "保留完整输出，便于定位 Git 和脚本失败原因。",
+    "copyTitle": "复制完整日志",
+    "copyAll": "复制全部",
+    "copied": "已复制",
+    "empty": "暂无日志输出。"
+  },
+  "sdkDialogs": {
+    "rename": {
+      "title": "重命名 SDK 目录",
+      "description": "仅修改当前 SDK 所在目录的 basename。",
+      "directoryName": "新的目录名称",
+      "placeholder": "请输入目录名称",
+      "confirm": "确认重命名"
+    },
+    "switchRef": {
+      "title": "切换版本",
+      "description": "选择目标 Ref，并可同时指定新的目录名称。",
+      "targetVersion": "目标版本",
+      "targetVersionPlaceholder": "请选择目标版本",
+      "directoryName": "目录名称",
+      "directoryNamePlaceholder": "请输入新的目录名称",
+      "confirm": "执行切换"
+    },
+    "editToolchain": {
+      "title": "修改工具链配置",
+      "description": "正在更新 SDK 依赖的编译工具源与本地环境配置。",
+      "toolsPath": "工具链目录",
+      "toolsPathPlaceholder": "可选，留空则使用默认环境",
+      "confirm": "保存修改"
+    },
+    "remove": {
+      "title": "移除 SDK",
+      "preparing": "正在准备移除",
+      "destructiveTitle": "这是一个破坏性操作！",
+      "descriptionBeforeStrong": "这不仅会从列表中解除该 SDK 的关联，还会",
+      "descriptionStrong": "彻底删除对应目录下的所有文件",
+      "descriptionAfterStrong": "。",
+      "confirmQuestion": "且此操作无法撤销，您确定要继续吗？",
+      "confirm": "确定移除"
+    }
   },
   "serialMonitor": {
     "status": {

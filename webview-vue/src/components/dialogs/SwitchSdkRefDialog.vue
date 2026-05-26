@@ -3,35 +3,39 @@
     <div class="w-full max-w-xl rounded-3xl border border-vscode-panel-border bg-vscode-background p-6 shadow-xl">
       <div class="flex items-start justify-between gap-3">
         <div>
-          <h3 class="text-xl font-semibold">切换版本</h3>
-          <p class="mt-1 text-sm text-vscode-input-placeholder">选择目标 Ref，并可同时指定新的目录名称。</p>
+          <h3 class="text-xl font-semibold">{{ t('sdkDialogs.switchRef.title') }}</h3>
+          <p class="mt-1 text-sm text-vscode-input-placeholder">{{ t('sdkDialogs.switchRef.description') }}</p>
         </div>
         <button class="text-sm text-vscode-input-placeholder hover:text-vscode-foreground" @click="$emit('close')">
-          关闭
+          {{ t('common.close') }}
         </button>
       </div>
 
       <div class="mt-6 space-y-4">
         <div>
-          <label class="mb-2 block text-sm font-medium">目标版本</label>
-          <BaseSelect v-model="selectedTargetRef" :options="targetOptions" placeholder="请选择目标版本" />
+          <label class="mb-2 block text-sm font-medium">{{ t('sdkDialogs.switchRef.targetVersion') }}</label>
+          <BaseSelect
+            v-model="selectedTargetRef"
+            :options="targetOptions"
+            :placeholder="t('sdkDialogs.switchRef.targetVersionPlaceholder')"
+          />
         </div>
 
         <div>
-          <label class="mb-2 block text-sm font-medium">目录名称</label>
-          <BaseInput v-model="directoryName" placeholder="请输入新的目录名称" />
+          <label class="mb-2 block text-sm font-medium">{{ t('sdkDialogs.switchRef.directoryName') }}</label>
+          <BaseInput v-model="directoryName" :placeholder="t('sdkDialogs.switchRef.directoryNamePlaceholder')" />
         </div>
       </div>
 
       <div class="mt-6 flex flex-wrap justify-end gap-3">
-        <BaseButton variant="secondary" @click="$emit('close')">取消</BaseButton>
+        <BaseButton variant="secondary" @click="$emit('close')">{{ t('common.cancel') }}</BaseButton>
         <BaseButton
           variant="primary"
           :disabled="!selectedTarget || !directoryName.trim() || busy"
           :loading="busy"
           @click="handleConfirm"
         >
-          执行切换
+          {{ t('sdkDialogs.switchRef.confirm') }}
         </BaseButton>
       </div>
     </div>
@@ -40,10 +44,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import BaseButton from '@/components/common/BaseButton.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
 import BaseSelect from '@/components/common/BaseSelect.vue';
 import type { SdkTarget } from '@/types';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   open: boolean;
@@ -63,7 +70,7 @@ const directoryName = ref('');
 const targetOptions = computed(() =>
   props.targets.map(item => ({
     value: item.ref,
-    label: `${item.kind === 'branch' ? 'Branch' : 'Tag'} · ${item.label}`,
+    label: `${t(`sdk.targetKind.${item.kind}`)} · ${item.label}`,
   }))
 );
 

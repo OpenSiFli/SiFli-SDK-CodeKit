@@ -14,7 +14,12 @@
     "continue": "Continue",
     "close": "Close",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "notAvailable": "N/A",
+    "defaultEnvironment": "Default environment"
+  },
+  "app": {
+    "title": "SiFli SDK Manager"
   },
   "welcome": {
     "title": "SiFli SDK",
@@ -135,7 +140,84 @@
     "message": "SiFli SDK has been successfully installed and configured.",
     "returnHome": "Return to Home"
   },
+  "overview": {
+    "sectionLabel": "Overview",
+    "title": "Installed SDKs",
+    "subtitle": "View the real Git state of local SDKs and run activation, branch updates, and tool updates from one place.",
+    "actions": {
+      "refreshList": "Refresh List",
+      "downloadSdk": "Download SDK",
+      "importSdk": "Import SDK",
+      "downloadNew": "Download New Version",
+      "importExisting": "Import Existing SDK"
+    },
+    "loading": "Loading SDK list...",
+    "empty": {
+      "title": "No managed SDKs yet",
+      "description": "Download a version from the install page or import an existing local SDK."
+    }
+  },
+  "sdkInstall": {
+    "sectionLabel": "Install",
+    "title": "Download SDK",
+    "subtitle": "Download and install a fresh SiFli SDK from the cloud to this machine.",
+    "form": {
+      "source": "Source repository",
+      "targetCategory": "Version category",
+      "targetCategoryPlaceholder": "Select a version category",
+      "targetVersion": "Target version",
+      "targetVersionPlaceholder": "Select a target version",
+      "branchOption": "Development Branch",
+      "tagOption": "Release/Tag",
+      "containerPath": "Enter SiFli SDK container directory:",
+      "rootPlaceholder": "Select a root directory...",
+      "versionDirectory": "{version directory}",
+      "directoryName": "Directory name",
+      "directoryNamePlaceholder": "Used to create the final SDK subdirectory name",
+      "toolsPath": "Toolchain directory",
+      "toolsPathPlaceholder": "Optional. Leave empty to use the default environment",
+      "start": "Start Installation"
+    }
+  },
+  "importSdk": {
+    "sectionLabel": "Import",
+    "title": "Import SDK",
+    "subtitle": "Add an existing local SDK to the manager.",
+    "form": {
+      "sdkPath": "SDK path",
+      "sdkPathPlaceholder": "Select or manually enter an existing SDK root directory",
+      "toolsPath": "Toolchain directory",
+      "toolsPathPlaceholder": "Optional. Leave empty to use the default environment"
+    },
+    "actions": {
+      "revalidate": "Validate Again",
+      "start": "Start Import"
+    }
+  },
   "sdk": {
+    "labels": {
+      "ref": "Ref",
+      "hash": "Hash",
+      "path": "Path",
+      "remote": "Remote",
+      "trackedBranch": "Tracked Branch",
+      "toolchain": "Toolchain",
+      "toolsPath": "Tools Path",
+      "status": "Status"
+    },
+    "state": {
+      "invalid": "Invalid",
+      "current": "Current",
+      "nonGit": "Non-Git",
+      "dirty": "Dirty",
+      "clean": "Clean"
+    },
+    "refType": {
+      "branch": "Branch",
+      "tag": "Tag",
+      "detached": "Detached",
+      "unknown": "Unknown"
+    },
     "installPath": {
       "label": "Enter SiFli SDK container directory:",
       "target": "Installation target:",
@@ -173,6 +255,48 @@
       "label": "SiFli SDK Tools Directory (SIFLI_SDK_TOOLS_PATH):",
       "placeholder": "Enter tools directory path",
       "description": "Specify the installation directory path for SiFli SDK toolchain"
+    },
+    "card": {
+      "activateCurrent": "Set Current"
+    },
+    "detail": {
+      "sectionLabel": "SDK Detail",
+      "gitState": "Git State",
+      "toolsAndFiles": "Tools & Files",
+      "actions": "Actions",
+      "loading": "Loading SDK details...",
+      "openDirectory": "Open Directory",
+      "openTerminal": "Open Terminal",
+      "actionCards": {
+        "switchRef": {
+          "title": "Switch Version",
+          "description": "Switch to another branch or tag"
+        },
+        "updateBranch": {
+          "title": "Update Branch",
+          "description": "Pull the latest changes from the remote repository"
+        },
+        "rename": {
+          "title": "Rename Directory",
+          "description": "Change the local SDK folder name"
+        },
+        "updateTools": {
+          "title": "Update Tools",
+          "description": "Rerun this SDK's installation script"
+        },
+        "editToolchain": {
+          "title": "Edit Toolchain",
+          "description": "Change the linked tool environment and mirrors"
+        },
+        "remove": {
+          "title": "Stop Managing This SDK",
+          "description": "Unmount it and delete it from the local filesystem"
+        }
+      }
+    },
+    "targetKind": {
+      "branch": "Branch",
+      "tag": "Tag"
     }
   },
   "sdkSource": {
@@ -182,6 +306,78 @@
   "downloadType": {
     "release": "Release",
     "branch": "Branch"
+  },
+  "taskPage": {
+    "sectionLabel": "Task",
+    "description": "Task status is continuously updated...",
+    "fields": {
+      "started": "Started",
+      "finished": "Finished",
+      "ref": "Ref",
+      "hash": "Hash"
+    },
+    "status": {
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "running": "Running",
+    "successTitle": "Operation completed successfully",
+    "successDescription": "The SDK is ready to use or manage from its detail page.",
+    "failureTitle": "Operation failed",
+    "unknownError": "An unknown error occurred. Check the logs below to troubleshoot.",
+    "actions": {
+      "backToOverview": "Back to Overview",
+      "openSdk": "View Related SDK"
+    },
+    "errors": {
+      "startTimeout": "Timed out waiting for the task to start."
+    },
+    "loading": "Loading task information..."
+  },
+  "taskLog": {
+    "title": "Task Log",
+    "description": "Full output is preserved to help diagnose Git and script failures.",
+    "copyTitle": "Copy full log",
+    "copyAll": "Copy All",
+    "copied": "Copied",
+    "empty": "No log output yet."
+  },
+  "sdkDialogs": {
+    "rename": {
+      "title": "Rename SDK Directory",
+      "description": "Only the basename of the current SDK directory will be changed.",
+      "directoryName": "New directory name",
+      "placeholder": "Enter a directory name",
+      "confirm": "Confirm Rename"
+    },
+    "switchRef": {
+      "title": "Switch Version",
+      "description": "Select the target Ref and optionally specify a new directory name.",
+      "targetVersion": "Target version",
+      "targetVersionPlaceholder": "Select a target version",
+      "directoryName": "Directory name",
+      "directoryNamePlaceholder": "Enter a new directory name",
+      "confirm": "Switch"
+    },
+    "editToolchain": {
+      "title": "Edit Toolchain Configuration",
+      "description": "Update the SDK compiler tool source and local environment configuration.",
+      "toolsPath": "Toolchain directory",
+      "toolsPathPlaceholder": "Optional. Leave empty to use the default environment",
+      "confirm": "Save Changes"
+    },
+    "remove": {
+      "title": "Remove SDK",
+      "preparing": "Preparing to remove",
+      "destructiveTitle": "This is a destructive operation!",
+      "descriptionBeforeStrong": "This will not only detach the SDK from the list, but also ",
+      "descriptionStrong": "permanently delete all files in the corresponding directory",
+      "descriptionAfterStrong": ".",
+      "confirmQuestion": "This action cannot be undone. Are you sure you want to continue?",
+      "confirm": "Remove"
+    }
   },
   "serialMonitor": {
     "status": {

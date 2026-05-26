@@ -3,28 +3,28 @@
     <div class="w-full max-w-lg rounded-3xl border border-vscode-panel-border bg-vscode-background p-6 shadow-xl">
       <div class="flex items-start justify-between gap-3">
         <div>
-          <h3 class="text-xl font-semibold">重命名 SDK 目录</h3>
-          <p class="mt-1 text-sm text-vscode-input-placeholder">仅修改当前 SDK 所在目录的 basename。</p>
+          <h3 class="text-xl font-semibold">{{ t('sdkDialogs.rename.title') }}</h3>
+          <p class="mt-1 text-sm text-vscode-input-placeholder">{{ t('sdkDialogs.rename.description') }}</p>
         </div>
         <button class="text-sm text-vscode-input-placeholder hover:text-vscode-foreground" @click="$emit('close')">
-          关闭
+          {{ t('common.close') }}
         </button>
       </div>
 
       <div class="mt-6">
-        <label class="mb-2 block text-sm font-medium">新的目录名称</label>
-        <BaseInput v-model="directoryName" placeholder="请输入目录名称" />
+        <label class="mb-2 block text-sm font-medium">{{ t('sdkDialogs.rename.directoryName') }}</label>
+        <BaseInput v-model="directoryName" :placeholder="t('sdkDialogs.rename.placeholder')" />
       </div>
 
       <div class="mt-6 flex flex-wrap justify-end gap-3">
-        <BaseButton variant="secondary" @click="$emit('close')">取消</BaseButton>
+        <BaseButton variant="secondary" @click="$emit('close')">{{ t('common.cancel') }}</BaseButton>
         <BaseButton
           variant="primary"
           :disabled="!directoryName.trim() || busy"
           :loading="busy"
           @click="$emit('confirm', directoryName.trim())"
         >
-          确认重命名
+          {{ t('sdkDialogs.rename.confirm') }}
         </BaseButton>
       </div>
     </div>
@@ -33,8 +33,11 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import BaseButton from '@/components/common/BaseButton.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   open: boolean;

@@ -26,6 +26,10 @@ export const i18n = createI18n({
 // 设置语言的函数
 export function setLocale(locale: SupportedLocale) {
   i18n.global.locale.value = locale;
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
+    document.title = i18n.global.t('app.title');
+  }
   console.log('[i18n] Locale changed to:', locale);
 }
 

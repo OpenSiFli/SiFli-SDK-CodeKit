@@ -1,5 +1,6 @@
 import { computed, ref } from '@vue/runtime-core';
 import { defineStore } from 'pinia';
+import { i18n } from '@/i18n';
 import type { SdkTaskRecord, TaskLogEntry, TaskSnapshotMessage, TaskStartedMessage, WebviewMessage } from '@/types';
 import { onMessage, postMessage } from '@/services/vscodeBridge';
 
@@ -80,7 +81,7 @@ export const useTaskCenterStore = defineStore('taskCenter', () => {
       const timeout = window.setTimeout(() => {
         dispose();
         requestInFlight.value = false;
-        reject(new Error('等待任务启动超时。'));
+        reject(new Error(i18n.global.t('taskPage.errors.startTimeout')));
       }, 4000);
 
       const dispose = onMessage<TaskStartedMessage>('taskStarted', payload => {

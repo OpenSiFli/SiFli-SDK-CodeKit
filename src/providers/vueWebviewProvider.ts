@@ -272,7 +272,7 @@ export class VueWebviewProvider {
     if (kind === 'debugSnapshot') {
       return {
         viewType: 'sifliDebugSnapshotVue',
-        title: '调试现场导出',
+        title: vscode.l10n.t('Debug Snapshot Export'),
         initialRoute: '/debug-snapshot',
       };
     }
@@ -287,7 +287,7 @@ export class VueWebviewProvider {
 
     return {
       viewType: 'sifliSdkManagerVue',
-      title: 'SiFli SDK 管理器',
+      title: vscode.l10n.t('SiFli SDK Manager'),
     };
   }
 
@@ -458,13 +458,13 @@ export class VueWebviewProvider {
     webview.postMessage({
       command: 'kconfigTaskStarted',
       taskId,
-      title: '保存 Menuconfig',
+      title: vscode.l10n.t('Save Menuconfig'),
     });
     webview.postMessage({
       command: 'kconfigTaskLog',
       taskId,
       level: 'info',
-      message: '正在后台保存 proj.conf 并刷新构建配置...',
+      message: vscode.l10n.t('Saving proj.conf in the background and refreshing build configuration...'),
     });
 
     void (async () => {
@@ -474,7 +474,7 @@ export class VueWebviewProvider {
           command: 'kconfigTaskLog',
           taskId,
           level: 'info',
-          message: '配置保存完成。',
+          message: vscode.l10n.t('Configuration saved.'),
         });
         webview.postMessage({
           command: 'kconfigSnapshot',
@@ -512,7 +512,7 @@ export class VueWebviewProvider {
         command: 'kconfigTaskLog',
         taskId: 'terminal-menuconfig',
         level: 'info',
-        message: '已打开终端版 Menuconfig。',
+        message: vscode.l10n.t('Terminal Menuconfig opened.'),
       });
     } catch (error) {
       this.postKconfigError(webview, error);
@@ -548,7 +548,7 @@ export class VueWebviewProvider {
   private async sendSdkTargets(webview: vscode.Webview): Promise<void> {
     const response = await fetch('https://downloads.sifli.com/dl/sifli-sdk/version.json');
     if (!response.ok) {
-      throw new Error(`获取版本列表失败: HTTP ${response.status}`);
+      throw new Error(vscode.l10n.t('Failed to fetch version list: HTTP {0}', response.status));
     }
 
     const rawTargets = (await response.json()) as Array<{
@@ -568,7 +568,7 @@ export class VueWebviewProvider {
     if (!task) {
       webview.postMessage({
         command: 'error',
-        message: `任务不存在: ${taskId}`,
+        message: vscode.l10n.t('Task does not exist: {0}', taskId),
       });
       return;
     }
@@ -597,7 +597,7 @@ export class VueWebviewProvider {
       canSelectFiles: false,
       canSelectFolders: true,
       canSelectMany: false,
-      title: '选择 SDK 安装目录',
+      title: vscode.l10n.t('Select SDK installation directory'),
     });
 
     if (result && result.length > 0) {
@@ -613,7 +613,7 @@ export class VueWebviewProvider {
       canSelectFiles: false,
       canSelectFolders: true,
       canSelectMany: false,
-      title: '选择工具链目录',
+      title: vscode.l10n.t('Select toolchain directory'),
     });
 
     if (result && result.length > 0) {
@@ -633,7 +633,7 @@ export class VueWebviewProvider {
   }
 
   private startInstallSdkTask(data: InstallSdkMessageData, webview: vscode.Webview): void {
-    const title = `安装 SDK ${data.directoryName || data.targetRef}`;
+    const title = vscode.l10n.t('Install SDK {0}', data.directoryName || data.targetRef);
     const task = this.createTask('install', title);
     this.postTaskStarted(task, webview);
 
@@ -645,22 +645,22 @@ export class VueWebviewProvider {
       const installContainerPath = data.installPath.trim();
 
       if (!directoryName) {
-        throw new Error('目录名称不能为空。');
+        throw new Error(vscode.l10n.t('Directory name cannot be empty.'));
       }
 
       if (!installContainerPath) {
-        throw new Error('SDK 安装目录不能为空。');
+        throw new Error(vscode.l10n.t('SDK installation directory cannot be empty.'));
       }
 
       const sdkBasePath = resolveSdkInstallBasePath(installContainerPath);
       const fullInstallPath = path.join(sdkBasePath, directoryName);
 
       if (fs.existsSync(fullInstallPath)) {
-        throw new Error(`目标目录已存在: ${fullInstallPath}`);
+        throw new Error(vscode.l10n.t('Target directory already exists: {0}', fullInstallPath));
       }
 
       if (!(await this.gitService.isGitInstalled())) {
-        throw new Error('Git 未安装或不在系统 PATH 中。');
+        throw new Error(vscode.l10n.t('Git is not installed or is not on system PATH.'));
       }
 
       if (!fs.existsSync(sdkBasePath)) {
@@ -671,10 +671,10 @@ export class VueWebviewProvider {
       const cloneRef =
         data.targetKind === 'branch' ? normalizeBranchGitRef(data.targetRef) : stripTagRef(data.targetRef);
 
-      log(`准备安装 SDK: ${directoryName}`);
-      log(`源码仓库: ${repoUrl}`);
-      log(`安装路径: ${fullInstallPath}`);
-      log(`目标 Ref: ${data.targetRef}`);
+      log(vscode.l10n.t('Preparing to install SDK: {0}', directoryName));
+      log(vscode.l10n.t('Source repository: {0}', repoUrl));
+      log(vscode.l10n.t('Installation path: {0}', fullInstallPath));
+      log(vscode.l10n.t('Target Ref: {0}', data.targetRef));
 
       await this.gitService.cloneRepository(repoUrl, fullInstallPath, {
         branch: cloneRef,
@@ -697,7 +697,11 @@ export class VueWebviewProvider {
   }
 
   private startInstallExistingSdkTask(data: InstallExistingSdkMessageData, webview: vscode.Webview): void {
-    const task = this.createTask('import', `导入 SDK ${path.basename(data.sdkPath) || data.sdkPath}`, data.sdkPath);
+    const task = this.createTask(
+      'import',
+      vscode.l10n.t('Import SDK {0}', path.basename(data.sdkPath) || data.sdkPath),
+      data.sdkPath
+    );
     this.postTaskStarted(task, webview);
 
     void this.runTask(task, webview, async log => {
@@ -710,13 +714,13 @@ export class VueWebviewProvider {
       const toolchainMirrorUrls = this.normalizeMirrorUrlsForSource(toolchainSource, data.toolchainMirrorUrls);
       const toolsPath = data.toolsPath?.trim() || undefined;
 
-      log(`导入路径: ${data.sdkPath}`);
+      log(vscode.l10n.t('Import path: {0}', data.sdkPath));
 
       const hasInstallScript = !!this.sdkService.getInstallScriptPath(data.sdkPath);
       if (hasInstallScript) {
         await this.runInstallScript(data.sdkPath, toolsPath, toolchainSource, toolchainMirrorUrls, log, true);
       } else {
-        log('未检测到 install 脚本，跳过工具安装步骤。', 'warn');
+        log(vscode.l10n.t('No install script detected. Skipping tool installation.'), 'warn');
       }
 
       await this.configService.addSdkConfig(data.sdkPath, toolsPath, toolchainSource, toolchainMirrorUrls);
@@ -732,7 +736,11 @@ export class VueWebviewProvider {
   }
 
   private startSwitchSdkRefTask(data: SwitchSdkRefMessageData, webview: vscode.Webview): void {
-    const task = this.createTask('switch-ref', `切换 SDK 版本`, this.sdkService.decodeSdkId(data.sdkId));
+    const task = this.createTask(
+      'switch-ref',
+      vscode.l10n.t('Switch SDK Version'),
+      this.sdkService.decodeSdkId(data.sdkId)
+    );
     this.postTaskStarted(task, webview);
 
     void this.runTask(task, webview, async log => {
@@ -740,11 +748,11 @@ export class VueWebviewProvider {
       const detail = await this.sdkService.getManagedSdkDetail(data.sdkId);
 
       if (!detail.isGitRepo) {
-        throw new Error('当前 SDK 不是 Git 仓库，无法切换版本。');
+        throw new Error(vscode.l10n.t('Current SDK is not a Git repository, so it cannot switch versions.'));
       }
 
-      log(`当前路径: ${currentPath}`);
-      log(`目标 Ref: ${data.targetRef}`);
+      log(vscode.l10n.t('Current path: {0}', currentPath));
+      log(vscode.l10n.t('Target Ref: {0}', data.targetRef));
 
       if (data.targetKind === 'branch') {
         await this.gitService.switchToBranchRef(currentPath, normalizeBranchGitRef(data.targetRef), log);
@@ -760,7 +768,7 @@ export class VueWebviewProvider {
       ) {
         const renamed = await this.sdkService.renameSdkDirectory(currentPath, data.newDirectoryName.trim());
         finalPath = renamed.newPath;
-        log(`目录已重命名为: ${finalPath}`);
+        log(vscode.l10n.t('Directory renamed to: {0}', finalPath));
       }
 
       const metadata = await this.gitService.getSdkMetadata(finalPath);
@@ -775,13 +783,17 @@ export class VueWebviewProvider {
 
   private startUpdateBranchTask(sdkId: string, webview: vscode.Webview): void {
     const sdkPath = this.sdkService.decodeSdkId(sdkId);
-    const task = this.createTask('update-branch', `更新 SDK 分支 ${path.basename(sdkPath)}`, sdkPath);
+    const task = this.createTask(
+      'update-branch',
+      vscode.l10n.t('Update SDK Branch {0}', path.basename(sdkPath)),
+      sdkPath
+    );
     this.postTaskStarted(task, webview);
 
     void this.runTask(task, webview, async log => {
       const detail = await this.sdkService.getManagedSdkDetail(sdkId);
       if (detail.refType !== 'branch') {
-        throw new Error('当前 SDK 不在受管分支上，无法更新。');
+        throw new Error(vscode.l10n.t('Current SDK is not on a managed branch, so it cannot be updated.'));
       }
 
       await this.gitService.updateBranchToLatest(sdkPath, detail.ref, log);
@@ -798,12 +810,12 @@ export class VueWebviewProvider {
 
   private startRenameSdkDirectoryTask(data: RenameSdkDirectoryMessageData, webview: vscode.Webview): void {
     const sdkPath = this.sdkService.decodeSdkId(data.sdkId);
-    const task = this.createTask('rename-directory', `重命名 SDK ${path.basename(sdkPath)}`, sdkPath);
+    const task = this.createTask('rename-directory', vscode.l10n.t('Rename SDK {0}', path.basename(sdkPath)), sdkPath);
     this.postTaskStarted(task, webview);
 
     void this.runTask(task, webview, async log => {
       const renamed = await this.sdkService.renameSdkDirectory(sdkPath, data.newDirectoryName);
-      log(`目录已重命名: ${renamed.newPath}`);
+      log(vscode.l10n.t('Directory renamed: {0}', renamed.newPath));
 
       const metadata = await this.gitService.getSdkMetadata(renamed.newPath);
       return {
@@ -817,7 +829,7 @@ export class VueWebviewProvider {
 
   private startRerunInstallScriptTask(sdkId: string, webview: vscode.Webview): void {
     const sdkPath = this.sdkService.decodeSdkId(sdkId);
-    const task = this.createTask('update-tools', `更新工具 ${path.basename(sdkPath)}`, sdkPath);
+    const task = this.createTask('update-tools', vscode.l10n.t('Update Tools {0}', path.basename(sdkPath)), sdkPath);
     this.postTaskStarted(task, webview);
 
     void this.runTask(task, webview, async log => {
@@ -841,25 +853,25 @@ export class VueWebviewProvider {
 
   private startRemoveSdkTask(data: RemoveSdkMessageData, webview: vscode.Webview): void {
     const sdkPath = this.sdkService.decodeSdkId(data.sdkId);
-    const title = `移除 SDK ${path.basename(sdkPath)}`;
+    const title = vscode.l10n.t('Remove SDK {0}', path.basename(sdkPath));
     const task = this.createTask('remove-sdk', title, sdkPath);
     this.postTaskStarted(task, webview);
 
     void this.runTask(task, webview, async log => {
-      log(`准备从系统中彻底移除 SDK: ${sdkPath}`);
+      log(vscode.l10n.t('Preparing to permanently remove SDK from the system: {0}', sdkPath));
 
       if (fs.existsSync(sdkPath)) {
-        log(`正在删除文件系统目录...`);
+        log(vscode.l10n.t('Deleting filesystem directory...'));
         fs.rmSync(sdkPath, { recursive: true, force: true });
-        log(`文件系统目录删除完毕.`);
+        log(vscode.l10n.t('Filesystem directory deleted.'));
       } else {
-        log(`目标目录不存在，跳过文件删除.`);
+        log(vscode.l10n.t('Target directory does not exist. Skipping file deletion.'));
       }
 
-      log(`清理工作区配置...`);
+      log(vscode.l10n.t('Cleaning workspace configuration...'));
       await this.sdkService.removeSdkPath(sdkPath);
 
-      log(`SDK 成功移除.`);
+      log(vscode.l10n.t('SDK removed successfully.'));
       return {
         path: sdkPath,
       };
@@ -868,19 +880,23 @@ export class VueWebviewProvider {
 
   private startEditToolchainTask(data: EditToolchainMessageData, webview: vscode.Webview): void {
     const sdkPath = this.sdkService.decodeSdkId(data.sdkId);
-    const task = this.createTask('edit-toolchain', `修改工具链配置 ${path.basename(sdkPath)}`, sdkPath);
+    const task = this.createTask(
+      'edit-toolchain',
+      vscode.l10n.t('Edit Toolchain Configuration {0}', path.basename(sdkPath)),
+      sdkPath
+    );
     this.postTaskStarted(task, webview);
 
     void this.runTask(task, webview, async log => {
-      log(`正在更新此 SDK 的工具链源为: ${data.source}`);
+      log(vscode.l10n.t("Updating this SDK's toolchain source to: {0}", data.source));
       const toolchainMirrorUrls = this.normalizeMirrorUrlsForSource(data.source, data.toolchainMirrorUrls);
       await this.configService.setSdkToolchainSource(sdkPath, data.source, toolchainMirrorUrls);
 
       if (data.toolsPath) {
-        log(`更新自定义关联工具环境路径为: ${data.toolsPath}`);
+        log(vscode.l10n.t('Updated custom linked tool environment path to: {0}', data.toolsPath));
         await this.sdkService.setSdkToolsPath(sdkPath, data.toolsPath);
       } else {
-        log(`清除了自定义关联工具环境，系统将使用默认路径.`);
+        log(vscode.l10n.t('Cleared the custom linked tool environment. The system will use the default path.'));
         await this.configService.removeSdkToolsPath(sdkPath);
       }
 
@@ -993,14 +1009,14 @@ export class VueWebviewProvider {
     if (!sdkPath || !sdkPath.trim()) {
       return {
         valid: false,
-        message: '请输入 SDK 路径。',
+        message: vscode.l10n.t('Please enter an SDK path.'),
       };
     }
 
     if (!fs.existsSync(sdkPath)) {
       return {
         valid: false,
-        message: 'SDK 路径不存在。',
+        message: vscode.l10n.t('SDK path does not exist.'),
       };
     }
 
@@ -1013,7 +1029,7 @@ export class VueWebviewProvider {
     if (!hasCustomer || !hasExportScript) {
       return {
         valid: false,
-        message: 'SDK 缺少必要目录或导出脚本。',
+        message: vscode.l10n.t('SDK is missing required directories or export script.'),
         hasInstallScript,
         hasExportScript,
         hasVersionFile,
@@ -1022,7 +1038,7 @@ export class VueWebviewProvider {
 
     return {
       valid: true,
-      message: 'SDK 验证成功。',
+      message: vscode.l10n.t('SDK validation succeeded.'),
       name: path.basename(sdkPath),
       isGitRepo: metadata.isGitRepo,
       ref: metadata.ref,
@@ -1044,11 +1060,11 @@ export class VueWebviewProvider {
     const installScript = this.sdkService.getInstallScriptPath(sdkPath);
     if (!installScript) {
       if (failOnMissingScript) {
-        throw new Error('未找到 install 脚本。');
+        throw new Error(vscode.l10n.t('Install script was not found.'));
       }
 
-      log('未找到 install 脚本，无法手动更新工具。', 'error');
-      throw new Error('未找到 install 脚本。');
+      log(vscode.l10n.t('Cannot manually update tools because the install script was not found.'), 'error');
+      throw new Error(vscode.l10n.t('Install script was not found.'));
     }
 
     await this.executeInstallScript(installScript, sdkPath, toolsPath, toolchainSource, toolchainMirrorUrls, log);
@@ -1066,7 +1082,7 @@ export class VueWebviewProvider {
     let managedWindowsPathEntries: string[] = [];
     const powerShell = process.platform === 'win32' ? this.terminalService.getPowerShellExecutableInfo() : undefined;
     if (process.platform === 'win32') {
-      log('正在准备内置 uv...');
+      log(vscode.l10n.t('Preparing bundled uv...'));
       await UvService.getInstance().ensureUvAvailable();
       uvDir = UvService.getInstance().getManagedExecutableDir();
       if (!uvDir) {
@@ -1098,12 +1114,12 @@ export class VueWebviewProvider {
 
       const mirrorEnv = applySdkInstallMirrorEnvironment(env, toolchainSource, toolchainMirrorUrls);
 
-      log(`执行脚本: ${command} ${args.join(' ')}`);
+      log(vscode.l10n.t('Running script: {0} {1}', command, args.join(' ')));
       if (powerShell) {
         log(`PowerShell: ${powerShell.kind} (${powerShell.source})`);
       }
       if (uvDir) {
-        log(`内置 uv: ${uvDir}`);
+        log(vscode.l10n.t('Bundled uv: {0}', uvDir));
       }
       if (managedWindowsPathEntries.length > 0) {
         log(`Windows managed PATH: ${managedWindowsPathEntries.join(';')}`);
@@ -1112,12 +1128,12 @@ export class VueWebviewProvider {
         log(`SIFLI_SDK_TOOLS_PATH=${toolsPath}`);
       }
       if (mirrorEnv.source === 'sifli') {
-        log('使用 SiFli 国内镜像预设。');
+        log(vscode.l10n.t('Using the SiFli China mirror preset.'));
       } else if (mirrorEnv.source === 'custom') {
-        log('使用手动工具链镜像 URL。');
+        log(vscode.l10n.t('Using custom toolchain mirror URLs.'));
       }
       if (mirrorEnv.keys.length > 0) {
-        log(`镜像环境变量: ${mirrorEnv.keys.join(', ')}`);
+        log(vscode.l10n.t('Mirror environment variables: {0}', mirrorEnv.keys.join(', ')));
       }
 
       const child = spawn(command, args, {

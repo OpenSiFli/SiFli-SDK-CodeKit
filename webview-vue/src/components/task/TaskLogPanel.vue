@@ -2,12 +2,12 @@
   <div class="rounded-3xl border border-vscode-panel-border bg-[#101215] p-4 text-sm text-slate-100 shadow-sm">
     <div class="flex items-center justify-between gap-4 border-b border-white/10 pb-3">
       <div>
-        <h3 class="font-semibold text-white">任务日志</h3>
-        <p class="mt-1 text-xs text-slate-400">保留完整输出，便于定位 Git 和脚本失败原因。</p>
+        <h3 class="font-semibold text-white">{{ t('taskLog.title') }}</h3>
+        <p class="mt-1 text-xs text-slate-400">{{ t('taskLog.description') }}</p>
       </div>
       <button
         class="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
-        title="复制完整日志"
+        :title="t('taskLog.copyTitle')"
         @click="copyAll"
       >
         <svg
@@ -38,7 +38,7 @@
             d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
           />
         </svg>
-        {{ copied ? '已复制' : '复制全部' }}
+        {{ copied ? t('taskLog.copied') : t('taskLog.copyAll') }}
       </button>
     </div>
 
@@ -57,7 +57,7 @@
         v-if="task.logs.length === 0"
         class="rounded-2xl border border-dashed border-white/10 px-3 py-5 text-center text-slate-500"
       >
-        暂无日志输出。
+        {{ t('taskLog.empty') }}
       </div>
     </div>
   </div>
@@ -65,6 +65,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { SdkTaskRecord } from '@/types';
 
 const props = defineProps<{
@@ -73,6 +74,7 @@ const props = defineProps<{
 
 const copied = ref(false);
 const logContainer = ref<HTMLElement | null>(null);
+const { t } = useI18n();
 
 watch(
   () => props.task.logs.length,

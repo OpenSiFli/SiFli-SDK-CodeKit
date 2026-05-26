@@ -4,12 +4,14 @@
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div class="flex flex-wrap items-center gap-2">
-            <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">SDK Detail</p>
+            <p class="text-xs uppercase tracking-[0.28em] text-vscode-input-placeholder">
+              {{ t('sdk.detail.sectionLabel') }}
+            </p>
             <span
               v-if="sdk.isCurrent"
               class="rounded-full bg-vscode-button-background px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-vscode-button-foreground"
             >
-              Current
+              {{ t('sdk.state.current') }}
             </span>
           </div>
           <h2 class="mt-3 text-3xl font-semibold tracking-tight">{{ sdk.name }}</h2>
@@ -22,43 +24,55 @@
             variant="primary"
             @click="catalogStore.activateSdk(sdk.id)"
           >
-            设为当前
+            {{ t('sdk.card.activateCurrent') }}
           </BaseButton>
-          <BaseButton variant="secondary" @click="openPath('openInExplorer', sdk.path)">打开目录</BaseButton>
-          <BaseButton variant="secondary" @click="openPath('openInTerminal', sdk.path)">打开终端</BaseButton>
+          <BaseButton variant="secondary" @click="openPath('openInExplorer', sdk.path)">
+            {{ t('sdk.detail.openDirectory') }}
+          </BaseButton>
+          <BaseButton variant="secondary" @click="openPath('openInTerminal', sdk.path)">
+            {{ t('sdk.detail.openTerminal') }}
+          </BaseButton>
         </div>
       </div>
     </div>
 
     <div class="grid gap-4 xl:grid-cols-2">
       <article class="rounded-3xl border border-vscode-panel-border bg-vscode-background p-6 shadow-sm">
-        <p class="text-xs uppercase tracking-[0.24em] text-vscode-input-placeholder">Git State</p>
+        <p class="text-xs uppercase tracking-[0.24em] text-vscode-input-placeholder">{{ t('sdk.detail.gitState') }}</p>
         <dl class="mt-5 grid gap-4">
           <div>
-            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">Ref</dt>
+            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">{{ t('sdk.labels.ref') }}</dt>
             <dd class="mt-1 break-all text-base font-semibold">{{ sdk.ref }}</dd>
           </div>
           <div>
-            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">Hash</dt>
-            <dd class="mt-1 break-all text-sm">{{ sdk.hash || 'N/A' }}</dd>
+            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">{{ t('sdk.labels.hash') }}</dt>
+            <dd class="mt-1 break-all text-sm">{{ sdk.hash || t('common.notAvailable') }}</dd>
           </div>
           <div>
-            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">Remote</dt>
-            <dd class="mt-1 break-all text-sm">{{ sdk.origin || 'N/A' }}</dd>
+            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">
+              {{ t('sdk.labels.remote') }}
+            </dt>
+            <dd class="mt-1 break-all text-sm">{{ sdk.origin || t('common.notAvailable') }}</dd>
           </div>
           <div>
-            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">Tracked Branch</dt>
-            <dd class="mt-1 break-all text-sm">{{ sdk.trackedBranch || 'N/A' }}</dd>
+            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">
+              {{ t('sdk.labels.trackedBranch') }}
+            </dt>
+            <dd class="mt-1 break-all text-sm">{{ sdk.trackedBranch || t('common.notAvailable') }}</dd>
           </div>
         </dl>
       </article>
 
       <article class="rounded-3xl border border-vscode-panel-border bg-vscode-background p-6 shadow-sm">
-        <p class="text-xs uppercase tracking-[0.24em] text-vscode-input-placeholder">Tools & Files</p>
+        <p class="text-xs uppercase tracking-[0.24em] text-vscode-input-placeholder">
+          {{ t('sdk.detail.toolsAndFiles') }}
+        </p>
         <dl class="mt-5 grid gap-4">
           <div>
-            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">Tools Path</dt>
-            <dd class="mt-1 break-all text-sm">{{ sdk.toolsPath || '默认环境' }}</dd>
+            <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">
+              {{ t('sdk.labels.toolsPath') }}
+            </dt>
+            <dd class="mt-1 break-all text-sm">{{ sdk.toolsPath || t('common.defaultEnvironment') }}</dd>
           </div>
           <div>
             <dt class="text-xs uppercase tracking-[0.2em] text-vscode-input-placeholder">
@@ -82,15 +96,21 @@
     </div>
 
     <div>
-      <p class="text-xs uppercase tracking-[0.24em] text-vscode-input-placeholder mb-4">Actions</p>
+      <p class="text-xs uppercase tracking-[0.24em] text-vscode-input-placeholder mb-4">
+        {{ t('sdk.detail.actions') }}
+      </p>
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <button
           v-if="sdk.actions.canSwitchRef"
           class="flex flex-col items-start gap-1 rounded-2xl border border-vscode-panel-border bg-vscode-background p-4 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-vscode-focus-border hover:bg-vscode-input-background/50"
           @click="switchDialogOpen = true"
         >
-          <span class="text-sm font-medium text-vscode-foreground">切换版本</span>
-          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">切换到其他的分支或标签</span>
+          <span class="text-sm font-medium text-vscode-foreground">
+            {{ t('sdk.detail.actionCards.switchRef.title') }}
+          </span>
+          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">
+            {{ t('sdk.detail.actionCards.switchRef.description') }}
+          </span>
         </button>
 
         <button
@@ -98,16 +118,24 @@
           class="flex flex-col items-start gap-1 rounded-2xl border border-vscode-panel-border bg-vscode-background p-4 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-vscode-focus-border hover:bg-vscode-input-background/50"
           @click="requestTask({ command: 'updateBranchSdk', sdkId: sdk.id })"
         >
-          <span class="text-sm font-medium text-vscode-foreground">更新分支</span>
-          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">拉取远程代码库的最新更改</span>
+          <span class="text-sm font-medium text-vscode-foreground">
+            {{ t('sdk.detail.actionCards.updateBranch.title') }}
+          </span>
+          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">
+            {{ t('sdk.detail.actionCards.updateBranch.description') }}
+          </span>
         </button>
 
         <button
           class="flex flex-col items-start gap-1 rounded-2xl border border-vscode-panel-border bg-vscode-background p-4 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-vscode-focus-border hover:bg-vscode-input-background/50"
           @click="renameDialogOpen = true"
         >
-          <span class="text-sm font-medium text-vscode-foreground">重命名目录</span>
-          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">修改本地 SDK 的文件夹名称</span>
+          <span class="text-sm font-medium text-vscode-foreground">
+            {{ t('sdk.detail.actionCards.rename.title') }}
+          </span>
+          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">
+            {{ t('sdk.detail.actionCards.rename.description') }}
+          </span>
         </button>
 
         <button
@@ -115,8 +143,12 @@
           class="flex flex-col items-start gap-1 rounded-2xl border border-vscode-panel-border bg-vscode-background p-4 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-vscode-focus-border hover:bg-vscode-input-background/50"
           @click="requestTask({ command: 'rerunInstallScript', sdkId: sdk.id })"
         >
-          <span class="text-sm font-medium text-vscode-foreground">更新工具</span>
-          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">重新执行此 SDK 的安装脚本</span>
+          <span class="text-sm font-medium text-vscode-foreground">
+            {{ t('sdk.detail.actionCards.updateTools.title') }}
+          </span>
+          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">
+            {{ t('sdk.detail.actionCards.updateTools.description') }}
+          </span>
         </button>
 
         <button
@@ -124,8 +156,12 @@
           class="flex flex-col items-start gap-1 rounded-2xl border border-vscode-panel-border bg-vscode-background p-4 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-vscode-focus-border hover:bg-vscode-input-background/50"
           @click="editToolchainDialogOpen = true"
         >
-          <span class="text-sm font-medium text-vscode-foreground">修改工具链</span>
-          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">修改关联工具环境及镜像源</span>
+          <span class="text-sm font-medium text-vscode-foreground">
+            {{ t('sdk.detail.actionCards.editToolchain.title') }}
+          </span>
+          <span class="text-xs text-vscode-input-placeholder mt-0.5 leading-relaxed">
+            {{ t('sdk.detail.actionCards.editToolchain.description') }}
+          </span>
         </button>
 
         <button
@@ -133,8 +169,10 @@
           class="flex flex-col items-start gap-1 rounded-2xl border border-red-500/20 bg-red-500/5 p-4 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-red-500/50 hover:bg-red-500/10"
           @click="removeSdkDialogOpen = true"
         >
-          <span class="text-sm font-medium text-red-500">不再管理此 SDK</span>
-          <span class="text-xs text-red-500/70 mt-0.5 leading-relaxed">解除挂载并从本地物理文件系统删除</span>
+          <span class="text-sm font-medium text-red-500">{{ t('sdk.detail.actionCards.remove.title') }}</span>
+          <span class="text-xs text-red-500/70 mt-0.5 leading-relaxed">
+            {{ t('sdk.detail.actionCards.remove.description') }}
+          </span>
         </button>
       </div>
     </div>
@@ -179,7 +217,7 @@
     v-else
     class="rounded-3xl border border-dashed border-vscode-panel-border px-6 py-12 text-center text-vscode-input-placeholder"
   >
-    正在加载 SDK 详情...
+    {{ t('sdk.detail.loading') }}
   </section>
 </template>
 
