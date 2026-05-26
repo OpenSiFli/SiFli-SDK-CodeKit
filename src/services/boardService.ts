@@ -2,17 +2,12 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Board, BoardDiscoveryResult, SftoolParam } from '../types';
-import {
-  CUSTOMER_BOARDS_SUBFOLDER,
-  HCPU_SUBFOLDER,
-  PROJECT_SUBFOLDER,
-  PTAB_JSON_FILE,
-  SFTOOL_PARAM_JSON_FILE,
-} from '../constants';
+import { CUSTOMER_BOARDS_SUBFOLDER, PROJECT_SUBFOLDER, SFTOOL_PARAM_JSON_FILE } from '../constants';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
 import { getProjectInfo } from '../utils/projectUtils';
 import { buildBoardSearchArg } from '../utils/boardSearchPathUtils';
+import { isValidBoardDirectory } from '../utils/boardDiscoveryUtils';
 
 export class BoardService {
   private static instance: BoardService;
@@ -79,11 +74,9 @@ export class BoardService {
       for (const entry of entries) {
         if (entry.isDirectory()) {
           const boardPath = path.join(directoryPath, entry.name);
-          const hcpuPath = path.join(boardPath, HCPU_SUBFOLDER);
-          const ptabJsonPath = path.join(boardPath, PTAB_JSON_FILE);
 
-          // 检查是否存在 hcpu 目录和 ptab.json 文件
-          if (fs.existsSync(hcpuPath) && fs.existsSync(ptabJsonPath)) {
+          // 检查是否存在 hcpu 目录和支持的分区表文件
+          if (isValidBoardDirectory(boardPath)) {
             const boardName = entry.name;
 
             // 避免重复添加（优先级：project_local > custom > sdk）

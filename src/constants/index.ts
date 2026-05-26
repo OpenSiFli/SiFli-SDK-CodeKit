@@ -8,7 +8,9 @@ export const SCONSCRIPT_FILE = 'SConscript';
 export const CUSTOMER_BOARDS_SUBFOLDER = 'customer/boards';
 export const HCPU_SUBFOLDER = 'hcpu';
 export const LCPU_SUBFOLDER = 'lcpu';
+export const PTAB_YAML_FILE = 'ptab.yaml';
 export const PTAB_JSON_FILE = 'ptab.json';
+export const SUPPORTED_PTAB_FILES = [PTAB_YAML_FILE, PTAB_JSON_FILE] as const;
 
 // sftool 参数文件常量
 export const SFTOOL_PARAM_JSON_FILE = 'sftool_param.json';
