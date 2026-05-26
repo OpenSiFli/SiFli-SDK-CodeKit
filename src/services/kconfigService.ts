@@ -9,9 +9,11 @@ import { LogService } from './logService';
 import { SdkService } from './sdkService';
 import { WindowsManagedEnvService } from './windowsManagedEnvService';
 import { KconfigChange, KconfigSnapshot } from '../types';
+import { buildExportedEnvironmentPythonSnippet, parseExportedEnvironmentFile } from '../utils/exportedEnvironmentUtils';
 import { getProjectInfo } from '../utils/projectUtils';
 import {
   buildPowerShellDotSourceCommandWithOutputToError,
+  quotePowerShellString,
   resolvePowerShellExecutable,
 } from '../utils/powerShellUtils';
 
@@ -301,7 +303,33 @@ export class KconfigService {
     }
 
     return new Promise((resolve, reject) => {
-      const shellInvocation = this.buildExportShellInvocation(exportScriptPath);
+      const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codekit-sdk-env-'));
+      const outputPath = path.join(outputDir, 'environment.json');
+      let settled = false;
+      const cleanup = () => {
+        try {
+          fs.rmSync(outputDir, { recursive: true, force: true });
+        } catch {
+          // Ignore cleanup failures.
+        }
+      };
+      const fail = (error: Error) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        reject(error);
+      };
+      const succeed = (exportedEnv: NodeJS.ProcessEnv) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        resolve(exportedEnv);
+      };
+      const shellInvocation = this.buildExportShellInvocation(exportScriptPath, outputPath);
       const child = spawn(shellInvocation.command, shellInvocation.args, {
         cwd: bridgeContext.projectPath,
         env,
@@ -316,7 +344,7 @@ export class KconfigService {
         } catch {
           // Ignore kill failures.
         }
-        reject(new Error(vscode.l10n.t('Kconfig operation timed out.')));
+        fail(new Error(vscode.l10n.t('Kconfig operation timed out.')));
       }, 120_000);
 
       child.stdout?.on('data', chunk => {
@@ -327,33 +355,41 @@ export class KconfigService {
       });
       child.on('error', error => {
         clearTimeout(timeout);
-        reject(error);
+        fail(error);
       });
       child.on('close', code => {
         clearTimeout(timeout);
+        if (settled) {
+          return;
+        }
         if (code !== 0) {
-          reject(new Error(stderr.trim() || stdout.trim() || `SDK export exited with code ${String(code)}`));
+          fail(new Error(stderr.trim() || stdout.trim() || `SDK export exited with code ${String(code)}`));
           return;
         }
         try {
-          resolve(JSON.parse(stdout) as NodeJS.ProcessEnv);
+          succeed(parseExportedEnvironmentFile(outputPath));
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          reject(
-            new Error(`Failed to parse exported SDK environment: ${message}${stderr ? `${os.EOL}${stderr}` : ''}`)
+          const shellOutput = [stderr.trim(), stdout.trim()].filter(Boolean).join(os.EOL);
+          fail(
+            new Error(
+              `Failed to parse exported SDK environment: ${message}${shellOutput ? `${os.EOL}${shellOutput}` : ''}`
+            )
           );
         }
       });
     });
   }
 
-  private buildExportShellInvocation(exportScriptPath: string): { command: string; args: string[] } {
-    const envJsonCommand = `python -c ${this.shellQuote(
-      'import json, os, sys; data=dict(os.environ); data["CODEKIT_EXPORTED_PYTHON"]=sys.executable; print(json.dumps(data, ensure_ascii=False))'
-    )}`;
+  private buildExportShellInvocation(
+    exportScriptPath: string,
+    exportedEnvironmentPath: string
+  ): { command: string; args: string[] } {
+    const pythonSnippet = buildExportedEnvironmentPythonSnippet(exportedEnvironmentPath);
 
     if (process.platform === 'win32') {
       const powerShell = resolvePowerShellExecutable(this.configService.config.powershellPath).executablePath;
+      const envJsonCommand = `python -c ${quotePowerShellString(pythonSnippet)}`;
       const command = [
         '$ErrorActionPreference = "Stop"',
         buildPowerShellDotSourceCommandWithOutputToError(exportScriptPath),
@@ -369,6 +405,7 @@ export class KconfigService {
     const shellPath = process.env.SHELL || '/bin/zsh';
     const shellName = path.basename(shellPath);
     const args = shellName === 'bash' || shellName === 'zsh' ? ['-l', '-c'] : ['-c'];
+    const envJsonCommand = `python -c ${this.shellQuote(pythonSnippet)}`;
     const command = ['set -e', `. ${this.shellQuote(exportScriptPath)} 1>&2`, envJsonCommand].join('; ');
     return {
       command: shellPath,
