@@ -517,6 +517,11 @@
   resolved "https://registry.yarnpkg.com/@xterm/addon-fit/-/addon-fit-0.11.0.tgz#ba4778b69fcc9044a060c2176bbe077657d7b37e"
   integrity sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g==
 
+"@xterm/addon-search@^0.16.0":
+  version "0.16.0"
+  resolved "https://registry.yarnpkg.com/@xterm/addon-search/-/addon-search-0.16.0.tgz#ddadcbc6e556e45fc4b153f8a0efdf2aa1456b82"
+  integrity sha512-9OeuBFu0/uZJPu+9AHKY6g/w0Czyb/Ut0A5t79I4ULoU4IfU5BEpPFVGQxP4zTTMdfZEYkVIRYbHBX1xWwjeSA==
+
 "@xterm/xterm@^6.0.0":
   version "6.0.0"
   resolved "https://registry.yarnpkg.com/@xterm/xterm/-/xterm-6.0.0.tgz#93637b0f2ee3a70718b5746a27c9c506af16745b"
