@@ -266,7 +266,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { FitAddon } from '@xterm/addon-fit';
-import { SearchAddon, type ISearchOptions } from '@xterm/addon-search';
+import { SearchAddon, type ISearchOptions, type ISearchResultChangeEvent } from '@xterm/addon-search';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import { onMessage, postMessage } from '@/services/vscodeBridge';
@@ -313,6 +313,7 @@ interface SearchEntry {
 interface SearchModel {
   entries: SearchEntry[];
   matches: SearchMatch[];
+  truncated: boolean;
 }
 
 const status = ref<SerialMonitorStatus>({ connected: false, logCount: 0 });
@@ -336,6 +337,7 @@ const searchCaseSensitive = ref(false);
 const searchRegex = ref(false);
 const searchHex = ref(false);
 const activeSearchMatchIndex = ref(0);
+const terminalSearchResult = ref<ISearchResultChangeEvent>({ resultIndex: -1, resultCount: 0 });
 const supportedBaudRates = [1000000, 115200, 1500000, 2000000, 3000000, 6000000];
 const maxSearchMatches = 5000;
 
@@ -343,6 +345,7 @@ let terminal: Terminal | undefined;
 let terminalFitAddon: FitAddon | undefined;
 let terminalSearchAddon: SearchAddon | undefined;
 let terminalInputDisposable: { dispose(): void } | undefined;
+let terminalSearchResultDisposable: { dispose(): void } | undefined;
 let terminalResizeObserver: ResizeObserver | undefined;
 let terminalWrittenEntryId = 0;
 let terminalSearchRefreshHandle: number | undefined;
@@ -352,7 +355,7 @@ const activeBaudRate = computed(() => status.value.baudRate || settings.value.lo
 const displayEntries = computed(() => entries.value.filter(entry => entry.source !== 'system'));
 const renderedEntries = computed(() => renderAnsiEntries(displayEntries.value, settings.value.renderAnsi));
 const continuousLog = computed(() => terminalMode.value || !settings.value.showTimestamp);
-const searchTerm = computed(() => searchQuery.value.trim());
+const searchTerm = computed(() => searchQuery.value);
 const searchActive = computed(() => searchOpen.value && searchTerm.value.length > 0);
 const searchModel = computed(() =>
   buildSearchModel(renderedEntries.value, {
@@ -361,9 +364,12 @@ const searchModel = computed(() =>
     regex: searchRegex.value,
     target: searchHex.value ? 'hex' : 'text',
     activeIndex: activeSearchMatchIndex.value,
+    continuous: continuousLog.value && !terminalMode.value,
   })
 );
-const searchMatchCount = computed(() => searchModel.value.matches.length);
+const searchMatchCount = computed(() =>
+  terminalMode.value ? terminalSearchResult.value.resultCount : searchModel.value.matches.length
+);
 const canNavigateSearch = computed(() => searchActive.value && searchMatchCount.value > 0);
 const searchResultText = computed(() => {
   if (!searchActive.value) {
@@ -372,7 +378,10 @@ const searchResultText = computed(() => {
   if (searchMatchCount.value === 0) {
     return t('serialMonitor.search.noResults');
   }
-  return `${activeSearchMatchIndex.value + 1}/${searchMatchCount.value}`;
+  if (terminalMode.value) {
+    return `${Math.max(terminalSearchResult.value.resultIndex + 1, 1)}/${searchMatchCount.value}`;
+  }
+  return `${activeSearchMatchIndex.value + 1}/${searchMatchCount.value}${searchModel.value.truncated ? '+' : ''}`;
 });
 const canToggleConnection = computed(() => status.value.connected || !!selectedPort.value);
 const baudRateOptions = computed(() => {
@@ -554,6 +563,7 @@ function clearLog() {
   if (terminalMode.value) {
     terminal?.clear();
     terminalWrittenEntryId = 0;
+    clearTerminalSearch();
   }
   postMessage({ command: 'serialMonitorClear' });
 }
@@ -630,6 +640,12 @@ function goToSearchMatch(direction: SearchDirection) {
     return;
   }
 
+  if (terminalMode.value) {
+    runTerminalSearch(direction);
+    searchInput.value?.focus();
+    return;
+  }
+
   const count = searchMatchCount.value;
   if (count === 0) {
     return;
@@ -637,10 +653,6 @@ function goToSearchMatch(direction: SearchDirection) {
 
   const delta = direction === 'next' ? 1 : -1;
   activeSearchMatchIndex.value = (activeSearchMatchIndex.value + delta + count) % count;
-  if (terminalMode.value) {
-    runTerminalSearch(direction);
-    searchInput.value?.focus();
-  }
 }
 
 async function scrollToActiveSearchMatch() {
@@ -675,6 +687,9 @@ async function initializeTerminal() {
     terminal.loadAddon(terminalFitAddon);
     terminal.loadAddon(terminalSearchAddon);
     terminal.open(terminalContainer.value);
+    terminalSearchResultDisposable = terminalSearchAddon.onDidChangeResults(result => {
+      terminalSearchResult.value = result;
+    });
     terminalInputDisposable = terminal.onData(data => {
       if (status.value.connected) {
         sendTerminalText(data);
@@ -744,6 +759,7 @@ function clearTerminalSearch() {
   }
   terminalSearchAddon?.clearDecorations();
   terminal?.clearSelection();
+  terminalSearchResult.value = { resultIndex: -1, resultCount: 0 };
 }
 
 function readTerminalSearchOptions(incremental: boolean): ISearchOptions {
@@ -785,7 +801,6 @@ function syncTerminalEntries() {
     writeTerminalEntry(entry);
   });
   if (searchOpen.value && searchActive.value) {
-    scheduleTerminalSearchRefresh();
     return;
   }
   terminal.scrollToBottom();
@@ -798,10 +813,10 @@ function writeTerminalEntry(entry: SerialLogEntry) {
 
   const text = settings.value.renderAnsi ? entry.text : stripAnsiControlSequences(entry.text);
   if (entry.source === 'error' && settings.value.renderAnsi) {
-    terminal.write(`\x1b[31m${text}\x1b[0m\r\n`, scheduleTerminalSearchRefresh);
+    terminal.write(`\x1b[31m${text}\x1b[0m\r\n`);
     return;
   }
-  terminal.write(text, scheduleTerminalSearchRefresh);
+  terminal.write(text);
 }
 
 function fitTerminal() {
@@ -821,10 +836,13 @@ function disposeTerminal() {
   terminalResizeObserver = undefined;
   terminalInputDisposable?.dispose();
   terminalInputDisposable = undefined;
+  terminalSearchResultDisposable?.dispose();
+  terminalSearchResultDisposable = undefined;
   terminal?.dispose();
   terminal = undefined;
   terminalFitAddon = undefined;
   terminalSearchAddon = undefined;
+  terminalSearchResult.value = { resultIndex: -1, resultCount: 0 };
   terminalWrittenEntryId = 0;
 }
 
@@ -892,31 +910,54 @@ function buildSearchModel(
     regex: boolean;
     target: SearchTarget;
     activeIndex: number;
+    continuous: boolean;
   }
 ): SearchModel {
+  if (options.continuous && options.target === 'text') {
+    return buildContinuousSearchModel(rendered, options);
+  }
+
   const entries: SearchEntry[] = [];
   const matches: SearchMatch[] = [];
   let nextMatchIndex = 0;
+  let truncated = false;
 
   for (const item of rendered) {
+    const remaining = maxSearchMatches - matches.length;
+    if (remaining <= 0) {
+      truncated = true;
+    }
+    const text = item.segments.map(segment => segment.text).join('');
+    const textRanges =
+      options.target === 'text' && remaining > 0
+        ? readLimitedRanges(text, options, remaining)
+        : { ranges: [], truncated: false };
     const textMatches =
       options.target === 'text'
-        ? findSearchRanges(item.segments.map(segment => segment.text).join(''), options).map(range => ({
+        ? textRanges.ranges.map(range => ({
             ...range,
             entryId: item.entry.id,
             target: 'text' as const,
             index: nextMatchIndex++,
           }))
         : [];
+    truncated = truncated || textRanges.truncated;
+
+    const nextRemaining = maxSearchMatches - matches.length - textMatches.length;
+    const hexRanges =
+      options.target === 'hex' && nextRemaining > 0
+        ? readLimitedRanges(item.entry.hex, options, nextRemaining)
+        : { ranges: [], truncated: false };
     const hexMatches =
       options.target === 'hex'
-        ? findSearchRanges(item.entry.hex, options).map(range => ({
+        ? hexRanges.ranges.map(range => ({
             ...range,
             entryId: item.entry.id,
             target: 'hex' as const,
             index: nextMatchIndex++,
           }))
         : [];
+    truncated = truncated || hexRanges.truncated;
 
     matches.push(...textMatches, ...hexMatches);
     entries.push({
@@ -930,33 +971,100 @@ function buildSearchModel(
     });
   }
 
-  return { entries, matches };
+  return { entries, matches, truncated };
+}
+
+function buildContinuousSearchModel(
+  rendered: Array<RenderedAnsiEntry<SerialLogEntry>>,
+  options: {
+    term: string;
+    caseSensitive: boolean;
+    regex: boolean;
+    activeIndex: number;
+  }
+): SearchModel {
+  const entryTexts = rendered.map(item => item.segments.map(segment => segment.text).join(''));
+  const streamText = entryTexts.join('');
+  const limitedRanges = readLimitedRanges(streamText, options, maxSearchMatches);
+  const matches: SearchMatch[] = limitedRanges.ranges.map((range, index) => ({
+    ...range,
+    index,
+    entryId: -1,
+    target: 'text',
+  }));
+  const entries: SearchEntry[] = [];
+  let entryOffset = 0;
+
+  rendered.forEach((item, entryIndex) => {
+    const entryText = entryTexts[entryIndex];
+    const entryStart = entryOffset;
+    const entryEnd = entryStart + entryText.length;
+    const entryMatches = matches
+      .filter(match => match.end > entryStart && match.start < entryEnd)
+      .map(match => ({
+        ...match,
+        entryId: item.entry.id,
+        start: Math.max(match.start, entryStart) - entryStart,
+        end: Math.min(match.end, entryEnd) - entryStart,
+      }));
+
+    entries.push({
+      entry: item.entry,
+      textSegments: decorateSearchSegments(item.segments, entryMatches, options.activeIndex),
+      hexSegments: [{ text: item.entry.hex, className: '', style: {} }],
+    });
+    entryOffset = entryEnd;
+  });
+
+  return { entries, matches, truncated: limitedRanges.truncated };
+}
+
+function readLimitedRanges(
+  text: string,
+  options: { term: string; caseSensitive: boolean; regex: boolean },
+  limit: number
+): { ranges: Array<{ start: number; end: number }>; truncated: boolean } {
+  if (limit <= 0) {
+    return { ranges: [], truncated: true };
+  }
+
+  const ranges = findSearchRanges(text, options, limit + 1);
+  return {
+    ranges: ranges.slice(0, limit),
+    truncated: ranges.length > limit,
+  };
 }
 
 function findSearchRanges(
   text: string,
-  options: { term: string; caseSensitive: boolean; regex: boolean }
+  options: { term: string; caseSensitive: boolean; regex: boolean },
+  limit: number
 ): Array<{ start: number; end: number }> {
-  if (!options.term || !text) {
+  if (!options.term || !text || limit <= 0) {
     return [];
   }
 
   if (options.regex) {
-    return findRegexRanges(text, options.term, options.caseSensitive);
+    return findRegexRanges(text, options.term, options.caseSensitive, limit);
   }
 
   const ranges: Array<{ start: number; end: number }> = [];
   const haystack = options.caseSensitive ? text : text.toLocaleLowerCase();
   const needle = options.caseSensitive ? options.term : options.term.toLocaleLowerCase();
   let index = haystack.indexOf(needle);
-  while (index !== -1 && ranges.length < maxSearchMatches) {
+  while (index !== -1 && ranges.length < limit) {
     ranges.push({ start: index, end: index + needle.length });
     index = haystack.indexOf(needle, index + Math.max(needle.length, 1));
   }
   return ranges;
 }
 
-function findRegexRanges(text: string, pattern: string, caseSensitive: boolean): Array<{ start: number; end: number }> {
+function findRegexRanges(
+  text: string,
+  pattern: string,
+  caseSensitive: boolean,
+  limit: number
+): Array<{ start: number; end: number }> {
   const ranges: Array<{ start: number; end: number }> = [];
   let matcher: RegExp;
   try {
@@ -966,7 +1074,7 @@ function findRegexRanges(text: string, pattern: string, caseSensitive: boolean):
   }
 
   let match: RegExpExecArray | null;
-  while ((match = matcher.exec(text)) && ranges.length < maxSearchMatches) {
+  while ((match = matcher.exec(text)) && ranges.length < limit) {
     const matchText = match[0];
     if (!matchText) {
       matcher.lastIndex += 1;
