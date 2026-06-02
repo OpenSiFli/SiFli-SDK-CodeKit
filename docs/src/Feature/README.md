@@ -3,6 +3,11 @@ title: 进阶功能
 icon: fa-solid fa-wrench
 ---
 
+## 功能列表
+
+- [SDK 依赖源码浏览](#sdk-依赖源码浏览)
+- [动态工作流](workflows.md)
+
 ## SDK 依赖源码浏览
 
 在 VS Code 的**资源管理器**侧边栏中，CodeKit 会新增一个 `SDK 依赖源码` 视图，用来快速查看当前工程实际依赖到的 SDK 文件。
