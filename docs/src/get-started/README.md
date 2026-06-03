@@ -18,5 +18,11 @@ icon: lightbulb
 ## macOS / Linux
 
 - [Visual Studio Code](https://code.visualstudio.com/)
-- [Python 3.12+](https://www.python.org/downloads/)，建议使用 Python 3.13
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - [Git](https://git-scm.com/downloads)
+
+::: note
+
+安装完成后，确保将 Git 添加到系统的环境变量中，可以在终端中运行git --version命令来检查 Git 是否安装成功。
+
+:::
