@@ -30,6 +30,7 @@ export type BuildTaskExecutionResult = {
 
 export class BuildExecutionService {
   private static instance: BuildExecutionService;
+  public static readonly COMPILE_EXIT_TIMEOUT_MS = 60 * 60 * 1000;
 
   private configService: ConfigService;
   private boardService: BoardService;
@@ -55,6 +56,7 @@ export class BuildExecutionService {
     waitForExit?: boolean;
     showNotifications?: boolean;
     runId?: string;
+    timeoutMs?: number;
   }): Promise<boolean> {
     const result = await this.executeCompileDetailed(options);
     return result.success;
@@ -65,6 +67,7 @@ export class BuildExecutionService {
     waitForExit?: boolean;
     showNotifications?: boolean;
     runId?: string;
+    timeoutMs?: number;
   }): Promise<BuildTaskExecutionResult> {
     const showNotifications = options?.showNotifications ?? true;
     const selectedBoardName = this.getSelectedBoardNameOrWarn(showNotifications);
@@ -85,6 +88,7 @@ export class BuildExecutionService {
     const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(command, TASK_NAMES.BUILD, {
       waitForExit,
       runId: options?.runId,
+      timeoutMs: options?.timeoutMs,
     });
     return {
       success: exitCode === undefined || exitCode === 0,
