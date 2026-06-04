@@ -32,11 +32,45 @@ interface PendingInputSection {
   line: number;
 }
 
+interface PendingOutputSection {
+  name: string;
+}
+
+interface ParsedInputSection {
+  section: string;
+  address: number;
+  size: number;
+  objectPath: string;
+  line: number;
+}
+
+interface SymbolCandidate {
+  name: string;
+  address: number;
+  line: number;
+}
+
+interface InputSectionContext extends ParsedInputSection {
+  outputSection: string;
+  outputSectionAddress: number;
+  outputSectionLoadAddress?: number;
+  regionName?: string;
+  symbols: SymbolCandidate[];
+}
+
+interface MemoryRangeFragment {
+  address: number;
+  size: number;
+  regionName?: string;
+}
+
 const DEFAULT_TOP_SYMBOL_LIMIT = 500;
 const HEX_PATTERN = '0x[0-9a-fA-F]+';
 const MEMORY_CONFIG_HEADER = 'Memory Configuration';
 const LINKER_MAP_HEADER = 'Linker script and memory map';
 const CROSS_REFERENCE_HEADER = 'Cross Reference Table';
+const NON_DOT_INPUT_SECTIONS = new Set(['COMMON']);
+const GENERATED_DATA_DIRECTIVE_PATTERN = /^(?:BYTE|SHORT|LONG|QUAD|SQUAD|FILL|ASCIZ?|CREATE_OBJECT_SYMBOLS)(?:\s|$)/i;
 
 export function parseGnuMap(content: string, options: MemoryMapParseOptions): MemoryMapSnapshot {
   const lines = content.split(/\r?\n/);
@@ -67,51 +101,55 @@ export function parseGnuMap(content: string, options: MemoryMapParseOptions): Me
   const topSymbolLimit = options.topSymbolLimit ?? DEFAULT_TOP_SYMBOL_LIMIT;
   const bodyEndIndex = findBodyEndIndex(lines, linkerHeaderIndex + 1);
   let currentOutputSection: OutputSectionContext | undefined;
+  let currentInputSection: InputSectionContext | undefined;
+  let pendingOutputSection: PendingOutputSection | undefined;
   let pendingInputSection: PendingInputSection | undefined;
-  let lastSymbolCandidate: MemorySymbolEntry | undefined;
+
+  const finalizeInputSection = () => {
+    if (!currentInputSection) {
+      return;
+    }
+
+    symbols.push(...buildSymbolEntries(currentInputSection, regions));
+    currentInputSection = undefined;
+  };
 
   for (let index = linkerHeaderIndex + 1; index < bodyEndIndex; index += 1) {
     const line = lines[index];
     const lineNumber = index + 1;
 
+    if (pendingOutputSection) {
+      const continuedOutputSection = parseContinuedOutputSectionLine(line, pendingOutputSection);
+      if (continuedOutputSection) {
+        finalizeInputSection();
+        pendingOutputSection = undefined;
+        pendingInputSection = undefined;
+        currentOutputSection = includeOutputSection(continuedOutputSection, regions, usageByName, sections, warnings);
+        continue;
+      }
+
+      if (line.trim()) {
+        pendingOutputSection = undefined;
+      }
+    }
+
     const outputSection = parseOutputSectionLine(line);
     if (outputSection) {
+      finalizeInputSection();
+      pendingOutputSection = undefined;
       pendingInputSection = undefined;
-      lastSymbolCandidate = undefined;
-      if (shouldIncludeOutputSection(outputSection.name, outputSection.address, outputSection.size)) {
-        const regionName = findRegionName(regions, outputSection.address);
-        const loadRegionName =
-          outputSection.loadAddress !== undefined ? findRegionName(regions, outputSection.loadAddress) : regionName;
+      currentOutputSection = includeOutputSection(outputSection, regions, usageByName, sections, warnings);
+      continue;
+    }
 
-        currentOutputSection = {
-          ...outputSection,
-          regionName,
-        };
-
-        sections.push({
-          ...outputSection,
-          regionName,
-          loadRegionName,
-        });
-
-        if (regionName) {
-          usageByName.get(regionName)!.runtimeUsed += outputSection.size;
-        } else {
-          warnings.push(
-            `Section ${outputSection.name} at ${formatHex(outputSection.address)} is outside known memory.`
-          );
-        }
-
-        if (isLoadableSection(outputSection.name)) {
-          const loadAddress = outputSection.loadAddress ?? outputSection.address;
-          const targetLoadRegion = findRegionName(regions, loadAddress);
-          if (targetLoadRegion) {
-            usageByName.get(targetLoadRegion)!.loadUsed += outputSection.size;
-          }
-        }
-      } else {
-        currentOutputSection = undefined;
-      }
+    const pendingOutputSectionName = parsePendingOutputSectionLine(line);
+    if (pendingOutputSectionName) {
+      finalizeInputSection();
+      pendingOutputSection = {
+        name: pendingOutputSectionName,
+      };
+      pendingInputSection = undefined;
+      currentOutputSection = undefined;
       continue;
     }
 
@@ -121,44 +159,41 @@ export function parseGnuMap(content: string, options: MemoryMapParseOptions): Me
 
     const pendingSection = parsePendingInputSectionLine(line);
     if (pendingSection) {
+      finalizeInputSection();
       pendingInputSection = {
         name: pendingSection,
         line: lineNumber,
       };
-      lastSymbolCandidate = undefined;
       continue;
     }
 
     const inputSection = parseInputSectionLine(line, pendingInputSection, lineNumber);
     if (inputSection) {
+      finalizeInputSection();
       pendingInputSection = undefined;
-      lastSymbolCandidate = undefined;
       if (!shouldIncludeInputSection(inputSection.section, inputSection.address, inputSection.size)) {
         continue;
       }
 
       const regionName = findRegionName(regions, inputSection.address) ?? currentOutputSection.regionName;
-      const entry: MemorySymbolEntry = {
-        name: fallbackSymbolName(inputSection.section, inputSection.objectPath),
-        section: inputSection.section,
+      currentInputSection = {
+        ...inputSection,
         outputSection: currentOutputSection.name,
-        objectPath: inputSection.objectPath,
+        outputSectionAddress: currentOutputSection.address,
+        outputSectionLoadAddress: currentOutputSection.loadAddress,
         regionName,
-        address: inputSection.address,
-        size: inputSection.size,
-        line: inputSection.line,
+        symbols: [],
       };
-      symbols.push(entry);
-      lastSymbolCandidate = entry;
       continue;
     }
 
-    const symbolName = parseSymbolLine(line, lastSymbolCandidate);
-    if (symbolName && lastSymbolCandidate) {
-      lastSymbolCandidate.name = symbolName;
-      lastSymbolCandidate = undefined;
+    const symbol = parseSymbolLine(line, currentInputSection, lineNumber);
+    if (symbol && currentInputSection) {
+      currentInputSection.symbols.push(symbol);
     }
   }
+
+  finalizeInputSection();
 
   const finalizedRegions = [...usageByName.values()].map(region => ({
     ...region,
@@ -245,9 +280,40 @@ function parseOutputSectionLine(
   };
 }
 
-function parsePendingInputSectionLine(line: string): string | null {
-  const match = line.match(/^\s+(\.\S+)\s*$/);
+function parsePendingOutputSectionLine(line: string): string | null {
+  if (/^\s/.test(line)) {
+    return null;
+  }
+
+  const match = line.match(/^(\.\S+)\s*$/);
   if (!match) {
+    return null;
+  }
+  return match[1];
+}
+
+function parseContinuedOutputSectionLine(
+  line: string,
+  pending: PendingOutputSection
+): { name: string; address: number; size: number; loadAddress?: number } | null {
+  const match = line.match(
+    new RegExp(`^\\s+(${HEX_PATTERN})\\s+(${HEX_PATTERN})(?:\\s+load address\\s+(${HEX_PATTERN}))?\\s*$`)
+  );
+  if (!match) {
+    return null;
+  }
+
+  return {
+    name: pending.name,
+    address: parseHex(match[1]),
+    size: parseHex(match[2]),
+    loadAddress: match[3] ? parseHex(match[3]) : undefined,
+  };
+}
+
+function parsePendingInputSectionLine(line: string): string | null {
+  const match = line.match(/^\s+(\S+)\s*$/);
+  if (!match || !isInputSectionName(match[1])) {
     return null;
   }
   return match[1];
@@ -257,9 +323,9 @@ function parseInputSectionLine(
   line: string,
   pending: PendingInputSection | undefined,
   lineNumber: number
-): { section: string; address: number; size: number; objectPath: string; line: number } | null {
-  const inline = line.match(new RegExp(`^\\s+(\\.\\S+)\\s+(${HEX_PATTERN})\\s+(${HEX_PATTERN})\\s+(.+?)\\s*$`));
-  if (inline) {
+): ParsedInputSection | null {
+  const inline = line.match(new RegExp(`^\\s+(\\S+)\\s+(${HEX_PATTERN})\\s+(${HEX_PATTERN})\\s+(.+?)\\s*$`));
+  if (inline && isInputSectionName(inline[1]) && isInputObjectPath(inline[4])) {
     return {
       section: inline[1],
       address: parseHex(inline[2]),
@@ -274,7 +340,7 @@ function parseInputSectionLine(
   }
 
   const continued = line.match(new RegExp(`^\\s+(${HEX_PATTERN})\\s+(${HEX_PATTERN})\\s+(.+?)\\s*$`));
-  if (!continued) {
+  if (!continued || !isInputObjectPath(continued[3])) {
     return null;
   }
 
@@ -287,8 +353,12 @@ function parseInputSectionLine(
   };
 }
 
-function parseSymbolLine(line: string, lastSymbolCandidate: MemorySymbolEntry | undefined): string | null {
-  if (!lastSymbolCandidate) {
+function parseSymbolLine(
+  line: string,
+  inputSection: InputSectionContext | undefined,
+  lineNumber: number
+): SymbolCandidate | null {
+  if (!inputSection) {
     return null;
   }
 
@@ -298,7 +368,7 @@ function parseSymbolLine(line: string, lastSymbolCandidate: MemorySymbolEntry | 
   }
 
   const address = parseHex(match[1]);
-  if (address < lastSymbolCandidate.address || address >= lastSymbolCandidate.address + lastSymbolCandidate.size) {
+  if (address < inputSection.address || address >= inputSection.address + inputSection.size) {
     return null;
   }
 
@@ -310,16 +380,325 @@ function parseSymbolLine(line: string, lastSymbolCandidate: MemorySymbolEntry | 
     symbol.startsWith('=') ||
     /\s=\s/.test(symbol) ||
     symbol.startsWith('PROVIDE') ||
-    symbol.startsWith('[!provide]')
+    symbol.startsWith('[!provide]') ||
+    isArmMappingSymbol(symbol)
   ) {
     return null;
   }
 
-  return symbol;
+  return {
+    name: symbol,
+    address,
+    line: lineNumber,
+  };
+}
+
+function includeOutputSection(
+  outputSection: { name: string; address: number; size: number; loadAddress?: number },
+  regions: ParsedMemoryRegion[],
+  usageByName: Map<string, MutableRegionUsage>,
+  sections: MemorySectionUsage[],
+  warnings: string[]
+): OutputSectionContext | undefined {
+  if (!shouldIncludeOutputSection(outputSection.name, outputSection.address, outputSection.size)) {
+    return undefined;
+  }
+
+  const loadAddress = outputSection.loadAddress ?? outputSection.address;
+  const regionName = findRegionName(regions, outputSection.address);
+
+  const context = {
+    ...outputSection,
+    regionName,
+  };
+
+  sections.push(...buildSectionUsageEntries(outputSection, regions));
+
+  addUsageByRange(
+    usageByName,
+    regions,
+    outputSection.address,
+    outputSection.size,
+    outputSection.name,
+    'runtime',
+    warnings
+  );
+
+  if (isLoadableSection(outputSection.name)) {
+    addUsageByRange(usageByName, regions, loadAddress, outputSection.size, outputSection.name, 'load', warnings);
+  }
+
+  return context;
+}
+
+function addUsageByRange(
+  usageByName: Map<string, MutableRegionUsage>,
+  regions: ParsedMemoryRegion[],
+  address: number,
+  size: number,
+  sectionName: string,
+  kind: 'runtime' | 'load',
+  warnings: string[]
+): void {
+  const field = kind === 'runtime' ? 'runtimeUsed' : 'loadUsed';
+  const endAddress = address + size;
+  let coveredBytes = 0;
+  const matchedRegionNames = new Set<string>();
+
+  for (const region of regions) {
+    if (region.length <= 0) {
+      continue;
+    }
+
+    const regionEndAddress = region.origin + region.length;
+    const overlapStart = Math.max(address, region.origin);
+    const overlapEnd = Math.min(endAddress, regionEndAddress);
+    const overlapBytes = Math.max(overlapEnd - overlapStart, 0);
+    if (overlapBytes <= 0) {
+      continue;
+    }
+
+    usageByName.get(region.name)![field] += overlapBytes;
+    coveredBytes += overlapBytes;
+    matchedRegionNames.add(region.name);
+  }
+
+  const label = kind === 'runtime' ? 'Section' : 'Load address for section';
+  if (coveredBytes === 0) {
+    warnings.push(`${label} ${sectionName} at ${formatHex(address)} is outside known memory.`);
+    return;
+  }
+
+  if (coveredBytes < size) {
+    warnings.push(
+      `${label} ${sectionName} at ${formatHex(address)} extends outside known memory by ${formatBytes(
+        size - coveredBytes
+      )}.`
+    );
+  }
+
+  if (matchedRegionNames.size > 1) {
+    warnings.push(`${label} ${sectionName} spans multiple memory regions: ${[...matchedRegionNames].join(', ')}.`);
+  }
+}
+
+function buildSymbolEntries(inputSection: InputSectionContext, regions: ParsedMemoryRegion[]): MemorySymbolEntry[] {
+  const uniqueCandidates = deduplicateSymbolCandidates(inputSection.symbols);
+  if (uniqueCandidates.length === 0) {
+    return buildSymbolEntryFragments({
+      inputSection,
+      name: fallbackSymbolName(inputSection.section, inputSection.objectPath),
+      address: inputSection.address,
+      size: inputSection.size,
+      line: inputSection.line,
+      regions,
+    });
+  }
+
+  const sectionEndAddress = inputSection.address + inputSection.size;
+  const entries: MemorySymbolEntry[] = [];
+
+  for (let index = 0; index < uniqueCandidates.length; index += 1) {
+    const candidate = uniqueCandidates[index];
+    const nextCandidate = uniqueCandidates[index + 1];
+    const startAddress = index === 0 ? inputSection.address : candidate.address;
+    const endAddress = nextCandidate?.address ?? sectionEndAddress;
+    const size = endAddress - startAddress;
+    if (size <= 0) {
+      continue;
+    }
+
+    entries.push(
+      ...buildSymbolEntryFragments({
+        inputSection,
+        name: candidate.name,
+        address: startAddress,
+        size,
+        line: candidate.line,
+        regions,
+      })
+    );
+  }
+
+  return entries.length > 0
+    ? entries
+    : buildSymbolEntryFragments({
+        inputSection,
+        name: fallbackSymbolName(inputSection.section, inputSection.objectPath),
+        address: inputSection.address,
+        size: inputSection.size,
+        line: inputSection.line,
+        regions,
+      });
+}
+
+function buildSectionUsageEntries(
+  outputSection: { name: string; address: number; size: number; loadAddress?: number },
+  regions: ParsedMemoryRegion[]
+): MemorySectionUsage[] {
+  const loadAddressBase = outputSection.loadAddress ?? outputSection.address;
+  return buildSectionRangeFragments(regions, outputSection.address, loadAddressBase, outputSection.size).map(
+    fragment => {
+      const loadAddress =
+        outputSection.loadAddress !== undefined
+          ? outputSection.loadAddress + (fragment.address - outputSection.address)
+          : undefined;
+      const loadRegionName = loadAddress !== undefined ? findRegionName(regions, loadAddress) : fragment.regionName;
+
+      return {
+        name: outputSection.name,
+        address: fragment.address,
+        size: fragment.size,
+        loadAddress,
+        regionName: fragment.regionName,
+        loadRegionName,
+      };
+    }
+  );
+}
+
+function buildSymbolEntryFragments(options: {
+  inputSection: InputSectionContext;
+  name: string;
+  address: number;
+  size: number;
+  line: number;
+  regions: ParsedMemoryRegion[];
+}): MemorySymbolEntry[] {
+  const loadAddress =
+    options.inputSection.outputSectionLoadAddress !== undefined
+      ? options.inputSection.outputSectionLoadAddress + (options.address - options.inputSection.outputSectionAddress)
+      : options.address;
+  const fragments = buildSectionRangeFragments(options.regions, options.address, loadAddress, options.size);
+  return fragments.map(fragment => ({
+    name: options.name,
+    section: options.inputSection.section,
+    outputSection: options.inputSection.outputSection,
+    objectPath: options.inputSection.objectPath,
+    regionName: fragment.regionName,
+    address: fragment.address,
+    size: fragment.size,
+    line: options.line,
+  }));
+}
+
+function buildSectionRangeFragments(
+  regions: ParsedMemoryRegion[],
+  runtimeAddress: number,
+  loadAddress: number,
+  size: number
+): MemoryRangeFragment[] {
+  const offsets = new Set([0, size]);
+  addRegionBoundaryOffsets(regions, runtimeAddress, size, offsets);
+  addRegionBoundaryOffsets(regions, loadAddress, size, offsets);
+
+  const sortedOffsets = [...offsets].sort((left, right) => left - right);
+  const fragments: MemoryRangeFragment[] = [];
+
+  for (let index = 0; index < sortedOffsets.length - 1; index += 1) {
+    const startOffset = sortedOffsets[index];
+    const endOffset = sortedOffsets[index + 1];
+    if (endOffset <= startOffset) {
+      continue;
+    }
+
+    const address = runtimeAddress + startOffset;
+    fragments.push({
+      address,
+      size: endOffset - startOffset,
+      regionName: findRegionName(regions, address),
+    });
+  }
+
+  return fragments.length > 0 ? fragments : [{ address: runtimeAddress, size }];
+}
+
+function buildRangeFragments(regions: ParsedMemoryRegion[], address: number, size: number): MemoryRangeFragment[] {
+  const endAddress = address + size;
+  const boundaries = new Set([address, endAddress]);
+
+  for (const region of regions) {
+    if (region.length <= 0) {
+      continue;
+    }
+
+    const regionEndAddress = region.origin + region.length;
+    const overlapStart = Math.max(address, region.origin);
+    const overlapEnd = Math.min(endAddress, regionEndAddress);
+    if (overlapEnd <= overlapStart) {
+      continue;
+    }
+
+    boundaries.add(overlapStart);
+    boundaries.add(overlapEnd);
+  }
+
+  const sortedBoundaries = [...boundaries].sort((left, right) => left - right);
+  const fragments: MemoryRangeFragment[] = [];
+
+  for (let index = 0; index < sortedBoundaries.length - 1; index += 1) {
+    const start = sortedBoundaries[index];
+    const end = sortedBoundaries[index + 1];
+    if (end <= start) {
+      continue;
+    }
+
+    fragments.push({
+      address: start,
+      size: end - start,
+      regionName: findRegionName(regions, start),
+    });
+  }
+
+  return fragments.length > 0 ? fragments : [{ address, size }];
+}
+
+function addRegionBoundaryOffsets(
+  regions: ParsedMemoryRegion[],
+  address: number,
+  size: number,
+  offsets: Set<number>
+): void {
+  const endAddress = address + size;
+
+  for (const region of regions) {
+    if (region.length <= 0) {
+      continue;
+    }
+
+    const regionEndAddress = region.origin + region.length;
+    for (const boundary of [region.origin, regionEndAddress]) {
+      if (boundary > address && boundary < endAddress) {
+        offsets.add(boundary - address);
+      }
+    }
+  }
+}
+
+function deduplicateSymbolCandidates(candidates: SymbolCandidate[]): SymbolCandidate[] {
+  const byAddress = new Map<number, SymbolCandidate>();
+  for (const candidate of candidates) {
+    const existing = byAddress.get(candidate.address);
+    if (existing) {
+      byAddress.set(candidate.address, {
+        ...existing,
+        name: `${existing.name} / ${candidate.name}`,
+      });
+    } else {
+      byAddress.set(candidate.address, candidate);
+    }
+  }
+
+  return [...byAddress.values()].sort((left, right) => {
+    if (left.address !== right.address) {
+      return left.address - right.address;
+    }
+    return left.line - right.line;
+  });
 }
 
 function shouldIncludeOutputSection(name: string, address: number, size: number): boolean {
-  if (address === 0 || size === 0) {
+  if (size === 0) {
     return false;
   }
 
@@ -327,7 +706,7 @@ function shouldIncludeOutputSection(name: string, address: number, size: number)
 }
 
 function shouldIncludeInputSection(name: string, address: number, size: number): boolean {
-  if (address === 0 || size === 0) {
+  if (size === 0) {
     return false;
   }
 
@@ -336,6 +715,27 @@ function shouldIncludeInputSection(name: string, address: number, size: number):
 
 function isDebugOrMetadataSection(name: string): boolean {
   return name.startsWith('.debug') || name === '.comment' || name === '.ARM.attributes' || name === '.note.GNU-stack';
+}
+
+function isInputSectionName(name: string): boolean {
+  if (!name || name.startsWith('*') || name.startsWith('(') || name.includes('=')) {
+    return false;
+  }
+
+  return name.startsWith('.') || NON_DOT_INPUT_SECTIONS.has(name);
+}
+
+function isInputObjectPath(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || GENERATED_DATA_DIRECTIVE_PATTERN.test(trimmed)) {
+    return false;
+  }
+
+  return /\.(?:o|obj)\b/i.test(trimmed) || /\.(?:a|lib)\(/i.test(trimmed);
+}
+
+function isArmMappingSymbol(symbol: string): boolean {
+  return /^\$[adtx](?:\.\d+)?$/i.test(symbol);
 }
 
 function isLoadableSection(name: string): boolean {
@@ -398,4 +798,8 @@ function parseHex(value: string): number {
 
 function formatHex(value: number): string {
   return `0x${value.toString(16)}`;
+}
+
+function formatBytes(value: number): string {
+  return `${value} bytes`;
 }
