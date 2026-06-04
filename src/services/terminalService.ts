@@ -292,7 +292,7 @@ export class TerminalService {
   public async executeShellCommandInSiFliTerminal(
     commandLine: string,
     taskName: TaskName,
-    options?: { waitForExit?: boolean; runId?: string }
+    options?: { waitForExit?: boolean; runId?: string; timeoutMs?: number }
   ): Promise<number | undefined> {
     try {
       this.logService.info(`Executing ${taskName}: ${commandLine}`);
@@ -339,7 +339,7 @@ export class TerminalService {
 
       let exitCode: number | undefined;
       try {
-        exitCode = await this.waitForExitCode(exitMarkerPath);
+        exitCode = await this.waitForExitCode(exitMarkerPath, options?.timeoutMs);
       } finally {
         await this.ensureExitMarkerRemoved(exitMarkerPath);
       }
@@ -487,7 +487,10 @@ export class TerminalService {
     return commands.join('; ');
   }
 
-  private async waitForExitCode(exitMarkerPath: string): Promise<number | undefined> {
+  private async waitForExitCode(
+    exitMarkerPath: string,
+    timeoutMs = TerminalService.EXIT_CODE_TIMEOUT_MS
+  ): Promise<number | undefined> {
     const startTime = Date.now();
 
     while (true) {
@@ -508,7 +511,7 @@ export class TerminalService {
           throw error;
         }
 
-        if (Date.now() - startTime > TerminalService.EXIT_CODE_TIMEOUT_MS) {
+        if (Date.now() - startTime > timeoutMs) {
           throw new Error('等待命令完成超时');
         }
 

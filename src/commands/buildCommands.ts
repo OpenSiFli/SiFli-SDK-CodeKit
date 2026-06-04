@@ -1,18 +1,23 @@
 import * as vscode from 'vscode';
+import { CMD_PREFIX } from '../constants';
 import { BuildExecutionService } from '../services/buildExecutionService';
 import { ConfigService } from '../services/configService';
+import { MemoryMapService } from '../services/memoryMapService';
 import { StatusBarProvider } from '../providers/statusBarProvider';
+import { VueWebviewProvider } from '../providers/vueWebviewProvider';
 
 export class BuildCommands {
   private static instance: BuildCommands;
   private buildExecutionService: BuildExecutionService;
   private configService: ConfigService;
+  private memoryMapService: MemoryMapService;
   private statusBarProvider: StatusBarProvider;
   private generateCodebaseIndexPromise?: Promise<boolean>;
 
   private constructor() {
     this.buildExecutionService = BuildExecutionService.getInstance();
     this.configService = ConfigService.getInstance();
+    this.memoryMapService = MemoryMapService.getInstance();
     this.statusBarProvider = StatusBarProvider.getInstance();
   }
 
@@ -208,7 +213,15 @@ export class BuildCommands {
    */
   public async executeCompileTask(): Promise<void> {
     try {
-      await this.buildExecutionService.executeCompile({ waitForExit: false });
+      const result = await this.buildExecutionService.executeCompileDetailed({
+        waitForExit: true,
+        timeoutMs: BuildExecutionService.COMPILE_EXIT_TIMEOUT_MS,
+      });
+      if (!result.success) {
+        vscode.window.showErrorMessage(vscode.l10n.t('Build failed: {0}', this.describeBuildFailure(result)));
+        return;
+      }
+      await this.handlePostBuildMemoryMapAnalysis();
     } catch (error) {
       console.error('[BuildCommands] Error in buildWithSaveCheck:', error);
       vscode.window.showErrorMessage(vscode.l10n.t('Build failed: {0}', String(error)));
@@ -224,7 +237,15 @@ export class BuildCommands {
       if (!cleanOk) {
         return;
       }
-      await this.buildExecutionService.executeCompile({ waitForExit: false });
+      const result = await this.buildExecutionService.executeCompileDetailed({
+        waitForExit: true,
+        timeoutMs: BuildExecutionService.COMPILE_EXIT_TIMEOUT_MS,
+      });
+      if (!result.success) {
+        vscode.window.showErrorMessage(vscode.l10n.t('Rebuild failed: {0}', this.describeBuildFailure(result)));
+        return;
+      }
+      await this.handlePostBuildMemoryMapAnalysis();
     } catch (error) {
       console.error('[BuildCommands] Error in executeRebuildTask:', error);
       vscode.window.showErrorMessage(vscode.l10n.t('Rebuild failed: {0}', String(error)));
@@ -389,5 +410,38 @@ export class BuildCommands {
     })();
 
     return this.generateCodebaseIndexPromise;
+  }
+
+  private async handlePostBuildMemoryMapAnalysis(): Promise<void> {
+    try {
+      const snapshot = await this.memoryMapService.analyzeCurrentMainMap();
+      const webviewProvider = VueWebviewProvider.getInstance();
+      if (webviewProvider.refreshMemoryMapPanel(snapshot)) {
+        return;
+      }
+
+      const openAction = vscode.l10n.t('Open Memory Map');
+      const response = await vscode.window.showInformationMessage(
+        vscode.l10n.t('Memory map analysis is ready for {0}.', snapshot.mapFileName),
+        openAction
+      );
+      if (response === openAction) {
+        await vscode.commands.executeCommand(CMD_PREFIX + 'memoryMap.openWebview');
+      }
+    } catch (error) {
+      vscode.window.showWarningMessage(
+        vscode.l10n.t('Memory map analysis skipped: {0}', error instanceof Error ? error.message : String(error))
+      );
+    }
+  }
+
+  private describeBuildFailure(result: { message?: string; exitCode?: number }): string {
+    if (result.message) {
+      return result.message;
+    }
+    if (result.exitCode !== undefined) {
+      return vscode.l10n.t('exit code {0}', String(result.exitCode));
+    }
+    return vscode.l10n.t('unknown error');
   }
 }
