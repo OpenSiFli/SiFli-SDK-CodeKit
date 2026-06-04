@@ -17,6 +17,7 @@
   "command.createNewSiFliTerminal.title": "New SiFli terminal",
   "command.listSerialPorts.title": "List available serial ports",
   "command.generateCodebaseIndex.title": "Generate codebase_index.json",
+  "command.memoryMap.openWebview.title": "Open Memory Map Analysis",
   "command.refreshSdkDependencies.title": "Refresh SDK dependencies",
   "command.peripheralViewer.updateNode.title": "Update Peripheral Value",
   "command.peripheralViewer.copyValue.title": "Copy Peripheral Value",

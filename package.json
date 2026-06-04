@@ -88,6 +88,11 @@
         "icon": "$(symbol-file)"
       },
       {
+        "command": "extension.memoryMap.openWebview",
+        "title": "%command.memoryMap.openWebview.title%",
+        "icon": "$(graph-line)"
+      },
+      {
         "command": "extension.refreshSdkDependencies",
         "title": "%command.refreshSdkDependencies.title%",
         "icon": "$(refresh)"
