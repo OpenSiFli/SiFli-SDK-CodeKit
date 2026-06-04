@@ -38,7 +38,7 @@
     },
     "regions": {
       "title": "存储区占用",
-      "symbolShare": "环状图按符号展示运行时占用，剩余空间单独标记。",
+      "symbolShare": "点击节点下钻，滚轮缩放、拖拽浏览细小区块",
       "runtime": "运行时",
       "load": "镜像",
       "usedLabel": "已用",
@@ -47,6 +47,7 @@
     },
     "sections": {
       "title": "输出段",
+      "barSubtitle": "横向条形图按大小展示前 {count} 个输出段。",
       "loadRegion": "加载：{region}"
     },
     "filters": {

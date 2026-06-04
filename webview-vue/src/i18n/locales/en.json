@@ -38,7 +38,7 @@
     },
     "regions": {
       "title": "Memory Regions",
-      "symbolShare": "Donut charts split runtime usage by symbol and keep free space visible.",
+      "symbolShare": "Click nodes to drill down, then scroll to zoom and drag to inspect tiny blocks.",
       "runtime": "Runtime",
       "load": "Load",
       "usedLabel": "Used",
@@ -47,6 +47,7 @@
     },
     "sections": {
       "title": "Output Sections",
+      "barSubtitle": "Horizontal bars show the top {count} output sections by size.",
       "loadRegion": "Load: {region}"
     },
     "filters": {
