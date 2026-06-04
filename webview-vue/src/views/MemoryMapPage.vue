@@ -154,7 +154,7 @@
               <div>
                 <h3 class="text-lg font-semibold">{{ t('memoryMap.sections.title') }}</h3>
                 <p class="mt-1 text-sm text-vscode-input-placeholder">
-                  {{ t('memoryMap.sections.barSubtitle', { count: sectionChartItems.length }) }}
+                  {{ sectionChartSubtitle }}
                 </p>
               </div>
             </div>
@@ -543,6 +543,12 @@ const regionSummaries = computed<RegionSummary[]>(() =>
 const regionTreemapOption = computed<MemoryMapChartOption>(() => buildRegionTreemapOption());
 
 const sectionChartItems = computed(() => orderedSections.value.slice(0, sectionChartLimit));
+
+const sectionChartSubtitle = computed(() =>
+  sectionChartItems.value.length >= orderedSections.value.length
+    ? t('memoryMap.sections.sortedSubtitle')
+    : t('memoryMap.sections.barSubtitle', { count: sectionChartItems.value.length })
+);
 
 const sectionChartHeight = computed(() => `${Math.max(240, sectionChartItems.value.length * 34 + 64)}px`);
 
