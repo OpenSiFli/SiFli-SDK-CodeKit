@@ -9,6 +9,8 @@
   "command.manageSiFliSdk.title": "Manage SiFli SDK installation",
   "command.createNewSiFliProject.title": "Create new SiFli project",
   "command.switchSdkVersion.title": "Switch SiFli SDK version",
+  "command.activateSdkEnvironment.title": "Activate SiFli SDK environment",
+  "command.toggleSdkEnvironmentAutoActivation.title": "Toggle SDK environment auto activation",
   "command.selectPort.title": "Select download serial port",
   "command.openDeviceMonitor.title": "Monitor device",
   "command.closeDeviceMonitor.title": "Close device monitor",

@@ -30,4 +30,7 @@ export type CommandId =
   | 'extension.manageSiFliSdk'
   | 'extension.createNewSiFliProject'
   | 'extension.switchSdkVersion'
+  | 'extension.activateSdkEnvironment'
+  | 'extension.toggleSdkEnvironmentAutoActivation'
+  | 'extension.createNewSiFliTerminal'
   | 'extension.openDeviceMonitor';

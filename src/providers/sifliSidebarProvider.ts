@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import { ConfigService } from '../services/configService';
-import { SdkService } from '../services/sdkService';
 import { VueWebviewProvider } from './vueWebviewProvider';
 import { SerialPortService } from '../services/serialPortService';
 import { WorkflowService } from '../services/workflowService';
 import { McpServerService } from '../services/mcpServerService';
 import { StatusBarProvider } from './statusBarProvider';
+import { WorkspaceStateService, WORKSPACE_STATE_KEYS } from '../services/workspaceStateService';
 import { isSiFliProject } from '../utils/projectUtils';
 import { getWorkflowStepDisplayLabel, getWorkflowStepTypeLabel } from '../utils/workflowStepLabel';
 
@@ -36,19 +36,19 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
     this._onDidChangeTreeData.event;
 
   private configService: ConfigService;
-  private sdkService: SdkService;
   private serialPortService: SerialPortService;
   private workflowService: WorkflowService;
   private mcpServerService: McpServerService;
   private statusBarProvider: StatusBarProvider;
+  private workspaceStateService: WorkspaceStateService;
 
   constructor() {
     this.configService = ConfigService.getInstance();
-    this.sdkService = SdkService.getInstance();
     this.serialPortService = SerialPortService.getInstance();
     this.workflowService = WorkflowService.getInstance();
     this.mcpServerService = McpServerService.getInstance();
     this.statusBarProvider = StatusBarProvider.getInstance();
+    this.workspaceStateService = WorkspaceStateService.getInstance();
   }
 
   refresh(): void {
@@ -84,6 +84,8 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
       return this.getStatusBarButtonItemsByScope('user');
     } else if (element.contextValue === 'mcpGroup') {
       return this.getMcpItems();
+    } else if (element.contextValue === 'sdkEnvironmentGroup') {
+      return this.getSdkEnvironmentItems();
     }
 
     return Promise.resolve([]);
@@ -131,6 +133,17 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
         new vscode.ThemeIcon('cloud-download'),
         vscode.l10n.t('Open SiFli SDK Manager to install, switch, and manage SDK versions'),
         'sdkManager'
+      )
+    );
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('SDK Environment'),
+        vscode.TreeItemCollapsibleState.Expanded,
+        undefined,
+        new vscode.ThemeIcon('terminal'),
+        vscode.l10n.t('Select and activate the SDK environment for this workspace'),
+        'sdkEnvironmentGroup'
       )
     );
 
@@ -214,16 +227,17 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
     return items;
   }
 
-  private async getConfigItems(): Promise<SifliSidebarItem[]> {
+  private async getSdkEnvironmentItems(): Promise<SifliSidebarItem[]> {
     const items: SifliSidebarItem[] = [];
 
-    // SDK 版本
     const currentSdk = this.configService.getCurrentSdk();
-    const sdkDescription = currentSdk ? currentSdk.version : vscode.l10n.t('Not configured');
+    const currentSdkPath = this.configService.getCurrentSdkPath();
+    const sdkDescription = currentSdk ? currentSdk.version : currentSdkPath || vscode.l10n.t('Not configured');
+    const autoActivate = this.workspaceStateService.getSdkEnvironmentAutoActivate(isSiFliProject());
 
     items.push(
       new SifliSidebarItem(
-        vscode.l10n.t('SDK Version'),
+        vscode.l10n.t('Current SDK'),
         vscode.TreeItemCollapsibleState.None,
         {
           command: 'extension.switchSdkVersion',
@@ -231,11 +245,63 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
           arguments: [],
         },
         new vscode.ThemeIcon('package'),
-        vscode.l10n.t('Click to switch SiFli SDK version'),
+        vscode.l10n.t('Click to switch the SDK used by this workspace'),
         'sdkVersion',
         sdkDescription
       )
     );
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Activate SDK Environment'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.activateSdkEnvironment',
+          title: vscode.l10n.t('Activate SDK Environment'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('play'),
+        vscode.l10n.t('Activate the selected SDK environment in a SiFli terminal'),
+        'activateSdkEnvironment'
+      )
+    );
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Auto Activate on Open'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.toggleSdkEnvironmentAutoActivation',
+          title: vscode.l10n.t('Toggle SDK Environment Auto Activation'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon(autoActivate ? 'history' : 'debug-pause'),
+        vscode.l10n.t('Click to toggle SDK environment activation when this workspace opens'),
+        'sdkEnvironmentAutoActivate',
+        autoActivate ? vscode.l10n.t('On') : vscode.l10n.t('Off')
+      )
+    );
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('New SiFli Terminal'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.createNewSiFliTerminal',
+          title: vscode.l10n.t('New SiFli Terminal'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('terminal'),
+        vscode.l10n.t('Create a new terminal with SiFli environment'),
+        'newSifliTerminal'
+      )
+    );
+
+    return items;
+  }
+
+  private async getConfigItems(): Promise<SifliSidebarItem[]> {
+    const items: SifliSidebarItem[] = [];
 
     // 芯片模组
     const selectedBoard = this.configService.getSelectedBoardName();
@@ -277,22 +343,6 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
         vscode.l10n.t('Click to configure serial connection'),
         'serialPort',
         portDescription
-      )
-    );
-
-    // 新建 SiFli 终端
-    items.push(
-      new SifliSidebarItem(
-        vscode.l10n.t('New SiFli Terminal'),
-        vscode.TreeItemCollapsibleState.None,
-        {
-          command: 'extension.createNewSiFliTerminal',
-          title: vscode.l10n.t('New SiFli Terminal'),
-          arguments: [],
-        },
-        new vscode.ThemeIcon('terminal'),
-        vscode.l10n.t('Create a new terminal with SiFli environment'),
-        'newSifliTerminal'
       )
     );
 
@@ -739,6 +789,23 @@ export class SifliSidebarManager {
     });
 
     context.subscriptions.push(configChangeListener);
+
+    const workspaceStateListener = WorkspaceStateService.getInstance().onDidChangeState(event => {
+      if (
+        event.key === WORKSPACE_STATE_KEYS.CURRENT_SDK_PATH ||
+        event.key === WORKSPACE_STATE_KEYS.SDK_ENVIRONMENT_AUTO_ACTIVATE
+      ) {
+        this.refresh();
+      }
+    });
+
+    context.subscriptions.push(workspaceStateListener);
+
+    const workspaceFolderListener = vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      this.refresh();
+    });
+
+    context.subscriptions.push(workspaceFolderListener);
 
     const mcpStateListener = McpServerService.getInstance().onDidChangeState(() => {
       this.refresh();

@@ -55,6 +55,14 @@
         "title": "%command.switchSdkVersion.title%"
       },
       {
+        "command": "extension.activateSdkEnvironment",
+        "title": "%command.activateSdkEnvironment.title%"
+      },
+      {
+        "command": "extension.toggleSdkEnvironmentAutoActivation",
+        "title": "%command.toggleSdkEnvironmentAutoActivation.title%"
+      },
+      {
         "command": "extension.selectPort",
         "title": "%command.selectPort.title%"
       },

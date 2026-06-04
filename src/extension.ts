@@ -125,10 +125,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     logService.error('Error checking/installing probe-rs on startup:', err);
   });
 
-  const refreshProjectContext = async (): Promise<void> => {
-    await vscode.commands.executeCommand('setContext', SIFLI_PROJECT_CONTEXT_KEY, isSiFliProject());
+  const refreshProjectContext = async (): Promise<boolean> => {
+    const projectDetected = isSiFliProject();
+    await vscode.commands.executeCommand('setContext', SIFLI_PROJECT_CONTEXT_KEY, projectDetected);
+    return projectDetected;
   };
-  await refreshProjectContext();
+  const projectDetected = await refreshProjectContext();
   languageModelToolService.register(context);
   mcpServerDefinitionProviderService.register(context);
   try {
@@ -173,6 +175,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   const createProjectCommand = vscode.commands.registerCommand(CMD_PREFIX + 'createNewSiFliProject', () =>
     projectCommands.createNewSiFliProject()
+  );
+  const switchSdkVersionCommand = vscode.commands.registerCommand(CMD_PREFIX + 'switchSdkVersion', () =>
+    sdkCommands.switchSdkVersion()
+  );
+  const activateSdkEnvironmentCommand = vscode.commands.registerCommand(CMD_PREFIX + 'activateSdkEnvironment', () =>
+    sdkCommands.activateSdkEnvironment()
+  );
+  const toggleSdkEnvironmentAutoActivationCommand = vscode.commands.registerCommand(
+    CMD_PREFIX + 'toggleSdkEnvironmentAutoActivation',
+    () => sdkCommands.toggleSdkEnvironmentAutoActivation()
+  );
+  const createSiFliTerminalCommand = vscode.commands.registerCommand(
+    CMD_PREFIX + 'createNewSiFliTerminal',
+    async () => {
+      await terminalService.getOrCreateSiFliTerminal(true, { show: true });
+    }
   );
   const exportDebugSnapshotQuickPickCommand = vscode.commands.registerCommand(
     CMD_PREFIX + 'debugSnapshot.export',
@@ -229,6 +247,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     manageSdkCommand,
     createProjectCommand,
+    switchSdkVersionCommand,
+    activateSdkEnvironmentCommand,
+    toggleSdkEnvironmentAutoActivationCommand,
+    createSiFliTerminalCommand,
     exportDebugSnapshotQuickPickCommand,
     refreshSdkDependenciesCommand,
     generateCodebaseIndexCommand,
@@ -262,34 +284,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
 
-  // 检查是否为 SiFli 项目
-  if (isSiFliProject()) {
-    logService.info('SiFli project detected. Activating full extension features.');
+  await autoActivateSdkEnvironmentIfNeeded(configService, sdkService, logService, projectDetected);
 
-    // 如果有当前 SDK，在插件激活时自动激活它
-    const currentSdk = configService.getCurrentSdk();
-    if (currentSdk && currentSdk.valid) {
-      try {
-        logService.info(`Auto-activating current SDK: ${currentSdk.version} at ${currentSdk.path}`);
-        await sdkService.activateSdk(currentSdk);
-      } catch (error) {
-        logService.error('Error activating current SDK on startup:', error);
-      }
-    } else {
-      // 如果没有当前 SDK ，并且只发现了一个 SDK，则自动激活它
-      const discoveredSdks = await sdkService.discoverSiFliSdks();
-      const validSdks = discoveredSdks.filter(sdk => sdk.valid);
-      if (validSdks.length === 1) {
-        try {
-          logService.info(
-            `Only one SDK discovered (${validSdks[0].version} at ${validSdks[0].path}), auto-activating it.`
-          );
-          await sdkService.activateSdk(validSdks[0]);
-        } catch (err) {
-          logService.error('Error activating the only discovered SDK:', err);
-        }
-      }
-    }
+  // 检查是否为 SiFli 项目
+  if (projectDetected) {
+    logService.info('SiFli project detected. Activating full extension features.');
     console.log('[SiFli Extension] SiFli project detected. Activating full extension features.');
 
     // 初始化状态栏
@@ -303,9 +302,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await configCommands.promptForInitialBoardSelection(context);
       await configService.updateConfiguration(); // 再次调用以确保在 promptForInitialBoardSelection 之后更新 SDK 列表和状态栏
       statusBarProvider.updateStatusBarItems(); // 更新状态栏显示
-
-      // 获取或创建终端
-      await terminalService.getOrCreateSiFliTerminalAndCdProject();
     }, 500);
 
     // 监听配置变化
@@ -339,14 +335,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       ),
       vscode.commands.registerCommand(CMD_PREFIX + 'selectChipModule', () => configCommands.selectChipModule()),
       vscode.commands.registerCommand(CMD_PREFIX + 'selectPort', () => configCommands.selectPort()),
-      // 注意：manageSiFliSdk 已在外部注册，无论是否为 SiFli 项目
-      vscode.commands.registerCommand(CMD_PREFIX + 'switchSdkVersion', () => configCommands.switchSdkVersion()),
       vscode.commands.registerCommand(CMD_PREFIX + 'openDeviceMonitor', () => statusBarProvider.openDeviceMonitor()),
       vscode.commands.registerCommand(CMD_PREFIX + 'closeDeviceMonitor', () => statusBarProvider.closeDeviceMonitor()),
-      vscode.commands.registerCommand(CMD_PREFIX + 'createNewSiFliTerminal', async () => {
-        const terminal = await terminalService.getOrCreateSiFliTerminalAndCdProject(true);
-        terminal.show();
-      }),
       vscode.commands.registerCommand(CMD_PREFIX + 'listSerialPorts', () => configCommands.listSerialPorts()),
       vscode.commands.registerCommand(CMD_PREFIX + 'configureClangd', () => configCommands.configureClangd()),
       vscode.commands.registerCommand(CMD_PREFIX + 'showLogs', () => {
@@ -488,6 +478,60 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     logService.info('Not a SiFli project. Extension features will not be activated.');
     // 即使不是 SiFli 项目，也注册侧边栏，允许用户管理 SDK
     sidebarManager.register(context);
+  }
+}
+
+async function autoActivateSdkEnvironmentIfNeeded(
+  configService: ConfigService,
+  sdkService: SdkService,
+  logService: LogService,
+  projectDetected: boolean
+): Promise<void> {
+  const shouldAutoActivate = configService.getSdkEnvironmentAutoActivate(projectDetected);
+  if (!shouldAutoActivate) {
+    logService.info('SDK environment auto activation is disabled for this workspace.');
+    return;
+  }
+
+  const sdkVersions = configService.detectedSdkVersions;
+  const validSdks = sdkVersions.filter(sdk => sdk.valid);
+  const currentSdkPath = configService.getCurrentSdkPath();
+  const currentSdk = validSdks.find(sdk => sdk.path === currentSdkPath || sdk.current);
+
+  if (currentSdk) {
+    logService.info(`Auto-activating current SDK environment: ${currentSdk.version} at ${currentSdk.path}`);
+    const result = await sdkService.activateSdkDetailed({
+      sdkPath: currentSdk.path,
+      showNotifications: false,
+    });
+    if (!result.success) {
+      logService.error(`Failed to auto-activate current SDK environment: ${result.message ?? 'unknown error'}`);
+    }
+    return;
+  }
+
+  if (validSdks.length === 1) {
+    const sdk = validSdks[0];
+    logService.info(`Only one SDK discovered (${sdk.version} at ${sdk.path}), auto-activating it.`);
+    const result = await sdkService.activateSdkDetailed({
+      sdkPath: sdk.path,
+      showNotifications: false,
+    });
+    if (!result.success) {
+      logService.error(`Failed to auto-activate the only discovered SDK: ${result.message ?? 'unknown error'}`);
+    }
+    return;
+  }
+
+  if (validSdks.length > 1) {
+    const selectSdk = vscode.l10n.t('Select SDK');
+    const response = await vscode.window.showInformationMessage(
+      vscode.l10n.t('Select a SiFli SDK to auto-activate this workspace.'),
+      selectSdk
+    );
+    if (response === selectSdk) {
+      await sdkService.activateSdkEnvironment();
+    }
   }
 }
 
