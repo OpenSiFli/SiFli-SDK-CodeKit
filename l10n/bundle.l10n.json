@@ -15,6 +15,7 @@
   "command.closeDeviceMonitor.title": "Close Device Monitor",
   "command.createNewSiFliTerminal.title": "Create New SiFli Terminal",
   "command.listSerialPorts.title": "List Serial Ports",
+  "command.memoryMap.openWebview.title": "Open Memory Map Analysis",
   "command.toggleBuildWithSaveCheck.title": "Toggle Build With Save Check",
   "command.sifliSidebar.refresh.title": "Refresh",
   "view.sifliSdkManager.name": "SDK Manager",
@@ -658,5 +659,14 @@
   "Serial port is not connected.": "Serial port is not connected.",
   "Serial monitor session not found: {0}": "Serial monitor session not found: {0}",
   "Serial monitor is not connected.": "Serial monitor is not connected.",
-  "Serial baud rate must be a positive integer.": "Serial baud rate must be a positive integer."
+  "Serial baud rate must be a positive integer.": "Serial baud rate must be a positive integer.",
+  "Memory Map Analysis": "Memory Map Analysis",
+  "Open Memory Map": "Open Memory Map",
+  "Memory map analysis is ready for {0}.": "Memory map analysis is ready for {0}.",
+  "Memory map analysis skipped: {0}": "Memory map analysis skipped: {0}",
+  "No memory map file is available.": "No memory map file is available.",
+  "Current workspace is not a SiFli project.": "Current workspace is not a SiFli project.",
+  "Memory map file was not found: {0}": "Memory map file was not found: {0}",
+  "exit code {0}": "exit code {0}",
+  "unknown error": "unknown error"
 }

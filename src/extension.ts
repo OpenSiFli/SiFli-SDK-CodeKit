@@ -238,6 +238,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const exportDebugSnapshotCommand = vscode.commands.registerCommand(CMD_PREFIX + 'debugSnapshot.openWebview', () =>
     vueWebviewProvider.openDebugSnapshotWebview(context)
   );
+  const openMemoryMapCommand = vscode.commands.registerCommand(CMD_PREFIX + 'memoryMap.openWebview', () =>
+    vueWebviewProvider.openMemoryMapWebview(context)
+  );
   const refreshSdkDependenciesCommand = vscode.commands.registerCommand(CMD_PREFIX + 'refreshSdkDependencies', () => {
     sdkDependencyExplorerManager.refresh();
   });
@@ -267,7 +270,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     toggleMcpEnabledCommand,
     toggleMcpAutoStartCommand,
     configureMcpEndpointCommand,
-    showMcpLogsCommand
+    showMcpLogsCommand,
+    openMemoryMapCommand
   );
   logService.info('SDK management command registered');
 

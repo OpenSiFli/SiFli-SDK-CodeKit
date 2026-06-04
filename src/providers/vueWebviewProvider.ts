@@ -12,6 +12,7 @@ import { SdkService } from '../services/sdkService';
 import { TerminalService } from '../services/terminalService';
 import { UvService } from '../services/uvService';
 import { WindowsManagedEnvService } from '../services/windowsManagedEnvService';
+import { MemoryMapService } from '../services/memoryMapService';
 import { GIT_REPOS, SDK_INSTALL_IDLE_TIMEOUT_MS } from '../constants';
 import {
   KconfigChange,
@@ -21,6 +22,7 @@ import {
   ToolchainMirrorUrls,
   ToolchainSource,
 } from '../types';
+import { MemoryMapSnapshot } from '../types/memoryMap';
 import { DebugSnapshotRequest } from '../types/debugSnapshot';
 import { DebugSnapshotBackend } from '../peripheral-viewer/export/debugSnapshotBackend';
 import { getPeripheralViewerDebugSnapshotBackend } from '../peripheral-viewer';
@@ -85,7 +87,7 @@ interface ExistingSdkValidationResult {
 }
 
 type TaskLogger = (message: string, level?: TaskLogEntry['level']) => void;
-type WebviewPanelKind = 'sdkManager' | 'debugSnapshot' | 'menuconfig';
+type WebviewPanelKind = 'sdkManager' | 'debugSnapshot' | 'menuconfig' | 'memoryMap';
 
 interface WebviewPanelConfig {
   viewType: string;
@@ -121,10 +123,12 @@ export class VueWebviewProvider {
   private readonly kconfigService: KconfigService;
   private readonly configService: ConfigService;
   private readonly logService: LogService;
+  private readonly memoryMapService: MemoryMapService;
   private readonly tasks = new Map<string, SdkTaskRecord>();
   private sdkManagerPanel?: vscode.WebviewPanel;
   private debugSnapshotPanel?: vscode.WebviewPanel;
   private menuconfigPanel?: vscode.WebviewPanel;
+  private memoryMapPanel?: vscode.WebviewPanel;
 
   private constructor() {
     this.terminalService = TerminalService.getInstance();
@@ -134,6 +138,7 @@ export class VueWebviewProvider {
     this.kconfigService = KconfigService.getInstance();
     this.configService = ConfigService.getInstance();
     this.logService = LogService.getInstance();
+    this.memoryMapService = MemoryMapService.getInstance();
   }
 
   public static getInstance(): VueWebviewProvider {
@@ -153,6 +158,27 @@ export class VueWebviewProvider {
 
   public async openMenuconfigWebview(context: vscode.ExtensionContext): Promise<void> {
     this.openPanel('menuconfig', context);
+  }
+
+  public async openMemoryMapWebview(context: vscode.ExtensionContext): Promise<void> {
+    this.openPanel('memoryMap', context);
+  }
+
+  public refreshMemoryMapPanel(snapshot?: MemoryMapSnapshot): boolean {
+    if (!this.memoryMapPanel) {
+      return false;
+    }
+
+    if (snapshot) {
+      this.memoryMapPanel.webview.postMessage({
+        command: 'memoryMapSnapshot',
+        snapshot,
+      });
+      return true;
+    }
+
+    void this.handleGetMemoryMapSnapshot(this.memoryMapPanel.webview);
+    return true;
   }
 
   private openPanel(kind: WebviewPanelKind, context: vscode.ExtensionContext): void {
@@ -233,6 +259,9 @@ export class VueWebviewProvider {
     if (kind === 'debugSnapshot') {
       return this.debugSnapshotPanel;
     }
+    if (kind === 'memoryMap') {
+      return this.memoryMapPanel;
+    }
     return this.menuconfigPanel;
   }
 
@@ -244,6 +273,11 @@ export class VueWebviewProvider {
 
     if (kind === 'menuconfig') {
       this.menuconfigPanel = panel;
+      return;
+    }
+
+    if (kind === 'memoryMap') {
+      this.memoryMapPanel = panel;
       return;
     }
 
@@ -265,6 +299,11 @@ export class VueWebviewProvider {
       return;
     }
 
+    if (kind === 'memoryMap') {
+      this.memoryMapPanel = undefined;
+      return;
+    }
+
     this.debugSnapshotPanel = undefined;
   }
 
@@ -282,6 +321,14 @@ export class VueWebviewProvider {
         viewType: 'sifliMenuconfigVue',
         title: 'SiFli Menuconfig',
         initialRoute: '/menuconfig',
+      };
+    }
+
+    if (kind === 'memoryMap') {
+      return {
+        viewType: 'sifliMemoryMapVue',
+        title: vscode.l10n.t('Memory Map Analysis'),
+        initialRoute: '/memory-map',
       };
     }
 
@@ -424,9 +471,56 @@ export class VueWebviewProvider {
         await this.handleOpenTerminalMenuconfig(webview);
         break;
 
+      case 'getMemoryMapSnapshot':
+        await this.handleGetMemoryMapSnapshot(webview);
+        break;
+
+      case 'refreshMemoryMapAnalysis':
+        await this.handleRefreshMemoryMapAnalysis(webview);
+        break;
+
+      case 'openMemoryMapLocation':
+        await this.handleOpenMemoryMapLocation(message.mapPath, message.line);
+        break;
+
       default:
         this.logService.warn(`Unknown webview command: ${message.command}`);
     }
+  }
+
+  private async handleGetMemoryMapSnapshot(webview: vscode.Webview): Promise<void> {
+    try {
+      const snapshot = await this.memoryMapService.getSnapshot({ refreshIfStale: true });
+      webview.postMessage({
+        command: 'memoryMapSnapshot',
+        snapshot,
+      });
+    } catch (error) {
+      this.postMemoryMapError(webview, error);
+    }
+  }
+
+  private async handleRefreshMemoryMapAnalysis(webview: vscode.Webview): Promise<void> {
+    try {
+      const snapshot = await this.memoryMapService.analyzeCurrentMainMap();
+      webview.postMessage({
+        command: 'memoryMapSnapshot',
+        snapshot,
+      });
+    } catch (error) {
+      this.postMemoryMapError(webview, error);
+    }
+  }
+
+  private async handleOpenMemoryMapLocation(mapPath: string | undefined, line: number | undefined): Promise<void> {
+    await this.memoryMapService.openLocation(mapPath, line);
+  }
+
+  private postMemoryMapError(webview: vscode.Webview, error: unknown): void {
+    webview.postMessage({
+      command: 'memoryMapError',
+      message: this.getErrorMessage(error),
+    });
   }
 
   private async handleGetKconfigSnapshot(webview: vscode.Webview): Promise<void> {
