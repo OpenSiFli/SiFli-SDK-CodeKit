@@ -4,6 +4,7 @@ import { useSdkCatalogStore } from './sdkCatalog';
 import { useSdkTargetsStore } from './sdkTargets';
 import { useTaskCenterStore } from './taskCenter';
 import { useDebugSnapshotStore } from './debugSnapshot';
+import { useMemoryMapStore } from './memoryMap';
 
 export function initializeStores(pinia: Pinia) {
   setActivePinia(pinia);
@@ -11,4 +12,5 @@ export function initializeStores(pinia: Pinia) {
   useSdkTargetsStore().initializeMessaging();
   useTaskCenterStore().initializeMessaging();
   useDebugSnapshotStore().initializeMessaging();
+  useMemoryMapStore().initializeMessaging();
 }

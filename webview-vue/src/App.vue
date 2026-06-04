@@ -9,6 +9,7 @@ import { RouterView } from 'vue-router';
 import AppShell from '@/components/layout/AppShell.vue';
 import { useDebugSnapshotStore } from '@/stores/debugSnapshot';
 import { useKconfigStore } from '@/stores/kconfig';
+import { useMemoryMapStore } from '@/stores/memoryMap';
 import { useSdkCatalogStore } from '@/stores/sdkCatalog';
 import { useSdkTargetsStore } from '@/stores/sdkTargets';
 import { useTaskCenterStore } from '@/stores/taskCenter';
@@ -18,4 +19,5 @@ useSdkTargetsStore().initializeMessaging();
 useTaskCenterStore().initializeMessaging();
 useDebugSnapshotStore().initializeMessaging();
 useKconfigStore().initializeMessaging();
+useMemoryMapStore().initializeMessaging();
 </script>

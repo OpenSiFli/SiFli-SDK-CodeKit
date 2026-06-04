@@ -18,6 +18,91 @@
     "notAvailable": "N/A",
     "defaultEnvironment": "Default environment"
   },
+  "memoryMap": {
+    "sectionLabel": "Memory map",
+    "title": "GNU Map Analysis",
+    "subtitle": "Review runtime memory usage, load image usage, and symbol distribution from the latest main.map.",
+    "empty": "No memory map analysis is available yet.",
+    "actions": {
+      "refresh": "Refresh"
+    },
+    "summary": {
+      "runtime": "Runtime used",
+      "load": "Load image",
+      "regions": "Regions",
+      "symbols": "Symbols"
+    },
+    "labels": {
+      "mapFile": "Map file",
+      "board": "Board"
+    },
+    "regions": {
+      "title": "Memory Regions",
+      "symbolShare": "Donut charts split runtime usage by symbol and keep free space visible.",
+      "runtime": "Runtime",
+      "load": "Load",
+      "usedLabel": "Used",
+      "otherSymbols": "Other symbols",
+      "free": "Free"
+    },
+    "sections": {
+      "title": "Output Sections",
+      "loadRegion": "Load: {region}"
+    },
+    "filters": {
+      "search": "Search symbol, section, or object...",
+      "regions": "Regions",
+      "sections": "Sections",
+      "allRegions": "All regions",
+      "allSections": "All sections",
+      "minSize": "Min size",
+      "minSizePlaceholder": "Minimum size, e.g. 4 KiB",
+      "anySize": "Any size",
+      "sort": "Sort",
+      "reset": "Reset",
+      "add": "Add filter",
+      "empty": "No filters yet. Add filters to configure each field, operator, and value independently.",
+      "chooseValue": "Choose value",
+      "valuePlaceholder": "Enter value",
+      "sizePlaceholder": "Enter size value",
+      "numberPlaceholder": "Enter number",
+      "addressPlaceholder": "Enter address, e.g. 0x12000000",
+      "remove": "Remove filter",
+      "fields": {
+        "symbol": "Symbol",
+        "region": "Region",
+        "section": "Section",
+        "object": "Object file",
+        "size": "Size",
+        "address": "Address"
+      },
+      "operators": {
+        "contains": "contains",
+        "equals": "equals",
+        "notEquals": "does not equal",
+        "startsWith": "starts with",
+        "endsWith": "ends with",
+        "greaterThan": "greater than",
+        "lessThan": "less than"
+      }
+    },
+    "sort": {
+      "size": "Size",
+      "name": "Name",
+      "address": "Address"
+    },
+    "symbols": {
+      "title": "Symbols",
+      "count": "{visible} of {total} symbols",
+      "empty": "No symbols match the current filters.",
+      "columns": {
+        "symbol": "Symbol",
+        "size": "Size",
+        "region": "Region",
+        "object": "Object"
+      }
+    }
+  },
   "app": {
     "title": "SiFli SDK Manager"
   },

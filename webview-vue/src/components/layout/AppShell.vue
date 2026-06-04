@@ -46,6 +46,7 @@ const isStandaloneRoute = computed(
   () =>
     route.name === 'analysis' ||
     route.name === 'debug-snapshot' ||
+    route.name === 'memory-map' ||
     isSerialMonitorRoute.value ||
     isMenuconfigRoute.value
 );
