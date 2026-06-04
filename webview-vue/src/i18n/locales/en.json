@@ -38,7 +38,7 @@
     },
     "regions": {
       "title": "Memory Regions",
-      "symbolShare": "Click nodes to drill down, then scroll to zoom and drag to inspect tiny blocks.",
+      "symbolShare": "Scroll to zoom and drag the usage map.",
       "runtime": "Runtime",
       "load": "Load",
       "usedLabel": "Used",
@@ -47,7 +47,8 @@
     },
     "sections": {
       "title": "Output Sections",
-      "barSubtitle": "Horizontal bars show the top {count} output sections by size.",
+      "barSubtitle": "Top {count} output sections",
+      "sortedSubtitle": "Output section ranking",
       "loadRegion": "Load: {region}"
     },
     "filters": {
