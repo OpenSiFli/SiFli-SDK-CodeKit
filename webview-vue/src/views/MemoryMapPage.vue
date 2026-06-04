@@ -231,7 +231,7 @@
                 <div
                   v-for="filter in symbolFilters"
                   :key="filter.id"
-                  class="grid gap-2 rounded-lg border border-vscode-panel-border bg-vscode-background px-2 py-2 lg:grid-cols-[190px_170px_minmax(0,1fr)_34px]"
+                  class="grid gap-2 px-2 py-2 lg:grid-cols-[190px_170px_minmax(0,1fr)_34px]"
                 >
                   <select v-model="filter.field" class="filter-control" @change="handleFilterFieldChange(filter)">
                     <option v-for="field in filterFields" :key="field.value" :value="field.value">
