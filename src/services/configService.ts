@@ -235,6 +235,18 @@ export class ConfigService {
     }));
   }
 
+  public getSdkEnvironmentAutoActivateOverride(): boolean | undefined {
+    return this.workspaceStateService.getSdkEnvironmentAutoActivateOverride();
+  }
+
+  public getSdkEnvironmentAutoActivate(defaultValue: boolean): boolean {
+    return this.workspaceStateService.getSdkEnvironmentAutoActivate(defaultValue);
+  }
+
+  public async setSdkEnvironmentAutoActivate(value: boolean): Promise<void> {
+    await this.workspaceStateService.setSdkEnvironmentAutoActivate(value);
+  }
+
   /**
    * 获取所有已安装的SDK路径（兼容性方法）
    */

@@ -18,6 +18,8 @@ export interface WorkspaceState {
   monitorBaudRate?: number;
   // 当前激活的 SDK 路径
   currentSdkPath?: string;
+  // 打开工作区时是否自动激活 SDK 环境（未设置时由工作区类型决定默认值）
+  sdkEnvironmentAutoActivate?: boolean;
   // 编译线程数
   numThreads?: number;
   // workflow shell step 授权缓存（key: workflowRef:stepIndex:commandFingerprint）
@@ -36,6 +38,7 @@ export const WORKSPACE_STATE_KEYS = {
   DOWNLOAD_BAUD_RATE: 'downloadBaudRate',
   MONITOR_BAUD_RATE: 'monitorBaudRate',
   CURRENT_SDK_PATH: 'currentSdkPath',
+  SDK_ENVIRONMENT_AUTO_ACTIVATE: 'sdkEnvironmentAutoActivate',
   NUM_THREADS: 'numThreads',
   WORKFLOW_SHELL_APPROVALS: 'workflowShellApprovals',
   SERIAL_MONITOR_SHOW_TIMESTAMP: 'serialMonitorShowTimestamp',
@@ -50,6 +53,7 @@ const DEFAULT_VALUES: Required<WorkspaceState> = {
   downloadBaudRate: 1000000,
   monitorBaudRate: 1000000,
   currentSdkPath: '',
+  sdkEnvironmentAutoActivate: false,
   numThreads: 8,
   workflowShellApprovals: {},
   serialMonitorShowTimestamp: true,
@@ -125,6 +129,7 @@ export class WorkspaceStateService {
       downloadBaudRate: this.get('downloadBaudRate'),
       monitorBaudRate: this.get('monitorBaudRate'),
       currentSdkPath: this.get('currentSdkPath'),
+      sdkEnvironmentAutoActivate: this.get('sdkEnvironmentAutoActivate'),
       numThreads: this.get('numThreads'),
       workflowShellApprovals: this.get('workflowShellApprovals'),
       serialMonitorShowTimestamp: this.get('serialMonitorShowTimestamp'),
@@ -205,6 +210,20 @@ export class WorkspaceStateService {
 
   public async setCurrentSdkPath(value: string): Promise<void> {
     await this.set('currentSdkPath', value);
+  }
+
+  // sdkEnvironmentAutoActivate
+  public getSdkEnvironmentAutoActivateOverride(): boolean | undefined {
+    const context = this.ensureInitialized();
+    return context.workspaceState.get<boolean>('sdkEnvironmentAutoActivate');
+  }
+
+  public getSdkEnvironmentAutoActivate(defaultValue: boolean): boolean {
+    return this.getSdkEnvironmentAutoActivateOverride() ?? defaultValue;
+  }
+
+  public async setSdkEnvironmentAutoActivate(value: boolean): Promise<void> {
+    await this.set('sdkEnvironmentAutoActivate', value);
   }
 
   // numThreads
