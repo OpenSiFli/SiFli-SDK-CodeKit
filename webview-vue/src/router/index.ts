@@ -8,6 +8,7 @@ import AnalysisPage from '@/views/AnalysisPage.vue';
 import DebugSnapshotPage from '@/views/DebugSnapshotPage.vue';
 import MenuconfigPage from '@/views/MenuconfigPage.vue';
 import SerialMonitorPage from '@/views/SerialMonitorPage.vue';
+import MemoryMapPage from '@/views/MemoryMapPage.vue';
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -58,6 +59,11 @@ export const router = createRouter({
       path: '/menuconfig',
       name: 'menuconfig',
       component: MenuconfigPage,
+    },
+    {
+      path: '/memory-map',
+      name: 'memory-map',
+      component: MemoryMapPage,
     },
     {
       path: '/:pathMatch(.*)*',

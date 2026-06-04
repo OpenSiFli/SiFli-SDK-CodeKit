@@ -18,6 +18,91 @@
     "notAvailable": "不适用",
     "defaultEnvironment": "默认环境"
   },
+  "memoryMap": {
+    "sectionLabel": "内存映射",
+    "title": "GNU Map 分析",
+    "subtitle": "查看最新 main.map 的运行时内存占用、镜像加载占用和符号分布。",
+    "empty": "还没有可用的 map 分析结果。",
+    "actions": {
+      "refresh": "刷新"
+    },
+    "summary": {
+      "runtime": "运行时占用",
+      "load": "镜像占用",
+      "regions": "存储区",
+      "symbols": "符号"
+    },
+    "labels": {
+      "mapFile": "Map 文件",
+      "board": "板卡"
+    },
+    "regions": {
+      "title": "存储区占用",
+      "symbolShare": "环状图按符号展示运行时占用，剩余空间单独标记。",
+      "runtime": "运行时",
+      "load": "镜像",
+      "usedLabel": "已用",
+      "otherSymbols": "其他符号",
+      "free": "未使用"
+    },
+    "sections": {
+      "title": "输出段",
+      "loadRegion": "加载：{region}"
+    },
+    "filters": {
+      "search": "搜索符号、段或对象文件...",
+      "allRegions": "全部存储区",
+      "allSections": "全部段",
+      "regions": "存储区",
+      "sections": "段",
+      "minSize": "最小大小",
+      "minSizePlaceholder": "最小大小，如 4 KiB",
+      "anySize": "任意大小",
+      "sort": "排序",
+      "reset": "重置筛选",
+      "add": "添加筛选器",
+      "empty": "还没有筛选器。添加筛选器后，每一条都可以单独设置字段、条件和值。",
+      "chooseValue": "选择值",
+      "valuePlaceholder": "输入匹配内容",
+      "sizePlaceholder": "输入大小数字",
+      "numberPlaceholder": "输入数字",
+      "addressPlaceholder": "输入地址，如 0x12000000",
+      "remove": "删除筛选器",
+      "fields": {
+        "symbol": "符号",
+        "region": "存储区",
+        "section": "段",
+        "object": "对象文件",
+        "size": "大小",
+        "address": "地址"
+      },
+      "operators": {
+        "contains": "包含",
+        "equals": "等于",
+        "notEquals": "不等于",
+        "startsWith": "开头为",
+        "endsWith": "结尾为",
+        "greaterThan": "大于",
+        "lessThan": "小于"
+      }
+    },
+    "sort": {
+      "size": "大小",
+      "name": "名称",
+      "address": "地址"
+    },
+    "symbols": {
+      "title": "符号",
+      "count": "显示 {visible} / {total} 个符号",
+      "empty": "当前筛选条件下没有匹配的符号。",
+      "columns": {
+        "symbol": "符号",
+        "size": "大小",
+        "region": "存储区",
+        "object": "对象文件"
+      }
+    }
+  },
   "app": {
     "title": "SiFli SDK 管理器"
   },
