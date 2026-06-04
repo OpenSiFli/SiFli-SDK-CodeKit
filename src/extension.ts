@@ -189,6 +189,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const createSiFliTerminalCommand = vscode.commands.registerCommand(
     CMD_PREFIX + 'createNewSiFliTerminal',
     async () => {
+      if (isSiFliProject()) {
+        const terminal = await terminalService.getOrCreateSiFliTerminalAndCdProject(true);
+        terminal.show();
+        return;
+      }
+
       await terminalService.getOrCreateSiFliTerminal(true, { show: true });
     }
   );
