@@ -97,104 +97,76 @@
               </div>
             </div>
 
-            <div class="mt-4 space-y-4">
-              <article
-                v-for="chart in regionCharts"
-                :key="chart.region.name"
-                class="rounded-lg border border-vscode-panel-border bg-vscode-input-background/25 px-5 py-5"
+            <div class="mt-4 space-y-3">
+              <div
+                class="h-[460px] rounded-lg border border-vscode-panel-border bg-vscode-input-background/25 p-2 md:h-[560px]"
               >
-                <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p class="font-semibold">{{ chart.region.name }}</p>
-                    <p class="font-mono text-xs text-vscode-input-placeholder">
-                      {{ formatHex(chart.region.origin) }} | {{ formatBytes(chart.region.length) }}
+                <VChart
+                  class="h-full w-full"
+                  :option="regionTreemapOption"
+                  :init-options="chartInitOptions"
+                  :autoresize="chartResizeOptions"
+                />
+              </div>
+
+              <div class="grid gap-2 lg:grid-cols-2 2xl:grid-cols-4">
+                <article
+                  v-for="region in regionSummaries"
+                  :key="region.name"
+                  class="rounded-lg bg-vscode-input-background/25 px-3 py-3"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="font-semibold">{{ region.name }}</p>
+                      <p class="font-mono text-xs text-vscode-input-placeholder">
+                        {{ formatHex(region.origin) }} | {{ formatBytes(region.length) }}
+                      </p>
+                    </div>
+                    <p class="text-right text-xs text-vscode-input-placeholder">
+                      {{ region.attributes || t('common.notAvailable') }}
                     </p>
                   </div>
-                  <p class="text-right text-xs text-vscode-input-placeholder">
-                    {{ chart.region.attributes || t('common.notAvailable') }}
-                  </p>
-                </div>
-
-                <div class="mt-5 grid gap-5 md:grid-cols-[200px_minmax(0,1fr)] md:items-center">
-                  <div
-                    class="relative mx-auto h-44 w-44 rounded-full md:h-48 md:w-48"
-                    :style="{ background: chart.gradient }"
-                    :aria-label="chart.region.name"
-                  >
-                    <div
-                      class="absolute inset-6 flex flex-col items-center justify-center rounded-full border border-vscode-panel-border bg-vscode-background text-center"
-                    >
-                      <span class="text-2xl font-semibold">{{ formatPercent(chart.usedPercent) }}</span>
-                      <span class="mt-1 text-xs uppercase tracking-[0.16em] text-vscode-input-placeholder">
-                        {{ t('memoryMap.regions.usedLabel') }}
-                      </span>
+                  <div class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-vscode-input-placeholder">
+                    <div>
+                      {{ t('memoryMap.regions.runtime') }}
+                      <p class="mt-1 font-semibold text-vscode-foreground">{{ formatBytes(region.runtimeUsed) }}</p>
+                    </div>
+                    <div>
+                      {{ t('memoryMap.regions.usedLabel') }}
+                      <p class="mt-1 font-semibold text-vscode-foreground">{{ formatPercent(region.usedPercent) }}</p>
+                    </div>
+                    <div>
+                      {{ t('memoryMap.regions.load') }}
+                      <p class="mt-1 font-semibold text-vscode-foreground">{{ formatBytes(region.loadUsed) }}</p>
+                    </div>
+                    <div>
+                      {{ t('memoryMap.regions.free') }}
+                      <p class="mt-1 font-semibold text-vscode-foreground">{{ formatBytes(region.freeBytes) }}</p>
                     </div>
                   </div>
-
-                  <div class="space-y-2">
-                    <div
-                      v-for="segment in chart.legend"
-                      :key="`${chart.region.name}-${segment.label}`"
-                      class="grid grid-cols-[12px_minmax(0,1fr)_116px] items-center gap-3 text-xs"
-                    >
-                      <span class="h-3 w-3 rounded-sm" :style="{ background: segment.color }"></span>
-                      <span class="truncate" :title="segment.label">{{ segment.label }}</span>
-                      <span class="text-right font-mono text-vscode-input-placeholder">
-                        {{ formatBytes(segment.bytes) }} | {{ formatPercent(segment.percent) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="mt-5 grid gap-3 text-xs text-vscode-input-placeholder sm:grid-cols-2">
-                  <div>
-                    {{ t('memoryMap.regions.runtime') }}:
-                    <span class="font-semibold text-vscode-foreground">{{
-                      formatBytes(chart.region.runtimeUsed)
-                    }}</span>
-                  </div>
-                  <div>
-                    {{ t('memoryMap.regions.load') }}:
-                    <span class="font-semibold text-vscode-foreground">{{ formatBytes(chart.region.loadUsed) }}</span>
-                  </div>
-                </div>
-              </article>
+                </article>
+              </div>
             </div>
           </div>
 
           <div class="rounded-2xl border border-vscode-panel-border bg-vscode-background px-5 py-5 shadow-sm">
-            <h3 class="text-lg font-semibold">{{ t('memoryMap.sections.title') }}</h3>
-            <div class="mt-4 space-y-3">
-              <article
-                v-for="section in orderedSections"
-                :key="`${section.name}-${section.address}`"
-                class="rounded-lg border border-vscode-panel-border bg-vscode-input-background/30 px-3 py-3"
-              >
-                <div class="flex items-start justify-between gap-3">
-                  <div>
-                    <p class="font-mono text-sm font-semibold">{{ section.name }}</p>
-                    <p class="mt-1 font-mono text-xs text-vscode-input-placeholder">
-                      {{ formatHex(section.address) }}
-                      <template v-if="section.loadAddress !== undefined">
-                        | LMA {{ formatHex(section.loadAddress) }}
-                      </template>
-                    </p>
-                  </div>
-                  <p class="text-right text-sm font-semibold">{{ formatBytes(section.size) }}</p>
-                </div>
-                <div class="mt-2 h-2 overflow-hidden rounded-full bg-vscode-input-background">
-                  <div
-                    class="h-full rounded-full bg-vscode-button-background"
-                    :style="barStyle(section.size, largestSectionSize)"
-                  ></div>
-                </div>
-                <p class="mt-2 text-xs text-vscode-input-placeholder">
-                  {{ section.regionName || t('common.notAvailable') }}
-                  <template v-if="section.loadRegionName && section.loadRegionName !== section.regionName">
-                    | {{ t('memoryMap.sections.loadRegion', { region: section.loadRegionName }) }}
-                  </template>
+            <div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h3 class="text-lg font-semibold">{{ t('memoryMap.sections.title') }}</h3>
+                <p class="mt-1 text-sm text-vscode-input-placeholder">
+                  {{ t('memoryMap.sections.barSubtitle', { count: sectionChartItems.length }) }}
                 </p>
-              </article>
+              </div>
+            </div>
+
+            <div class="mt-4 rounded-lg border border-vscode-panel-border bg-vscode-input-background/25 p-2">
+              <VChart
+                class="w-full"
+                :style="{ height: sectionChartHeight }"
+                :option="sectionBarOption"
+                :init-options="chartInitOptions"
+                :autoresize="chartResizeOptions"
+              />
             </div>
           </div>
         </section>
@@ -375,11 +347,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { BarChart, TreemapChart, type BarSeriesOption, type TreemapSeriesOption } from 'echarts/charts';
+import {
+  GridComponent,
+  TooltipComponent,
+  type GridComponentOption,
+  type TooltipComponentOption,
+} from 'echarts/components';
+import { use, type ComposeOption } from 'echarts/core';
+import { SVGRenderer } from 'echarts/renderers';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import VChart from 'vue-echarts';
 import { useI18n } from 'vue-i18n';
 import BaseButton from '@/components/common/BaseButton.vue';
 import { useMemoryMapStore } from '@/stores/memoryMap';
-import type { MemoryRegionUsage, MemorySymbolEntry } from '@/types';
+import type { MemoryRegionUsage, MemorySectionUsage, MemorySymbolEntry } from '@/types';
+
+use([BarChart, GridComponent, TreemapChart, TooltipComponent, SVGRenderer]);
 
 type SortMode = 'size' | 'name' | 'address';
 type SymbolFilterField = 'name' | 'region' | 'section' | 'object' | 'size' | 'address';
@@ -392,6 +376,9 @@ type SymbolFilterOperator =
   | 'greaterThan'
   | 'lessThan';
 type SizeUnit = 'B' | 'KiB' | 'MiB';
+type MemoryMapChartOption = ComposeOption<
+  BarSeriesOption | GridComponentOption | TooltipComponentOption | TreemapSeriesOption
+>;
 
 interface FilterOption {
   name: string;
@@ -411,19 +398,58 @@ interface SymbolFilter {
   sizeUnit: SizeUnit;
 }
 
-interface DonutSegment {
-  label: string;
-  bytes: number;
-  percent: number;
-  color: string;
-  kind: 'symbol' | 'other' | 'free';
+interface RegionSummary extends MemoryRegionUsage {
+  usedPercent: number;
+  freeBytes: number;
 }
 
-interface RegionChart {
-  region: MemoryRegionUsage;
-  usedPercent: number;
-  gradient: string;
-  legend: DonutSegment[];
+interface MemoryTreemapNode {
+  name: string;
+  value: number;
+  bytes: number;
+  percent: number;
+  kind: 'region' | 'section' | 'symbol' | 'other';
+  regionName?: string;
+  sectionName?: string;
+  address?: number;
+  loadAddress?: number;
+  loadRegionName?: string;
+  itemStyle: {
+    color?: string;
+    borderColor?: string;
+    borderWidth?: number;
+    gapWidth?: number;
+  };
+  children?: MemoryTreemapNode[];
+}
+
+interface SectionBarDatum {
+  name: string;
+  value: number;
+  size: number;
+  address: number;
+  loadAddress?: number;
+  regionName?: string;
+  loadRegionName?: string;
+  itemStyle: {
+    color: string;
+  };
+}
+
+interface ChartTheme {
+  foreground: string;
+  mutedForeground: string;
+  gridLine: string;
+  treemapBorder: string;
+  treemapInnerBorder: string;
+  tooltipBackground: string;
+  tooltipBorder: string;
+  tooltipForeground: string;
+  segmentColors: string[];
+  otherColor: string;
+  romColor: string;
+  ramColor: string;
+  sectionFallbackColor: string;
 }
 
 const store = useMemoryMapStore();
@@ -432,9 +458,11 @@ const symbolFilters = ref<SymbolFilter[]>([]);
 const sortMode = ref<SortMode>('size');
 let nextFilterId = 1;
 
-const donutColors = ['#4f8cff', '#35c2a1', '#f7b955', '#ef6f6c', '#b88cff', '#6fc3df', '#a0c95a'];
-const otherColor = '#8a8f98';
-const freeColor = 'color-mix(in srgb, var(--vscode-panel-border) 45%, transparent)';
+const sectionChartLimit = 14;
+const chartInitOptions = { renderer: 'svg' as const };
+const chartResizeOptions = { throttle: 120 };
+const chartTheme = ref(createChartTheme());
+let themeObserver: MutationObserver | undefined;
 
 const snapshot = computed(() => store.snapshot);
 
@@ -499,13 +527,30 @@ const orderedSections = computed(() =>
   })
 );
 
-const largestSectionSize = computed(() => orderedSections.value[0]?.size ?? 0);
+const regionSummaries = computed<RegionSummary[]>(() =>
+  store.regions.map(region => {
+    const totalBytes = totalBytesForRegion(region);
+    const freeBytes = Math.max(totalBytes - region.runtimeUsed, 0);
+
+    return {
+      ...region,
+      usedPercent: percentage(region.runtimeUsed, totalBytes),
+      freeBytes,
+    };
+  })
+);
+
+const regionTreemapOption = computed<MemoryMapChartOption>(() => buildRegionTreemapOption());
+
+const sectionChartItems = computed(() => orderedSections.value.slice(0, sectionChartLimit));
+
+const sectionChartHeight = computed(() => `${Math.max(240, sectionChartItems.value.length * 34 + 64)}px`);
 
 const effectiveFilters = computed(() => symbolFilters.value.filter(isFilterComplete));
 
 const canResetFilters = computed(() => symbolFilters.value.length > 0 || sortMode.value !== 'size');
 
-const regionCharts = computed<RegionChart[]>(() => store.regions.map(region => buildRegionChart(region)));
+const sectionBarOption = computed<MemoryMapChartOption>(() => buildSectionBarOption(sectionChartItems.value));
 
 const filteredSymbols = computed(() => {
   const filters = effectiveFilters.value;
@@ -528,79 +573,615 @@ const filteredSymbols = computed(() => {
 });
 
 onMounted(() => {
+  updateChartTheme();
+  observeThemeChanges();
   store.fetchSnapshot();
 });
 
-function buildRegionChart(region: MemoryRegionUsage): RegionChart {
-  const totalBytes = region.length > 0 ? region.length : Math.max(region.runtimeUsed, 1);
+onUnmounted(() => {
+  themeObserver?.disconnect();
+  themeObserver = undefined;
+});
+
+function updateChartTheme() {
+  chartTheme.value = createChartTheme();
+}
+
+function observeThemeChanges() {
+  if (typeof MutationObserver === 'undefined') {
+    return;
+  }
+
+  themeObserver?.disconnect();
+  themeObserver = new MutationObserver(updateChartTheme);
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class', 'style'],
+  });
+  themeObserver.observe(document.body, {
+    attributes: true,
+    attributeFilter: ['class', 'data-vscode-theme-kind', 'style'],
+  });
+}
+
+function createChartTheme(): ChartTheme {
+  const background = readCssVariable('--vscode-editor-background', '#1f1f1f');
+  const foreground = readCssVariable('--vscode-foreground', '#d4d4d4');
+  const mutedForeground = readCssVariable(
+    '--vscode-input-placeholder',
+    isDarkTheme(background) ? '#9d9d9d' : '#667085'
+  );
+  const panelBorder = readCssVariable('--vscode-panel-border', isDarkTheme(background) ? '#343434' : '#d0d7de');
+  const isDark = isDarkTheme(background);
+
+  return {
+    foreground,
+    mutedForeground,
+    gridLine: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.1)',
+    treemapBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 23, 42, 0.12)',
+    treemapInnerBorder: isDark ? 'rgba(31, 31, 31, 0.96)' : 'rgba(255, 255, 255, 0.92)',
+    tooltipBackground: readCssVariable('--vscode-editorWidget-background', isDark ? '#252526' : '#ffffff'),
+    tooltipBorder: panelBorder,
+    tooltipForeground: foreground,
+    segmentColors: isDark
+      ? ['#4f8cff', '#35c2a1', '#f7b955', '#ef6f6c', '#b88cff', '#6fc3df', '#a0c95a']
+      : ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#65a30d'],
+    otherColor: isDark ? '#8a8f98' : '#64748b',
+    romColor: isDark ? '#4f8cff' : '#2563eb',
+    ramColor: isDark ? '#35c2a1' : '#059669',
+    sectionFallbackColor: isDark ? '#8a8f98' : '#64748b',
+  };
+}
+
+function readCssVariable(name: string, fallback: string): string {
+  if (typeof document === 'undefined') {
+    return fallback;
+  }
+
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
+function isDarkTheme(background: string): boolean {
+  const bodyThemeKind =
+    typeof document === 'undefined' ? '' : (document.body.getAttribute('data-vscode-theme-kind') ?? '');
+
+  if (bodyThemeKind.includes('dark')) {
+    return true;
+  }
+  if (bodyThemeKind.includes('light')) {
+    return false;
+  }
+
+  const rgb = parseColorToRgb(background);
+  if (!rgb) {
+    return true;
+  }
+
+  return colorBrightness(rgb) < 128;
+}
+
+function parseColorToRgb(color: string): { r: number; g: number; b: number } | null {
+  const trimmed = color.trim();
+
+  if (trimmed.startsWith('#')) {
+    return parseHexColor(trimmed);
+  }
+
+  const rgbMatch = trimmed.match(/rgba?\((\d+(?:\.\d+)?),\s*(\d+(?:\.\d+)?),\s*(\d+(?:\.\d+)?)/i);
+  if (!rgbMatch) {
+    return null;
+  }
+
+  return {
+    r: Number(rgbMatch[1]),
+    g: Number(rgbMatch[2]),
+    b: Number(rgbMatch[3]),
+  };
+}
+
+function parseHexColor(color: string): { r: number; g: number; b: number } | null {
+  const hex = color.replace('#', '');
+  const normalized =
+    hex.length === 3
+      ? hex
+          .split('')
+          .map(char => `${char}${char}`)
+          .join('')
+      : hex.slice(0, 6);
+
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) {
+    return null;
+  }
+
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16),
+  };
+}
+
+function colorBrightness(color: { r: number; g: number; b: number }): number {
+  return (color.r * 299 + color.g * 587 + color.b * 114) / 1000;
+}
+
+function totalBytesForRegion(region: MemoryRegionUsage): number {
+  return region.length > 0 ? region.length : Math.max(region.runtimeUsed, 1);
+}
+
+function buildRegionTreemapOption(): MemoryMapChartOption {
+  const theme = chartTheme.value;
+  const totalRegionBytes = store.regions.reduce((sum, region) => sum + totalBytesForRegion(region), 0);
+
+  return {
+    animation: false,
+    tooltip: {
+      trigger: 'item',
+      confine: true,
+      backgroundColor: theme.tooltipBackground,
+      borderColor: theme.tooltipBorder,
+      textStyle: {
+        color: theme.tooltipForeground,
+      },
+      formatter: formatTreemapTooltip,
+    },
+    series: [
+      {
+        type: 'treemap',
+        roam: true,
+        nodeClick: 'zoomToNode',
+        leafDepth: 1,
+        breadcrumb: {
+          show: true,
+          height: 22,
+          bottom: 0,
+          itemStyle: {
+            color: theme.tooltipBackground,
+            borderColor: theme.tooltipBorder,
+            textStyle: {
+              color: theme.foreground,
+            },
+          },
+        },
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 28,
+        visibleMin: 48,
+        childrenVisibleMin: 96,
+        squareRatio: 1.25,
+        label: {
+          show: true,
+          color: theme.foreground,
+          fontSize: 11,
+          lineHeight: 15,
+          overflow: 'truncate',
+          ellipsis: '...',
+          formatter: formatTreemapLabel,
+        },
+        upperLabel: {
+          show: true,
+          height: 24,
+          color: theme.foreground,
+          fontSize: 12,
+          fontWeight: 600,
+        },
+        itemStyle: {
+          borderColor: theme.treemapBorder,
+          borderWidth: 1,
+          gapWidth: 2,
+        },
+        levels: [
+          {
+            itemStyle: {
+              borderColor: theme.treemapBorder,
+              borderWidth: 1,
+              gapWidth: 4,
+            },
+          },
+          {
+            itemStyle: {
+              borderColor: theme.treemapInnerBorder,
+              borderWidth: 1,
+              gapWidth: 1,
+            },
+          },
+        ],
+        data: store.regions.map(region => createRegionTreemapNode(region, totalRegionBytes)),
+      },
+    ],
+  };
+}
+
+function createRegionTreemapNode(region: MemoryRegionUsage, totalRegionBytes: number): MemoryTreemapNode {
+  const theme = chartTheme.value;
+  const totalBytes = totalBytesForRegion(region);
+  const sections = createSectionTreemapNodes(region);
+
+  return {
+    name: region.name,
+    value: totalBytes,
+    bytes: totalBytes,
+    percent: percentage(totalBytes, totalRegionBytes),
+    kind: 'region',
+    regionName: region.name,
+    itemStyle: {
+      color: colorForRegion(region.name),
+      borderColor: theme.treemapBorder,
+      borderWidth: 1,
+      gapWidth: 2,
+    },
+    children: sections.length > 0 ? sections : undefined,
+  };
+}
+
+function createSectionTreemapNodes(region: MemoryRegionUsage): MemoryTreemapNode[] {
+  const theme = chartTheme.value;
+
+  return store.sections
+    .filter(section => section.regionName === region.name && section.size > 0)
+    .sort((left, right) => {
+      if (right.size !== left.size) {
+        return right.size - left.size;
+      }
+      return left.name.localeCompare(right.name);
+    })
+    .map((section, index) =>
+      createSectionTreemapNode(region, section, theme.segmentColors[index % theme.segmentColors.length])
+    );
+}
+
+function createSectionTreemapNode(
+  region: MemoryRegionUsage,
+  section: MemorySectionUsage,
+  color: string
+): MemoryTreemapNode {
+  const symbols = createSymbolTreemapNodes(region, section);
+
+  return {
+    name: section.name,
+    value: section.size,
+    bytes: section.size,
+    percent: percentage(section.size, Math.max(region.runtimeUsed, 1)),
+    kind: 'section',
+    regionName: region.name,
+    sectionName: section.name,
+    address: section.address,
+    loadAddress: section.loadAddress,
+    loadRegionName: section.loadRegionName,
+    itemStyle: {
+      color,
+    },
+    children: symbols.length > 0 ? symbols : undefined,
+  };
+}
+
+function createSymbolTreemapNodes(region: MemoryRegionUsage, section: MemorySectionUsage): MemoryTreemapNode[] {
+  const theme = chartTheme.value;
   const symbols = store.symbols
-    .filter(symbol => symbol.regionName === region.name)
-    .sort((left, right) => right.size - left.size);
-  const topSymbols = symbols.slice(0, donutColors.length);
-  const symbolSegments = topSymbols.map((symbol, index) => createSymbolSegment(symbol, totalBytes, donutColors[index]));
-  const accountedBytes = topSymbols.reduce((sum, symbol) => sum + symbol.size, 0);
-  const otherBytes = Math.max(region.runtimeUsed - accountedBytes, 0);
-  const freeBytes = Math.max(totalBytes - region.runtimeUsed, 0);
-  const segments: DonutSegment[] = [...symbolSegments];
+    .filter(symbol => symbol.regionName === region.name && symbol.outputSection === section.name && symbol.size > 0)
+    .sort((left, right) => {
+      if (right.size !== left.size) {
+        return right.size - left.size;
+      }
+      return left.name.localeCompare(right.name);
+    });
+  const nodes = symbols.map((symbol, index) =>
+    createSymbolTreemapNode(region, section, symbol, theme.segmentColors[index % theme.segmentColors.length])
+  );
+  const accountedBytes = symbols.reduce((sum, symbol) => sum + symbol.size, 0);
+  const otherBytes = Math.max(section.size - accountedBytes, 0);
 
   if (otherBytes > 0) {
-    segments.push({
-      label: t('memoryMap.regions.otherSymbols'),
+    nodes.push({
+      name: t('memoryMap.regions.otherSymbols'),
+      value: otherBytes,
       bytes: otherBytes,
-      percent: percentage(otherBytes, totalBytes),
-      color: otherColor,
+      percent: percentage(otherBytes, section.size),
       kind: 'other',
+      regionName: region.name,
+      sectionName: section.name,
+      itemStyle: {
+        color: theme.otherColor,
+      },
     });
   }
 
-  if (freeBytes > 0) {
-    segments.push({
-      label: t('memoryMap.regions.free'),
-      bytes: freeBytes,
-      percent: percentage(freeBytes, totalBytes),
-      color: freeColor,
-      kind: 'free',
-    });
-  }
-
-  if (segments.length === 0) {
-    segments.push({
-      label: t('memoryMap.regions.free'),
-      bytes: totalBytes,
-      percent: 100,
-      color: freeColor,
-      kind: 'free',
-    });
-  }
-
-  return {
-    region,
-    usedPercent: percentage(region.runtimeUsed, totalBytes),
-    gradient: buildConicGradient(segments),
-    legend: segments,
-  };
+  return nodes;
 }
 
-function createSymbolSegment(symbol: MemorySymbolEntry, totalBytes: number, color: string): DonutSegment {
+function createSymbolTreemapNode(
+  region: MemoryRegionUsage,
+  section: MemorySectionUsage,
+  symbol: MemorySymbolEntry,
+  color: string
+): MemoryTreemapNode {
   return {
-    label: symbol.name,
+    name: symbol.name,
+    value: symbol.size,
     bytes: symbol.size,
-    percent: percentage(symbol.size, totalBytes),
-    color,
+    percent: percentage(symbol.size, section.size),
     kind: 'symbol',
+    regionName: region.name,
+    sectionName: section.name,
+    address: symbol.address,
+    itemStyle: {
+      color,
+    },
   };
 }
 
-function buildConicGradient(segments: DonutSegment[]): string {
-  let cursor = 0;
-  const stops = segments.map((segment, index) => {
-    const next = index === segments.length - 1 ? 100 : Math.min(100, cursor + segment.percent);
-    const stop = `${segment.color} ${cursor.toFixed(3)}% ${next.toFixed(3)}%`;
-    cursor = next;
-    return stop;
-  });
+function buildSectionBarOption(sections: MemorySectionUsage[]): MemoryMapChartOption {
+  const theme = chartTheme.value;
+  const data = sections.map(createSectionBarDatum);
 
-  return `conic-gradient(${stops.join(', ')})`;
+  return {
+    animation: false,
+    grid: {
+      left: 112,
+      top: 10,
+      right: 92,
+      bottom: 28,
+    },
+    tooltip: {
+      trigger: 'item',
+      confine: true,
+      backgroundColor: theme.tooltipBackground,
+      borderColor: theme.tooltipBorder,
+      textStyle: {
+        color: theme.tooltipForeground,
+      },
+      formatter: formatSectionTooltip,
+    },
+    xAxis: {
+      type: 'value',
+      axisLine: {
+        show: false,
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: theme.mutedForeground,
+        fontSize: 11,
+        formatter: formatAxisBytes,
+      },
+      splitLine: {
+        lineStyle: {
+          color: theme.gridLine,
+        },
+      },
+    },
+    yAxis: {
+      type: 'category',
+      inverse: true,
+      data: data.map(item => item.name),
+      axisLine: {
+        show: false,
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: theme.foreground,
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+        fontSize: 12,
+        formatter: shortenAxisLabel,
+      },
+    },
+    series: [
+      {
+        type: 'bar',
+        data,
+        barWidth: 14,
+        label: {
+          show: true,
+          position: 'right',
+          color: theme.foreground,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+          fontSize: 11,
+          formatter: formatSectionBarLabel,
+        },
+        itemStyle: {
+          borderRadius: [0, 5, 5, 0],
+        },
+        emphasis: {
+          disabled: true,
+        },
+      },
+    ],
+  };
+}
+
+function createSectionBarDatum(section: MemorySectionUsage): SectionBarDatum {
+  return {
+    name: section.name,
+    value: section.size,
+    size: section.size,
+    address: section.address,
+    loadAddress: section.loadAddress,
+    regionName: section.regionName,
+    loadRegionName: section.loadRegionName,
+    itemStyle: {
+      color: colorForRegion(section.regionName),
+    },
+  };
+}
+
+function colorForRegion(regionName: string | undefined): string {
+  const theme = chartTheme.value;
+  const normalized = regionName?.toLowerCase() ?? '';
+
+  if (normalized.includes('rom') || normalized.includes('flash')) {
+    return theme.romColor;
+  }
+  if (normalized.includes('ram')) {
+    return theme.ramColor;
+  }
+  return theme.sectionFallbackColor;
+}
+
+function formatTreemapTooltip(params: unknown): string {
+  const node = getTreemapNode(params);
+
+  if (!node) {
+    return '';
+  }
+
+  if (node.kind === 'region') {
+    const region = store.regions.find(item => item.name === node.regionName);
+    const totalBytes = region ? totalBytesForRegion(region) : node.bytes;
+    const usedBytes = region?.runtimeUsed ?? 0;
+    const freeBytes = Math.max(totalBytes - usedBytes, 0);
+
+    return [
+      escapeHtml(node.name),
+      `${formatBytes(totalBytes)} | ${formatPercent(node.percent)}`,
+      `${escapeHtml(t('memoryMap.regions.usedLabel'))}: ${formatBytes(usedBytes)} (${formatPercent(percentage(usedBytes, totalBytes))})`,
+      `${escapeHtml(t('memoryMap.regions.free'))}: ${formatBytes(freeBytes)}`,
+    ].join('<br/>');
+  }
+
+  if (node.kind === 'section') {
+    const lines = [
+      escapeHtml(`${node.regionName ?? ''} / ${node.name}`),
+      `${formatBytes(node.bytes)} | ${formatPercent(node.percent)}`,
+    ];
+
+    if (node.address !== undefined) {
+      lines.push(`VMA ${formatHex(node.address)}`);
+    }
+    if (node.loadAddress !== undefined) {
+      lines.push(`LMA ${formatHex(node.loadAddress)}`);
+    }
+    if (node.loadRegionName && node.loadRegionName !== node.regionName) {
+      lines.push(escapeHtml(t('memoryMap.sections.loadRegion', { region: node.loadRegionName })));
+    }
+
+    return lines.join('<br/>');
+  }
+
+  if (node.kind === 'symbol') {
+    return [
+      escapeHtml(node.name),
+      `${formatBytes(node.bytes)} | ${formatPercent(node.percent)}`,
+      escapeHtml(`${node.regionName ?? ''} / ${node.sectionName ?? ''}`),
+      node.address !== undefined ? `VMA ${formatHex(node.address)}` : '',
+    ]
+      .filter(Boolean)
+      .join('<br/>');
+  }
+
+  return [
+    escapeHtml(`${node.regionName ?? ''} / ${node.sectionName ?? ''} / ${node.name}`),
+    `${formatBytes(node.bytes)} | ${formatPercent(node.percent)}`,
+  ].join('<br/>');
+}
+
+function getTreemapNode(params: unknown): MemoryTreemapNode | null {
+  const item = Array.isArray(params) ? params[0] : params;
+
+  if (!isRecord(item) || !isRecord(item.data)) {
+    return null;
+  }
+
+  const { data } = item;
+  if (typeof data.name !== 'string' || typeof data.bytes !== 'number' || typeof data.percent !== 'number') {
+    return null;
+  }
+
+  return data as unknown as MemoryTreemapNode;
+}
+
+function formatTreemapLabel(params: unknown): string {
+  const node = getTreemapNode(params);
+
+  if (!node) {
+    return '';
+  }
+
+  if (node.kind === 'region') {
+    const region = store.regions.find(item => item.name === node.regionName);
+    const totalBytes = region ? totalBytesForRegion(region) : node.bytes;
+    const usedPercent = region ? percentage(region.runtimeUsed, totalBytes) : 0;
+
+    return `${node.name}\n${formatBytes(totalBytes)}\n${formatPercent(usedPercent)} ${t('memoryMap.regions.usedLabel')}`;
+  }
+
+  return `${node.name}\n${formatBytes(node.bytes)}`;
+}
+
+function formatSectionTooltip(params: unknown): string {
+  const datum = getSectionBarDatum(params);
+
+  if (!datum) {
+    return '';
+  }
+
+  const lines = [
+    escapeHtml(datum.name),
+    `${formatBytes(datum.size)} | ${escapeHtml(datum.regionName ?? t('common.notAvailable'))}`,
+    `VMA ${formatHex(datum.address)}`,
+  ];
+
+  if (datum.loadAddress !== undefined) {
+    lines.push(`LMA ${formatHex(datum.loadAddress)}`);
+  }
+  if (datum.loadRegionName && datum.loadRegionName !== datum.regionName) {
+    lines.push(escapeHtml(t('memoryMap.sections.loadRegion', { region: datum.loadRegionName })));
+  }
+
+  return lines.join('<br/>');
+}
+
+function getSectionBarDatum(params: unknown): SectionBarDatum | null {
+  const item = Array.isArray(params) ? params[0] : params;
+
+  if (!isRecord(item) || !isRecord(item.data)) {
+    return null;
+  }
+
+  const { data } = item;
+  if (typeof data.name !== 'string' || typeof data.size !== 'number' || typeof data.address !== 'number') {
+    return null;
+  }
+
+  return data as unknown as SectionBarDatum;
+}
+
+function formatSectionBarLabel(params: unknown): string {
+  const datum = getSectionBarDatum(params);
+  return datum ? formatBytes(datum.size) : '';
+}
+
+function formatAxisBytes(value: unknown): string {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? formatBytes(numericValue) : '';
+}
+
+function shortenAxisLabel(value: string): string {
+  return value.length > 14 ? `${value.slice(0, 13)}...` : value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, char => {
+    if (char === '&') {
+      return '&amp;';
+    }
+    if (char === '<') {
+      return '&lt;';
+    }
+    if (char === '>') {
+      return '&gt;';
+    }
+    if (char === '"') {
+      return '&quot;';
+    }
+    return '&#39;';
+  });
 }
 
 function addFilter() {
@@ -824,13 +1405,6 @@ function percentage(value: number, total: number): number {
 
 function formatHex(value: number): string {
   return `0x${value.toString(16).padStart(8, '0')}`;
-}
-
-function barStyle(value: number, max: number) {
-  const percent = max > 0 ? Math.max(2, Math.min(100, (value / max) * 100)) : 0;
-  return {
-    width: `${percent}%`,
-  };
 }
 
 function shortenObjectPath(objectPath: string): string {
