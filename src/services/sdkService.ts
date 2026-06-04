@@ -172,21 +172,10 @@ export class SdkService {
         return;
       }
 
-      const selectedItem = await vscode.window.showQuickPick(
-        sdkVersions.map(sdk => ({
-          label: sdk.version,
-          description: sdk.current ? vscode.l10n.t('(current)') : '',
-          detail: vscode.l10n.t('Path: {0}{1}', sdk.path, sdk.valid ? '' : vscode.l10n.t(' (invalid)')),
-          sdk,
-        })),
-        {
-          placeHolder: vscode.l10n.t('Select a SiFli SDK version to switch'),
-          canPickMany: false,
-        }
-      );
+      const sdk = await this.pickSdkVersion(sdkVersions, vscode.l10n.t('Select a SiFli SDK version to switch'));
 
-      if (selectedItem) {
-        await this.activateSdk(selectedItem.sdk);
+      if (sdk) {
+        await this.activateSdk(sdk);
       }
     } catch (error) {
       this.logService.error('Error in switchSdkVersion:', error);
@@ -198,9 +187,20 @@ export class SdkService {
    * 激活指定的 SDK
    */
   public async activateSdk(sdk: SdkVersion): Promise<void> {
-    const result = await this.activateSdkVersion(sdk, true);
-    if (!result.success && result.message) {
-      vscode.window.showErrorMessage(result.message);
+    await this.activateSdkVersion(sdk, true);
+  }
+
+  public async activateSdkEnvironment(): Promise<void> {
+    try {
+      const sdk = await this.resolveSdkForEnvironmentActivation();
+      if (!sdk) {
+        return;
+      }
+
+      await this.activateSdkVersion(sdk, true);
+    } catch (error) {
+      this.logService.error('Error activating SDK environment:', error);
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to activate SDK environment: {0}', String(error)));
     }
   }
 
@@ -350,6 +350,40 @@ export class SdkService {
     }
 
     return this.getActivationScriptForPlatform(targetSdkPath)?.scriptPath;
+  }
+
+  private async resolveSdkForEnvironmentActivation(): Promise<SdkVersion | undefined> {
+    const sdkVersions = await this.discoverSiFliSdks();
+
+    if (sdkVersions.length === 0) {
+      vscode.window.showWarningMessage(vscode.l10n.t('No SiFli SDKs found. Install one from the SDK Manager first.'));
+      return undefined;
+    }
+
+    const currentSdkPath = this.configService.getCurrentSdkPath();
+    const currentSdk = sdkVersions.find(sdk => (sdk.path === currentSdkPath || sdk.current) && sdk.valid);
+    if (currentSdk) {
+      return currentSdk;
+    }
+
+    return this.pickSdkVersion(sdkVersions, vscode.l10n.t('Select a SiFli SDK to activate in the terminal'));
+  }
+
+  private async pickSdkVersion(sdkVersions: SdkVersion[], placeHolder: string): Promise<SdkVersion | undefined> {
+    const selectedItem = await vscode.window.showQuickPick(
+      sdkVersions.map(sdk => ({
+        label: sdk.version,
+        description: sdk.current ? vscode.l10n.t('(current)') : '',
+        detail: vscode.l10n.t('Path: {0}{1}', sdk.path, sdk.valid ? '' : vscode.l10n.t(' (invalid)')),
+        sdk,
+      })),
+      {
+        placeHolder,
+        canPickMany: false,
+      }
+    );
+
+    return selectedItem?.sdk;
   }
 
   public getInstallScriptPath(sdkPath: string): string | undefined {
@@ -608,7 +642,7 @@ export class SdkService {
     configPath: string;
     command: string;
   }): Promise<void> {
-    const terminal = await this.terminalService.getOrCreateSiFliTerminalAndCdProject(false, { autoExport: false });
+    const terminal = await this.terminalService.getOrCreateSiFliTerminal(false, { autoExport: false, show: true });
     const scriptDir = path.dirname(activationScript.scriptPath);
     const toolsPath = this.configService.getSdkToolsPath(scriptDir);
 
@@ -621,6 +655,6 @@ export class SdkService {
 
     terminal.show();
     terminal.sendText(executeCommand);
-    this.terminalService.markSdkEnvironmentPrepared();
+    this.terminalService.markSdkEnvironmentPrepared(activationScript.scriptPath);
   }
 }

@@ -58,16 +58,48 @@ export class TerminalService {
   }
 
   /**
+   * 获取或创建 SiFli 终端，不改变当前目录
+   */
+  public async getOrCreateSiFliTerminal(
+    forceNew = false,
+    options?: { autoExport?: boolean; show?: boolean }
+  ): Promise<vscode.Terminal> {
+    const terminal = await this.prepareSiFliTerminal(forceNew, { autoExport: options?.autoExport });
+    if (options?.show) {
+      terminal.show();
+    }
+    return terminal;
+  }
+
+  /**
    * 获取或创建 SiFli 终端并切换到项目目录
    */
   public async getOrCreateSiFliTerminalAndCdProject(
     forceNew = false,
     options?: { autoExport?: boolean }
   ): Promise<vscode.Terminal> {
+    const terminal = await this.prepareSiFliTerminal(forceNew, { autoExport: options?.autoExport });
+
+    // 切换到项目目录
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders && workspaceFolders.length > 0) {
+      const projectInfo = getProjectInfo();
+      const projectPath = projectInfo?.projectEntryPath;
+      if (!projectPath) {
+        this.logService.error('[[terminalService] Project entry path not found');
+        return terminal;
+      }
+      terminal.sendText(`cd "${projectPath}"`);
+      this.logService.debug(`Changed terminal directory to: ${projectPath}`);
+    }
+
+    return terminal;
+  }
+
+  private async prepareSiFliTerminal(forceNew = false, options?: { autoExport?: boolean }): Promise<vscode.Terminal> {
     let terminal = forceNew ? undefined : this.findSiFliTerminal();
     const configuredScriptPath = this.sdkService.getExportScriptPath();
-    const normalizedScriptPath =
-      configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
+    const normalizedScriptPath = this.normalizeScriptPath(configuredScriptPath);
     if (!terminal) {
       this.logService.info('Creating new SiFli terminal');
       terminal = this.createSiFliTerminal();
@@ -86,20 +118,6 @@ export class TerminalService {
     await this.ensureEnvInjected(terminal);
     if (options?.autoExport !== false) {
       await this.runExportScriptIfNeeded(terminal, normalizedScriptPath);
-    }
-
-    // 切换到项目目录
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (workspaceFolders && workspaceFolders.length > 0) {
-      const workspaceRoot = workspaceFolders[0].uri.fsPath;
-      const projectInfo = getProjectInfo();
-      const projectPath = projectInfo?.projectEntryPath;
-      if (!projectPath) {
-        this.logService.error('[[terminalService] Project entry path not found');
-        return terminal;
-      }
-      terminal.sendText(`cd "${projectPath}"`);
-      this.logService.debug(`Changed terminal directory to: ${projectPath}`);
     }
 
     return terminal;
@@ -164,6 +182,12 @@ export class TerminalService {
       return;
     }
 
+    const currentSdkPath = this.configService.getCurrentSdkPath();
+    const toolsPath = currentSdkPath ? this.configService.getSdkToolsPath(currentSdkPath) : undefined;
+    if (toolsPath && toolsPath.trim() !== '') {
+      await this.setEnvironmentVariable(terminal, 'SIFLI_SDK_TOOLS_PATH', toolsPath);
+    }
+
     let executeCommand: string;
     if (process.platform === 'win32') {
       executeCommand = `& "${scriptPath}"`;
@@ -176,6 +200,10 @@ export class TerminalService {
     this.markExportPrepared(terminal, scriptPath);
   }
 
+  private normalizeScriptPath(scriptPath: string | undefined): string | undefined {
+    return scriptPath && scriptPath.trim() !== '' ? scriptPath.trim() : undefined;
+  }
+
   private isExportPrepared(terminal: vscode.Terminal, scriptPath: string | undefined): boolean {
     const preparedFor = this.exportPrepared.get(terminal);
     if (!scriptPath) {
@@ -186,6 +214,14 @@ export class TerminalService {
 
   private markExportPrepared(terminal: vscode.Terminal, scriptPath: string | null): void {
     this.exportPrepared.set(terminal, scriptPath);
+  }
+
+  private async setEnvironmentVariable(terminal: vscode.Terminal, name: string, value: string): Promise<void> {
+    if (process.platform === 'win32') {
+      terminal.sendText(`$env:${name}="${value}"`);
+    } else {
+      terminal.sendText(`export ${name}="${value}"`);
+    }
   }
 
   private async setupManagedWindowsEnvironment(terminal: vscode.Terminal): Promise<void> {
@@ -241,10 +277,9 @@ export class TerminalService {
   /**
    * 标记当前终端环境已完成 SDK 导出
    */
-  public markSdkEnvironmentPrepared(): void {
-    const configuredScriptPath = this.sdkService.getExportScriptPath();
-    const normalizedScriptPath =
-      configuredScriptPath && configuredScriptPath.trim() !== '' ? configuredScriptPath.trim() : undefined;
+  public markSdkEnvironmentPrepared(scriptPath?: string): void {
+    const configuredScriptPath = scriptPath ?? this.sdkService.getExportScriptPath();
+    const normalizedScriptPath = this.normalizeScriptPath(configuredScriptPath);
     this.lastExportScriptPath = normalizedScriptPath;
     if (this.currentTerminal) {
       this.markExportPrepared(this.currentTerminal, normalizedScriptPath ?? null);
