@@ -32,6 +32,11 @@ export interface BuildTaskViewLogEntry extends BuildTaskLogEntry {
   taskTitle: string;
 }
 
+export interface BuildTaskChangeEvent {
+  type: 'state' | 'logs' | 'reset';
+  logs?: BuildTaskViewLogEntry[];
+}
+
 export interface BuildTaskRecord {
   id: string;
   taskName: TaskName;
@@ -90,7 +95,7 @@ export class BuildTaskService {
   private readonly tasks = new Map<string, BuildTaskRecord>();
   private readonly viewLogs: BuildTaskViewLogEntry[] = [];
   private readonly queue: QueuedTask[] = [];
-  private readonly _onDidChangeTasks = new vscode.EventEmitter<void>();
+  private readonly _onDidChangeTasks = new vscode.EventEmitter<BuildTaskChangeEvent>();
   private cachedEnvironment?: CachedEnvironment;
   private running = false;
   private viewLogSequence = 0;
@@ -123,6 +128,10 @@ export class BuildTaskService {
     return [...this.viewLogs];
   }
 
+  public getViewLogCount(): number {
+    return this.viewLogs.length;
+  }
+
   public showLogs(): void {
     this.revealLogView();
   }
@@ -132,7 +141,7 @@ export class BuildTaskService {
   }
 
   public refresh(): void {
-    this._onDidChangeTasks.fire();
+    this.fireTaskStateChanged();
   }
 
   public clearFinishedTasks(): void {
@@ -145,7 +154,7 @@ export class BuildTaskService {
     }
     this.removeViewLogsForTasks(removedTaskIds);
     this.trimTaskHistory();
-    this._onDidChangeTasks.fire();
+    this.fireLogsReset();
   }
 
   public clearLogs(): void {
@@ -154,7 +163,7 @@ export class BuildTaskService {
       task.recentLogs.splice(0, task.recentLogs.length);
     }
     this.outputChannel.clear();
-    this._onDidChangeTasks.fire();
+    this.fireLogsReset();
   }
 
   public async runShellTask(options: RunShellTaskOptions): Promise<RunTaskResult> {
@@ -164,7 +173,7 @@ export class BuildTaskService {
 
     const completion = new Promise<number | undefined>((resolve, reject) => {
       this.queue.push({ task, options, resolve, reject });
-      this._onDidChangeTasks.fire();
+      this.fireTaskStateChanged();
       this.drainQueue();
     });
 
@@ -194,7 +203,7 @@ export class BuildTaskService {
     const task = this.createTask(taskName, title);
     task.status = 'running';
     task.startedAt = new Date().toISOString();
-    this._onDidChangeTasks.fire();
+    this.fireTaskStateChanged();
 
     try {
       await executor((message, level = 'info') => this.appendTaskLog(task.id, message, level));
@@ -216,7 +225,7 @@ export class BuildTaskService {
     const task = this.createTask(taskName, title);
     task.status = 'running';
     task.startedAt = new Date().toISOString();
-    this._onDidChangeTasks.fire();
+    this.fireTaskStateChanged();
 
     try {
       executor((message, level = 'info') => this.appendTaskLog(task.id, message, level));
@@ -244,7 +253,7 @@ export class BuildTaskService {
     this.tasks.set(task.id, task);
     this.trimTaskHistory();
     this.revealLogView();
-    this._onDidChangeTasks.fire();
+    this.fireTaskStateChanged();
     return task;
   }
 
@@ -273,7 +282,7 @@ export class BuildTaskService {
     const { task, options } = queued;
     task.status = 'running';
     task.startedAt = new Date().toISOString();
-    this._onDidChangeTasks.fire();
+    this.fireTaskStateChanged();
 
     try {
       const cwd = options.cwd ?? this.resolveProjectCwd();
@@ -559,7 +568,7 @@ export class BuildTaskService {
       vscode.l10n.t('{0} finished with {1}.', task.title, exitText),
       status === 'failed' ? 'error' : 'info'
     );
-    this._onDidChangeTasks.fire();
+    this.fireTaskStateChanged();
   }
 
   private appendTaskLog(taskId: string, message: string, level: BuildTaskLogEntry['level'] = 'info'): void {
@@ -576,21 +585,23 @@ export class BuildTaskService {
     if (task.recentLogs.length > BuildTaskService.MAX_RECENT_LOGS) {
       task.recentLogs.splice(0, task.recentLogs.length - BuildTaskService.MAX_RECENT_LOGS);
     }
-    this.appendViewLog(task, entry);
+    const viewEntry = this.appendViewLog(task, entry);
     this.writeOutputLine(entry);
-    this._onDidChangeTasks.fire();
+    this.fireLogsAppended([viewEntry]);
   }
 
-  private appendViewLog(task: BuildTaskRecord, entry: BuildTaskLogEntry): void {
-    this.viewLogs.push({
+  private appendViewLog(task: BuildTaskRecord, entry: BuildTaskLogEntry): BuildTaskViewLogEntry {
+    const viewEntry: BuildTaskViewLogEntry = {
       ...entry,
       id: `build-task-log-${this.viewLogSequence++}`,
       taskId: task.id,
       taskTitle: task.title,
-    });
+    };
+    this.viewLogs.push(viewEntry);
     if (this.viewLogs.length > BuildTaskService.MAX_VIEW_LOGS) {
       this.viewLogs.splice(0, this.viewLogs.length - BuildTaskService.MAX_VIEW_LOGS);
     }
+    return viewEntry;
   }
 
   private removeViewLogsForTasks(taskIds: Set<string>): void {
@@ -606,6 +617,18 @@ export class BuildTaskService {
 
   private writeOutputLine(entry: BuildTaskLogEntry): void {
     this.outputChannel.appendLine(entry.message);
+  }
+
+  private fireTaskStateChanged(): void {
+    this._onDidChangeTasks.fire({ type: 'state' });
+  }
+
+  private fireLogsAppended(logs: BuildTaskViewLogEntry[]): void {
+    this._onDidChangeTasks.fire({ type: 'logs', logs });
+  }
+
+  private fireLogsReset(): void {
+    this._onDidChangeTasks.fire({ type: 'reset' });
   }
 
   private createLineEmitter(onLine: (line: string) => void): { push(chunk: string): void; flush(): void } {

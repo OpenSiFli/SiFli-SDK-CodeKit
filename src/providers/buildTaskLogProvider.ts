@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
+  BuildTaskChangeEvent,
   BuildTaskRecord,
   BuildTaskService,
   BuildTaskStatus,
@@ -19,15 +20,22 @@ interface BuildTaskViewModel {
 
 interface BuildTaskLogViewState {
   tasks: BuildTaskViewModel[];
-  logs: BuildTaskViewLogEntry[];
+  logs?: BuildTaskViewLogEntry[];
+  logCount: number;
   activeCount: number;
   summaryLabel: string;
   emptyLogLabel: string;
 }
 
 export class BuildTaskLogProvider implements vscode.WebviewViewProvider {
+  private static readonly LOG_FLUSH_DELAY_MS = 40;
+  private static readonly STATE_UPDATE_DELAY_MS = 120;
+
   private view?: vscode.WebviewView;
   private readonly buildTaskService: BuildTaskService;
+  private pendingLogFlush?: ReturnType<typeof setTimeout>;
+  private pendingStateUpdate?: ReturnType<typeof setTimeout>;
+  private pendingLogs: BuildTaskViewLogEntry[] = [];
 
   public constructor(private readonly extensionPath: string) {
     this.buildTaskService = BuildTaskService.getInstance();
@@ -50,23 +58,39 @@ export class BuildTaskLogProvider implements vscode.WebviewViewProvider {
 
     const messageListener = webviewView.webview.onDidReceiveMessage(message => {
       if (message?.command === 'ready' || message?.command === 'buildTasks.ready') {
-        this.postUpdate();
+        this.postUpdate(true);
       }
     });
 
     webviewView.onDidDispose(() => {
       messageListener.dispose();
+      this.clearPendingUpdates();
       if (this.view === webviewView) {
         this.view = undefined;
       }
     });
 
-    this.postUpdate();
+    this.postUpdate(true);
     this.updateBadge();
   }
 
   public refresh(): void {
-    this.postUpdate();
+    this.postUpdate(true);
+  }
+
+  public handleTaskServiceChange(event: BuildTaskChangeEvent): void {
+    this.updateBadge();
+    if (event.type === 'reset') {
+      this.clearPendingUpdates();
+      this.postUpdate(true);
+      return;
+    }
+
+    if (event.type === 'logs' && event.logs?.length) {
+      this.enqueueLogs(event.logs);
+    }
+
+    this.scheduleStateUpdate();
   }
 
   public updateBadge(): void {
@@ -83,19 +107,31 @@ export class BuildTaskLogProvider implements vscode.WebviewViewProvider {
         : undefined;
   }
 
-  private postUpdate(): void {
+  private postUpdate(includeLogs = false): void {
+    if (includeLogs) {
+      this.clearPendingUpdates();
+    }
     this.view?.webview.postMessage({
       command: 'buildTasks.update',
-      state: this.getViewState(),
+      state: this.getViewState(includeLogs),
     });
   }
 
-  private getViewState(): BuildTaskLogViewState {
+  private postAppendLogs(logs: BuildTaskViewLogEntry[]): void {
+    this.view?.webview.postMessage({
+      command: 'buildTasks.appendLogs',
+      logs,
+      logCount: this.buildTaskService.getViewLogCount(),
+    });
+  }
+
+  private getViewState(includeLogs: boolean): BuildTaskLogViewState {
     const tasks = this.buildTaskService.getTasks();
     const activeCount = tasks.filter(task => task.status === 'queued' || task.status === 'running').length;
     return {
       tasks: tasks.map(task => this.toTaskViewModel(task)),
-      logs: this.buildTaskService.getViewLogs(),
+      ...(includeLogs ? { logs: this.buildTaskService.getViewLogs() } : {}),
+      logCount: this.buildTaskService.getViewLogCount(),
       activeCount,
       summaryLabel:
         activeCount > 0
@@ -138,6 +174,48 @@ export class BuildTaskLogProvider implements vscode.WebviewViewProvider {
   private getActiveCount(): number {
     return this.buildTaskService.getTasks().filter(task => task.status === 'queued' || task.status === 'running')
       .length;
+  }
+
+  private enqueueLogs(logs: BuildTaskViewLogEntry[]): void {
+    if (!this.view) {
+      return;
+    }
+    this.pendingLogs.push(...logs);
+    if (this.pendingLogFlush) {
+      return;
+    }
+    this.pendingLogFlush = setTimeout(() => this.flushPendingLogs(), BuildTaskLogProvider.LOG_FLUSH_DELAY_MS);
+  }
+
+  private flushPendingLogs(): void {
+    this.pendingLogFlush = undefined;
+    const logs = this.pendingLogs.splice(0, this.pendingLogs.length);
+    if (logs.length === 0) {
+      return;
+    }
+    this.postAppendLogs(logs);
+  }
+
+  private scheduleStateUpdate(): void {
+    if (!this.view || this.pendingStateUpdate) {
+      return;
+    }
+    this.pendingStateUpdate = setTimeout(() => {
+      this.pendingStateUpdate = undefined;
+      this.postUpdate(false);
+    }, BuildTaskLogProvider.STATE_UPDATE_DELAY_MS);
+  }
+
+  private clearPendingUpdates(): void {
+    if (this.pendingLogFlush) {
+      clearTimeout(this.pendingLogFlush);
+      this.pendingLogFlush = undefined;
+    }
+    if (this.pendingStateUpdate) {
+      clearTimeout(this.pendingStateUpdate);
+      this.pendingStateUpdate = undefined;
+    }
+    this.pendingLogs.splice(0, this.pendingLogs.length);
   }
 
   private formatStatus(status: BuildTaskRecord['status']): string {
@@ -192,9 +270,8 @@ export class BuildTaskLogManager {
         retainContextWhenHidden: true,
       },
     });
-    const refreshListener = this.buildTaskService.onDidChangeTasks(() => {
-      this.provider.refresh();
-      this.provider.updateBadge();
+    const refreshListener = this.buildTaskService.onDidChangeTasks(event => {
+      this.provider.handleTaskServiceChange(event);
     });
 
     const showLogsCommand = vscode.commands.registerCommand('extension.buildTasks.showLogs', () => {

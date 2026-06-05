@@ -21,7 +21,7 @@
 
     <section class="terminal-section">
       <div ref="terminalContainer" class="terminal-host" aria-label="SiFli build logs"></div>
-      <div v-if="state.logs.length === 0" class="empty-log">{{ state.emptyLogLabel }}</div>
+      <div v-if="state.logCount === 0" class="empty-log">{{ state.emptyLogLabel }}</div>
     </section>
   </main>
 </template>
@@ -56,7 +56,8 @@ interface BuildTaskViewModel {
 
 interface BuildTaskLogViewState {
   tasks: BuildTaskViewModel[];
-  logs: BuildTaskViewLogEntry[];
+  logs?: BuildTaskViewLogEntry[];
+  logCount: number;
   activeCount: number;
   summaryLabel: string;
   emptyLogLabel: string;
@@ -67,9 +68,17 @@ interface BuildTasksUpdateMessage {
   state: BuildTaskLogViewState;
 }
 
+interface BuildTasksAppendLogsMessage {
+  command: 'buildTasks.appendLogs';
+  logs: BuildTaskViewLogEntry[];
+  logCount: number;
+}
+
+type BuildTasksMessage = BuildTasksUpdateMessage | BuildTasksAppendLogsMessage;
+
 const emptyState: BuildTaskLogViewState = {
   tasks: [],
-  logs: [],
+  logCount: 0,
   activeCount: 0,
   summaryLabel: '',
   emptyLogLabel: '',
@@ -129,12 +138,22 @@ onBeforeUnmount(() => {
 });
 
 function handleMessage(event: MessageEvent) {
-  const message = event.data as BuildTasksUpdateMessage;
-  if (message?.command !== 'buildTasks.update') {
+  const message = event.data as BuildTasksMessage;
+  if (message?.command === 'buildTasks.update') {
+    state.value = message.state;
+    if (message.state.logs) {
+      syncTerminalLogs(message.state.logs);
+    }
     return;
   }
-  state.value = message.state;
-  syncTerminalLogs(message.state.logs);
+
+  if (message?.command === 'buildTasks.appendLogs') {
+    state.value = {
+      ...state.value,
+      logCount: message.logCount,
+    };
+    appendTerminalLogs(message.logs);
+  }
 }
 
 async function initializeTerminal() {
@@ -161,7 +180,7 @@ async function initializeTerminal() {
   resizeObserver = new ResizeObserver(() => fitTerminal());
   resizeObserver.observe(terminalContainer.value);
   fitTerminal();
-  syncTerminalLogs(state.value.logs);
+  syncTerminalLogs(state.value.logs ?? []);
 }
 
 function syncTerminalLogs(logs: BuildTaskViewLogEntry[]) {
@@ -182,6 +201,22 @@ function syncTerminalLogs(logs: BuildTaskViewLogEntry[]) {
     writeLogEntry(entry);
   });
   renderedLogIds = nextLogIds;
+  terminal.scrollToBottom();
+  fitTerminal();
+}
+
+function appendTerminalLogs(logs: BuildTaskViewLogEntry[]) {
+  if (!terminal || logs.length === 0) {
+    return;
+  }
+
+  logs.forEach(entry => {
+    writeLogEntry(entry);
+    renderedLogIds.push(entry.id);
+  });
+  if (renderedLogIds.length > 10000) {
+    renderedLogIds.splice(0, renderedLogIds.length - 10000);
+  }
   terminal.scrollToBottom();
   fitTerminal();
 }

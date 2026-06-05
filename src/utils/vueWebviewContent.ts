@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { resolveVueWebviewCssFiles } from './vueWebviewAssets';
 
 interface VueWebviewContentOptions {
   scriptFile?: string;
@@ -28,14 +29,7 @@ export function getVueWebviewContent(
   };
 
   const jsUri = getResourceUri(scriptFile);
-  const cssFiles =
-    options.cssFiles ??
-    (fs.existsSync(path.join(vueDistPath, 'assets'))
-      ? fs
-          .readdirSync(path.join(vueDistPath, 'assets'))
-          .filter(file => file.endsWith('.css'))
-          .map(file => `assets/${file}`)
-      : []);
+  const cssFiles = resolveVueWebviewCssFiles(vueDistPath, scriptFile, options.cssFiles);
   const cssUris = cssFiles.map(file => getResourceUri(file)).filter(Boolean);
 
   if (!jsUri) {
