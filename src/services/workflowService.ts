@@ -14,10 +14,10 @@ import { ConfigService } from './configService';
 import { LogService } from './logService';
 import { SerialMonitorService } from './serialMonitorService';
 import { SerialPortService } from './serialPortService';
-import { TerminalService } from './terminalService';
 import { WorkspaceStateService } from './workspaceStateService';
 import { getWorkflowStepDisplayLabel } from '../utils/workflowStepLabel';
 import { BuildExecutionService } from './buildExecutionService';
+import { BuildTaskService } from './buildTaskService';
 
 export type ScopedWorkflowDefinition = {
   scope: WorkflowScope;
@@ -70,19 +70,19 @@ export class WorkflowService {
   private configService: ConfigService;
   private serialPortService: SerialPortService;
   private serialMonitorService: SerialMonitorService;
-  private terminalService: TerminalService;
   private logService: LogService;
   private workspaceStateService: WorkspaceStateService;
   private buildExecutionService: BuildExecutionService;
+  private buildTaskService: BuildTaskService;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
     this.serialPortService = SerialPortService.getInstance();
     this.serialMonitorService = SerialMonitorService.getInstance();
-    this.terminalService = TerminalService.getInstance();
     this.logService = LogService.getInstance();
     this.workspaceStateService = WorkspaceStateService.getInstance();
     this.buildExecutionService = BuildExecutionService.getInstance();
+    this.buildTaskService = BuildTaskService.getInstance();
   }
 
   public static getInstance(): WorkflowService {
@@ -787,11 +787,14 @@ export class WorkflowService {
     }
 
     const wait = step.wait ?? true;
-    const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(
-      resolvedCommand,
-      TASK_NAMES.WORKFLOW_SHELL,
-      { waitForExit: wait, runId: options.runId }
-    );
+    const taskResult = await this.buildTaskService.runShellTask({
+      taskName: TASK_NAMES.WORKFLOW_SHELL,
+      title: vscode.l10n.t('Workflow Shell: {0}', workflowName),
+      commandLine: resolvedCommand,
+      waitForExit: wait,
+      runId: options.runId,
+    });
+    const exitCode = taskResult.exitCode;
     return {
       success: exitCode === undefined || exitCode === 0,
       exitCode,

@@ -574,11 +574,11 @@ export class ToolRegistryService {
           name: LM_TOOL_NAMES.COMPILE,
           invocationMessage: vscode.l10n.t('Running SiFli build'),
           confirmationTitle: vscode.l10n.t('Run SiFli build?'),
-          confirmationMessage: vscode.l10n.t('Compile the current SiFli project in the integrated terminal.'),
+          confirmationMessage: vscode.l10n.t('Compile the current SiFli project in the background.'),
         },
         mcp: {
           name: 'sifli.build.compile',
-          description: 'Compile the current SiFli project in the VS Code terminal.',
+          description: 'Compile the current SiFli project in the background task queue.',
           inputSchema: EMPTY_OBJECT_SCHEMA,
         },
         invoke: async () => this.automationService.compile(),
@@ -593,7 +593,7 @@ export class ToolRegistryService {
         },
         mcp: {
           name: 'sifli.build.rebuild',
-          description: 'Clean and compile the current SiFli project in the VS Code terminal.',
+          description: 'Clean and compile the current SiFli project in the background task queue.',
           inputSchema: EMPTY_OBJECT_SCHEMA,
         },
         invoke: async () => this.automationService.rebuild(),

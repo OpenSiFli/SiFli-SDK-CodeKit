@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { TASK_NAMES } from '../constants';
 import { BoardService } from './boardService';
+import { BuildTaskService } from './buildTaskService';
 import { ConfigService } from './configService';
 import { SerialPortService } from './serialPortService';
 import { TerminalService } from './terminalService';
@@ -36,12 +37,14 @@ export class BuildExecutionService {
   private boardService: BoardService;
   private serialPortService: SerialPortService;
   private terminalService: TerminalService;
+  private buildTaskService: BuildTaskService;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
     this.boardService = BoardService.getInstance();
     this.serialPortService = SerialPortService.getInstance();
     this.terminalService = TerminalService.getInstance();
+    this.buildTaskService = BuildTaskService.getInstance();
   }
 
   public static getInstance(): BuildExecutionService {
@@ -85,17 +88,21 @@ export class BuildExecutionService {
     const numThreads = this.configService.getNumThreads();
     let command = await this.boardService.getCompileCommand(selectedBoardName, numThreads);
     command = this.resolveTemplate(command, templateValues);
-    const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(command, TASK_NAMES.BUILD, {
+    const taskResult = await this.buildTaskService.runShellTask({
+      taskName: TASK_NAMES.BUILD,
+      title: TASK_NAMES.BUILD,
+      commandLine: command,
       waitForExit,
       runId: options?.runId,
       timeoutMs: options?.timeoutMs,
     });
+    const exitCode = taskResult.exitCode;
     return {
       success: exitCode === undefined || exitCode === 0,
       taskName: TASK_NAMES.BUILD,
       exitCode,
       command,
-      background: !waitForExit,
+      background: taskResult.background,
       runId: options?.runId,
     };
   }
@@ -126,26 +133,34 @@ export class BuildExecutionService {
     const buildFolder = this.boardService.getBuildTargetFolder(selectedBoardName);
     const buildPath = path.join(workspaceFolder.uri.fsPath, buildFolder);
     if (!fs.existsSync(buildPath)) {
+      const message = vscode.l10n.t('Build directory does not exist. No cleanup needed: {0}', buildFolder);
+      this.buildTaskService.recordInstantTaskSync(TASK_NAMES.CLEAN, TASK_NAMES.CLEAN, log => {
+        log(message);
+      });
       if (showNotifications) {
-        vscode.window.showInformationMessage(
-          vscode.l10n.t('Build directory does not exist. No cleanup needed: {0}', buildFolder)
-        );
+        vscode.window.showInformationMessage(message);
       }
       return {
         success: true,
         taskName: TASK_NAMES.CLEAN,
-        message: vscode.l10n.t('Build directory does not exist. No cleanup needed: {0}', buildFolder),
+        message,
       };
     }
 
-    fs.rmSync(buildPath, { recursive: true, force: true });
+    const cleanMessage = vscode.l10n.t('Build directory cleaned: {0}', buildFolder);
+    const task = this.buildTaskService.recordInstantTaskSync(TASK_NAMES.CLEAN, TASK_NAMES.CLEAN, log => {
+      log(vscode.l10n.t('Cleaning build directory: {0}', buildPath));
+      fs.rmSync(buildPath, { recursive: true, force: true });
+      log(cleanMessage);
+    });
     if (showNotifications) {
-      vscode.window.showInformationMessage(vscode.l10n.t('Build directory cleaned: {0}', buildFolder));
+      vscode.window.showInformationMessage(cleanMessage);
     }
     return {
-      success: true,
+      success: task.status === 'succeeded',
       taskName: TASK_NAMES.CLEAN,
-      message: vscode.l10n.t('Build directory cleaned: {0}', buildFolder),
+      exitCode: task.exitCode,
+      message: task.error ?? cleanMessage,
     };
   }
 
@@ -208,16 +223,20 @@ export class BuildExecutionService {
       this.serialPortService.downloadBaudRate
     );
     command = this.resolveTemplate(command, templateValues);
-    const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(command, TASK_NAMES.DOWNLOAD, {
+    const taskResult = await this.buildTaskService.runShellTask({
+      taskName: TASK_NAMES.DOWNLOAD,
+      title: TASK_NAMES.DOWNLOAD,
+      commandLine: command,
       waitForExit,
       runId: options?.runId,
     });
+    const exitCode = taskResult.exitCode;
     return {
       success: exitCode === undefined || exitCode === 0,
       taskName: TASK_NAMES.DOWNLOAD,
       exitCode,
       command,
-      background: !waitForExit,
+      background: taskResult.background,
       runId: options?.runId,
     };
   }
@@ -250,20 +269,18 @@ export class BuildExecutionService {
     }
 
     const templateValues = options?.templateValues ?? {};
-    const waitForExit = options?.waitForExit ?? false;
     let command = await this.boardService.getMenuconfigCommand(selectedBoardName);
     command = this.resolveTemplate(command, templateValues);
-    const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(command, TASK_NAMES.MENUCONFIG, {
-      waitForExit,
-      runId: options?.runId,
-    });
+    const terminal = await this.terminalService.getOrCreateSiFliTerminalAndCdProject(true);
+    terminal.show();
+    terminal.sendText(command);
     return {
-      success: exitCode === undefined || exitCode === 0,
+      success: true,
       taskName: TASK_NAMES.MENUCONFIG,
-      exitCode,
       command,
-      background: !waitForExit,
+      background: true,
       runId: options?.runId,
+      message: vscode.l10n.t('Menuconfig opened in a dedicated SiFli terminal.'),
     };
   }
 
@@ -294,21 +311,21 @@ export class BuildExecutionService {
 
     const waitForExit = options?.waitForExit ?? true;
     const command = await this.boardService.getGenerateCodebaseIndexCommand(selectedBoardName);
-    const exitCode = await this.terminalService.executeShellCommandInSiFliTerminal(
-      command,
-      TASK_NAMES.GENERATE_CODEBASE_INDEX,
-      {
-        waitForExit,
-        runId: options?.runId,
-      }
-    );
+    const taskResult = await this.buildTaskService.runShellTask({
+      taskName: TASK_NAMES.GENERATE_CODEBASE_INDEX,
+      title: TASK_NAMES.GENERATE_CODEBASE_INDEX,
+      commandLine: command,
+      waitForExit,
+      runId: options?.runId,
+    });
+    const exitCode = taskResult.exitCode;
 
     return {
       success: exitCode === undefined || exitCode === 0,
       taskName: TASK_NAMES.GENERATE_CODEBASE_INDEX,
       exitCode,
       command,
-      background: !waitForExit,
+      background: taskResult.background,
       runId: options?.runId,
     };
   }

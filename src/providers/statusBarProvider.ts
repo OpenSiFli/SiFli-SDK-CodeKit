@@ -66,6 +66,13 @@ export class StatusBarProvider {
       priority: 93,
       action: { kind: 'command', commandId: CMD_PREFIX + 'openDeviceMonitor' },
     },
+    {
+      id: 'sifliTerminal',
+      text: '$(terminal)',
+      tooltip: 'Create a new terminal with SiFli environment',
+      priority: 92,
+      action: { kind: 'command', commandId: CMD_PREFIX + 'createNewSiFliTerminal' },
+    },
   ];
 
   private constructor() {
