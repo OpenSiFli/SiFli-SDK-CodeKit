@@ -1,0 +1,214 @@
+:root {
+  color-scheme: light dark;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family, 'Segoe UI', sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+}
+
+.build-logs-app {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.taskbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  overflow: hidden;
+}
+
+.task-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.summary-count {
+  flex: 0 0 auto;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.summary-divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 14px;
+  background: color-mix(in srgb, var(--vscode-panel-border) 82%, transparent);
+}
+
+.summary-task {
+  display: grid;
+  grid-template-columns: minmax(0, auto) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.summary-task-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--vscode-foreground);
+}
+
+.summary-task-status {
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.summary-task.running .summary-task-status {
+  color: var(--vscode-progressBar-background);
+}
+
+.summary-task.failed .summary-task-status {
+  color: var(--vscode-errorForeground);
+}
+
+.summary-task.succeeded .summary-task-status {
+  color: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+}
+
+.status-counts {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.status-count {
+  display: inline-grid;
+  grid-template-columns: 6px auto auto;
+  align-items: center;
+  gap: 5px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.status-count strong {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vscode-descriptionForeground);
+}
+
+.status-count.running .status-dot {
+  background: var(--vscode-progressBar-background);
+}
+
+.status-count.queued .status-dot {
+  background: var(--vscode-descriptionForeground);
+}
+
+.status-count.failed .status-dot {
+  background: var(--vscode-errorForeground);
+}
+
+.status-count.succeeded .status-dot {
+  background: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+}
+
+@media (max-width: 560px) {
+  .taskbar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+    align-items: stretch;
+  }
+
+  .status-counts {
+    justify-content: flex-start;
+  }
+}
+
+.terminal-section {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--vscode-terminal-background, var(--vscode-editor-background));
+}
+
+.terminal-host {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.terminal-host .xterm {
+  height: 100%;
+  padding: 8px 10px;
+}
+
+.terminal-host .xterm-screen {
+  min-height: 100%;
+}
+
+.terminal-host .xterm-viewport {
+  background: transparent;
+}
+
+.terminal-host .xterm-cursor-layer,
+.terminal-host .xterm-cursor {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+.empty-log {
+  position: absolute;
+  top: 12px;
+  left: 10px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+  pointer-events: none;
+}

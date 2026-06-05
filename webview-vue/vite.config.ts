@@ -12,9 +12,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      input: path.resolve(__dirname, 'index.html'),
+      input: {
+        index: path.resolve(__dirname, 'index.html'),
+        buildLogs: path.resolve(__dirname, 'build-logs.html'),
+      },
       output: {
-        format: 'iife',
         entryFileNames: 'assets/[name].js',
         chunkFileNames: 'assets/[name].js',
         assetFileNames: 'assets/[name].[ext]',
