@@ -12,6 +12,7 @@
     "llvm-vs-code-extensions.vscode-clangd"
   ],
   "activationEvents": [
+    "onView:sifliBuildTasks",
     "onStartupFinished",
     "onDebug:sifli-probe-rs"
   ],
@@ -77,6 +78,26 @@
       {
         "command": "extension.createNewSiFliTerminal",
         "title": "%command.createNewSiFliTerminal.title%"
+      },
+      {
+        "command": "extension.buildTasks.showLogs",
+        "title": "%command.buildTasks.showLogs.title%",
+        "icon": "$(output)"
+      },
+      {
+        "command": "extension.buildTasks.refresh",
+        "title": "%command.buildTasks.refresh.title%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "extension.buildTasks.clearLogs",
+        "title": "%command.buildTasks.clearLogs.title%",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "extension.buildTasks.clearFinished",
+        "title": "%command.buildTasks.clearFinished.title%",
+        "icon": "$(trash)"
       },
       {
         "command": "extension.listSerialPorts",
@@ -595,6 +616,14 @@
           "name": "%view.sifliSdkManager.name%",
           "icon": "$(cloud-download)"
         }
+      ],
+      "sifliLogsPanel": [
+        {
+          "id": "sifliBuildTasks",
+          "name": "%view.sifliBuildTasks.name%",
+          "type": "webview",
+          "when": "sifli.isProject"
+        }
       ]
     },
     "viewsContainers": {
@@ -602,6 +631,13 @@
         {
           "id": "sifli-sidebar",
           "title": "%viewsContainer.sifli-sidebar.title%",
+          "icon": "public/SiFli.svg"
+        }
+      ],
+      "panel": [
+        {
+          "id": "sifliLogsPanel",
+          "title": "%viewsContainer.sifliLogsPanel.title%",
           "icon": "public/SiFli.svg"
         }
       ]
@@ -627,6 +663,16 @@
           "command": "extension.debugSnapshot.openWebview",
           "when": "view == sifliSdkManager",
           "group": "navigation@1"
+        },
+        {
+          "command": "extension.buildTasks.refresh",
+          "when": "view == sifliBuildTasks",
+          "group": "navigation@1"
+        },
+        {
+          "command": "extension.buildTasks.clearLogs",
+          "when": "view == sifliBuildTasks",
+          "group": "navigation@2"
         },
         {
           "command": "extension.peripheralViewer.refreshAll",
@@ -759,6 +805,13 @@
           "command": "extension.statusBarButtons.overrideDefault",
           "when": "view == sifliSdkManager && viewItem == defaultWorkflowButtonItem",
           "group": "inline@1"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "extension.buildTasks.clearLogs",
+          "when": "webviewId == 'sifliBuildTasks'",
+          "group": "navigation@1"
         }
       ]
     },

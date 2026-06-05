@@ -12,6 +12,7 @@ import { MinGitService } from './services/minGitService';
 import { ProbeRsService } from './services/probeRsService';
 import { UvService } from './services/uvService';
 import { KconfigService } from './services/kconfigService';
+import { BuildTaskService } from './services/buildTaskService';
 import { LogService } from './services/logService';
 import { RegionService } from './services/regionService';
 import { WorkspaceStateService } from './services/workspaceStateService';
@@ -24,6 +25,7 @@ import { McpCommands } from './commands/mcpCommands';
 import { StatusBarProvider } from './providers/statusBarProvider';
 import { VueWebviewProvider } from './providers/vueWebviewProvider';
 import { SifliSidebarManager } from './providers/sifliSidebarProvider';
+import { BuildTaskLogManager } from './providers/buildTaskLogProvider';
 import { SdkDependencyExplorerManager } from './providers/sdkDependencyExplorerProvider';
 import { WorkflowService } from './services/workflowService';
 import { LanguageModelToolService } from './services/languageModelToolService';
@@ -78,6 +80,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const probeRsService = ProbeRsService.getInstance();
   const uvService = UvService.getInstance();
   const kconfigService = KconfigService.getInstance();
+  const buildTaskService = BuildTaskService.getInstance();
   const regionService = RegionService.getInstance();
   pythonService.setContext(context);
   minGitService.setContext(context);
@@ -108,14 +111,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // 初始化侧边栏管理器
   const sidebarManager = SifliSidebarManager.getInstance();
+  const buildTaskLogManager = BuildTaskLogManager.getInstance(context.extensionPath);
   const sdkDependencyExplorerManager = SdkDependencyExplorerManager.getInstance();
   const workflowService = WorkflowService.getInstance();
   const languageModelToolService = LanguageModelToolService.getInstance();
   const mcpServerService = McpServerService.getInstance();
   const mcpServerDefinitionProviderService = McpServerDefinitionProviderService.getInstance();
 
-  // 注册输出通道和 Git 输出通道到订阅列表
-  context.subscriptions.push(logService.getOutputChannel(), gitService.getOutputChannel());
+  // 注册输出通道到订阅列表
+  context.subscriptions.push(
+    logService.getOutputChannel(),
+    gitService.getOutputChannel(),
+    buildTaskService.getOutputChannel()
+  );
+  buildTaskLogManager.register(context);
 
   // 在插件激活时立即读取配置
   await configService.updateConfiguration();
