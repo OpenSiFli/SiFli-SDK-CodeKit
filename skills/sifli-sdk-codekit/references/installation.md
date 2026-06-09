@@ -37,9 +37,9 @@ Ask for:
 - Which agent/client should be configured
 - Whether they want the config written to a workspace-local file, a user-level config, or the client's MCP registry
 
-### Workspace `.mcp.json`
+### Claude Code — Project `.mcp.json`
 
-For clients that read workspace `.mcp.json`, add or update this streamable HTTP server entry after the user provides values and approves writing the file:
+If the host agent is **Claude Code**, configure CodeKit MCP by creating a `.mcp.json` file in the project root directory (next to this workspace's root). Add or update this streamable HTTP server entry after the user provides values and approves writing the file:
 
 ```json
 {
@@ -54,6 +54,8 @@ For clients that read workspace `.mcp.json`, add or update this streamable HTTP 
   }
 }
 ```
+
+Claude Code reads `.mcp.json` from the project root on startup. After creating or updating the file, restart the Claude Code session so the tools appear.
 
 Keep tokens local. Do not commit real tokens.
 
@@ -72,11 +74,13 @@ Use the actual URL from `Show SiFli MCP Connection Info`.
 
 ### Other Agents
 
-- **Claude Code:** use Claude Code's current MCP configuration mechanism for streamable HTTP servers. If it supports workspace `.mcp.json`, the JSON above is appropriate; otherwise use its native MCP add/config command.
-- **VS Code MCP clients:** prefer the CodeKit extension's MCP server definition provider when available, or configure a streamable HTTP MCP server pointing to `/mcp`.
-- **Copilot CLI / Gemini CLI / generic MCP clients:** configure a streamable HTTP MCP server with `Authorization: Bearer <token>` using the client's documented config shape.
+For agents other than Claude Code, installation steps depend on the host environment. Follow that agent's own MCP configuration documentation:
 
-When unsure, do not guess the config file format. Ask the user which client they want to configure or inspect that client's documented config in the workspace.
+- **Codex CLI (Apple):** use the `codex mcp add` command with `--bearer-token-env-var` (see Codex CLI docs).
+- **Copilot CLI / Gemini CLI / generic MCP clients:** configure a streamable HTTP MCP server with `Authorization: Bearer <token>` using the client's documented config shape.
+- **VS Code MCP clients:** prefer the CodeKit extension's MCP server definition provider when available; otherwise configure a streamable HTTP MCP server pointing to `/mcp`.
+
+When unsure, do not guess the config file format. Ask the user which client they want to configure, or inspect that client's documented config in the workspace.
 
 ## Verify The Connection
 

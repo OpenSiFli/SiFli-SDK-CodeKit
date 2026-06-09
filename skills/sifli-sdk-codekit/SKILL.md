@@ -129,7 +129,7 @@ Stop and re-evaluate when you catch yourself thinking or doing any of these:
 
 ## Task Map
 
-- For MCP installation, connection info, `.mcp.json`, and Codex CLI setup, read `references/installation.md`.
+- For MCP installation, connection info, and Codex CLI setup, read `references/installation.md`.
 - For tool names, required inputs, and common operation order, read `references/tools.md`.
 - For reusable CodeKit workflows and workflow JSON shape, read `references/workflows.md`.
 - For serial/MCP/build failure handling, read `references/troubleshooting.md`.
