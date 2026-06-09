@@ -10,13 +10,11 @@ Use this reference when CodeKit MCP tools are missing or the user asks to instal
 
 ## Start CodeKit MCP In VS Code
 
-Use the command palette in the CodeKit-hosting VS Code window:
+Open the CodeKit extension's configuration view in VS Code. Enable the MCP server from the extension UI — the panel displays the connection URL and Bearer token. Copy the token.
 
-1. Run `Start SiFli MCP Server`.
-2. Run `Show SiFli MCP Connection Info`.
-3. Copy the URL and Bearer token.
+Then, in the CodeKit extension's **"配置端点" (Configure Endpoint)** field, paste the copied token. This sets a fixed token so it does not change when VS Code or the extension restarts — without this step, a new random token is generated on each start, and every MCP client configuration would need to be updated.
 
-Optional settings:
+If the extension view is not accessible, there are also VS Code settings available:
 
 - `sifli-sdk-codekit.mcp.enabled`: enable or disable the embedded server.
 - `sifli-sdk-codekit.mcp.autoStart`: start automatically when the extension activates.
@@ -28,7 +26,7 @@ Optional settings:
 
 Different agents load MCP servers differently. Use the current client's native configuration path when known; use `.mcp.json` only for clients that explicitly read it.
 
-Before editing any MCP configuration, actively ask the user for the CodeKit MCP URL and Bearer token shown by `Show SiFli MCP Connection Info`. Do not invent, reuse, or copy a token from another workspace unless the user explicitly confirms it.
+Before editing any MCP configuration, ask the user to open the CodeKit extension's configuration view where the connection URL and Bearer token are displayed. Do not invent, reuse, or copy a token from another workspace unless the user explicitly confirms it.
 
 Ask for:
 
@@ -70,7 +68,7 @@ export CODEKIT_MCP_TOKEN="<TOKEN_FROM_CODEKIT>"
   --bearer-token-env-var CODEKIT_MCP_TOKEN
 ```
 
-Use the actual URL from `Show SiFli MCP Connection Info`.
+Use the actual URL from the CodeKit extension's connection info display.
 
 ### Other Agents
 
