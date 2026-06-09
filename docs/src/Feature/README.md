@@ -7,6 +7,7 @@ icon: fa-solid fa-wrench
 
 - [SDK 依赖源码浏览](#sdk-依赖源码浏览)
 - [动态工作流](workflows.md)
+- [MCP 与 Skills](mcp-and-skills.md)
 
 ## SDK 依赖源码浏览
 
