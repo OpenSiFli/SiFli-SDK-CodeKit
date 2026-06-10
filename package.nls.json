@@ -22,6 +22,7 @@
   "command.listSerialPorts.title": "List available serial ports",
   "command.generateCodebaseIndex.title": "Generate codebase_index.json",
   "command.memoryMap.openWebview.title": "Open Memory Map Analysis",
+  "command.ptab.openWebview.title": "Open PTAB v3 Visualizer",
   "command.refreshSdkDependencies.title": "Refresh SDK dependencies",
   "command.peripheralViewer.updateNode.title": "Update Peripheral Value",
   "command.peripheralViewer.copyValue.title": "Copy Peripheral Value",

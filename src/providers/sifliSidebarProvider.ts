@@ -361,6 +361,22 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
         'clangdConfig'
       )
     );
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('PTAB Configuration'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.ptab.openWebview',
+          title: vscode.l10n.t('PTAB Configuration'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('database'),
+        vscode.l10n.t('Open PTAB v3 partition table configuration'),
+        'ptabConfig'
+      )
+    );
+
     return items;
   }
 

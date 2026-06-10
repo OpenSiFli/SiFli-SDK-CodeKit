@@ -6,6 +6,7 @@ export * from './sdk';
 export * from './workflow';
 export * from './tooling';
 export * from './memoryMap';
+export * from './ptab';
 // export * from './serialMonitor'; // 暂时注释掉避免 SerialPort 类型冲突
 
 export type TaskName =
@@ -25,6 +26,7 @@ export type CommandId =
   | 'extension.menuconfig'
   | 'extension.generateCodebaseIndex'
   | 'extension.memoryMap.openWebview'
+  | 'extension.ptab.openWebview'
   | 'extension.refreshSdkDependencies'
   | 'extension.debugSnapshot.export'
   | 'extension.selectChipModule'
