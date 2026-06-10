@@ -13,6 +13,7 @@ import { TerminalService } from '../services/terminalService';
 import { UvService } from '../services/uvService';
 import { WindowsManagedEnvService } from '../services/windowsManagedEnvService';
 import { MemoryMapService } from '../services/memoryMapService';
+import { PtabService } from '../services/ptabService';
 import { GIT_REPOS, SDK_INSTALL_IDLE_TIMEOUT_MS } from '../constants';
 import {
   KconfigChange,
@@ -23,6 +24,7 @@ import {
   ToolchainSource,
 } from '../types';
 import { MemoryMapSnapshot } from '../types/memoryMap';
+import { PtabChangeRequest, PtabSnapshot } from '../types/ptab';
 import { DebugSnapshotRequest } from '../types/debugSnapshot';
 import { DebugSnapshotBackend } from '../peripheral-viewer/export/debugSnapshotBackend';
 import { getPeripheralViewerDebugSnapshotBackend } from '../peripheral-viewer';
@@ -87,7 +89,7 @@ interface ExistingSdkValidationResult {
 }
 
 type TaskLogger = (message: string, level?: TaskLogEntry['level']) => void;
-type WebviewPanelKind = 'sdkManager' | 'debugSnapshot' | 'menuconfig' | 'memoryMap';
+type WebviewPanelKind = 'sdkManager' | 'debugSnapshot' | 'menuconfig' | 'memoryMap' | 'ptab';
 
 interface WebviewPanelConfig {
   viewType: string;
@@ -124,11 +126,13 @@ export class VueWebviewProvider {
   private readonly configService: ConfigService;
   private readonly logService: LogService;
   private readonly memoryMapService: MemoryMapService;
+  private readonly ptabService: PtabService;
   private readonly tasks = new Map<string, SdkTaskRecord>();
   private sdkManagerPanel?: vscode.WebviewPanel;
   private debugSnapshotPanel?: vscode.WebviewPanel;
   private menuconfigPanel?: vscode.WebviewPanel;
   private memoryMapPanel?: vscode.WebviewPanel;
+  private ptabPanel?: vscode.WebviewPanel;
 
   private constructor() {
     this.terminalService = TerminalService.getInstance();
@@ -139,6 +143,7 @@ export class VueWebviewProvider {
     this.configService = ConfigService.getInstance();
     this.logService = LogService.getInstance();
     this.memoryMapService = MemoryMapService.getInstance();
+    this.ptabService = PtabService.getInstance();
   }
 
   public static getInstance(): VueWebviewProvider {
@@ -164,6 +169,10 @@ export class VueWebviewProvider {
     this.openPanel('memoryMap', context);
   }
 
+  public async openPtabWebview(context: vscode.ExtensionContext): Promise<void> {
+    this.openPanel('ptab', context);
+  }
+
   public refreshMemoryMapPanel(snapshot?: MemoryMapSnapshot): boolean {
     if (!this.memoryMapPanel) {
       return false;
@@ -178,6 +187,23 @@ export class VueWebviewProvider {
     }
 
     void this.handleGetMemoryMapSnapshot(this.memoryMapPanel.webview);
+    return true;
+  }
+
+  public refreshPtabPanel(snapshot?: PtabSnapshot): boolean {
+    if (!this.ptabPanel) {
+      return false;
+    }
+
+    if (snapshot) {
+      this.ptabPanel.webview.postMessage({
+        command: 'ptabSnapshot',
+        snapshot,
+      });
+      return true;
+    }
+
+    void this.handleGetPtabSnapshot(this.ptabPanel.webview);
     return true;
   }
 
@@ -225,6 +251,11 @@ export class VueWebviewProvider {
           await this.handleWebviewMessage(message, panel.webview);
         } catch (error) {
           const messageText = error instanceof Error ? error.message : String(error);
+          this.logService.error(`Webview command failed: ${String(message.command)}`, messageText);
+          if (this.isPtabCommand(message.command)) {
+            this.postPtabError(panel.webview, error);
+            return;
+          }
           panel.webview.postMessage({
             command: 'error',
             message: messageText,
@@ -262,6 +293,9 @@ export class VueWebviewProvider {
     if (kind === 'memoryMap') {
       return this.memoryMapPanel;
     }
+    if (kind === 'ptab') {
+      return this.ptabPanel;
+    }
     return this.menuconfigPanel;
   }
 
@@ -278,6 +312,11 @@ export class VueWebviewProvider {
 
     if (kind === 'memoryMap') {
       this.memoryMapPanel = panel;
+      return;
+    }
+
+    if (kind === 'ptab') {
+      this.ptabPanel = panel;
       return;
     }
 
@@ -301,6 +340,11 @@ export class VueWebviewProvider {
 
     if (kind === 'memoryMap') {
       this.memoryMapPanel = undefined;
+      return;
+    }
+
+    if (kind === 'ptab') {
+      this.ptabPanel = undefined;
       return;
     }
 
@@ -329,6 +373,14 @@ export class VueWebviewProvider {
         viewType: 'sifliMemoryMapVue',
         title: vscode.l10n.t('Memory Map Analysis'),
         initialRoute: '/memory-map',
+      };
+    }
+
+    if (kind === 'ptab') {
+      return {
+        viewType: 'sifliPtabVue',
+        title: vscode.l10n.t('PTAB v3'),
+        initialRoute: '/ptab',
       };
     }
 
@@ -483,6 +535,26 @@ export class VueWebviewProvider {
         await this.handleOpenMemoryMapLocation(message.mapPath, message.line);
         break;
 
+      case 'getPtabSnapshot':
+        await this.handleGetPtabSnapshot(webview);
+        break;
+
+      case 'previewPtabChanges':
+        await this.handlePreviewPtabChanges(message.request as PtabChangeRequest, webview);
+        break;
+
+      case 'savePtabChanges':
+        await this.handleSavePtabChanges(message.request as PtabChangeRequest, webview);
+        break;
+
+      case 'openPtabSource':
+        await this.handleOpenPtabSource(message.path);
+        break;
+
+      case 'openExternalUrl':
+        await this.handleOpenExternalUrl(message.url);
+        break;
+
       default:
         this.logService.warn(`Unknown webview command: ${message.command}`);
     }
@@ -519,6 +591,80 @@ export class VueWebviewProvider {
   private postMemoryMapError(webview: vscode.Webview, error: unknown): void {
     webview.postMessage({
       command: 'memoryMapError',
+      message: this.getErrorMessage(error),
+    });
+  }
+
+  private async handleGetPtabSnapshot(webview: vscode.Webview): Promise<void> {
+    const startedAt = Date.now();
+    this.logService.info('PTAB snapshot requested.');
+    try {
+      const snapshot = await this.ptabService.getSnapshot();
+      webview.postMessage({
+        command: 'ptabSnapshot',
+        snapshot,
+      });
+      this.logService.info(`PTAB snapshot completed in ${Date.now() - startedAt}ms.`);
+    } catch (error) {
+      this.logService.error('PTAB snapshot failed.', this.getErrorMessage(error));
+      this.postPtabError(webview, error);
+    }
+  }
+
+  private async handlePreviewPtabChanges(request: PtabChangeRequest, webview: vscode.Webview): Promise<void> {
+    const startedAt = Date.now();
+    this.logService.info(
+      `PTAB preview requested: target=${request?.targetKind ?? 'unknown'}, changes=${request?.changes?.length ?? 0}.`
+    );
+    try {
+      const snapshot = await this.ptabService.previewChanges(request);
+      webview.postMessage({
+        command: 'ptabSnapshot',
+        snapshot,
+      });
+      this.logService.info(`PTAB preview completed in ${Date.now() - startedAt}ms.`);
+    } catch (error) {
+      this.logService.error('PTAB preview failed.', this.getErrorMessage(error));
+      this.postPtabError(webview, error);
+    }
+  }
+
+  private async handleSavePtabChanges(request: PtabChangeRequest, webview: vscode.Webview): Promise<void> {
+    const startedAt = Date.now();
+    this.logService.info(
+      `PTAB save requested: target=${request?.targetKind ?? 'unknown'}, changes=${request?.changes?.length ?? 0}.`
+    );
+    try {
+      const snapshot = await this.ptabService.saveChanges(request);
+      webview.postMessage({
+        command: 'ptabSnapshot',
+        snapshot,
+      });
+      webview.postMessage({
+        command: 'ptabSaved',
+        snapshot,
+      });
+      this.logService.info(`PTAB save completed in ${Date.now() - startedAt}ms.`);
+    } catch (error) {
+      this.logService.error('PTAB save failed.', this.getErrorMessage(error));
+      this.postPtabError(webview, error);
+    }
+  }
+
+  private async handleOpenPtabSource(filePath: string | undefined): Promise<void> {
+    await this.ptabService.openSource(filePath);
+  }
+
+  private async handleOpenExternalUrl(url: string | undefined): Promise<void> {
+    if (!url || !/^https?:\/\//i.test(url)) {
+      throw new Error(vscode.l10n.t('Invalid external URL.'));
+    }
+    await vscode.env.openExternal(vscode.Uri.parse(url));
+  }
+
+  private postPtabError(webview: vscode.Webview, error: unknown): void {
+    webview.postMessage({
+      command: 'ptabError',
       message: this.getErrorMessage(error),
     });
   }
@@ -1332,6 +1478,16 @@ export class VueWebviewProvider {
       message,
       powerShellKind,
       vscode.l10n.t('install.ps1 failed under Windows PowerShell. Please update to PowerShell 7 and try again.')
+    );
+  }
+
+  private isPtabCommand(command: unknown): boolean {
+    return (
+      typeof command === 'string' &&
+      (command === 'getPtabSnapshot' ||
+        command === 'previewPtabChanges' ||
+        command === 'savePtabChanges' ||
+        command === 'openPtabSource')
     );
   }
 

@@ -114,6 +114,11 @@
         "icon": "$(graph-line)"
       },
       {
+        "command": "extension.ptab.openWebview",
+        "title": "%command.ptab.openWebview.title%",
+        "icon": "$(layout)"
+      },
+      {
         "command": "extension.refreshSdkDependencies",
         "title": "%command.refreshSdkDependencies.title%",
         "icon": "$(refresh)"
@@ -663,6 +668,11 @@
           "command": "extension.debugSnapshot.openWebview",
           "when": "view == sifliSdkManager",
           "group": "navigation@1"
+        },
+        {
+          "command": "extension.ptab.openWebview",
+          "when": "view == sifliSdkManager",
+          "group": "navigation@2"
         },
         {
           "command": "extension.buildTasks.refresh",

@@ -12,6 +12,7 @@ import { MinGitService } from './services/minGitService';
 import { ProbeRsService } from './services/probeRsService';
 import { UvService } from './services/uvService';
 import { KconfigService } from './services/kconfigService';
+import { PtabService } from './services/ptabService';
 import { BuildTaskService } from './services/buildTaskService';
 import { LogService } from './services/logService';
 import { RegionService } from './services/regionService';
@@ -80,6 +81,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const probeRsService = ProbeRsService.getInstance();
   const uvService = UvService.getInstance();
   const kconfigService = KconfigService.getInstance();
+  const ptabService = PtabService.getInstance();
   const buildTaskService = BuildTaskService.getInstance();
   const regionService = RegionService.getInstance();
   pythonService.setContext(context);
@@ -87,6 +89,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   probeRsService.setContext(context);
   uvService.setContext(context);
   kconfigService.setContext(context);
+  ptabService.setContext(context);
   builtinSerialMonitorService.setContext(context);
   probeRsService.prepareManagedEnvironment();
   uvService.prepareManagedEnvironment();
@@ -250,6 +253,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const openMemoryMapCommand = vscode.commands.registerCommand(CMD_PREFIX + 'memoryMap.openWebview', () =>
     vueWebviewProvider.openMemoryMapWebview(context)
   );
+  const openPtabCommand = vscode.commands.registerCommand(CMD_PREFIX + 'ptab.openWebview', () =>
+    vueWebviewProvider.openPtabWebview(context)
+  );
   const refreshSdkDependenciesCommand = vscode.commands.registerCommand(CMD_PREFIX + 'refreshSdkDependencies', () => {
     sdkDependencyExplorerManager.refresh();
   });
@@ -280,7 +286,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     toggleMcpAutoStartCommand,
     configureMcpEndpointCommand,
     showMcpLogsCommand,
-    openMemoryMapCommand
+    openMemoryMapCommand,
+    openPtabCommand
   );
   logService.info('SDK management command registered');
 

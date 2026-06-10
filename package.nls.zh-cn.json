@@ -22,6 +22,7 @@
   "command.listSerialPorts.title": "列出可用串口",
   "command.generateCodebaseIndex.title": "生成 codebase_index.json",
   "command.memoryMap.openWebview.title": "打开 Map 内存分析",
+  "command.ptab.openWebview.title": "打开 PTAB v3 可视化",
   "command.refreshSdkDependencies.title": "刷新 SDK 依赖源码",
   "command.peripheralViewer.updateNode.title": "修改外设值",
   "command.peripheralViewer.copyValue.title": "复制外设值",

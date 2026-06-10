@@ -41,12 +41,16 @@ const catalogStore = useSdkCatalogStore();
 const { t } = useI18n();
 const isSerialMonitorRoute = computed(() => route.name === 'serial-monitor');
 const isMenuconfigRoute = computed(() => route.name === 'menuconfig');
-const isViewportLockedRoute = computed(() => isSerialMonitorRoute.value || isMenuconfigRoute.value);
+const isPtabRoute = computed(() => route.name === 'ptab');
+const isViewportLockedRoute = computed(
+  () => isSerialMonitorRoute.value || isMenuconfigRoute.value || isPtabRoute.value
+);
 const isStandaloneRoute = computed(
   () =>
     route.name === 'analysis' ||
     route.name === 'debug-snapshot' ||
     route.name === 'memory-map' ||
+    isPtabRoute.value ||
     isSerialMonitorRoute.value ||
     isMenuconfigRoute.value
 );
@@ -59,7 +63,7 @@ const rootClass = computed(() =>
 const shellClass = computed(() =>
   isSerialMonitorRoute.value
     ? 'mx-auto flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden px-0 py-0'
-    : isMenuconfigRoute.value
+    : isMenuconfigRoute.value || isPtabRoute.value
       ? 'mx-auto flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden px-4 py-4 sm:px-5'
       : 'mx-auto flex w-full max-w-6xl flex-col px-4 py-8 sm:px-6'
 );
