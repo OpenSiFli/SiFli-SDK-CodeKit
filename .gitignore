@@ -8,3 +8,7 @@ dist/
 issues_image
 .debug-extensions/
 designs/
+
+.codegraph/
+.mcp.json
+.claude/

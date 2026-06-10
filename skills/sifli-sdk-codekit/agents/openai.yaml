@@ -1,0 +1,12 @@
+interface:
+  display_name: "CodeKit"
+  short_description: "Use SiFli CodeKit MCP tools for SiFli SDK project management, builds, serial, and workflows"
+  default_prompt: "Check the project state with the CodeKit tool exposed by the current agent. In Codex this is typically sifli_project_getState; raw MCP clients may expose sifli.project.getState; VS Code LM contexts may expose sifli-sdk-codekit_getProjectState. Then use the appropriate CodeKit tool for SDK, board, build/download/menuconfig, serial/monitor, or workflow tasks. Do not guess board names, serial ports, baud rates, or bearer tokens."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "codekit"
+      description: "SiFli SDK CodeKit embedded MCP server"
+      transport: "streamable_http"
+      notes: "Tool names may be normalized by the host agent. Map by purpose and schema rather than exact spelling."

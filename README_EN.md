@@ -2,9 +2,7 @@
   <img src="images/readme/SiFli.png" alt="SiFli SDK" title="SiFli" align="right" height="100" />
 </a>
 
-# sifli-sdk-codek**Q3: Terminal doesn't automatically enter the project folder?**
-
-- Please ensure that a subfolder named `project` exists in the root directory.- VS Code Extension
+# sifli-sdk-codekit - VS Code Extension
 
 [中文](./README.md)
 
@@ -31,11 +29,30 @@ CodeKit includes a standalone serial monitor panel and no longer depends on the 
 
 ## MCP Server
 
-CodeKit now includes an optional embedded MCP Server so other agent tools or IDEs can call extension capabilities through MCP.
+CodeKit now includes an optional embedded MCP Server so agent tools (Claude Code, GitHub Copilot, etc.) or IDEs can call extension capabilities through the MCP protocol. All tools are organized into six functional categories.
 
-- Run `Start SiFli MCP Server` from the command palette to start the server
-- Run `Show SiFli MCP Connection Info` to get the URL and Bearer token
-- Enable `sifli-sdk-codekit.mcp.autoStart` to start it automatically on activation
-- Serial MCP tools include `sifli.serial.listPorts`, `sifli.serial.connect`, `sifli.serial.write`, `sifli.serial.read`, `sifli.serial.reset`, `sifli.serial.status`, and `sifli.serial.disconnect`
+### Quick Start
 
-The current implementation runs inside the VS Code extension host, so the VS Code instance that hosts CodeKit must remain running while external clients use the MCP connection.
+- Click `Status` in the extension panel to start the server
+- Click `Copy Connection Info` to get the URL and Bearer token
+- Enable `Auto Start` in settings to start MCP automatically on extension activation
+
+### Tool Overview
+
+| Category | Description |
+|----------|-------------|
+| 📦 SDK Management | List configured SDKs, switch active version |
+| 🔧 Board Management | Scan for boards, select active board |
+| 📁 Project Management | Get project state, create from template, configure clangd |
+| 🛠 Build | Compile, rebuild, clean, download firmware, open menuconfig |
+| 🔌 Serial Communication | List ports, connect, read/write, reset, query status |
+| 📺 Serial Monitor | Open/close the serial monitor panel |
+| ⚙️ Automation Workflows | List, get, validate, run workflows |
+
+::: tip
+For complete tool names, parameters, and usage, refer to the [MCP & Skills](https://docs.sifli.com/projects/codekit/Feature/mcp-and-skills.html) documentation.
+:::
+
+### Architecture
+
+The current implementation runs inside the VS Code extension host, so the VS Code instance hosting CodeKit must remain running while external clients use the MCP connection. The MCP Server uses Bearer Token authentication and supports both fixed and auto-generated tokens for secure connections.
