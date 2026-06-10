@@ -9,6 +9,7 @@ import DebugSnapshotPage from '@/views/DebugSnapshotPage.vue';
 import MenuconfigPage from '@/views/MenuconfigPage.vue';
 import SerialMonitorPage from '@/views/SerialMonitorPage.vue';
 import MemoryMapPage from '@/views/MemoryMapPage.vue';
+import PtabPage from '@/views/PtabPage.vue';
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -64,6 +65,11 @@ export const router = createRouter({
       path: '/memory-map',
       name: 'memory-map',
       component: MemoryMapPage,
+    },
+    {
+      path: '/ptab',
+      name: 'ptab',
+      component: PtabPage,
     },
     {
       path: '/:pathMatch(.*)*',

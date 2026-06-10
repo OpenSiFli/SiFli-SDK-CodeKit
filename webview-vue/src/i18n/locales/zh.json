@@ -105,6 +105,94 @@
       }
     }
   },
+  "ptab": {
+    "sectionLabel": "PTAB v3",
+    "title": "分区表可视化",
+    "empty": "还没有可用的 PTAB v3 数据。",
+    "actions": {
+      "refresh": "刷新",
+      "discard": "放弃",
+      "preview": "预览",
+      "save": "保存",
+      "add": "新增",
+      "docs": "文档"
+    },
+    "summary": {
+      "regions": "存储区",
+      "partitions": "分区",
+      "gaps": "空闲段",
+      "overlaps": "重叠"
+    },
+    "layout": {
+      "title": "有效分区布局",
+      "subtitle": "按区域展示 storage、exec、空闲段和重叠区间。",
+      "storage": "存储",
+      "exec": "执行",
+      "gap": "空闲",
+      "overlap": "重叠",
+      "region": "区域",
+      "free": "未分配",
+      "kind": "图层",
+      "memoryType": "存储类型",
+      "capacity": "容量",
+      "used": "已用",
+      "end": "结束",
+      "empty": "当前 PTAB 没有可绘制的分区区间。"
+    },
+    "validation": {
+      "title": "校验"
+    },
+    "overlay": {
+      "title": "Overlay 操作"
+    },
+    "filters": {
+      "search": "搜索分区、类型、区域或来源...",
+      "allRegions": "全部区域",
+      "allTypes": "全部类型",
+      "allCores": "全部核心",
+      "reset": "重置",
+      "empty": "当前筛选条件下没有匹配的分区。"
+    },
+    "table": {
+      "name": "名称",
+      "type": "类型",
+      "region": "区域",
+      "offset": "偏移",
+      "size": "大小",
+      "core": "核心",
+      "source": "来源"
+    },
+    "sources": {
+      "base": "板级",
+      "project": "工程",
+      "chipOverlay": "芯片 Overlay",
+      "boardOverlay": "板子 Overlay",
+      "generated": "默认生成"
+    },
+    "editor": {
+      "title": "编辑",
+      "target": "写入目标",
+      "recommended": "推荐",
+      "targetExists": "将更新已有文件。",
+      "targetNew": "保存时会创建新文件。",
+      "noTarget": "没有可用写入目标。",
+      "operation": "操作",
+      "override": "覆盖",
+      "add": "新增",
+      "name": "名称",
+      "type": "类型",
+      "subtype": "子类型",
+      "region": "区域",
+      "offset": "偏移",
+      "size": "大小",
+      "core": "核心",
+      "execRegion": "执行区域",
+      "execOffset": "执行偏移",
+      "attrs": "attrs YAML",
+      "aliases": "aliases YAML",
+      "sections": "sections YAML"
+    }
+  },
   "app": {
     "title": "SiFli SDK 管理器"
   },

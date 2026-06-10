@@ -10,6 +10,7 @@ import AppShell from '@/components/layout/AppShell.vue';
 import { useDebugSnapshotStore } from '@/stores/debugSnapshot';
 import { useKconfigStore } from '@/stores/kconfig';
 import { useMemoryMapStore } from '@/stores/memoryMap';
+import { usePtabStore } from '@/stores/ptab';
 import { useSdkCatalogStore } from '@/stores/sdkCatalog';
 import { useSdkTargetsStore } from '@/stores/sdkTargets';
 import { useTaskCenterStore } from '@/stores/taskCenter';
@@ -20,4 +21,5 @@ useTaskCenterStore().initializeMessaging();
 useDebugSnapshotStore().initializeMessaging();
 useKconfigStore().initializeMessaging();
 useMemoryMapStore().initializeMessaging();
+usePtabStore().initializeMessaging();
 </script>

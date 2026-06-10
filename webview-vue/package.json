@@ -15,6 +15,7 @@
     "@xterm/xterm": "^6.0.0",
     "echarts": "^6.1.0",
     "pinia": "^2.3.1",
+    "splitpanes": "^4.1.2",
     "vue": "^3.4.0",
     "vue-echarts": "^8.0.1",
     "vue-i18n": "9",

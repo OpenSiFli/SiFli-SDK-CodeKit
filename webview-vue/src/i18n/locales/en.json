@@ -105,6 +105,94 @@
       }
     }
   },
+  "ptab": {
+    "sectionLabel": "PTAB v3",
+    "title": "Partition Table Visualizer",
+    "empty": "No PTAB v3 data is available yet.",
+    "actions": {
+      "refresh": "Refresh",
+      "discard": "Discard",
+      "preview": "Preview",
+      "save": "Save",
+      "add": "Add",
+      "docs": "Docs"
+    },
+    "summary": {
+      "regions": "Regions",
+      "partitions": "Partitions",
+      "gaps": "Gaps",
+      "overlaps": "Overlaps"
+    },
+    "layout": {
+      "title": "Effective Partition Layout",
+      "subtitle": "Shows storage, exec, free gaps, and overlaps by region.",
+      "storage": "Storage",
+      "exec": "Exec",
+      "gap": "Free",
+      "overlap": "Overlap",
+      "region": "Region",
+      "free": "Unallocated",
+      "kind": "Layer",
+      "memoryType": "Memory type",
+      "capacity": "Capacity",
+      "used": "Used",
+      "end": "End",
+      "empty": "No partition ranges are available to draw."
+    },
+    "validation": {
+      "title": "Validation"
+    },
+    "overlay": {
+      "title": "Overlay operations"
+    },
+    "filters": {
+      "search": "Search partition, type, region, or source...",
+      "allRegions": "All regions",
+      "allTypes": "All types",
+      "allCores": "All cores",
+      "reset": "Reset",
+      "empty": "No partitions match the current filters."
+    },
+    "table": {
+      "name": "Name",
+      "type": "Type",
+      "region": "Region",
+      "offset": "Offset",
+      "size": "Size",
+      "core": "Core",
+      "source": "Source"
+    },
+    "sources": {
+      "base": "Board",
+      "project": "Project",
+      "chipOverlay": "Chip overlay",
+      "boardOverlay": "Board overlay",
+      "generated": "Generated"
+    },
+    "editor": {
+      "title": "Edit",
+      "target": "Write target",
+      "recommended": "Recommended",
+      "targetExists": "Existing file will be updated.",
+      "targetNew": "A new file will be created on save.",
+      "noTarget": "No write target is available.",
+      "operation": "Operation",
+      "override": "Override",
+      "add": "Add",
+      "name": "Name",
+      "type": "Type",
+      "subtype": "Subtype",
+      "region": "Region",
+      "offset": "Offset",
+      "size": "Size",
+      "core": "Core",
+      "execRegion": "Exec region",
+      "execOffset": "Exec offset",
+      "attrs": "attrs YAML",
+      "aliases": "aliases YAML",
+      "sections": "sections YAML"
+    }
+  },
   "app": {
     "title": "SiFli SDK Manager"
   },
