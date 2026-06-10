@@ -15,6 +15,9 @@ export function resolveVueWebviewCssFiles(
   const scriptName = path.posix.basename(normalizedScriptFile, path.posix.extname(normalizedScriptFile));
   const entryCssFile = path.posix.join(scriptDir, `${scriptName}.css`);
   const entryCssPath = path.join(vueDistPath, ...entryCssFile.split('/'));
+  const sharedCssFiles = ['xterm.css']
+    .map(file => path.posix.join(scriptDir, file))
+    .filter(file => file !== entryCssFile && fs.existsSync(path.join(vueDistPath, ...file.split('/'))));
 
-  return fs.existsSync(entryCssPath) ? [entryCssFile] : [];
+  return fs.existsSync(entryCssPath) ? [entryCssFile, ...sharedCssFiles] : sharedCssFiles;
 }

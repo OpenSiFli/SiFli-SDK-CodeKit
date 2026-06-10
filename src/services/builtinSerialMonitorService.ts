@@ -770,7 +770,6 @@ export class BuiltinSerialMonitorService {
     if (typeof settings.renderAnsi === 'boolean') {
       await this.workspaceStateService.setSerialMonitorRenderAnsi(settings.renderAnsi);
     }
-
     const nextBaudRate = this.resolveLogBaudRate(settings.logBaudRate);
     if (nextBaudRate === undefined) {
       return false;

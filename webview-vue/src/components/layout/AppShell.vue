@@ -57,7 +57,7 @@ const isStandaloneRoute = computed(
 const showBackButton = computed(() => route.path !== '/' && !isStandaloneRoute.value);
 const rootClass = computed(() =>
   isViewportLockedRoute.value
-    ? 'h-screen min-h-0 overflow-hidden p-0 text-vscode-foreground'
+    ? 'h-full min-h-0 overflow-hidden p-0 text-vscode-foreground'
     : 'min-h-screen p-0 text-vscode-foreground'
 );
 const shellClass = computed(() =>
