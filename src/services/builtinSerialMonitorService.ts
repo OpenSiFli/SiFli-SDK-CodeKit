@@ -78,6 +78,7 @@ export interface SerialReadResult {
 export interface SerialMonitorSettings {
   showTimestamp: boolean;
   renderAnsi: boolean;
+  localEcho: boolean;
   logBaudRate: number;
 }
 
@@ -770,6 +771,9 @@ export class BuiltinSerialMonitorService {
     if (typeof settings.renderAnsi === 'boolean') {
       await this.workspaceStateService.setSerialMonitorRenderAnsi(settings.renderAnsi);
     }
+    if (typeof settings.localEcho === 'boolean') {
+      await this.workspaceStateService.setSerialMonitorLocalEcho(settings.localEcho);
+    }
 
     const nextBaudRate = this.resolveLogBaudRate(settings.logBaudRate);
     if (nextBaudRate === undefined) {
@@ -956,6 +960,7 @@ export class BuiltinSerialMonitorService {
     return {
       showTimestamp: this.workspaceStateService.getSerialMonitorShowTimestamp(),
       renderAnsi: this.workspaceStateService.getSerialMonitorRenderAnsi(),
+      localEcho: this.workspaceStateService.getSerialMonitorLocalEcho(),
       logBaudRate: this.workspaceStateService.getMonitorBaudRate(),
     };
   }

@@ -323,6 +323,7 @@ export interface SerialMonitorSnapshot {
   settings: {
     showTimestamp: boolean;
     renderAnsi: boolean;
+    localEcho: boolean;
     logBaudRate: number;
   };
 }

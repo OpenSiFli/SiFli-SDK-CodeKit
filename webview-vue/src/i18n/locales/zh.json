@@ -597,6 +597,8 @@
       "description": "这些偏好会保存在当前工作区，重新打开监视器后仍会生效。",
       "logBaudRate": "日志波特率",
       "logBaudRateDescription": "用于串口日志和 MCP 会话，不影响状态栏 COM 下载波特率。",
+      "localEcho": "终端输入本地回显",
+      "localEchoDescription": "开启后，在终端模式中输入的字符会立即显示；如果设备自身会回显，请保持关闭。",
       "renderAnsi": "渲染 VT-100 颜色",
       "renderAnsiDescription": "解析 ANSI SGR 颜色序列，关闭后会以普通文本显示日志。",
       "showTimestamp": "显示时间戳",

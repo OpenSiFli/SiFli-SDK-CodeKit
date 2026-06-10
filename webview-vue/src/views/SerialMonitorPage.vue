@@ -164,6 +164,18 @@
           <input v-model="settings.renderAnsi" type="checkbox" class="h-4 w-4" @change="updateSettings" />
         </label>
 
+        <label
+          class="mt-4 flex cursor-pointer items-center justify-between gap-4 border-t border-vscode-panel-border pt-4"
+        >
+          <span>
+            <span class="block text-sm">{{ t('serialMonitor.settings.localEcho') }}</span>
+            <span class="mt-1 block text-xs text-vscode-input-placeholder">
+              {{ t('serialMonitor.settings.localEchoDescription') }}
+            </span>
+          </span>
+          <input v-model="settings.localEcho" type="checkbox" class="h-4 w-4" @change="updateSettings" />
+        </label>
+
         <label class="mt-4 block border-t border-vscode-panel-border pt-4">
           <span class="block text-sm">{{ t('serialMonitor.settings.logBaudRate') }}</span>
           <span class="mt-1 block text-xs text-vscode-input-placeholder">
@@ -325,7 +337,7 @@ const lineEnding = ref<SerialLineEnding>('crlf');
 const showHex = ref(false);
 const terminalMode = ref(false);
 const settingsOpen = ref(false);
-const settings = ref({ showTimestamp: true, renderAnsi: true, logBaudRate: 1000000 });
+const settings = ref({ showTimestamp: true, renderAnsi: true, localEcho: false, logBaudRate: 1000000 });
 const input = ref('');
 const errorMessage = ref('');
 const logContainer = ref<HTMLElement | null>(null);
@@ -394,7 +406,9 @@ const disposables: Array<() => void> = [];
 
 onMounted(() => {
   window.addEventListener('keydown', handleGlobalKeydown);
+  window.addEventListener('resize', handleWindowResize);
   disposables.push(() => window.removeEventListener('keydown', handleGlobalKeydown));
+  disposables.push(() => window.removeEventListener('resize', handleWindowResize));
   disposables.push(
     onMessage<{ snapshot: SerialMonitorSnapshot }>('serialMonitorSnapshot', payload => {
       applySnapshot(payload.snapshot);
@@ -513,6 +527,7 @@ function applySnapshot(snapshot: SerialMonitorSnapshot) {
   settings.value = {
     showTimestamp: snapshot.settings?.showTimestamp ?? true,
     renderAnsi: snapshot.settings?.renderAnsi ?? true,
+    localEcho: snapshot.settings?.localEcho ?? false,
     logBaudRate: snapshot.settings?.logBaudRate ?? snapshot.status.baudRate ?? 1000000,
   };
   if (terminalMode.value) {
@@ -581,6 +596,7 @@ function updateSettings() {
     settings: {
       showTimestamp: settings.value.showTimestamp,
       renderAnsi: settings.value.renderAnsi,
+      localEcho: settings.value.localEcho,
       logBaudRate: settings.value.logBaudRate,
     },
   });
@@ -684,6 +700,7 @@ async function initializeTerminal() {
       allowProposedApi: true,
       convertEol: true,
       cursorBlink: true,
+      cursorStyle: 'bar',
       fontFamily: "Menlo, Monaco, 'Courier New', monospace",
       fontSize: 13,
       scrollback: 5000,
@@ -716,12 +733,19 @@ async function initializeTerminal() {
 }
 
 function sendTerminalText(payload: string) {
+  if (settings.value.localEcho && terminal) {
+    terminal.write(toLocalEchoText(payload));
+  }
   postMessage({
     command: 'serialMonitorSend',
     payload,
     mode: 'text',
     lineEnding: 'none',
   });
+}
+
+function toLocalEchoText(payload: string): string {
+  return payload.replace(/\x7f/g, '\b \b').replace(/\r\n|\r|\n/g, '\r\n');
 }
 
 function runTerminalSearch(direction: SearchDirection, incremental = false) {
@@ -832,6 +856,13 @@ function fitTerminal() {
   } catch {
     // xterm can throw while the container is not measurable during webview layout churn.
   }
+}
+
+function handleWindowResize() {
+  if (!terminalMode.value || !terminal) {
+    return;
+  }
+  window.requestAnimationFrame(() => fitTerminal());
 }
 
 function disposeTerminal() {
@@ -1160,6 +1191,7 @@ async function scrollToBottom() {
 .serial-monitor-shell {
   height: 100%;
   max-height: 100%;
+  min-width: 0;
 }
 
 .tool-button,
@@ -1281,26 +1313,36 @@ async function scrollToBottom() {
   background: var(--vscode-terminal-background, var(--vscode-background));
   color: var(--vscode-terminal-foreground, var(--vscode-foreground));
   outline: none;
+  min-width: 0;
 }
 
 .xterm-host {
+  width: 100%;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
 }
 
 .xterm-host :deep(.xterm) {
   box-sizing: border-box;
+  width: 100%;
   height: 100%;
   padding: 8px 10px;
 }
 
 .xterm-host :deep(.xterm-screen) {
+  width: 100%;
   min-height: 100%;
 }
 
 .xterm-host :deep(.xterm-viewport) {
   background: transparent;
+}
+
+.xterm-host :deep(.xterm-helpers),
+.xterm-host :deep(.xterm-helper-textarea) {
+  max-width: 100%;
 }
 
 .send-input {

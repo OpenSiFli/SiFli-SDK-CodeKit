@@ -597,6 +597,8 @@
       "description": "These preferences are saved in the current workspace and apply when the monitor is reopened.",
       "logBaudRate": "Log baud rate",
       "logBaudRateDescription": "Used by serial logs and MCP sessions. It does not change the status bar COM download baud rate.",
+      "localEcho": "Local echo terminal input",
+      "localEchoDescription": "Show typed characters immediately in terminal mode. Keep this off when the device echoes input itself.",
       "renderAnsi": "Render VT-100 colors",
       "renderAnsiDescription": "Parse ANSI SGR color sequences. Turn it off to show logs as plain text.",
       "showTimestamp": "Show timestamps",

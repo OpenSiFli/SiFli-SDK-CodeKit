@@ -25,10 +25,16 @@ describe('vueWebviewAssets', () => {
     return dir;
   }
 
-  it('loads only the default entry css for the main Vue webview', () => {
+  it('loads the default entry css and shared xterm css for the main Vue webview', () => {
     const distPath = createDistWithCssFiles(['index.css', 'buildLogs.css', 'xterm.css']);
 
-    assert.deepStrictEqual(resolveVueWebviewCssFiles(distPath), ['assets/index.css']);
+    assert.deepStrictEqual(resolveVueWebviewCssFiles(distPath), ['assets/index.css', 'assets/xterm.css']);
+  });
+
+  it('keeps unrelated entry css out of the main Vue webview', () => {
+    const distPath = createDistWithCssFiles(['index.css', 'buildLogs.css', 'memoryMap.css', 'xterm.css']);
+
+    assert.deepStrictEqual(resolveVueWebviewCssFiles(distPath), ['assets/index.css', 'assets/xterm.css']);
   });
 
   it('uses explicit css files for the build logs webview', () => {
