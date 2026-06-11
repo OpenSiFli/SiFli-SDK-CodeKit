@@ -28,6 +28,10 @@ export interface WorkspaceState {
   serialMonitorShowTimestamp?: boolean;
   // 串口监视器是否渲染 VT-100/ANSI 颜色
   serialMonitorRenderAnsi?: boolean;
+  // sftool 外部 stub bin 路径
+  sftoolStubPath?: string;
+  // sftool stub_config JSON 路径
+  sftoolStubConfigPath?: string;
 }
 
 // 工作区状态的 key 常量
@@ -43,6 +47,8 @@ export const WORKSPACE_STATE_KEYS = {
   WORKFLOW_SHELL_APPROVALS: 'workflowShellApprovals',
   SERIAL_MONITOR_SHOW_TIMESTAMP: 'serialMonitorShowTimestamp',
   SERIAL_MONITOR_RENDER_ANSI: 'serialMonitorRenderAnsi',
+  SFTOOL_STUB_PATH: 'sftoolStubPath',
+  SFTOOL_STUB_CONFIG_PATH: 'sftoolStubConfigPath',
 } as const;
 
 // 默认值
@@ -58,6 +64,8 @@ const DEFAULT_VALUES: Required<WorkspaceState> = {
   workflowShellApprovals: {},
   serialMonitorShowTimestamp: true,
   serialMonitorRenderAnsi: true,
+  sftoolStubPath: '',
+  sftoolStubConfigPath: '',
 };
 
 /**
@@ -134,6 +142,8 @@ export class WorkspaceStateService {
       workflowShellApprovals: this.get('workflowShellApprovals'),
       serialMonitorShowTimestamp: this.get('serialMonitorShowTimestamp'),
       serialMonitorRenderAnsi: this.get('serialMonitorRenderAnsi'),
+      sftoolStubPath: this.get('sftoolStubPath'),
+      sftoolStubConfigPath: this.get('sftoolStubConfigPath'),
     };
   }
 
@@ -276,5 +286,31 @@ export class WorkspaceStateService {
 
   public async setSerialMonitorRenderAnsi(value: boolean): Promise<void> {
     await this.set('serialMonitorRenderAnsi', value);
+  }
+
+  // sftoolStubPath
+  public getSftoolStubPath(): string {
+    return this.get('sftoolStubPath') || '';
+  }
+
+  public async setSftoolStubPath(value: string): Promise<void> {
+    await this.set('sftoolStubPath', value);
+  }
+
+  public async clearSftoolStubPath(): Promise<void> {
+    await this.clear('sftoolStubPath');
+  }
+
+  // sftoolStubConfigPath
+  public getSftoolStubConfigPath(): string {
+    return this.get('sftoolStubConfigPath') || '';
+  }
+
+  public async setSftoolStubConfigPath(value: string): Promise<void> {
+    await this.set('sftoolStubConfigPath', value);
+  }
+
+  public async clearSftoolStubConfigPath(): Promise<void> {
+    await this.clear('sftoolStubConfigPath');
   }
 }
