@@ -394,7 +394,9 @@ const disposables: Array<() => void> = [];
 
 onMounted(() => {
   window.addEventListener('keydown', handleGlobalKeydown);
+  window.addEventListener('resize', handleWindowResize);
   disposables.push(() => window.removeEventListener('keydown', handleGlobalKeydown));
+  disposables.push(() => window.removeEventListener('resize', handleWindowResize));
   disposables.push(
     onMessage<{ snapshot: SerialMonitorSnapshot }>('serialMonitorSnapshot', payload => {
       applySnapshot(payload.snapshot);
@@ -684,6 +686,7 @@ async function initializeTerminal() {
       allowProposedApi: true,
       convertEol: true,
       cursorBlink: true,
+      cursorStyle: 'bar',
       fontFamily: "Menlo, Monaco, 'Courier New', monospace",
       fontSize: 13,
       scrollback: 5000,
@@ -832,6 +835,13 @@ function fitTerminal() {
   } catch {
     // xterm can throw while the container is not measurable during webview layout churn.
   }
+}
+
+function handleWindowResize() {
+  if (!terminalMode.value || !terminal) {
+    return;
+  }
+  window.requestAnimationFrame(() => fitTerminal());
 }
 
 function disposeTerminal() {
@@ -1160,6 +1170,7 @@ async function scrollToBottom() {
 .serial-monitor-shell {
   height: 100%;
   max-height: 100%;
+  min-width: 0;
 }
 
 .tool-button,
@@ -1281,26 +1292,36 @@ async function scrollToBottom() {
   background: var(--vscode-terminal-background, var(--vscode-background));
   color: var(--vscode-terminal-foreground, var(--vscode-foreground));
   outline: none;
+  min-width: 0;
 }
 
 .xterm-host {
+  width: 100%;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
 }
 
 .xterm-host :deep(.xterm) {
   box-sizing: border-box;
+  width: 100%;
   height: 100%;
   padding: 8px 10px;
 }
 
 .xterm-host :deep(.xterm-screen) {
+  width: 100%;
   min-height: 100%;
 }
 
 .xterm-host :deep(.xterm-viewport) {
   background: transparent;
+}
+
+.xterm-host :deep(.xterm-helpers),
+.xterm-host :deep(.xterm-helper-textarea) {
+  max-width: 100%;
 }
 
 .send-input {
