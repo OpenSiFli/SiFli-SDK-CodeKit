@@ -46,6 +46,7 @@
   "command.workflows.copy.title": "复制工作流",
   "command.workflows.delete.title": "删除工作流",
   "command.workflows.pin.title": "固定工作流到状态栏",
+  "command.workflows.setKeybinding.title": "设置工作流快捷键",
   "command.workflows.rename.title": "重命名工作流",
   "command.workflows.stepAdd.title": "添加步骤",
   "command.workflows.stepDelete.title": "删除此步骤",
