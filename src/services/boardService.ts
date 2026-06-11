@@ -5,18 +5,22 @@ import { Board, BoardDiscoveryResult, SftoolParam } from '../types';
 import { CUSTOMER_BOARDS_SUBFOLDER, PROJECT_SUBFOLDER, SFTOOL_PARAM_JSON_FILE } from '../constants';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
+import { WorkspaceStateService } from './workspaceStateService';
 import { getProjectInfo } from '../utils/projectUtils';
 import { buildBoardSearchArg } from '../utils/boardSearchPathUtils';
 import { isValidBoardDirectory } from '../utils/boardDiscoveryUtils';
+import { buildSftoolStubArgs } from '../utils/sftoolCommandUtils';
 
 export class BoardService {
   private static instance: BoardService;
   private configService: ConfigService;
   private logService: LogService;
+  private workspaceStateService: WorkspaceStateService;
 
   private constructor() {
     this.configService = ConfigService.getInstance();
     this.logService = LogService.getInstance();
+    this.workspaceStateService = WorkspaceStateService.getInstance();
   }
 
   public static getInstance(): BoardService {
@@ -215,6 +219,14 @@ export class BoardService {
 
     if (sftoolParam.memory) {
       command += ` -m ${sftoolParam.memory.toLowerCase()}`;
+    }
+
+    const stubArgs = buildSftoolStubArgs({
+      stubPath: this.workspaceStateService.getSftoolStubPath(),
+      stubConfigPath: this.workspaceStateService.getSftoolStubConfigPath(),
+    });
+    if (stubArgs) {
+      command += ` ${stubArgs}`;
     }
 
     // 处理 write_flash 命令

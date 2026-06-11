@@ -361,6 +361,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       ),
       vscode.commands.registerCommand(CMD_PREFIX + 'selectChipModule', () => configCommands.selectChipModule()),
       vscode.commands.registerCommand(CMD_PREFIX + 'selectPort', () => configCommands.selectPort()),
+      vscode.commands.registerCommand(CMD_PREFIX + 'configureSftoolStub', () => configCommands.configureSftoolStub()),
       vscode.commands.registerCommand(CMD_PREFIX + 'openDeviceMonitor', () => statusBarProvider.openDeviceMonitor()),
       vscode.commands.registerCommand(CMD_PREFIX + 'closeDeviceMonitor', () => statusBarProvider.closeDeviceMonitor()),
       vscode.commands.registerCommand(CMD_PREFIX + 'listSerialPorts', () => configCommands.listSerialPorts()),

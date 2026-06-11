@@ -7,8 +7,11 @@ import { SerialPortService } from '../services/serialPortService';
 import { SerialMonitorService } from '../services/serialMonitorService';
 import { SdkService } from '../services/sdkService';
 import { ClangdService } from '../services/clangdService';
+import { WorkspaceStateService } from '../services/workspaceStateService';
 import { StatusBarProvider } from '../providers/statusBarProvider';
 import { HAS_RUN_INITIAL_SETUP_KEY } from '../constants';
+
+type SftoolStubAction = 'selectStubBin' | 'selectStubConfig' | 'clearStubBin' | 'clearStubConfig' | 'clearAll';
 
 export class ConfigCommands {
   private static instance: ConfigCommands;
@@ -18,6 +21,7 @@ export class ConfigCommands {
   private serialMonitorService: SerialMonitorService;
   private sdkService: SdkService;
   private clangdService: ClangdService;
+  private workspaceStateService: WorkspaceStateService;
   private statusBarProvider: StatusBarProvider;
 
   private constructor() {
@@ -27,6 +31,7 @@ export class ConfigCommands {
     this.serialMonitorService = SerialMonitorService.getInstance();
     this.sdkService = SdkService.getInstance();
     this.clangdService = ClangdService.getInstance();
+    this.workspaceStateService = WorkspaceStateService.getInstance();
     this.statusBarProvider = StatusBarProvider.getInstance();
   }
 
@@ -195,6 +200,133 @@ export class ConfigCommands {
       console.error('列出串口失败:', error);
       vscode.window.showErrorMessage(vscode.l10n.t('Failed to get serial port list: {0}', String(error)));
     }
+  }
+
+  public async configureSftoolStub(): Promise<void> {
+    try {
+      const stubPath = this.workspaceStateService.getSftoolStubPath();
+      const stubConfigPath = this.workspaceStateService.getSftoolStubConfigPath();
+      const items: Array<vscode.QuickPickItem & { action: SftoolStubAction }> = [
+        {
+          label: vscode.l10n.t('Select external stub bin'),
+          description: stubPath ? vscode.l10n.t('Current: {0}', stubPath) : vscode.l10n.t('Not selected'),
+          action: 'selectStubBin',
+        },
+        {
+          label: vscode.l10n.t('Select stub_config JSON'),
+          description: stubConfigPath ? vscode.l10n.t('Current: {0}', stubConfigPath) : vscode.l10n.t('Not selected'),
+          action: 'selectStubConfig',
+        },
+        {
+          label: vscode.l10n.t('Clear external stub bin'),
+          description: stubPath || vscode.l10n.t('Not selected'),
+          action: 'clearStubBin',
+        },
+        {
+          label: vscode.l10n.t('Clear stub_config JSON'),
+          description: stubConfigPath || vscode.l10n.t('Not selected'),
+          action: 'clearStubConfig',
+        },
+        {
+          label: vscode.l10n.t('Clear all stub settings'),
+          description: this.getSftoolStubStatusLabel(stubPath, stubConfigPath),
+          action: 'clearAll',
+        },
+      ];
+
+      const selected = await vscode.window.showQuickPick(items, {
+        placeHolder: vscode.l10n.t('Configure sftool stub source'),
+        canPickMany: false,
+      });
+
+      if (!selected) {
+        return;
+      }
+
+      switch (selected.action) {
+        case 'selectStubBin':
+          await this.selectExternalStubBin(stubPath);
+          break;
+        case 'selectStubConfig':
+          await this.selectStubConfigJson(stubConfigPath);
+          break;
+        case 'clearStubBin':
+          await this.workspaceStateService.clearSftoolStubPath();
+          vscode.window.showInformationMessage(vscode.l10n.t('External stub bin cleared.'));
+          break;
+        case 'clearStubConfig':
+          await this.workspaceStateService.clearSftoolStubConfigPath();
+          vscode.window.showInformationMessage(vscode.l10n.t('stub_config JSON cleared.'));
+          break;
+        case 'clearAll':
+          await this.workspaceStateService.clearSftoolStubPath();
+          await this.workspaceStateService.clearSftoolStubConfigPath();
+          vscode.window.showInformationMessage(vscode.l10n.t('sftool stub settings cleared.'));
+          break;
+      }
+    } catch (error) {
+      console.error('[ConfigCommands] Error in configureSftoolStub:', error);
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to configure sftool stub: {0}', String(error)));
+    }
+  }
+
+  private async selectExternalStubBin(currentPath: string): Promise<void> {
+    const result = await vscode.window.showOpenDialog({
+      canSelectFiles: true,
+      canSelectFolders: false,
+      canSelectMany: false,
+      defaultUri: currentPath ? vscode.Uri.file(currentPath) : undefined,
+      filters: {
+        [vscode.l10n.t('sftool stub bin')]: ['bin'],
+        [vscode.l10n.t('All files')]: ['*'],
+      },
+      openLabel: vscode.l10n.t('Select external stub bin'),
+      title: vscode.l10n.t('Select external stub bin'),
+    });
+
+    const selected = result?.[0]?.fsPath;
+    if (!selected) {
+      return;
+    }
+
+    await this.workspaceStateService.setSftoolStubPath(selected);
+    vscode.window.showInformationMessage(vscode.l10n.t('External stub bin selected: {0}', selected));
+  }
+
+  private async selectStubConfigJson(currentPath: string): Promise<void> {
+    const result = await vscode.window.showOpenDialog({
+      canSelectFiles: true,
+      canSelectFolders: false,
+      canSelectMany: false,
+      defaultUri: currentPath ? vscode.Uri.file(currentPath) : undefined,
+      filters: {
+        [vscode.l10n.t('stub_config JSON')]: ['json'],
+        [vscode.l10n.t('All files')]: ['*'],
+      },
+      openLabel: vscode.l10n.t('Select stub_config JSON'),
+      title: vscode.l10n.t('Select stub_config JSON'),
+    });
+
+    const selected = result?.[0]?.fsPath;
+    if (!selected) {
+      return;
+    }
+
+    await this.workspaceStateService.setSftoolStubConfigPath(selected);
+    vscode.window.showInformationMessage(vscode.l10n.t('stub_config JSON selected: {0}', selected));
+  }
+
+  private getSftoolStubStatusLabel(stubPath: string, stubConfigPath: string): string {
+    if (stubPath && stubConfigPath) {
+      return vscode.l10n.t('External bin + config');
+    }
+    if (stubPath) {
+      return vscode.l10n.t('External bin');
+    }
+    if (stubConfigPath) {
+      return vscode.l10n.t('Stub config');
+    }
+    return vscode.l10n.t('Embedded');
   }
 
   /**
