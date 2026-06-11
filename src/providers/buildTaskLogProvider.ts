@@ -59,6 +59,10 @@ export class BuildTaskLogProvider implements vscode.WebviewViewProvider {
     const messageListener = webviewView.webview.onDidReceiveMessage(message => {
       if (message?.command === 'ready' || message?.command === 'buildTasks.ready') {
         this.postUpdate(true);
+        return;
+      }
+      if (message?.command === 'buildTasks.openLocation') {
+        void this.openLogLocation(message);
       }
     });
 
@@ -216,6 +220,48 @@ export class BuildTaskLogProvider implements vscode.WebviewViewProvider {
       this.pendingStateUpdate = undefined;
     }
     this.pendingLogs.splice(0, this.pendingLogs.length);
+  }
+
+  private async openLogLocation(message: unknown): Promise<void> {
+    const location = this.parseOpenLocationMessage(message);
+    if (!location) {
+      return;
+    }
+
+    try {
+      const document = await vscode.workspace.openTextDocument(vscode.Uri.file(location.path));
+      const editor = await vscode.window.showTextDocument(document, { preserveFocus: false });
+      const position = new vscode.Position(Math.max(location.line - 1, 0), Math.max((location.column ?? 1) - 1, 0));
+      editor.selection = new vscode.Selection(position, position);
+      editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : String(error);
+      void vscode.window.showWarningMessage(vscode.l10n.t('Unable to open log location: {0}', messageText));
+    }
+  }
+
+  private parseOpenLocationMessage(message: unknown): { path: string; line: number; column?: number } | undefined {
+    if (!message || typeof message !== 'object') {
+      return undefined;
+    }
+    const record = message as Record<string, unknown>;
+    if (typeof record.path !== 'string' || record.path.trim().length === 0) {
+      return undefined;
+    }
+    const line = this.parsePositiveInteger(record.line) ?? 1;
+    const column = this.parsePositiveInteger(record.column);
+    return {
+      path: record.path,
+      line,
+      ...(column === undefined ? {} : { column }),
+    };
+  }
+
+  private parsePositiveInteger(value: unknown): number | undefined {
+    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
+      return undefined;
+    }
+    return value;
   }
 
   private formatStatus(status: BuildTaskRecord['status']): string {

@@ -11,6 +11,7 @@ import {
   quotePowerShellString,
   resolvePowerShellExecutable,
 } from '../utils/powerShellUtils';
+import { resolveBuildLogLinks, type BuildLogLink } from '../utils/buildLogLinks';
 import { getProjectInfo } from '../utils/projectUtils';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
@@ -30,6 +31,7 @@ export interface BuildTaskViewLogEntry extends BuildTaskLogEntry {
   id: string;
   taskId: string;
   taskTitle: string;
+  links?: BuildLogLink[];
 }
 
 export interface BuildTaskChangeEvent {
@@ -591,17 +593,28 @@ export class BuildTaskService {
   }
 
   private appendViewLog(task: BuildTaskRecord, entry: BuildTaskLogEntry): BuildTaskViewLogEntry {
+    const links = resolveBuildLogLinks(entry.message, {
+      searchRoots: this.getLogLinkSearchRoots(task),
+    });
     const viewEntry: BuildTaskViewLogEntry = {
       ...entry,
       id: `build-task-log-${this.viewLogSequence++}`,
       taskId: task.id,
       taskTitle: task.title,
+      ...(links.length > 0 ? { links } : {}),
     };
     this.viewLogs.push(viewEntry);
     if (this.viewLogs.length > BuildTaskService.MAX_VIEW_LOGS) {
       this.viewLogs.splice(0, this.viewLogs.length - BuildTaskService.MAX_VIEW_LOGS);
     }
     return viewEntry;
+  }
+
+  private getLogLinkSearchRoots(task: BuildTaskRecord): string[] {
+    const sdkPath = this.configService.getCurrentSdkPath() || this.configService.getCurrentSdk()?.path;
+    return [task.cwd, ...(vscode.workspace.workspaceFolders ?? []).map(folder => folder.uri.fsPath), sdkPath].filter(
+      (root): root is string => typeof root === 'string' && root.trim().length > 0
+    );
   }
 
   private removeViewLogsForTasks(taskIds: Set<string>): void {

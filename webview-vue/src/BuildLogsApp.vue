@@ -36,6 +36,14 @@ import { getVSCodeApiInstance } from './utils/vsCodeApi';
 type BuildTaskStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 type BuildTaskLogLevel = 'info' | 'warn' | 'error';
 
+interface BuildTaskLogLink {
+  start: number;
+  end: number;
+  path: string;
+  line: number;
+  column?: number;
+}
+
 interface BuildTaskViewLogEntry {
   id: string;
   taskId: string;
@@ -43,6 +51,7 @@ interface BuildTaskViewLogEntry {
   ts: string;
   level: BuildTaskLogLevel;
   message: string;
+  links?: BuildTaskLogLink[];
 }
 
 interface BuildTaskViewModel {
@@ -168,6 +177,15 @@ async function initializeTerminal() {
     disableStdin: true,
     fontFamily: readTerminalFontFamily(),
     fontSize: readTerminalFontSize(),
+    linkHandler: {
+      allowNonHttpProtocols: true,
+      activate: (event, uri) => {
+        if (!isOpenModifierPressed(event)) {
+          return;
+        }
+        openLinkedLogLocation(uri);
+      },
+    },
     scrollback: 10000,
     theme: readTerminalTheme(),
   });
@@ -226,7 +244,7 @@ function writeLogEntry(entry: BuildTaskViewLogEntry) {
     return;
   }
 
-  const text = entry.message.replace(/\r?\n/g, '\r\n');
+  const text = formatLogEntryText(entry);
   if (entry.level === 'error') {
     terminal.write(`\x1b[31m${text}\x1b[0m\r\n`);
     return;
@@ -236,6 +254,100 @@ function writeLogEntry(entry: BuildTaskViewLogEntry) {
     return;
   }
   terminal.write(`${text}\r\n`);
+}
+
+function formatLogEntryText(entry: BuildTaskViewLogEntry): string {
+  const links = (entry.links ?? [])
+    .filter(link => isValidLogLink(link, entry.message.length))
+    .sort((left, right) => left.start - right.start);
+  if (links.length === 0) {
+    return normalizeTerminalNewlines(entry.message);
+  }
+
+  let cursor = 0;
+  let output = '';
+  for (const link of links) {
+    if (link.start < cursor) {
+      continue;
+    }
+    output += entry.message.slice(cursor, link.start);
+    output += wrapOscLink(entry.message.slice(link.start, link.end), link);
+    cursor = link.end;
+  }
+  output += entry.message.slice(cursor);
+  return normalizeTerminalNewlines(output);
+}
+
+function wrapOscLink(text: string, link: BuildTaskLogLink): string {
+  return `\x1b]8;;${encodeLogLocationUri(link)}\x1b\\${text}\x1b]8;;\x1b\\`;
+}
+
+function encodeLogLocationUri(link: BuildTaskLogLink): string {
+  const params = new URLSearchParams({
+    path: link.path,
+    line: String(link.line),
+  });
+  if (link.column !== undefined) {
+    params.set('column', String(link.column));
+  }
+  return `sifli-log://open?${params.toString()}`;
+}
+
+function openLinkedLogLocation(uri: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(uri);
+  } catch {
+    return;
+  }
+  if (parsed.protocol !== 'sifli-log:' || parsed.hostname !== 'open') {
+    return;
+  }
+
+  const filePath = parsed.searchParams.get('path');
+  const line = parsePositiveInteger(parsed.searchParams.get('line'));
+  const column = parsePositiveInteger(parsed.searchParams.get('column'));
+  if (!filePath || line === undefined) {
+    return;
+  }
+
+  getVSCodeApiInstance()?.postMessage({
+    command: 'buildTasks.openLocation',
+    path: filePath,
+    line,
+    ...(column === undefined ? {} : { column }),
+  });
+}
+
+function isOpenModifierPressed(event: MouseEvent): boolean {
+  return event.metaKey || event.ctrlKey;
+}
+
+function isValidLogLink(link: BuildTaskLogLink, messageLength: number): boolean {
+  return (
+    Number.isSafeInteger(link.start) &&
+    Number.isSafeInteger(link.end) &&
+    link.start >= 0 &&
+    link.end > link.start &&
+    link.end <= messageLength &&
+    typeof link.path === 'string' &&
+    link.path.length > 0 &&
+    Number.isSafeInteger(link.line) &&
+    link.line > 0 &&
+    (link.column === undefined || (Number.isSafeInteger(link.column) && link.column > 0))
+  );
+}
+
+function parsePositiveInteger(value: string | null): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function normalizeTerminalNewlines(text: string): string {
+  return text.replace(/\r?\n/g, '\r\n');
 }
 
 function fitTerminal() {
