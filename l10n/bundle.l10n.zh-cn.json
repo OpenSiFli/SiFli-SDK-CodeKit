@@ -883,5 +883,10 @@
   "Current workspace is not a SiFli project.": "当前工作区不是 SiFli 工程。",
   "Memory map file was not found: {0}": "未找到 map 文件：{0}",
   "exit code {0}": "退出码 {0}",
-  "unknown error": "未知错误"
+  "unknown error": "未知错误",
+  "Workflow keyboard shortcut service is not initialized.": "工作流快捷键服务尚未初始化。",
+  "Open JSON": "打开 JSON",
+  "Keyboard shortcut {0} was set for workflow {1}.": "已为工作流 {1} 设置快捷键 {0}。",
+  "Could not locate the workflow keybinding entry.": "无法定位工作流快捷键条目。",
+  "Could not start the native keybinding editor. The keybinding snippet was copied to the clipboard. {0}": "无法启动原生快捷键编辑器。快捷键片段已复制到剪贴板。{0}"
 }

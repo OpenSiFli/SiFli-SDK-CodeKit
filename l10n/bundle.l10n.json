@@ -705,5 +705,10 @@
   "Current workspace is not a SiFli project.": "Current workspace is not a SiFli project.",
   "Memory map file was not found: {0}": "Memory map file was not found: {0}",
   "exit code {0}": "exit code {0}",
-  "unknown error": "unknown error"
+  "unknown error": "unknown error",
+  "Workflow keyboard shortcut service is not initialized.": "Workflow keyboard shortcut service is not initialized.",
+  "Open JSON": "Open JSON",
+  "Keyboard shortcut {0} was set for workflow {1}.": "Keyboard shortcut {0} was set for workflow {1}.",
+  "Could not locate the workflow keybinding entry.": "Could not locate the workflow keybinding entry.",
+  "Could not start the native keybinding editor. The keybinding snippet was copied to the clipboard. {0}": "Could not start the native keybinding editor. The keybinding snippet was copied to the clipboard. {0}"
 }
