@@ -68,6 +68,10 @@
         "title": "%command.selectPort.title%"
       },
       {
+        "command": "extension.configureSftoolStub",
+        "title": "%command.configureSftoolStub.title%"
+      },
+      {
         "command": "extension.openDeviceMonitor",
         "title": "%command.openDeviceMonitor.title%"
       },
