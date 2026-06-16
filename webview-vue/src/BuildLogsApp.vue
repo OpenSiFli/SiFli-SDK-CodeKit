@@ -83,7 +83,11 @@ interface BuildTasksAppendLogsMessage {
   logCount: number;
 }
 
-type BuildTasksMessage = BuildTasksUpdateMessage | BuildTasksAppendLogsMessage;
+interface BuildTasksCopySelectionRequestMessage {
+  command: 'buildTasks.copySelectionRequest';
+}
+
+type BuildTasksMessage = BuildTasksUpdateMessage | BuildTasksAppendLogsMessage | BuildTasksCopySelectionRequestMessage;
 
 const emptyState: BuildTaskLogViewState = {
   tasks: [],
@@ -138,11 +142,15 @@ let renderedLogIds: string[] = [];
 onMounted(async () => {
   await initializeTerminal();
   window.addEventListener('message', handleMessage);
+  window.addEventListener('keydown', handleGlobalKeydown, true);
+  window.addEventListener('copy', handleCopyEvent, true);
   getVSCodeApiInstance()?.postMessage({ command: 'buildTasks.ready' });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('message', handleMessage);
+  window.removeEventListener('keydown', handleGlobalKeydown, true);
+  window.removeEventListener('copy', handleCopyEvent, true);
   disposeTerminal();
 });
 
@@ -162,6 +170,11 @@ function handleMessage(event: MessageEvent) {
       logCount: message.logCount,
     };
     appendTerminalLogs(message.logs);
+    return;
+  }
+
+  if (message?.command === 'buildTasks.copySelectionRequest') {
+    postSelectionText();
   }
 }
 
@@ -254,6 +267,43 @@ function writeLogEntry(entry: BuildTaskViewLogEntry) {
     return;
   }
   terminal.write(`${text}\r\n`);
+}
+
+function handleGlobalKeydown(event: KeyboardEvent) {
+  if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'c') {
+    return;
+  }
+  const selection = getTerminalSelectionText();
+  if (selection.length === 0) {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  postSelectionText(selection);
+}
+
+function handleCopyEvent(event: ClipboardEvent) {
+  const selection = getTerminalSelectionText();
+  if (selection.length === 0) {
+    return;
+  }
+  event.clipboardData?.setData('text/plain', selection);
+  event.preventDefault();
+  postSelectionText(selection);
+}
+
+function postSelectionText(text = getTerminalSelectionText()) {
+  getVSCodeApiInstance()?.postMessage({
+    command: 'buildTasks.copySelectionResponse',
+    text,
+  });
+}
+
+function getTerminalSelectionText(): string {
+  if (!terminal?.hasSelection()) {
+    return '';
+  }
+  return terminal.getSelection();
 }
 
 function formatLogEntryText(entry: BuildTaskViewLogEntry): string {

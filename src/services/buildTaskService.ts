@@ -12,6 +12,7 @@ import {
   resolvePowerShellExecutable,
 } from '../utils/powerShellUtils';
 import { resolveBuildLogLinks, type BuildLogLink } from '../utils/buildLogLinks';
+import { formatBuildLogText } from '../utils/buildLogText';
 import { getProjectInfo } from '../utils/projectUtils';
 import { ConfigService } from './configService';
 import { LogService } from './logService';
@@ -96,6 +97,7 @@ export class BuildTaskService {
   private readonly outputChannel: vscode.OutputChannel;
   private readonly tasks = new Map<string, BuildTaskRecord>();
   private readonly viewLogs: BuildTaskViewLogEntry[] = [];
+  private readonly exportLogs: BuildTaskViewLogEntry[] = [];
   private readonly queue: QueuedTask[] = [];
   private readonly _onDidChangeTasks = new vscode.EventEmitter<BuildTaskChangeEvent>();
   private cachedEnvironment?: CachedEnvironment;
@@ -134,6 +136,10 @@ export class BuildTaskService {
     return this.viewLogs.length;
   }
 
+  public getExportLogText(): string {
+    return formatBuildLogText(this.exportLogs);
+  }
+
   public showLogs(): void {
     this.revealLogView();
   }
@@ -155,12 +161,14 @@ export class BuildTaskService {
       }
     }
     this.removeViewLogsForTasks(removedTaskIds);
+    this.removeExportLogsForTasks(removedTaskIds);
     this.trimTaskHistory();
     this.fireLogsReset();
   }
 
   public clearLogs(): void {
     this.viewLogs.splice(0, this.viewLogs.length);
+    this.exportLogs.splice(0, this.exportLogs.length);
     for (const task of this.tasks.values()) {
       task.recentLogs.splice(0, task.recentLogs.length);
     }
@@ -604,6 +612,7 @@ export class BuildTaskService {
       ...(links.length > 0 ? { links } : {}),
     };
     this.viewLogs.push(viewEntry);
+    this.exportLogs.push(viewEntry);
     if (this.viewLogs.length > BuildTaskService.MAX_VIEW_LOGS) {
       this.viewLogs.splice(0, this.viewLogs.length - BuildTaskService.MAX_VIEW_LOGS);
     }
@@ -624,6 +633,17 @@ export class BuildTaskService {
     for (let index = this.viewLogs.length - 1; index >= 0; index--) {
       if (taskIds.has(this.viewLogs[index].taskId)) {
         this.viewLogs.splice(index, 1);
+      }
+    }
+  }
+
+  private removeExportLogsForTasks(taskIds: Set<string>): void {
+    if (taskIds.size === 0) {
+      return;
+    }
+    for (let index = this.exportLogs.length - 1; index >= 0; index--) {
+      if (taskIds.has(this.exportLogs[index].taskId)) {
+        this.exportLogs.splice(index, 1);
       }
     }
   }
@@ -682,7 +702,9 @@ export class BuildTaskService {
         break;
       }
       this.tasks.delete(oldest.id);
-      this.removeViewLogsForTasks(new Set([oldest.id]));
+      const removedTaskIds = new Set([oldest.id]);
+      this.removeViewLogsForTasks(removedTaskIds);
+      this.removeExportLogsForTasks(removedTaskIds);
     }
   }
 
