@@ -68,6 +68,10 @@
         "title": "%command.selectPort.title%"
       },
       {
+        "command": "extension.configureSftoolStub",
+        "title": "%command.configureSftoolStub.title%"
+      },
+      {
         "command": "extension.openDeviceMonitor",
         "title": "%command.openDeviceMonitor.title%"
       },
@@ -88,6 +92,26 @@
         "command": "extension.buildTasks.refresh",
         "title": "%command.buildTasks.refresh.title%",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "extension.buildTasks.copySelection",
+        "title": "%command.buildTasks.copySelection.title%",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "extension.buildTasks.copyAll",
+        "title": "%command.buildTasks.copyAll.title%",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "extension.buildTasks.openFullLog",
+        "title": "%command.buildTasks.openFullLog.title%",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "extension.buildTasks.exportLog",
+        "title": "%command.buildTasks.exportLog.title%",
+        "icon": "$(export)"
       },
       {
         "command": "extension.buildTasks.clearLogs",
@@ -227,6 +251,11 @@
         "command": "extension.workflows.pin",
         "title": "%command.workflows.pin.title%",
         "icon": "$(timeline-unpin)"
+      },
+      {
+        "command": "extension.workflows.setKeybinding",
+        "title": "%command.workflows.setKeybinding.title%",
+        "icon": "$(keyboard)"
       },
       {
         "command": "extension.workflows.rename",
@@ -777,6 +806,11 @@
           "group": "inline@2"
         },
         {
+          "command": "extension.workflows.setKeybinding",
+          "when": "view == sifliSdkManager && viewItem == workflowItem",
+          "group": "navigation@3"
+        },
+        {
           "command": "extension.workflows.delete",
           "when": "view == sifliSdkManager && viewItem == workflowItem",
           "group": "inline@3"
@@ -819,9 +853,29 @@
       ],
       "webview/context": [
         {
-          "command": "extension.buildTasks.clearLogs",
+          "command": "extension.buildTasks.copySelection",
           "when": "webviewId == 'sifliBuildTasks'",
           "group": "navigation@1"
+        },
+        {
+          "command": "extension.buildTasks.copyAll",
+          "when": "webviewId == 'sifliBuildTasks'",
+          "group": "navigation@2"
+        },
+        {
+          "command": "extension.buildTasks.openFullLog",
+          "when": "webviewId == 'sifliBuildTasks'",
+          "group": "navigation@3"
+        },
+        {
+          "command": "extension.buildTasks.exportLog",
+          "when": "webviewId == 'sifliBuildTasks'",
+          "group": "navigation@4"
+        },
+        {
+          "command": "extension.buildTasks.clearLogs",
+          "when": "webviewId == 'sifliBuildTasks'",
+          "group": "navigation@5"
         }
       ]
     },

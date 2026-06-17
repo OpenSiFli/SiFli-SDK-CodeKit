@@ -30,11 +30,16 @@ interface BuildTaskLogViewState {
 export class BuildTaskLogProvider implements vscode.WebviewViewProvider {
   private static readonly LOG_FLUSH_DELAY_MS = 40;
   private static readonly STATE_UPDATE_DELAY_MS = 120;
+  private static readonly SELECTION_REQUEST_TIMEOUT_MS = 1000;
 
   private view?: vscode.WebviewView;
   private readonly buildTaskService: BuildTaskService;
   private pendingLogFlush?: ReturnType<typeof setTimeout>;
   private pendingStateUpdate?: ReturnType<typeof setTimeout>;
+  private pendingSelectionRequest?: {
+    resolve: (text: string) => void;
+    timeout: ReturnType<typeof setTimeout>;
+  };
   private pendingLogs: BuildTaskViewLogEntry[] = [];
 
   public constructor(private readonly extensionPath: string) {
@@ -63,11 +68,16 @@ export class BuildTaskLogProvider implements vscode.WebviewViewProvider {
       }
       if (message?.command === 'buildTasks.openLocation') {
         void this.openLogLocation(message);
+        return;
+      }
+      if (message?.command === 'buildTasks.copySelectionResponse') {
+        void this.handleCopySelectionResponse(message);
       }
     });
 
     webviewView.onDidDispose(() => {
       messageListener.dispose();
+      this.resolvePendingSelectionRequest('');
       this.clearPendingUpdates();
       if (this.view === webviewView) {
         this.view = undefined;
@@ -80,6 +90,59 @@ export class BuildTaskLogProvider implements vscode.WebviewViewProvider {
 
   public refresh(): void {
     this.postUpdate(true);
+  }
+
+  public async copySelection(): Promise<void> {
+    const text = await this.requestSelectionText();
+    if (text.length === 0) {
+      void vscode.window.showInformationMessage(vscode.l10n.t('No SiFli build log text selected.'));
+      return;
+    }
+    await this.writeClipboard(text, vscode.l10n.t('SiFli build log selection copied.'));
+  }
+
+  public async copyAll(): Promise<void> {
+    const text = this.getExportLogTextOrNotify(vscode.l10n.t('No SiFli build logs to copy.'));
+    if (text === undefined) {
+      return;
+    }
+    await this.writeClipboard(text, vscode.l10n.t('SiFli build logs copied.'));
+  }
+
+  public async openFullLog(): Promise<void> {
+    const text = this.getExportLogTextOrNotify(vscode.l10n.t('No SiFli build logs to open.'));
+    if (text === undefined) {
+      return;
+    }
+    const document = await vscode.workspace.openTextDocument({ content: text, language: 'log' });
+    await vscode.window.showTextDocument(document, { preview: false });
+  }
+
+  public async exportLog(): Promise<void> {
+    const text = this.getExportLogTextOrNotify(vscode.l10n.t('No SiFli build logs to export.'));
+    if (text === undefined) {
+      return;
+    }
+    const target = await vscode.window.showSaveDialog({
+      defaultUri: this.createDefaultLogFileUri(),
+      filters: {
+        [vscode.l10n.t('Log files')]: ['log'],
+        [vscode.l10n.t('All files')]: ['*'],
+      },
+      saveLabel: vscode.l10n.t('Export'),
+      title: vscode.l10n.t('Save SiFli build logs'),
+    });
+    if (!target) {
+      return;
+    }
+
+    try {
+      await vscode.workspace.fs.writeFile(target, new TextEncoder().encode(this.withTrailingNewline(text)));
+      void vscode.window.showInformationMessage(vscode.l10n.t('SiFli build logs exported to {0}.', target.fsPath));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      void vscode.window.showWarningMessage(vscode.l10n.t('Unable to export SiFli build logs: {0}', message));
+    }
   }
 
   public handleTaskServiceChange(event: BuildTaskChangeEvent): void {
@@ -222,6 +285,102 @@ export class BuildTaskLogProvider implements vscode.WebviewViewProvider {
     this.pendingLogs.splice(0, this.pendingLogs.length);
   }
 
+  private async handleCopySelectionResponse(message: unknown): Promise<void> {
+    const text = this.parseCopySelectionMessage(message);
+    if (this.pendingSelectionRequest) {
+      this.resolvePendingSelectionRequest(text);
+      return;
+    }
+    if (text.length > 0) {
+      await this.writeClipboard(text);
+    }
+  }
+
+  private requestSelectionText(): Promise<string> {
+    if (!this.view) {
+      return Promise.resolve('');
+    }
+
+    this.resolvePendingSelectionRequest('');
+    return new Promise(resolve => {
+      const timeout = setTimeout(
+        () => this.resolvePendingSelectionRequest(''),
+        BuildTaskLogProvider.SELECTION_REQUEST_TIMEOUT_MS
+      );
+      this.pendingSelectionRequest = { resolve, timeout };
+      void this.view?.webview.postMessage({ command: 'buildTasks.copySelectionRequest' }).then(
+        delivered => {
+          if (!delivered) {
+            this.resolvePendingSelectionRequest('');
+          }
+        },
+        () => this.resolvePendingSelectionRequest('')
+      );
+    });
+  }
+
+  private resolvePendingSelectionRequest(text: string): void {
+    const pending = this.pendingSelectionRequest;
+    if (!pending) {
+      return;
+    }
+    this.pendingSelectionRequest = undefined;
+    clearTimeout(pending.timeout);
+    pending.resolve(text);
+  }
+
+  private parseCopySelectionMessage(message: unknown): string {
+    if (!message || typeof message !== 'object') {
+      return '';
+    }
+    const record = message as Record<string, unknown>;
+    return typeof record.text === 'string' ? record.text : '';
+  }
+
+  private getExportLogTextOrNotify(emptyMessage: string): string | undefined {
+    const text = this.buildTaskService.getExportLogText();
+    if (text.length === 0) {
+      void vscode.window.showInformationMessage(emptyMessage);
+      return undefined;
+    }
+    return text;
+  }
+
+  private async writeClipboard(text: string, successMessage?: string): Promise<void> {
+    try {
+      await vscode.env.clipboard.writeText(text);
+      if (successMessage) {
+        void vscode.window.showInformationMessage(successMessage);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      void vscode.window.showWarningMessage(vscode.l10n.t('Unable to copy SiFli build logs: {0}', message));
+    }
+  }
+
+  private createDefaultLogFileUri(): vscode.Uri {
+    const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const directory = workspacePath ?? process.cwd();
+    return vscode.Uri.file(path.join(directory, `sifli-build-logs-${this.formatFileTimestamp(new Date())}.log`));
+  }
+
+  private formatFileTimestamp(date: Date): string {
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return [
+      date.getFullYear(),
+      pad(date.getMonth() + 1),
+      pad(date.getDate()),
+      '-',
+      pad(date.getHours()),
+      pad(date.getMinutes()),
+      pad(date.getSeconds()),
+    ].join('');
+  }
+
+  private withTrailingNewline(text: string): string {
+    return text.endsWith('\n') ? text : `${text}\n`;
+  }
+
   private async openLogLocation(message: unknown): Promise<void> {
     const location = this.parseOpenLocationMessage(message);
     if (!location) {
@@ -327,6 +486,18 @@ export class BuildTaskLogManager {
       this.provider.refresh();
       this.buildTaskService.refresh();
     });
+    const copySelectionCommand = vscode.commands.registerCommand('extension.buildTasks.copySelection', () =>
+      this.provider.copySelection()
+    );
+    const copyAllCommand = vscode.commands.registerCommand('extension.buildTasks.copyAll', () =>
+      this.provider.copyAll()
+    );
+    const openFullLogCommand = vscode.commands.registerCommand('extension.buildTasks.openFullLog', () =>
+      this.provider.openFullLog()
+    );
+    const exportLogCommand = vscode.commands.registerCommand('extension.buildTasks.exportLog', () =>
+      this.provider.exportLog()
+    );
     const clearLogsCommand = vscode.commands.registerCommand('extension.buildTasks.clearLogs', () => {
       this.buildTaskService.clearLogs();
     });
@@ -339,6 +510,10 @@ export class BuildTaskLogManager {
       refreshListener,
       showLogsCommand,
       refreshCommand,
+      copySelectionCommand,
+      copyAllCommand,
+      openFullLogCommand,
+      exportLogCommand,
       clearLogsCommand,
       clearFinishedCommand
     );

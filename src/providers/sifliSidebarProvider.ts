@@ -346,6 +346,25 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
       )
     );
 
+    const stubPath = this.workspaceStateService.getSftoolStubPath();
+    const stubConfigPath = this.workspaceStateService.getSftoolStubConfigPath();
+
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('sftool Stub'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.configureSftoolStub',
+          title: vscode.l10n.t('Configure sftool Stub'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon('file-binary'),
+        this.getSftoolStubTooltip(stubPath, stubConfigPath),
+        'sftoolStub',
+        this.getSftoolStubStatusLabel(stubPath, stubConfigPath)
+      )
+    );
+
     // 配置 clangd
     items.push(
       new SifliSidebarItem(
@@ -480,6 +499,29 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
     );
 
     return items;
+  }
+
+  private getSftoolStubStatusLabel(stubPath: string, stubConfigPath: string): string {
+    if (stubPath && stubConfigPath) {
+      return vscode.l10n.t('External bin + config');
+    }
+    if (stubPath) {
+      return vscode.l10n.t('External bin');
+    }
+    if (stubConfigPath) {
+      return vscode.l10n.t('Stub config');
+    }
+    return vscode.l10n.t('Embedded');
+  }
+
+  private getSftoolStubTooltip(stubPath: string, stubConfigPath: string): string {
+    const notSelected = vscode.l10n.t('Not selected');
+    return vscode.l10n.t(
+      'sftool stub source: {0}\nExternal stub bin: {1}\nstub_config JSON: {2}\nClick to configure sftool stub',
+      this.getSftoolStubStatusLabel(stubPath, stubConfigPath),
+      stubPath || notSelected,
+      stubConfigPath || notSelected
+    );
   }
 
   private async getWorkflowItems(): Promise<SifliSidebarItem[]> {
@@ -809,7 +851,9 @@ export class SifliSidebarManager {
     const workspaceStateListener = WorkspaceStateService.getInstance().onDidChangeState(event => {
       if (
         event.key === WORKSPACE_STATE_KEYS.CURRENT_SDK_PATH ||
-        event.key === WORKSPACE_STATE_KEYS.SDK_ENVIRONMENT_AUTO_ACTIVATE
+        event.key === WORKSPACE_STATE_KEYS.SDK_ENVIRONMENT_AUTO_ACTIVATE ||
+        event.key === WORKSPACE_STATE_KEYS.SFTOOL_STUB_PATH ||
+        event.key === WORKSPACE_STATE_KEYS.SFTOOL_STUB_CONFIG_PATH
       ) {
         this.refresh();
       }

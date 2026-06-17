@@ -8,6 +8,7 @@ import {
   WorkflowStepType,
 } from '../types';
 import { WorkflowService } from '../services/workflowService';
+import { WorkflowKeybindingService } from '../services/workflowKeybindingService';
 import { StatusBarProvider } from '../providers/statusBarProvider';
 import { getWorkflowStepDisplayLabel, getWorkflowStepTypeLabel } from '../utils/workflowStepLabel';
 
@@ -20,6 +21,7 @@ export class WorkflowCommands {
   private static instance: WorkflowCommands;
   private workflowService: WorkflowService;
   private statusBarProvider: StatusBarProvider;
+  private keybindingService?: WorkflowKeybindingService;
 
   private constructor() {
     this.workflowService = WorkflowService.getInstance();
@@ -33,6 +35,10 @@ export class WorkflowCommands {
     return WorkflowCommands.instance;
   }
 
+  public initializeKeybindingService(context: vscode.ExtensionContext): void {
+    this.keybindingService = new WorkflowKeybindingService(context);
+  }
+
   public async openManager(): Promise<void> {
     const actions = [
       { label: vscode.l10n.t('Run workflow'), action: 'run' },
@@ -42,6 +48,7 @@ export class WorkflowCommands {
       { label: vscode.l10n.t('Copy workflow'), action: 'copy' },
       { label: vscode.l10n.t('Delete workflow'), action: 'delete' },
       { label: vscode.l10n.t('Pin workflow to status bar'), action: 'pin' },
+      { label: vscode.l10n.t('Set keyboard shortcut'), action: 'setKeybinding' },
       { label: vscode.l10n.t('Show workflow diagnostics'), action: 'diagnostics' },
     ];
     const picked = await vscode.window.showQuickPick(actions, {
@@ -73,6 +80,9 @@ export class WorkflowCommands {
         break;
       case 'pin':
         await this.pinWorkflowToStatusBar();
+        break;
+      case 'setKeybinding':
+        await this.setWorkflowKeybinding();
         break;
       case 'diagnostics':
         await this.workflowService.showValidationDiagnostics();
@@ -390,6 +400,40 @@ export class WorkflowCommands {
     await this.workflowService.saveStatusBarButtons(buttons, targetOption.target);
     this.statusBarProvider.updateStatusBarItems();
     vscode.window.showInformationMessage(vscode.l10n.t('Pinned workflow to status bar: {0}', workflow.name));
+  }
+
+  public async setWorkflowKeybinding(workflowIdOrItem?: string | { metadata?: Record<string, string> }): Promise<void> {
+    const workflowId = this.parseWorkflowContext(workflowIdOrItem).workflowId;
+    const workflow = workflowId
+      ? this.workflowService.getResolvedWorkflows().find(item => item.id === workflowId)
+      : await this.pickWorkflow();
+    if (!workflow) {
+      vscode.window.showWarningMessage(vscode.l10n.t('Workflow not found.'));
+      return;
+    }
+
+    const service = this.keybindingService;
+    if (!service) {
+      vscode.window.showErrorMessage(vscode.l10n.t('Workflow keyboard shortcut service is not initialized.'));
+      return;
+    }
+
+    try {
+      await service.startNativeKeybindingCapture(workflow.id);
+    } catch (error) {
+      await service.copyKeybindingSnippet(workflow.id);
+      const openJson = vscode.l10n.t('Open JSON');
+      const selected = await vscode.window.showWarningMessage(
+        vscode.l10n.t(
+          'Could not start the native keybinding editor. The keybinding snippet was copied to the clipboard. {0}',
+          String(error)
+        ),
+        openJson
+      );
+      if (selected === openJson) {
+        await service.openUserKeybindings();
+      }
+    }
   }
 
   public async deleteStatusBarButton(input?: string | { metadata?: Record<string, string> }): Promise<void> {
