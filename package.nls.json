@@ -51,6 +51,7 @@
   "command.workflows.copy.title": "Copy workflow",
   "command.workflows.delete.title": "Delete workflow",
   "command.workflows.pin.title": "Pin workflow to status bar",
+  "command.workflows.setKeybinding.title": "Set workflow keyboard shortcut",
   "command.workflows.rename.title": "Rename workflow",
   "command.workflows.stepAdd.title": "Add step",
   "command.workflows.stepDelete.title": "Delete this step",

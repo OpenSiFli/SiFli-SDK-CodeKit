@@ -253,6 +253,11 @@
         "icon": "$(timeline-unpin)"
       },
       {
+        "command": "extension.workflows.setKeybinding",
+        "title": "%command.workflows.setKeybinding.title%",
+        "icon": "$(keyboard)"
+      },
+      {
         "command": "extension.workflows.rename",
         "title": "%command.workflows.rename.title%",
         "icon": "$(edit)"
@@ -799,6 +804,11 @@
           "command": "extension.workflows.pin",
           "when": "view == sifliSdkManager && viewItem == workflowItem",
           "group": "inline@2"
+        },
+        {
+          "command": "extension.workflows.setKeybinding",
+          "when": "view == sifliSdkManager && viewItem == workflowItem",
+          "group": "navigation@3"
         },
         {
           "command": "extension.workflows.delete",

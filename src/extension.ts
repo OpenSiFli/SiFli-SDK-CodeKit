@@ -104,6 +104,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const projectCommands = ProjectCommands.getInstance();
   const sdkCommands = SdkCommands.getInstance();
   const workflowCommands = WorkflowCommands.getInstance();
+  workflowCommands.initializeKeybindingService(context);
   const mcpCommands = McpCommands.getInstance();
 
   // 初始化状态栏提供者
@@ -402,6 +403,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         CMD_PREFIX + 'workflows.pin',
         (item?: { metadata?: Record<string, string> } | string) =>
           workflowCommands.pinWorkflowToStatusBar(typeof item === 'string' ? item : item?.metadata?.workflowId)
+      ),
+      vscode.commands.registerCommand(
+        CMD_PREFIX + 'workflows.setKeybinding',
+        (item?: string | { metadata?: Record<string, string> }) => workflowCommands.setWorkflowKeybinding(item)
       ),
       vscode.commands.registerCommand(
         CMD_PREFIX + 'workflows.rename',
