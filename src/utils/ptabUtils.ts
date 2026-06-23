@@ -30,6 +30,17 @@ export function resolvePtabSourceMode(input: {
   return input.usesOverlay ? 'overlay' : 'board';
 }
 
+export function buildSiliconSchemaEnvironment(
+  exportedEnv: NodeJS.ProcessEnv,
+  bundledSiliconSchema: string | undefined
+): NodeJS.ProcessEnv {
+  const schemaPath = exportedEnv.SIFLI_SILICON_SCHEMA || exportedEnv.SILICON_SCHEMA_PATH || bundledSiliconSchema;
+  return {
+    SIFLI_SILICON_SCHEMA: exportedEnv.SIFLI_SILICON_SCHEMA || schemaPath,
+    SILICON_SCHEMA_PATH: exportedEnv.SILICON_SCHEMA_PATH || schemaPath,
+  };
+}
+
 export function getProjectBoardPtabPath(projectEntryPath: string, normalizedBoardName: string): string {
   return path.join(projectEntryPath, normalizedBoardName, 'ptab.yaml');
 }

@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import { describe, it } from 'mocha';
 import {
   buildPartitionPatchFromDraft,
+  buildSiliconSchemaEnvironment,
   getBaseBoardName,
   isSupportedPtabSdkBranch,
   normalizePtabBoardName,
@@ -28,6 +29,17 @@ describe('ptabUtils', () => {
     assert.strictEqual(resolvePtabSourceMode({ projectFullPtab: '/tmp/ptab.yaml', usesOverlay: true }), 'project_full');
     assert.strictEqual(resolvePtabSourceMode({ usesOverlay: true }), 'overlay');
     assert.strictEqual(resolvePtabSourceMode({ usesOverlay: false }), 'board');
+  });
+
+  it('fills SiliconSchema bridge environment from the bundled fallback', () => {
+    assert.deepStrictEqual(buildSiliconSchemaEnvironment({}, '/ext/SiliconSchema'), {
+      SIFLI_SILICON_SCHEMA: '/ext/SiliconSchema',
+      SILICON_SCHEMA_PATH: '/ext/SiliconSchema',
+    });
+    assert.deepStrictEqual(buildSiliconSchemaEnvironment({ SIFLI_SILICON_SCHEMA: '/custom/schema' }, '/ext/schema'), {
+      SIFLI_SILICON_SCHEMA: '/custom/schema',
+      SILICON_SCHEMA_PATH: '/custom/schema',
+    });
   });
 
   it('builds overlay patches with explicit operations', () => {

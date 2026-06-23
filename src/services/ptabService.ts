@@ -11,6 +11,7 @@ import { getBoardSearchPath } from '../utils/boardSearchPathUtils';
 import { getProjectInfo, SiFliProjectInfo } from '../utils/projectUtils';
 import {
   buildPartitionPatchFromDraft,
+  buildSiliconSchemaEnvironment,
   getBaseBoardName,
   getProjectBoardOverlayPath,
   getProjectBoardPtabPath,
@@ -715,13 +716,23 @@ export class PtabService {
       path.join(context.sdkPath, 'tools', 'build'),
       exportedEnv.PYTHONPATH,
     ].filter((item): item is string => !!item);
+    const bundledSiliconSchema = this.getBundledSiliconSchemaPath();
     return {
       ...exportedEnv,
       SIFLI_SDK: context.sdkPath,
       SIFLI_SDK_PATH: context.sdkPath,
+      ...buildSiliconSchemaEnvironment(exportedEnv, bundledSiliconSchema),
       PYTHONIOENCODING: 'utf-8',
       PYTHONPATH: pythonPathEntries.join(path.delimiter),
     };
+  }
+
+  private getBundledSiliconSchemaPath(): string | undefined {
+    if (!this.context) {
+      return undefined;
+    }
+    const schemaPath = path.join(this.context.extensionPath, 'SiliconSchema');
+    return fs.existsSync(schemaPath) ? schemaPath : undefined;
   }
 
   private getExportedPythonPath(exportedEnv: NodeJS.ProcessEnv): string {
