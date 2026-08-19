@@ -13,6 +13,7 @@
   "command.toggleSdkEnvironmentAutoActivation.title": "Toggle SDK environment auto activation",
   "command.selectPort.title": "Select download serial port",
   "command.configureSftoolStub.title": "Configure sftool Stub",
+  "command.toggleFlashCompatibilityMode.title": "Toggle Flash Compatibility Mode",
   "command.openDeviceMonitor.title": "Monitor device",
   "command.closeDeviceMonitor.title": "Close device monitor",
   "command.createNewSiFliTerminal.title": "New SiFli terminal",

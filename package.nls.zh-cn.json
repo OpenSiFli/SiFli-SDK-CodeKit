@@ -13,6 +13,7 @@
   "command.toggleSdkEnvironmentAutoActivation.title": "切换 SDK 环境自动激活",
   "command.selectPort.title": "选择下载串口",
   "command.configureSftoolStub.title": "配置 sftool Stub",
+  "command.toggleFlashCompatibilityMode.title": "切换烧录兼容模式",
   "command.openDeviceMonitor.title": "监视设备",
   "command.closeDeviceMonitor.title": "关闭设备监视器",
   "command.createNewSiFliTerminal.title": "新建 SiFli 终端",

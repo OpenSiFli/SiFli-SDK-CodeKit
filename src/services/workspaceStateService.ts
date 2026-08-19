@@ -32,6 +32,8 @@ export interface WorkspaceState {
   sftoolStubPath?: string;
   // sftool stub_config JSON 路径
   sftoolStubConfigPath?: string;
+  // Flash 是否以 sftool 兼容模式运行
+  flashCompatibilityMode?: boolean;
 }
 
 // 工作区状态的 key 常量
@@ -49,6 +51,7 @@ export const WORKSPACE_STATE_KEYS = {
   SERIAL_MONITOR_RENDER_ANSI: 'serialMonitorRenderAnsi',
   SFTOOL_STUB_PATH: 'sftoolStubPath',
   SFTOOL_STUB_CONFIG_PATH: 'sftoolStubConfigPath',
+  FLASH_COMPATIBILITY_MODE: 'flashCompatibilityMode',
 } as const;
 
 // 默认值
@@ -66,6 +69,7 @@ const DEFAULT_VALUES: Required<WorkspaceState> = {
   serialMonitorRenderAnsi: true,
   sftoolStubPath: '',
   sftoolStubConfigPath: '',
+  flashCompatibilityMode: false,
 };
 
 /**
@@ -144,6 +148,7 @@ export class WorkspaceStateService {
       serialMonitorRenderAnsi: this.get('serialMonitorRenderAnsi'),
       sftoolStubPath: this.get('sftoolStubPath'),
       sftoolStubConfigPath: this.get('sftoolStubConfigPath'),
+      flashCompatibilityMode: this.get('flashCompatibilityMode'),
     };
   }
 
@@ -312,5 +317,14 @@ export class WorkspaceStateService {
 
   public async clearSftoolStubConfigPath(): Promise<void> {
     await this.clear('sftoolStubConfigPath');
+  }
+
+  // flashCompatibilityMode
+  public getFlashCompatibilityMode(): boolean {
+    return this.get('flashCompatibilityMode') ?? DEFAULT_VALUES.flashCompatibilityMode;
+  }
+
+  public async setFlashCompatibilityMode(value: boolean): Promise<void> {
+    await this.set('flashCompatibilityMode', value);
   }
 }

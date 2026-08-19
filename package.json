@@ -72,6 +72,10 @@
         "title": "%command.configureSftoolStub.title%"
       },
       {
+        "command": "extension.toggleFlashCompatibilityMode",
+        "title": "%command.toggleFlashCompatibilityMode.title%"
+      },
+      {
         "command": "extension.openDeviceMonitor",
         "title": "%command.openDeviceMonitor.title%"
       },

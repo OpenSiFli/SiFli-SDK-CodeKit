@@ -9,7 +9,7 @@ import { WorkspaceStateService } from './workspaceStateService';
 import { getProjectInfo } from '../utils/projectUtils';
 import { buildBoardSearchArg } from '../utils/boardSearchPathUtils';
 import { isValidBoardDirectory } from '../utils/boardDiscoveryUtils';
-import { buildSftoolStubArgs } from '../utils/sftoolCommandUtils';
+import { buildSftoolCompatArgs, buildSftoolStubArgs } from '../utils/sftoolCommandUtils';
 
 export class BoardService {
   private static instance: BoardService;
@@ -209,8 +209,15 @@ export class BoardService {
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
     const buildFolder = this.getBuildTargetFolder(boardName);
 
-    // 构建基础命令
-    let command = `sftool -p ${serialPortNum} -c ${sftoolParam.chip}`;
+    // 构建基础命令。--compat 必须位于端口参数之后、芯片参数之前。
+    let command = `sftool -p ${serialPortNum}`;
+
+    const compatArgs = buildSftoolCompatArgs(this.workspaceStateService.getFlashCompatibilityMode());
+    if (compatArgs) {
+      command += ` ${compatArgs}`;
+    }
+
+    command += ` -c ${sftoolParam.chip}`;
 
     // 添加波特率参数
     if (baudRate) {

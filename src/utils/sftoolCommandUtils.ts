@@ -23,6 +23,10 @@ export function buildSftoolStubArgs(options: SftoolStubOptions, platform: NodeJS
   return args.join(' ');
 }
 
+export function buildSftoolCompatArgs(enabled: boolean | undefined): string {
+  return enabled ? '--compat true' : '';
+}
+
 function escapeSftoolDoubleQuotedArg(value: string, platform: NodeJS.Platform): string {
   if (platform === 'win32') {
     return value.replace(/[`"$]/g, match => `\`${match}`);

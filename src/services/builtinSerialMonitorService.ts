@@ -623,6 +623,8 @@ export class BuiltinSerialMonitorService {
     const existingPanel = this.panels.get(session.connectionId);
     if (existingPanel) {
       existingPanel.reveal(vscode.ViewColumn.Beside);
+      this.disposePanelDisposables(session.connectionId);
+      this.bindPanelToSession(existingPanel, session);
       await this.postSnapshot(session.connectionId);
       return;
     }

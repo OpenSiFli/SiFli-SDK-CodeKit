@@ -365,6 +365,23 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
       )
     );
 
+    const flashCompatibilityMode = this.workspaceStateService.getFlashCompatibilityMode();
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Flash Compatibility Mode'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.toggleFlashCompatibilityMode',
+          title: vscode.l10n.t('Toggle Flash Compatibility Mode'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon(flashCompatibilityMode ? 'check' : 'circle-slash'),
+        vscode.l10n.t('When enabled, Flash adds --compat to the sftool command.'),
+        'flashCompatibilityMode',
+        flashCompatibilityMode ? vscode.l10n.t('On') : vscode.l10n.t('Off')
+      )
+    );
+
     // 配置 clangd
     items.push(
       new SifliSidebarItem(
@@ -853,7 +870,8 @@ export class SifliSidebarManager {
         event.key === WORKSPACE_STATE_KEYS.CURRENT_SDK_PATH ||
         event.key === WORKSPACE_STATE_KEYS.SDK_ENVIRONMENT_AUTO_ACTIVATE ||
         event.key === WORKSPACE_STATE_KEYS.SFTOOL_STUB_PATH ||
-        event.key === WORKSPACE_STATE_KEYS.SFTOOL_STUB_CONFIG_PATH
+        event.key === WORKSPACE_STATE_KEYS.SFTOOL_STUB_CONFIG_PATH ||
+        event.key === WORKSPACE_STATE_KEYS.FLASH_COMPATIBILITY_MODE
       ) {
         this.refresh();
       }

@@ -270,6 +270,19 @@ export class ConfigCommands {
     }
   }
 
+  public async toggleFlashCompatibilityMode(): Promise<void> {
+    try {
+      const enabled = !this.workspaceStateService.getFlashCompatibilityMode();
+      await this.workspaceStateService.setFlashCompatibilityMode(enabled);
+      vscode.window.showInformationMessage(
+        vscode.l10n.t('Flash compatibility mode is now {0}.', enabled ? vscode.l10n.t('On') : vscode.l10n.t('Off'))
+      );
+    } catch (error) {
+      console.error('[ConfigCommands] Error toggling Flash compatibility mode:', error);
+      vscode.window.showErrorMessage(vscode.l10n.t('Failed to toggle Flash compatibility mode: {0}', String(error)));
+    }
+  }
+
   private async selectExternalStubBin(currentPath: string): Promise<void> {
     const result = await vscode.window.showOpenDialog({
       canSelectFiles: true,

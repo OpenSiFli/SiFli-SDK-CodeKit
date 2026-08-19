@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { describe, it } from 'mocha';
-import { buildSftoolStubArgs, quoteSftoolCommandArg } from '../utils/sftoolCommandUtils';
+import { buildSftoolCompatArgs, buildSftoolStubArgs, quoteSftoolCommandArg } from '../utils/sftoolCommandUtils';
 
 describe('sftoolCommandUtils', () => {
   it('omits stub arguments when no stub settings are configured', () => {
@@ -27,6 +27,12 @@ describe('sftoolCommandUtils', () => {
       }),
       '--stub "/tmp/custom stub.bin" --stub-config "/tmp/stub config.json"'
     );
+  });
+
+  it('adds the compatibility flag only when enabled', () => {
+    assert.strictEqual(buildSftoolCompatArgs(true), '--compat true');
+    assert.strictEqual(buildSftoolCompatArgs(false), '');
+    assert.strictEqual(buildSftoolCompatArgs(undefined), '');
   });
 
   it('escapes Unix shell interpolation characters inside quoted arguments', () => {
