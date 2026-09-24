@@ -23,3 +23,5 @@ ${workspaceFolder}/project/build_<芯片模组>_hcpu
 同时，CodeKit 会在工作区根目录写入或更新 `.clangd` 文件，使 clangd 能够读取对应的编译数据库和 SiFli 工具链信息。
 
 第一次配置前，建议先完成一次正常编译，确保构建目录下已经生成 `compile_commands.json`。切换芯片模组后，或重新生成了不同芯片模组的构建目录后，请再次点击 `配置 clangd`，并按提示重启 VS Code 使配置生效。
+
+如果点击 `配置 clangd` 后仍无法跳转、补全，请先确认 clangd 是否正确安装，参见 [clangd 安装失败，代码无法跳转、补全怎么办？](../FAQs/README.md#clangd-install-failed)。
