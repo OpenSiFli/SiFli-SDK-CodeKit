@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
 import { TERMINAL_NAME } from '../constants';
 import {
+  KconfigChange,
   SdkVersion,
   WorkflowDefinition,
   WorkflowReference,
@@ -16,6 +17,7 @@ import { BuildExecutionService } from './buildExecutionService';
 import { ClangdService } from './clangdService';
 import { ConfigService } from './configService';
 import { GitService } from './gitService';
+import { KconfigService } from './kconfigService';
 import { LogService } from './logService';
 import { CreateProjectFromTemplateOptions, ProjectCreationService } from './projectCreationService';
 import { SerialMonitorService } from './serialMonitorService';
@@ -63,6 +65,7 @@ export class AutomationService {
   private readonly projectCreationService: ProjectCreationService;
   private readonly clangdService: ClangdService;
   private readonly workspaceStateService: WorkspaceStateService;
+  private readonly kconfigService: KconfigService;
 
   private constructor() {
     this.workflowService = WorkflowService.getInstance();
@@ -78,6 +81,7 @@ export class AutomationService {
     this.projectCreationService = ProjectCreationService.getInstance();
     this.clangdService = ClangdService.getInstance();
     this.workspaceStateService = WorkspaceStateService.getInstance();
+    this.kconfigService = KconfigService.getInstance();
   }
 
   public static getInstance(): AutomationService {
@@ -190,7 +194,8 @@ export class AutomationService {
       workflowScope: result.workflowScope,
       dryRun: result.dryRun,
       runId: result.runId,
-      terminalName: result.runId ? TERMINAL_NAME : undefined,
+      // ponytail: lean mode drops constant terminalName
+      ...(this.isCompactMode() ? {} : { terminalName: result.runId ? TERMINAL_NAME : undefined }),
       exitCode: result.exitCode,
       failedStepIndex: result.failedStepIndex,
       failedStepType: result.failedStepType,
@@ -412,6 +417,16 @@ export class AutomationService {
   public async listBoards(): Promise<unknown> {
     const boards = await this.boardService.discoverBoards();
     const selectedBoard = this.configService.getSelectedBoardName();
+    if (this.isCompactMode()) {
+      // ponytail: compact board list — flat names, type is always 'sdk', selected as separate field
+      return this.withResult({
+        success: true,
+        operation: 'listBoards',
+        boardCount: boards.length,
+        boards: boards.map(board => board.name),
+        selectedBoard: boards.find(board => board.name === selectedBoard)?.name ?? null,
+      });
+    }
     return this.withResult({
       success: true,
       operation: 'listBoards',
@@ -468,6 +483,26 @@ export class AutomationService {
     const selectedPort = this.serialPortService.selectedSerialPort;
     const monitorPort = this.serialPortService.monitorSerialPort;
     const supportedBaudRates = SerialPortService.getBaudRates();
+    if (this.isCompactMode()) {
+      // ponytail: lean mode moves shared fields out of per-port objects
+      return this.withResult({
+        success: true,
+        operation: 'listSerialPorts',
+        supportedBaudRates,
+        currentDownloadBaudRate: this.serialPortService.downloadBaudRate,
+        currentMonitorBaudRate: this.serialPortService.monitorBaudRate,
+        ports: ports.map(port => ({
+          path: port.path,
+          manufacturer: port.manufacturer,
+          serialNumber: port.serialNumber,
+          vendorId: port.vendorId,
+          productId: port.productId,
+          selected: port.path === selectedPort,
+          selectedForDownload: port.path === selectedPort,
+          selectedForMonitor: port.path === monitorPort,
+        })),
+      });
+    }
     return this.withResult({
       success: true,
       operation: 'listSerialPorts',
@@ -632,11 +667,26 @@ export class AutomationService {
         maxEntries: input.maxEntries,
         consume: input.consume ?? true,
       });
+      if (this.isCompactMode()) {
+        // ponytail: lean mode drops entries, connectionId — text summary is sufficient for LLM
+        return this.withResult({
+          success: true,
+          operation: 'serialRead',
+          text: result.entries.map(entry => `[${entry.source}] ${entry.text}`).join('\n'),
+          nextAfterId: result.nextAfterId,
+        });
+      }
+      const entries = result.entries.map(e => {
+        const { hex: _hex, ...rest } = e;
+        return rest;
+      });
       return this.withResult({
         success: true,
         operation: 'serialRead',
-        ...result,
-        text: result.entries.map(entry => `[${entry.source}] ${entry.text}`).join('\n'),
+        connectionId: result.connectionId,
+        entries,
+        nextAfterId: result.nextAfterId,
+        text: entries.map(entry => `[${entry.source}] ${entry.text}`).join('\n'),
       });
     } catch (error) {
       return this.withResult({
@@ -1012,6 +1062,81 @@ export class AutomationService {
     });
   }
 
+  public async kconfigSnapshot(): Promise<unknown> {
+    const project = this.ensureSiFliProject('kconfigSnapshot');
+    if (!project.ok) {
+      return project.payload;
+    }
+    try {
+      const snapshot = await this.kconfigService.getSnapshot();
+      return this.withResult({
+        success: true,
+        operation: 'kconfigSnapshot',
+        snapshot,
+      });
+    } catch (error) {
+      return this.withResult({
+        success: false,
+        operation: 'kconfigSnapshot',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  public async kconfigSetValue(input: { symbol: string; value: string }): Promise<unknown> {
+    const project = this.ensureSiFliProject('kconfigSetValue');
+    if (!project.ok) {
+      return project.payload;
+    }
+    try {
+      const change: KconfigChange = { symbol: input.symbol, value: input.value };
+      const preview = await this.kconfigService.previewChanges([change]);
+      if (!preview.dirty) {
+        return this.withResult({
+          success: true,
+          operation: 'kconfigSetValue',
+          message: `Symbol "${input.symbol}" already set to "${input.value}".`,
+          snapshot: preview,
+        });
+      }
+      const snapshot = await this.kconfigService.saveChanges([change]);
+      return this.withResult({
+        success: true,
+        operation: 'kconfigSetValue',
+        message: `Set ${input.symbol}=${input.value}`,
+        snapshot,
+      });
+    } catch (error) {
+      return this.withResult({
+        success: false,
+        operation: 'kconfigSetValue',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  public async kconfigSave(input: { changes: KconfigChange[] }): Promise<unknown> {
+    const project = this.ensureSiFliProject('kconfigSave');
+    if (!project.ok) {
+      return project.payload;
+    }
+    try {
+      const snapshot = await this.kconfigService.saveChanges(input.changes);
+      return this.withResult({
+        success: true,
+        operation: 'kconfigSave',
+        changedCount: input.changes.length,
+        snapshot,
+      });
+    } catch (error) {
+      return this.withResult({
+        success: false,
+        operation: 'kconfigSave',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   private async runBuildOperation(
     operation: string,
     executor: (runId: string) => Promise<{
@@ -1230,6 +1355,11 @@ export class AutomationService {
     [key: string]: unknown;
   }): unknown {
     const { success, operation, message, state, data, ...rest } = payload;
+    if (this.isCompactMode()) {
+      // ponytail: lean mode — no duplicate top-level spread, no heavy state attachment
+      const d = data ?? rest;
+      return Object.keys(d).length ? { success, operation, message, data: d } : { success, operation, message };
+    }
     return {
       success,
       operation,
@@ -1238,6 +1368,15 @@ export class AutomationService {
       state: state ?? this.getProjectState(),
       ...rest,
     };
+  }
+
+  private isCompactMode(): boolean {
+    // ponytail: sync vscode config read — cached, no I/O cost
+    try {
+      return vscode.workspace.getConfiguration('sifli-sdk-codekit').get<boolean>('mcp.compactResponses', true);
+    } catch {
+      return true;
+    }
   }
 
   private ensureSiFliProject(operation: string): { ok: true } | { ok: false; payload: unknown } {
@@ -1263,11 +1402,12 @@ export class AutomationService {
     message?: string,
     extras?: Record<string, unknown>
   ): unknown {
+    // ponytail: lean mode drops constant terminalName — LLM doesn't need 'SF32' on every build response
     return this.withResult({
       success,
       operation,
       runId,
-      terminalName: TERMINAL_NAME,
+      ...(this.isCompactMode() ? {} : { terminalName: TERMINAL_NAME }),
       exitCode,
       command,
       message,

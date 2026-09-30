@@ -71,6 +71,8 @@
   "command.mcp.toggleAutoStart.title": "切换 SiFli MCP 自动启动",
   "command.mcp.configureEndpoint.title": "配置 SiFli MCP 端点",
   "command.mcp.showLogs.title": "显示 SiFli MCP 日志",
+  "command.mcp.toggleCompactResponses.title": "切换 SiFli MCP 压缩模式",
+  "configuration.sifli.mcp.compactResponses.description": "启用 MCP 服务器压缩响应模式。去除冗余字段（structuredContent、state、hex、entries）并使用压缩 JSON 格式以减少 Token 消耗。",
   "command.toggleBuildWithSaveCheck.title": "切换构建前保存检查",
   "configuration.sifli.buildWithSaveCheck.description": "当存在未保存的更改时，在构建前应该做什么。'Prompt' 会在每次构建运行时询问。",
   "configuration.sifli.buildWithSaveCheck.enum.prompt": "每次都询问",

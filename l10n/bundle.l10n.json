@@ -756,5 +756,10 @@
   "Open JSON": "Open JSON",
   "Keyboard shortcut {0} was set for workflow {1}.": "Keyboard shortcut {0} was set for workflow {1}.",
   "Could not locate the workflow keybinding entry.": "Could not locate the workflow keybinding entry.",
-  "Could not start the native keybinding editor. The keybinding snippet was copied to the clipboard. {0}": "Could not start the native keybinding editor. The keybinding snippet was copied to the clipboard. {0}"
+  "Could not start the native keybinding editor. The keybinding snippet was copied to the clipboard. {0}": "Could not start the native keybinding editor. The keybinding snippet was copied to the clipboard. {0}",
+  "Compact Mode": "Compact Mode",
+  "Toggle compact mode": "Toggle compact mode",
+  "Click to toggle compact mode (fewer tokens per MCP response)": "Click to toggle compact mode (fewer tokens per MCP response)",
+  "SiFli MCP compact mode enabled. Fewer tokens used per response.": "SiFli MCP compact mode enabled. Fewer tokens used per response.",
+  "SiFli MCP compact mode disabled.": "SiFli MCP compact mode disabled."
 }

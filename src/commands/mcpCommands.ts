@@ -154,4 +154,16 @@ export class McpCommands {
   public async showLogs(): Promise<void> {
     this.logService.show();
   }
+
+  public async toggleCompactResponses(): Promise<void> {
+    const config = vscode.workspace.getConfiguration('sifli-sdk-codekit');
+    const nextValue = !config.get<boolean>('mcp.compactResponses', true);
+    await config.update('mcp.compactResponses', nextValue, vscode.ConfigurationTarget.Global);
+    this.sidebarManager.refresh();
+    vscode.window.showInformationMessage(
+      nextValue
+        ? vscode.l10n.t('SiFli MCP compact mode enabled. Fewer tokens used per response.')
+        : vscode.l10n.t('SiFli MCP compact mode disabled.')
+    );
+  }
 }
