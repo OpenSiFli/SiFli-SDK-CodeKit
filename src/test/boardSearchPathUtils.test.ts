@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as path from 'path';
 import { describe, it } from 'mocha';
 import { Board } from '../types';
-import { buildBoardSearchArg, getBoardSearchPath } from '../utils/boardSearchPathUtils';
+import { buildBoardSearchArg, getBoardSearchPath, resolveWorkspacePath } from '../utils/boardSearchPathUtils';
 
 function absolutePath(...segments: string[]): string {
   const root = process.platform === 'win32' ? 'C:\\' : path.sep;
@@ -23,6 +23,24 @@ describe('boardSearchPathUtils', () => {
   const projectHcpuEntry = path.join(workspaceRoot, 'project', 'hcpu');
   const projectBoardsRoot = path.join(workspaceRoot, 'boards');
   const customBoardsRoot = path.join(workspaceRoot, 'custom_boards');
+
+  it('resolves relative custom search paths from the workspace root', () => {
+    const relativePath = path.join('custom', 'boards');
+
+    assert.strictEqual(resolveWorkspacePath(relativePath, workspaceRoot), path.join(workspaceRoot, relativePath));
+  });
+
+  it('keeps absolute custom search paths independent of the workspace root', () => {
+    const absoluteSearchPath = path.join(workspaceRoot, 'custom', 'boards');
+
+    assert.strictEqual(resolveWorkspacePath(absoluteSearchPath, path.join(workspaceRoot, 'other')), absoluteSearchPath);
+  });
+
+  it('preserves relative paths when no workspace root is available', () => {
+    const relativePath = path.join('custom', '..', 'boards');
+
+    assert.strictEqual(resolveWorkspacePath(relativePath), path.normalize(relativePath));
+  });
 
   it('does not emit board_search_path for sdk boards', () => {
     const board = createBoard('sdk', path.join(workspaceRoot, 'sdk', 'customer', 'boards', 'board_a'));

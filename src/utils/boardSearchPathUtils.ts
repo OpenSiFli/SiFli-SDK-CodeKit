@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { Board } from '../types';
 
-function resolveWorkspacePath(targetPath: string, workspaceRoot?: string): string {
+export function resolveWorkspacePath(targetPath: string, workspaceRoot?: string): string {
   if (path.isAbsolute(targetPath) || !workspaceRoot) {
     return path.normalize(targetPath);
   }
