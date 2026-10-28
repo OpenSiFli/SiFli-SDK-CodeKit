@@ -754,6 +754,69 @@ export class ToolRegistryService {
             boardName: this.asOptionalString(input.boardName),
           }),
       },
+      {
+        id: 'kconfig.snapshot',
+        mcp: {
+          name: 'sifli.kconfig.snapshot',
+          description: 'Read the full Kconfig configuration tree for the active board and project.',
+          inputSchema: EMPTY_OBJECT_SCHEMA,
+        },
+        invoke: async () => this.automationService.kconfigSnapshot(),
+      },
+      {
+        id: 'kconfig.setValue',
+        mcp: {
+          name: 'sifli.kconfig.setValue',
+          description: 'Set a single Kconfig symbol value and persist to proj.conf.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              symbol: { type: 'string', description: 'Kconfig symbol name, e.g. CONFIG_XXX' },
+              value: { type: 'string', description: 'Value to set, e.g. y, n, "string", 1234, 0x1000' },
+            },
+            required: ['symbol', 'value'],
+            additionalProperties: false,
+          },
+        },
+        invoke: async input =>
+          this.automationService.kconfigSetValue({
+            symbol: this.asString(input.symbol),
+            value: this.asString(input.value),
+          }),
+      },
+      {
+        id: 'kconfig.save',
+        mcp: {
+          name: 'sifli.kconfig.saveChanges',
+          description: 'Batch-save multiple Kconfig changes to proj.conf.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              changes: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    symbol: { type: 'string' },
+                    value: { type: 'string' },
+                  },
+                  required: ['symbol', 'value'],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ['changes'],
+            additionalProperties: false,
+          },
+        },
+        invoke: async input =>
+          this.automationService.kconfigSave({
+            changes: (input.changes as Array<{ symbol: string; value: string }>).map(c => ({
+              symbol: c.symbol,
+              value: c.value,
+            })),
+          }),
+      },
     ];
   }
 

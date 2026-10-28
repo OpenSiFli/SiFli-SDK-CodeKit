@@ -71,6 +71,8 @@
   "command.mcp.toggleAutoStart.title": "Toggle SiFli MCP auto start",
   "command.mcp.configureEndpoint.title": "Configure SiFli MCP endpoint",
   "command.mcp.showLogs.title": "Show SiFli MCP logs",
+  "command.mcp.toggleCompactResponses.title": "Toggle SiFli MCP compact mode",
+  "configuration.sifli.mcp.compactResponses.description": "Enable compact response mode for the MCP server. Strips redundant fields (structuredContent, state, hex, entries) from MCP tool responses and uses compact JSON to reduce token usage.",
   "command.toggleBuildWithSaveCheck.title": "Toggle Build With Save Check",
   "configuration.sifli.buildWithSaveCheck.description": "What to do before building when there are unsaved changes. 'Prompt' will ask every time the build runs.",
   "configuration.sifli.buildWithSaveCheck.enum.prompt": "Prompt every time",

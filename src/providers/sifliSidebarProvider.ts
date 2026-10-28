@@ -515,6 +515,25 @@ export class SifliSidebarProvider implements vscode.TreeDataProvider<SifliSideba
       )
     );
 
+    const compactMode = vscode.workspace
+      .getConfiguration('sifli-sdk-codekit')
+      .get<boolean>('mcp.compactResponses', true);
+    items.push(
+      new SifliSidebarItem(
+        vscode.l10n.t('Compact Mode'),
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: 'extension.mcp.toggleCompactResponses',
+          title: vscode.l10n.t('Toggle compact mode'),
+          arguments: [],
+        },
+        new vscode.ThemeIcon(compactMode ? 'collapse-all' : 'expand-all'),
+        vscode.l10n.t('Click to toggle compact mode (fewer tokens per MCP response)'),
+        'mcpToggleItem',
+        compactMode ? vscode.l10n.t('On') : vscode.l10n.t('Off')
+      )
+    );
+
     return items;
   }
 
