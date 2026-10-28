@@ -7,7 +7,7 @@ import { ConfigService } from './configService';
 import { LogService } from './logService';
 import { WorkspaceStateService } from './workspaceStateService';
 import { getProjectInfo } from '../utils/projectUtils';
-import { buildBoardSearchArg } from '../utils/boardSearchPathUtils';
+import { buildBoardSearchArg, resolveWorkspacePath } from '../utils/boardSearchPathUtils';
 import { isValidBoardDirectory } from '../utils/boardDiscoveryUtils';
 import { buildSftoolCompatArgs, buildSftoolStubArgs } from '../utils/sftoolCommandUtils';
 
@@ -36,6 +36,8 @@ export class BoardService {
   public async discoverBoards(): Promise<Board[]> {
     const boardMap = new Map<string, Board>();
     const currentSdk = this.configService.getCurrentSdk();
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const workspaceRoot = workspaceFolders?.[0]?.uri.fsPath;
 
     if (currentSdk?.path) {
       // 扫描 SDK 中的板子
@@ -46,14 +48,13 @@ export class BoardService {
     // 扫描自定义板子路径
     const customBoardSearchPath = this.configService.config.customBoardSearchPath;
     if (customBoardSearchPath) {
-      await this.scanDirectoryForBoards(customBoardSearchPath, boardMap, 'custom');
+      const resolvedCustomBoardSearchPath = resolveWorkspacePath(customBoardSearchPath, workspaceRoot);
+      await this.scanDirectoryForBoards(resolvedCustomBoardSearchPath, boardMap, 'custom');
     }
 
     // 扫描项目本地板子目录
-    const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders && workspaceFolders.length > 0) {
-      const workspaceRoot = workspaceFolders[0].uri.fsPath;
-      const projectLocalBoardsPath = path.join(workspaceRoot, 'boards');
+      const projectLocalBoardsPath = path.join(workspaceFolders[0].uri.fsPath, 'boards');
       await this.scanDirectoryForBoards(projectLocalBoardsPath, boardMap, 'project_local');
     }
 
