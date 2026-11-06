@@ -114,6 +114,7 @@
   "Restart VS Code": "重启 VS Code",
   "clangd configuration completed for board {0}. Restart VS Code to apply.": "clangd 配置已完成，已设置为芯片模组 {0}。建议重启 VS Code 以使配置生效。",
   "clangd was configured with warnings: {0}": "clangd 已完成配置，但存在警告：{0}",
+  "compile_commands.json was not found at {0}. Build the project first, then restart clangd.": "未在 {0} 找到 compile_commands.json。请先编译工程，然后重启 clangd。",
   "Failed to configure clangd: {0}": "配置 clangd 失败：{0}",
   "Manage SiFli SDK installation": "管理 SiFli SDK 安装",
   "SDK: {0}": "SDK：{0}",

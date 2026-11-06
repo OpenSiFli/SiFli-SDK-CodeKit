@@ -345,6 +345,14 @@ export class ConfigCommands {
         return;
       }
 
+      // 先显示警告：成功提示是带按钮的 await，放在后面会导致警告要等用户点完按钮才出现，
+      // 点“重启”时则永远不会出现。
+      if (result.warnings && result.warnings.length > 0) {
+        vscode.window.showWarningMessage(
+          vscode.l10n.t('clangd was configured with warnings: {0}', result.warnings.join('; '))
+        );
+      }
+
       // 显示成功消息并提示重启
       const restartAction = vscode.l10n.t('Restart VS Code');
       const laterAction = vscode.l10n.t('Later');
@@ -359,12 +367,6 @@ export class ConfigCommands {
 
       if (action === restartAction) {
         vscode.commands.executeCommand('workbench.action.reloadWindow');
-      }
-
-      if (result.warnings && result.warnings.length > 0) {
-        vscode.window.showWarningMessage(
-          vscode.l10n.t('clangd was configured with warnings: {0}', result.warnings.join('; '))
-        );
       }
     } catch (error) {
       console.error('[ConfigCommands] Error in configureClangd:', error);

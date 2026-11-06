@@ -78,6 +78,21 @@ export class ClangdService {
       toolchain.compilerPaths
     );
 
+    const warnings = [...toolchain.warnings];
+    const compileCommandsFile = path.join(
+      workspaceFolder.uri.fsPath,
+      ...buildFolderRelativePath.split('/'),
+      'compile_commands.json'
+    );
+    if (!fs.existsSync(compileCommandsFile)) {
+      warnings.push(
+        vscode.l10n.t(
+          'compile_commands.json was not found at {0}. Build the project first, then restart clangd.',
+          compileCommandsFile
+        )
+      );
+    }
+
     return {
       success: true,
       selectedBoard,
@@ -85,7 +100,7 @@ export class ClangdService {
       clangdConfigPath,
       queryDriver: toolchain.queryDriver,
       compilerPaths: toolchain.compilerPaths,
-      warnings: toolchain.warnings,
+      warnings,
       message: vscode.l10n.t('clangd configuration completed for board {0}.', selectedBoard),
     };
   }

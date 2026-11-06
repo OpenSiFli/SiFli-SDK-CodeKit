@@ -114,6 +114,7 @@
   "Restart VS Code": "Restart VS Code",
   "clangd configuration completed for board {0}. Restart VS Code to apply.": "clangd configuration completed for board {0}. Restart VS Code to apply.",
   "clangd was configured with warnings: {0}": "clangd was configured with warnings: {0}",
+  "compile_commands.json was not found at {0}. Build the project first, then restart clangd.": "compile_commands.json was not found at {0}. Build the project first, then restart clangd.",
   "Failed to configure clangd: {0}": "Failed to configure clangd: {0}",
   "Manage SiFli SDK installation": "Manage SiFli SDK installation",
   "SDK: {0}": "SDK: {0}",
