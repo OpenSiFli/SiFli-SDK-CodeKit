@@ -353,12 +353,20 @@ export class ConfigCommands {
         );
       }
 
-      // 显示成功消息并提示重启
-      const restartAction = vscode.l10n.t('Restart VS Code');
+      // 配置与当前完全一致时不再提示重启，避免每次点击都要求重启
+      if (result.changed === false) {
+        vscode.window.showInformationMessage(
+          vscode.l10n.t('clangd is already configured for board {0}. No restart needed.', result.selectedBoard ?? '')
+        );
+        return;
+      }
+
+      // 配置有变化：只需重启 clangd 语言服务，不必重载整个 VS Code 窗口
+      const restartAction = vscode.l10n.t('Restart clangd');
       const laterAction = vscode.l10n.t('Later');
       const action = await vscode.window.showInformationMessage(
         vscode.l10n.t(
-          'clangd configuration completed for board {0}. Restart VS Code to apply.',
+          'clangd configuration updated for board {0}. Restart clangd to apply.',
           result.selectedBoard ?? ''
         ),
         restartAction,
@@ -366,7 +374,12 @@ export class ConfigCommands {
       );
 
       if (action === restartAction) {
-        vscode.commands.executeCommand('workbench.action.reloadWindow');
+        try {
+          await vscode.commands.executeCommand('clangd.restart');
+        } catch (error) {
+          console.warn('[ConfigCommands] clangd.restart failed, reloading window instead:', error);
+          await vscode.commands.executeCommand('workbench.action.reloadWindow');
+        }
       }
     } catch (error) {
       console.error('[ConfigCommands] Error in configureClangd:', error);
