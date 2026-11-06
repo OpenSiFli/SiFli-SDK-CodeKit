@@ -35,6 +35,7 @@ import { McpServerDefinitionProviderService } from './services/mcpServerDefiniti
 import { BuiltinSerialMonitorService } from './services/builtinSerialMonitorService';
 import { isSiFliProject } from './utils/projectUtils';
 import { getReleaseNotesNotificationAction } from './utils/releaseNotesUtils';
+import { promptForSdkSelection } from './utils/sdkActivationPrompt';
 import { registerProbeRsDebugger } from './probe-rs/extension';
 import {
   disposePeripheralViewer,
@@ -560,13 +561,15 @@ async function autoActivateSdkEnvironmentIfNeeded(
 
   if (validSdks.length > 1) {
     const selectSdk = vscode.l10n.t('Select SDK');
-    const response = await vscode.window.showInformationMessage(
-      vscode.l10n.t('Select a SiFli SDK to auto-activate this workspace.'),
-      selectSdk
+    promptForSdkSelection(
+      () =>
+        vscode.window.showInformationMessage(
+          vscode.l10n.t('Select a SiFli SDK to auto-activate this workspace.'),
+          selectSdk
+        ),
+      selectSdk,
+      () => sdkService.activateSdkEnvironment()
     );
-    if (response === selectSdk) {
-      await sdkService.activateSdkEnvironment();
-    }
   }
 }
 
