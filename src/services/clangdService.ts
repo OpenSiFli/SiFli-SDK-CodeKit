@@ -23,6 +23,8 @@ export type ClangdConfigurationResult = {
   compilerPaths?: CompilerPaths;
   warnings?: string[];
   message?: string;
+  /** 本次是否实际修改了 clangd.arguments 或 .clangd；未修改时无需重启 clangd */
+  changed?: boolean;
 };
 
 export class ClangdService {
@@ -71,8 +73,11 @@ export class ClangdService {
       queryDriver: toolchain.queryDriver,
     });
 
-    await this.writeClangdArguments(workspaceFolder.uri.fsPath, clangdConfig, nextArguments);
-    const clangdConfigPath = await this.writeClangdConfig(
+    const argumentsChanged = JSON.stringify(existingArguments) !== JSON.stringify(nextArguments);
+    if (argumentsChanged) {
+      await this.writeClangdArguments(workspaceFolder.uri.fsPath, clangdConfig, nextArguments);
+    }
+    const { clangdConfigPath, changed: clangdConfigChanged } = await this.writeClangdConfig(
       workspaceFolder.uri.fsPath,
       buildFolderRelativePath,
       toolchain.compilerPaths
@@ -101,6 +106,7 @@ export class ClangdService {
       queryDriver: toolchain.queryDriver,
       compilerPaths: toolchain.compilerPaths,
       warnings,
+      changed: argumentsChanged || clangdConfigChanged,
       message: vscode.l10n.t('clangd configuration completed for board {0}.', selectedBoard),
     };
   }
@@ -208,7 +214,7 @@ export class ClangdService {
     workspaceRoot: string,
     buildFolderRelativePath: string,
     compilerPaths: CompilerPaths
-  ): Promise<string> {
+  ): Promise<{ clangdConfigPath: string; changed: boolean }> {
     const clangdConfigPath = path.join(workspaceRoot, '.clangd');
     let existingContent: string | undefined;
     try {
@@ -224,7 +230,10 @@ export class ClangdService {
       compilerPaths,
     });
     const nextContent = upsertCodeKitClangdConfig(existingContent, block);
+    if (nextContent === existingContent) {
+      return { clangdConfigPath, changed: false };
+    }
     await fs.promises.writeFile(clangdConfigPath, nextContent, 'utf8');
-    return clangdConfigPath;
+    return { clangdConfigPath, changed: true };
   }
 }
