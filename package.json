@@ -1255,6 +1255,12 @@
             "default": "prompt",
             "description": "%configuration.sifli.buildWithSaveCheck.description%",
             "scope": "window"
+          },
+          "sifli-sdk-codekit.clangd.autoConfigureAfterBuild": {
+            "type": "boolean",
+            "default": true,
+            "description": "%configuration.sifli.clangd.autoConfigureAfterBuild.description%",
+            "scope": "resource"
           }
         }
       },

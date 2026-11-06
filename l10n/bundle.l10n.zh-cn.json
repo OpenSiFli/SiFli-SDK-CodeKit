@@ -118,6 +118,7 @@
   "clangd is already configured for board {0}. No restart needed.": "clangd 已是芯片模组 {0} 的配置，无需重启。",
   "Restart clangd": "重启 clangd",
   "clangd configuration updated for board {0}. Restart clangd to apply.": "clangd 配置已更新为芯片模组 {0}。重启 clangd 后生效。",
+  "clangd was configured automatically for board {0}.": "已自动为芯片模组 {0} 配置 clangd。",
   "Failed to configure clangd: {0}": "配置 clangd 失败：{0}",
   "Manage SiFli SDK installation": "管理 SiFli SDK 安装",
   "SDK: {0}": "SDK：{0}",

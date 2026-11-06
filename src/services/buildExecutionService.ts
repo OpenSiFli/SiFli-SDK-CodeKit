@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import { TASK_NAMES } from '../constants';
 import { BoardService } from './boardService';
 import { BuildTaskService } from './buildTaskService';
+import { ClangdService } from './clangdService';
 import { ConfigService } from './configService';
 import { SerialPortService } from './serialPortService';
 import { TerminalService } from './terminalService';
@@ -97,8 +98,14 @@ export class BuildExecutionService {
       timeoutMs: options?.timeoutMs,
     });
     const exitCode = taskResult.exitCode;
+    const success = exitCode === undefined || exitCode === 0;
+    // 编译成功并已生成 compile_commands.json 后，自动让 clangd 指向当前板子的构建目录。
+    // 不阻塞编译结果的返回，失败只写日志。
+    if (success && waitForExit && !taskResult.background) {
+      void ClangdService.getInstance().autoConfigureAfterBuild(selectedBoardName);
+    }
     return {
-      success: exitCode === undefined || exitCode === 0,
+      success,
       taskName: TASK_NAMES.BUILD,
       exitCode,
       command,

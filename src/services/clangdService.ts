@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ConfigService } from './configService';
+import { LogService } from './logService';
 import { getProjectInfo } from '../utils/projectUtils';
 import {
   buildClangdArguments,
@@ -27,6 +28,8 @@ export type ClangdConfigurationResult = {
   changed?: boolean;
 };
 
+const CLANGD_EXTENSION_ID = 'llvm-vs-code-extensions.vscode-clangd';
+
 export class ClangdService {
   private static instance: ClangdService;
   private readonly configService: ConfigService;
@@ -40,6 +43,77 @@ export class ClangdService {
       ClangdService.instance = new ClangdService();
     }
     return ClangdService.instance;
+  }
+
+  /**
+   * 编译成功后自动配置 clangd。
+   *
+   * clangd 只会在源文件的上级目录里查找 compile_commands.json，找不到 SiFli 工程
+   * project/build_<board>_hcpu/ 下的数据库；以前需要用户手动点“配置 clangd”，
+   * 不点就会退回 fallback 编译参数，报 rtthread.h 找不到。这里在每次编译成功后
+   * 检查配置，有变化才写入并重启 clangd，没有变化则什么都不做。
+   * 切换开发板后再编译，也会自动指向新板子的构建目录。
+   */
+  public async autoConfigureAfterBuild(boardName?: string): Promise<void> {
+    const logService = LogService.getInstance();
+    try {
+      const enabled = vscode.workspace
+        .getConfiguration('sifli-sdk-codekit')
+        .get<boolean>('clangd.autoConfigureAfterBuild', true);
+      if (!enabled) {
+        return;
+      }
+
+      const selectedBoard = boardName ?? this.configService.getSelectedBoardName();
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!selectedBoard || selectedBoard === 'N/A' || !workspaceFolder) {
+        return;
+      }
+
+      // 没有生成数据库时不写配置，避免把 clangd 指向一个空目录
+      const compileCommandsFile = path.join(
+        workspaceFolder.uri.fsPath,
+        ...this.getBuildFolderRelativePath(selectedBoard).split('/'),
+        'compile_commands.json'
+      );
+      if (!fs.existsSync(compileCommandsFile)) {
+        logService.info(`[clangd] Skip auto configuration: ${compileCommandsFile} not found.`);
+        return;
+      }
+
+      const result = await this.configure(selectedBoard);
+      if (!result.success) {
+        logService.warn(`[clangd] Auto configuration failed: ${result.message ?? 'unknown error'}`);
+        return;
+      }
+      if (result.warnings && result.warnings.length > 0) {
+        logService.warn(`[clangd] Auto configuration warnings: ${result.warnings.join('; ')}`);
+      }
+      if (!result.changed) {
+        return;
+      }
+
+      logService.info(`[clangd] Auto configured clangd for board ${selectedBoard}, restarting clangd.`);
+      if (vscode.extensions.getExtension(CLANGD_EXTENSION_ID)) {
+        try {
+          await vscode.commands.executeCommand('clangd.restart');
+        } catch (error) {
+          logService.warn('[clangd] clangd.restart failed after auto configuration:', error);
+        }
+      }
+      void vscode.window.showInformationMessage(
+        vscode.l10n.t('clangd was configured automatically for board {0}.', selectedBoard)
+      );
+    } catch (error) {
+      logService.error('[clangd] Auto configuration after build failed:', error);
+    }
+  }
+
+  private getBuildFolderRelativePath(selectedBoard: string): string {
+    const projectInfo = getProjectInfo();
+    const projectRelativePath = projectInfo?.projectEntryRelativePath || 'project';
+    const projectRelativePathForClangd = projectRelativePath.split(path.sep).join('/');
+    return `${projectRelativePathForClangd}/build_${selectedBoard}_hcpu`;
   }
 
   public async configure(boardName?: string): Promise<ClangdConfigurationResult> {
@@ -59,10 +133,7 @@ export class ClangdService {
       };
     }
 
-    const projectInfo = getProjectInfo();
-    const projectRelativePath = projectInfo?.projectEntryRelativePath || 'project';
-    const projectRelativePathForClangd = projectRelativePath.split(path.sep).join('/');
-    const buildFolderRelativePath = `${projectRelativePathForClangd}/build_${selectedBoard}_hcpu`;
+    const buildFolderRelativePath = this.getBuildFolderRelativePath(selectedBoard);
     const compileCommandsDir = `\${workspaceFolder}/${buildFolderRelativePath}`;
     const toolchain = this.resolveToolchain();
     const clangdConfig = vscode.workspace.getConfiguration('clangd', workspaceFolder.uri);

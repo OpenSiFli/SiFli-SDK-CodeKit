@@ -118,6 +118,7 @@
   "clangd is already configured for board {0}. No restart needed.": "clangd is already configured for board {0}. No restart needed.",
   "Restart clangd": "Restart clangd",
   "clangd configuration updated for board {0}. Restart clangd to apply.": "clangd configuration updated for board {0}. Restart clangd to apply.",
+  "clangd was configured automatically for board {0}.": "clangd was configured automatically for board {0}.",
   "Failed to configure clangd: {0}": "Failed to configure clangd: {0}",
   "Manage SiFli SDK installation": "Manage SiFli SDK installation",
   "SDK: {0}": "SDK: {0}",
