@@ -77,6 +77,7 @@
   "configuration.sifli.buildWithSaveCheck.enum.saveAll": "始终保存所有文件",
   "configuration.sifli.buildWithSaveCheck.enum.saveCurrent": "始终保存当前文件",
   "configuration.sifli.buildWithSaveCheck.enum.doNotSave": "始终不保存直接继续",
+  "configuration.sifli.clangd.autoConfigureAfterBuild.description": "编译成功后，自动让 clangd 使用当前芯片模组的 compile_commands.json；配置有变化时自动重启 clangd。",
   "command.sifliSidebar.refresh.title": "刷新",
   "mcp.provider.label": "SiFli CodeKit",
   "view.peripheralViewer.name": "外设查看器",

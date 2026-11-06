@@ -77,6 +77,7 @@
   "configuration.sifli.buildWithSaveCheck.enum.saveAll": "Always save all files",
   "configuration.sifli.buildWithSaveCheck.enum.saveCurrent": "Always save current file",
   "configuration.sifli.buildWithSaveCheck.enum.doNotSave": "Always continue without saving",
+  "configuration.sifli.clangd.autoConfigureAfterBuild.description": "After a successful build, automatically point clangd at the current board's compile_commands.json and restart clangd when the configuration changes.",
   "command.sifliSidebar.refresh.title": "Refresh",
   "mcp.provider.label": "SiFli CodeKit",
   "view.peripheralViewer.name": "Peripheral Viewer",
