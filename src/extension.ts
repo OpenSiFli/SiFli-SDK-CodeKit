@@ -249,6 +249,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const showMcpLogsCommand = vscode.commands.registerCommand(CMD_PREFIX + 'mcp.showLogs', async () => {
     await mcpCommands.showLogs();
   });
+  const toggleMcpCompactResponsesCommand = vscode.commands.registerCommand(
+    CMD_PREFIX + 'mcp.toggleCompactResponses',
+    async () => {
+      await mcpCommands.toggleCompactResponses();
+    }
+  );
   const exportDebugSnapshotCommand = vscode.commands.registerCommand(CMD_PREFIX + 'debugSnapshot.openWebview', () =>
     vueWebviewProvider.openDebugSnapshotWebview(context)
   );
@@ -288,6 +294,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     toggleMcpAutoStartCommand,
     configureMcpEndpointCommand,
     showMcpLogsCommand,
+    toggleMcpCompactResponsesCommand,
     openMemoryMapCommand,
     openPtabCommand
   );

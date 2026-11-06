@@ -934,5 +934,10 @@
   "Open JSON": "打开 JSON",
   "Keyboard shortcut {0} was set for workflow {1}.": "已为工作流 {1} 设置快捷键 {0}。",
   "Could not locate the workflow keybinding entry.": "无法定位工作流快捷键条目。",
-  "Could not start the native keybinding editor. The keybinding snippet was copied to the clipboard. {0}": "无法启动原生快捷键编辑器。快捷键片段已复制到剪贴板。{0}"
+  "Could not start the native keybinding editor. The keybinding snippet was copied to the clipboard. {0}": "无法启动原生快捷键编辑器。快捷键片段已复制到剪贴板。{0}",
+  "Compact Mode": "压缩模式",
+  "Toggle compact mode": "切换压缩模式",
+  "Click to toggle compact mode (fewer tokens per MCP response)": "点击切换压缩模式（减少每次 MCP 响应的 Token 消耗）",
+  "SiFli MCP compact mode enabled. Fewer tokens used per response.": "SiFli MCP 压缩模式已启用。每次响应使用更少 Token。",
+  "SiFli MCP compact mode disabled.": "SiFli MCP 压缩模式已禁用。"
 }
