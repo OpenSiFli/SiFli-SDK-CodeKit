@@ -165,6 +165,16 @@ describe('clangdConfigUtils', () => {
     assert.match(updated, /arm-none-eabi-g\+\+/);
   });
 
+  it('writes ClangTidy as a dictionary so clangd accepts the config fragment', () => {
+    const block = buildCodeKitClangdConfigBlock({
+      compilationDatabase: 'project/build_board_hcpu',
+      compilerPaths: {},
+    });
+
+    assert.doesNotMatch(block, /ClangTidy:\s*false/);
+    assert.match(block, /Diagnostics:\n  ClangTidy:\n    Remove: '\*'/);
+  });
+
   it('uses configured or environment tools roots before falling back to home', () => {
     assert.strictEqual(
       getDefaultSifliToolsRoot({
