@@ -309,8 +309,10 @@ export function buildCodeKitClangdConfigBlock(options: BuildClangdConfigOptions)
     'Completion:',
     '  HeaderInsertion: Never',
     '',
+    // clangd 要求 ClangTidy 为字典；写成 `ClangTidy: false` 会导致整段配置被丢弃
     'Diagnostics:',
-    '  ClangTidy: false',
+    '  ClangTidy:',
+    "    Remove: '*'",
   ];
 
   if (options.compilerPaths.c) {
