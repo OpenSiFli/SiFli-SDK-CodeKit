@@ -20,6 +20,7 @@ issues_image/**
 *.md
 !README_CN.md
 !README_EN.md
+!CHANGELOG.md
 !RELEASE_NOTES.md
 !LICENSE
 !images/readme/SiFli.png
