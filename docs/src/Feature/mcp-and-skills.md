@@ -4,7 +4,38 @@ icon: fa-solid fa-plug
 order: 3
 ---
 
-CodeKit 内置了 MCP Server，让 Claude Code、GitHub Copilot 等 AI 编程工具可以直接通过 MCP 协议调用插件能力，也支持通过社区 `skills` CLI 一键安装专用 Skill。
+CodeKit 内置了 MCP Server，让 Claude Code、GitHub Copilot 等 AI 编程工具可以直接通过 MCP 协议调用插件能力，支持通过社区 `skills` CLI 一键安装专用 Skill。
+
+## Skills
+
+::: note
+推荐在使用 CodeKit MCP 前，先安装此专用 Skill。安装此 Skill 能充分发挥 Agent 与 CodeKit 的最大协同能力。
+:::
+
+CodeKit Skills 是一组给 Agent 的 **嵌入式开发 Harness**。安装后，Agent 可以通过 MCP 工具直接操作开发板，无需人为干预每个步骤。
+
+Skill 提供的核心能力：
+
+- **可调用的动作** — SDK 切换、板型选择、编译、烧录、复位、串口读写、日志分析
+- **可读取的反馈** — 编译错误、烧录结果、设备启动日志、串口输出
+- **可继承的状态** — 当前 SDK 版本、目标芯片、串口号、上次构建结果
+- **可重复的开发循环** — 写代码 → 编译 → 烧录 → 运行 → 观察 → 判断 → 修改
+
+与直接暴露 CLI 给 Agent 不同，Skill 提供了结构化的工程上下文和结果反馈，让 Agent 全盘接手开发循环，你只管验收成果。
+
+### 安装
+
+```bash
+npx skills add OpenSiFli/SiFli-SDK-CodeKit
+```
+
+为支持的 agent 单独安装：
+
+| Agent | 命令 |
+|-------|------|
+| Claude Code | `npx skills add OpenSiFli/SiFli-SDK-CodeKit -a claude-code` |
+| Codex | `npx skills add OpenSiFli/SiFli-SDK-CodeKit -a codex` |
+| GitHub Copilot | `npx skills add .OpenSiFli/SiFli-SDK-CodeKit -a github-copilot` |
 
 ## MCP Server
 
@@ -80,27 +111,42 @@ CodeKit 内置了 MCP Server，让 Claude Code、GitHub Copilot 等 AI 编程工
 | `sifli.workflow.validate` | 验证工作流配置或提供的定义是否正确 |
 | `sifli.workflow.run` | 按引用运行工作流，可传入输入参数 |
 
+#### ⚙️ Kconfig 配置
+
+| 工具 | 功能说明 |
+|------|---------|
+| `sifli.kconfig.snapshot` | 读取当前项目的完整 Kconfig 配置树 |
+| `sifli.kconfig.setValue` | 设置单个 Kconfig 配置项并持久化 |
+| `sifli.kconfig.saveChanges` | 批量保存 Kconfig 变更并触发重新生成头文件 |
+
 ### 架构说明
 
 MCP Server 运行在 VS Code 扩展宿主内，因此外部客户端连接时需要本插件所在的 VS Code 实例保持运行。服务采用 Bearer Token 认证，支持固定 Token 和自动生成 Token 两种方式，确保连接安全。
 
-## Skills
+### 压缩模式
 
-本仓库提供一个通用 `sifli-sdk-codekit` skill，可通过社区 `skills` CLI 安装到 Claude Code、Codex 和 GitHub Copilot。
+Agent 调用 MCP 时，大量冗余字段会浪费 Token、拖慢响应。`压缩模式` 开启后，扩展会自动精简 MCP 响应内容，只保留 agent 真正需要的信息：
 
-```bash
-npx skills add OpenSiFli/SiFli-SDK-CodeKit
+- **节省 70%+ Token** — 一次典型会话消耗更低，费用更省
+- **交互更快** — 响应体积大幅缩减，agent 获取结果和做出下一步决策都更迅速
+- **开箱即用** — 默认开启，无需额外配置
 
-# 指定技能和目标 agent
-npx skills add OpenSiFli/SiFli-SDK-CodeKit --skill sifli-sdk-codekit -a claude-code
-npx skills add OpenSiFli/SiFli-SDK-CodeKit --skill sifli-sdk-codekit -a codex
-npx skills add OpenSiFli/SiFli-SDK-CodeKit --skill sifli-sdk-codekit -a github-copilot
-```
+#### 使用方式
 
-### 使用前提
+扩展侧边栏 MCP 区域提供 **压缩模式** 开关（默认开启），点击即可切换。也可通过命令面板运行 `切换 SiFli MCP 压缩模式`，或修改设置 `sifli-sdk-codekit.mcp.compactResponses`。
 
-- VS Code 已安装并启用 SiFli SDK CodeKit 插件
-- CodeKit MCP Server 已启动
-- 目标 agent 已按连接文档完成 MCP 配置
+### 事件推送（试验性）
 
-安装后，Skill 会优先引导 agent 使用 CodeKit 提供的 MCP 工具完成 SDK、开发板、项目、编译、下载、串口监视器和工作流等操作。Skill 的完整安装文件位于仓库 `skills/sifli-sdk-codekit/` 目录下；如果当前环境无法看到 CodeKit 工具，会提示按连接文档完成配置。
+CodeKit MCP 支持 **Resources 订阅机制**。Agent 订阅资源后，状态变更时会自动收到推送通知，无需轮询。
+
+| Resource URI | 内容 | 推送时机 |
+|---|---|---|
+| `codekit://build/status` | 编译/烧录状态 | 构建开始或结束 |
+| `codekit://state/summary` | 项目状态快照 | SDK/Board/Port 变更 |
+
+#### Agent 工作流
+
+1. Agent 通过 `resources/subscribe` 订阅资源
+2. CodeKit 状态变更时通过 `notifications/resources/updated` 通知
+3. Agent 调用 `resources/read` 获取最新数据
+
